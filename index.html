@@ -543,6 +543,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
       <div class="lang-btn" id="lb-en" onclick="setLang('en')"><span class="lang-flag">🇬🇧</span><span class="lang-nm">English</span></div>
     </div>
     <button class="btn-ob" id="ob1-btn" onclick="goOb(2)">Continuer →</button>
+    <button onclick="ouvrirRestauration()" style="margin-top:12px;background:transparent;border:2px solid rgba(255,255,255,.25);border-radius:14px;padding:12px 20px;color:rgba(255,255,255,.7);font-size:14px;font-weight:700;font-family:Outfit,sans-serif;cursor:pointer;width:100%">🔑 J'ai déjà une boutique / I already have a store</button>
   </div>
 
   <!-- Step 2: Pays -->
@@ -587,6 +588,18 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
     <div class="ob-step-h" id="ob6-h">✅ Tout est prêt !</div>
     <div class="ob-confirm" id="ob-confirm"></div>
     <button class="btn-ob" id="ob6-btn" onclick="finaliserOb()">🚀 Lancer MyBoutiQ</button>
+  </div>
+</div>
+
+<!-- RESTAURATION BOUTIQUE -->
+<div id="ov-restore" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;padding:24px">
+  <div style="background:#1A1A2E;border-radius:24px;padding:28px 22px;width:100%;max-width:380px">
+    <div style="font-size:32px;text-align:center;margin-bottom:8px">🔑</div>
+    <div style="color:#fff;font-size:18px;font-weight:800;text-align:center;margin-bottom:4px" id="rst-title">Restaurer ma boutique</div>
+    <div style="color:rgba(255,255,255,.5);font-size:13px;text-align:center;margin-bottom:20px" id="rst-sub">Entre ton code boutique pour récupérer tes données</div>
+    <input id="rst-code" type="text" style="width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;color:#fff;font-size:18px;font-weight:800;text-align:center;letter-spacing:4px;text-transform:uppercase;font-family:Outfit,sans-serif;outline:none;margin-bottom:14px" placeholder="MB-XXXXXX">
+    <button onclick="restaurerBoutique()" style="width:100%;background:#F5A623;border:none;border-radius:14px;padding:14px;color:#1A1A2E;font-size:16px;font-weight:800;font-family:Outfit,sans-serif;cursor:pointer;margin-bottom:10px" id="rst-btn">🚀 Restaurer</button>
+    <button onclick="fermerRestauration()" style="width:100%;background:transparent;border:2px solid rgba(255,255,255,.2);border-radius:14px;padding:12px;color:rgba(255,255,255,.6);font-size:14px;font-weight:700;font-family:Outfit,sans-serif;cursor:pointer">✕ Annuler</button>
   </div>
 </div>
 
@@ -1710,6 +1723,7 @@ function loginP(){
   document.getElementById('btn-add').style.display='block';
   document.getElementById('sec-patron').style.display='block';
   subscribeRealtime(DB.cfg.code);
+  syncToSupa(); // S'assurer que les données sont bien dans Supabase
   lancerApp();
 }
 async function loginV(){
@@ -2466,6 +2480,32 @@ function updPD(){document.querySelectorAll('.pindot').forEach(function(d,i){d.cl
 function closePinOv(){document.getElementById('pinov').classList.remove('show');pinBuf='';updPD();}
 function closeOv(e,id){if(e.target.classList.contains('ov'))closeSheet(id);}
 function closeSheet(id){var el=document.getElementById(id);if(el)el.classList.remove('show');}
+function ouvrirRestauration(){
+  document.getElementById('rst-code').value='';
+  var ov=document.getElementById('ov-restore');
+  ov.style.display='flex';
+}
+function fermerRestauration(){
+  document.getElementById('ov-restore').style.display='none';
+}
+async function restaurerBoutique(){
+  var code=(document.getElementById('rst-code').value||'').trim().toUpperCase();
+  if(!code){showToast('⚠️ Entre ton code boutique');return;}
+  var btn=document.getElementById('rst-btn');
+  btn.textContent='🔄 Recherche...';btn.disabled=true;
+  var remoteDB=await loadFromSupa(code);
+  btn.textContent='🚀 Restaurer';btn.disabled=false;
+  if(!remoteDB){showToast('❌ '+(lang==='fr'?'Boutique introuvable. Vérifie le code.':'Store not found. Check the code.'));return;}
+  DB=remoteDB;
+  _suppressSync=true;
+  localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
+  _suppressSync=false;
+  lang=DB.cfg.lang||'fr';
+  fermerRestauration();
+  appliquerLang();
+  goScreen('s-login');
+  showToast('✅ '+(lang==='fr'?'Boutique restaurée ! Connecte-toi.':'Store restored! Please login.'));
+}
 function showToast(msg){var t2=document.getElementById('toast');t2.textContent=msg;t2.classList.add('show');setTimeout(function(){t2.classList.remove('show');},2800);}
 function copierCode(){navigator.clipboard&&navigator.clipboard.writeText(DB.cfg.code).then(function(){showToast(t('codeCopie')+' '+DB.cfg.code);});}
 // ── Génération code boutique scalable ──
