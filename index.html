@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>MyBoutiQ V7</title>
+<title>MyBoutiQ V8</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--P:#1A1A2E;--A:#F5A623;--G:#00C853;--R:#FF3D00;--B:#2979FF;--PU:#7C4DFF;--O:#FF6D00;--BG:#F0F2F5;--C:#FFF;--T:#1A1A2E;--M:#9E9E9E;--BD:#E8E8E8}
@@ -1413,7 +1414,52 @@ const CE={'Boissons':'🥤','Alimentation':'🍖','Ménage':'🧹','Autre':'📦
 // ÉTAT GLOBAL
 // ═══════════════════════════════════════════
 function loadDB(){var d=localStorage.getItem('myboutiq_v6');return d?JSON.parse(d):null;}
-function save(){localStorage.setItem('myboutiq_v6',JSON.stringify(DB));}
+function save(){
+  localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
+  if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){
+    clearTimeout(syncTimeout);
+    syncTimeout=setTimeout(syncToSupa,800);
+  }
+}
+
+// ── SUPABASE ──
+var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
+var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
+var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
+function initSupa(){
+  if(typeof supabase!=='undefined')supa=supabase.createClient(SUPA_URL,SUPA_KEY);
+}
+async function syncToSupa(){
+  if(!supa||!DB||!DB.cfg||!DB.cfg.code)return;
+  try{
+    await supa.from('boutiques').upsert({code:DB.cfg.code,data:DB,updated_at:new Date().toISOString()},{onConflict:'code'});
+    showSync();
+  }catch(e){console.warn('Sync:',e);}
+}
+async function loadFromSupa(code){
+  if(!supa)return null;
+  try{
+    var res=await supa.from('boutiques').select('data').eq('code',code).single();
+    return(res.data&&!res.error)?res.data.data:null;
+  }catch(e){return null;}
+}
+function subscribeRealtime(code){
+  if(!supa)return;
+  if(realtimeChan){supa.removeChannel(realtimeChan);realtimeChan=null;}
+  realtimeChan=supa.channel('boutique:'+code)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'boutiques',filter:'code=eq.'+code},function(payload){
+      if(payload.new&&payload.new.data){
+        _suppressSync=true;
+        DB=payload.new.data;
+        localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
+        _suppressSync=false;
+        renderProd(DB.articles);renderStock(DB.articles);
+        renderRpt();renderClients();updateStats();
+        showToast('🔄 '+(lang==='fr'?'Mise à jour reçue !':'Update received!'));
+      }
+    })
+    .subscribe();
+}
 
 var DB=null;
 var lang='fr',obLang='fr',obPays=null,obSecteur='boutique',obRegion='';
@@ -1431,6 +1477,7 @@ function fmt(n){var s=DB&&DB.cfg?DB.cfg.s:'F';return s+' '+(Math.round(n)||0).to
 // INIT & SPLASH
 // ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',function(){
+  initSupa();
   setTimeout(function(){
     DB=loadDB();
     if(DB){
@@ -1564,6 +1611,7 @@ function finaliserOb(){
     stats:{totalUsers:1,boutiquesActives:1,patrons:1,vendeurs:0}
   };
   save();
+  syncToSupa();
   lang=obLang;
   appliquerLang();
   goScreen('s-login');
@@ -1661,21 +1709,32 @@ function loginP(){
   ['btn-st','btn-add-stk','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
   document.getElementById('btn-add').style.display='block';
   document.getElementById('sec-patron').style.display='block';
+  subscribeRealtime(DB.cfg.code);
   lancerApp();
 }
-function loginV(){
+async function loginV(){
   var code=(document.getElementById('v-code').value||'').trim().toUpperCase();
   var nm=(document.getElementById('v-nom').value||'').trim();
   if(!code){showToast(t('errCode'));return;}
-  if(DB&&code!==DB.cfg.code){showToast(t('errCode')+' '+DB.cfg.code);return;}
   if(!nm){showToast(t('errPrenom'));return;}
-  role='vendeur';
-  nomVendeur=nm;
+  // Code correspond à la DB locale
+  if(DB&&code===DB.cfg.code){_finishLoginV(nm,code);return;}
+  // Essayer Supabase
+  showToast('🔄 '+(lang==='fr'?'Recherche boutique...':'Looking up store...'));
+  var remoteDB=await loadFromSupa(code);
+  if(!remoteDB){showToast(t('errCode'));return;}
+  DB=remoteDB;
+  save();
+  _finishLoginV(nm,code);
+}
+function _finishLoginV(nm,code){
+  role='vendeur';nomVendeur=nm;
   document.getElementById('u-nm').textContent=nm;
   document.getElementById('u-role').textContent=t('vendeur');
   document.getElementById('u-role').className='rbdg rb-v';
   ['btn-st','btn-add','btn-add-stk','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('sec-patron').style.display='none';
+  subscribeRealtime(code);
   lancerApp();
 }
 function lancerApp(){
