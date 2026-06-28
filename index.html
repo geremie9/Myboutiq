@@ -1919,7 +1919,7 @@ function afficherRecu(){
 function imprimerRecu(){
   var html=document.getElementById('recu-print');if(!html)return;
   var w=window.open('','_blank','width=320,height=600');
-  if(!w){showToast('⛔ '+(lang==='fr'?'Pop-up bloquée':'Pop-up blocked'));return;}
+  if(!w){showToast('⛔ '+(lang==='fr'?'Pop-up bloquée — autorise les pop-ups':'Pop-up blocked — allow pop-ups'));return;}
   w.document.write('<html><head><title>Reçu</title><style>'+
     '@page{margin:0;size:58mm auto}'+
     'body{font-family:monospace;width:58mm;margin:0;padding:6px;font-size:11px}'+
@@ -1931,7 +1931,9 @@ function imprimerRecu(){
     '.recu-tk{text-align:center;margin-top:8px;font-size:10px}'+
     '</style></head><body>'+html.innerHTML+'</body></html>');
   w.document.close();
-  setTimeout(function(){w.print();w.close();},250);
+  // Ferme la fenêtre APRÈS impression (pas de crash)
+  w.onafterprint=function(){w.close();};
+  setTimeout(function(){if(w&&!w.closed)w.print();},400);
 }
 function partagerRecu(){if(!dernierRecu)return;var r=dernierRecu;var msg='🏪 *'+r.boutique+'*\n📅 '+r.date+' '+r.h+'\n\n';r.lignes.forEach(function(l){msg+='• '+l.nm+': '+fmt(l.px)+'\n';});msg+='\n💰 *TOTAL: '+fmt(r.total)+'*\n\n'+t('merci');window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');}
 
