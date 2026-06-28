@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyBoutiQ v2 - Gestion Boutique</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #2979FF;
+      --success: #00C853;
+      --error: #FF3D00;
+      --warning: #F5A623;
+      --dark: #212121;
+      --light: #F5F5F5;
+      --border: #E0E0E0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--light);
+      color: var(--dark);
+      overflow: hidden;
+    }
+
+    .app-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ============ HEADER ============ */
+    .app-header {
+      background: var(--primary);
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      z-index: 100;
+    }
+
+    .app-title {
+      font-size: 20px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .app-user-info {
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .app-user-name {
+      font-weight: 600;
+    }
+
+    /* ============ SCREENS ============ */
+    .screen {
+      display: none;
+      width: 100%;
+      height: calc(100vh - 60px);
+      overflow-y: auto;
+      padding: 20px;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* ============ BUTTONS ============ */
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary:hover {
+      background: #1565C0;
+      transform: translateY(-2px);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: #F0F2F5;
+      color: var(--dark);
+      border: 1px solid var(--border);
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-small {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      margin: 4px;
+    }
+
+    .btn-small:hover {
+      opacity: 0.9;
+    }
+
+    /* ============ FORMS ============ */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(41, 121, 255, 0.1);
+    }
+
+    /* ============ CARDS ============ */
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ============ ARTICLES GRID ============ */
+    .articles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .article-btn {
+      background: white;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .article-btn:hover:not(:disabled) {
+      border-color: var(--primary);
+      transform: translateY(-4px);
+      box-shadow: 0 4px 12px rgba(41, 121, 255, 0.2);
+    }
+
+    .article-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .article-btn-emoji {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .article-btn-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
+
+    .article-btn-price {
+      color: var(--success);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .article-btn-stock {
+      font-size: 12px;
+      color: #9E9E9E;
+    }
+
+    .out-of-stock {
+      opacity: 0.5;
+    }
+
+    .out-of-stock-badge {
+      background: var(--error);
+      color: white;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+
+    /* ============ PAYMENT CODE SCREEN ============ */
+    .payment-code-container {
+      max-width: 500px;
+      margin: 0 auto;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .payment-code-header {
+      background: var(--primary);
+      color: white;
+      padding: 30px 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+    }
+
+    .payment-code-header h2 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    .payment-code-amount {
+      background: var(--light);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+    }
+
+    .amount-label {
+      font-size: 14px;
+      color: #9E9E9E;
+      margin-bottom: 8px;
+    }
+
+    .amount-value {
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--success);
+    }
+
+    .payment-code-display {
+      background: white;
+      border: 3px solid var(--primary);
+      border-radius: 12px;
+      padding: 30px 20px;
+      margin-bottom: 30px;
+    }
+
+    .code-label {
+      font-size: 14px;
+      color: #9E9E9E;
+      margin-bottom: 15px;
+    }
+
+    .code-big {
+      font-size: 60px;
+      font-weight: 900;
+      color: var(--primary);
+      font-family: 'Courier New', monospace;
+      letter-spacing: 10px;
+      margin-bottom: 15px;
+      padding: 20px;
+      background: var(--light);
+      border-radius: 8px;
+    }
+
+    .code-subtitle {
+      font-size: 12px;
+      color: #9E9E9E;
+    }
+
+    .payment-qr-placeholder {
+      margin-bottom: 30px;
+    }
+
+    .payment-instructions {
+      background: #E3F2FD;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: left;
+      margin-bottom: 30px;
+    }
+
+    .payment-instructions h3 {
+      margin-bottom: 15px;
+      color: var(--primary);
+    }
+
+    .payment-instructions ol {
+      margin-left: 20px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .payment-timer {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--warning);
+      margin-bottom: 20px;
+    }
+
+    .payment-status {
+      font-size: 16px;
+      padding: 15px;
+      background: var(--light);
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .payment-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .confirmed-icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+    }
+
+    .payment-confirmed-container {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .payment-confirmed-container h2 {
+      color: var(--success);
+      margin-bottom: 30px;
+      font-size: 32px;
+    }
+
+    .confirmed-details {
+      background: var(--light);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    /* ============ CART ============ */
+    .cart-container {
+      background: white;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .cart-item:last-child {
+      border-bottom: none;
+    }
+
+    .cart-item-info {
+      flex: 1;
+    }
+
+    .cart-item-name {
+      font-weight: 600;
+    }
+
+    .cart-item-qty {
+      color: #9E9E9E;
+      font-size: 12px;
+    }
+
+    .cart-item-remove {
+      background: var(--error);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .cart-summary {
+      background: var(--light);
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .summary-total {
+      display: flex;
+      justify-content: space-between;
+      font-size: 18px;
+      font-weight: 700;
+      padding-top: 8px;
+      border-top: 2px solid var(--border);
+      margin-top: 8px;
+    }
+
+    /* ============ STATS ============ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: #9E9E9E;
+      margin-bottom: 10px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--primary);
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      color: #9E9E9E;
+      margin-top: 8px;
+    }
+
+    /* ============ MODALS ============ */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+      width: 90%;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-header h3 {
+      font-size: 20px;
+    }
+
+    .btn-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #9E9E9E;
+    }
+
+    /* ============ ALERTS ============ */
+    .alert-banner {
+      background: var(--error);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    .article-alert {
+      background: white;
+      border-left: 4px solid var(--error);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+
+    .alert-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .alert-type {
+      background: var(--error);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .alert-emoji {
+      font-size: 24px;
+    }
+
+    .alert-details {
+      font-size: 14px;
+      color: #9E9E9E;
+      line-height: 1.6;
+    }
+
+    /* ============ TOAST ============ */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--dark);
+      color: white;
+      padding: 15px 30px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 2000;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateX(-50%) translateY(100px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+    }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 600px) {
+      .articles-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      }
+
+      .code-big {
+        font-size: 48px;
+        letter-spacing: 5px;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ============ LOADING ============ */
+    .loading {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .loading.active {
+      display: flex;
+    }
+
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- HEADER -->
+    <div class="app-header">
+      <div class="app-title">
+        🏪 MyBoutiQ v2
+      </div>
+      <div class="app-user-info">
+        <div class="app-user-name" id="app-user-name">Chargement...</div>
+        <div id="app-shop-name" style="font-size: 11px;">Boutique</div>
+      </div>
+    </div>
+
+    <!-- SCREENS CONTAINER -->
+    <div class="screens-container">
+      
+      <!-- SCREEN: CAISSE VENDEUR -->
+      <div id="s-caisse" class="screen active">
+        <div class="card">
+          <div class="card-title">🛒 Caisse - Ajouter articles</div>
+          <input type="text" class="form-input" id="search-articles" placeholder="🔍 Rechercher article..." style="margin-bottom: 15px;">
+          <div class="articles-grid" id="caisse-articles">
+            <!-- Articles ajoutés dynamiquement -->
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📦 Panier</div>
+          <div class="cart-container" id="cart-items-display">
+            <div style="text-align: center; color: #9E9E9E; padding: 20px;">Aucun article</div>
+          </div>
+          <div class="cart-summary">
+            <div class="summary-row">
+              <span>Articles:</span>
+              <span id="cart-items-count">0</span>
+            </div>
+            <div class="summary-total">
+              <span>Total:</span>
+              <span id="cart-total">0 F</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button onclick="openPaymentModal()" class="btn-primary" style="flex: 1;">💳 Paiement</button>
+          <button onclick="clearCart()" class="btn-secondary" style="flex: 1;">🗑️ Vider</button>
+        </div>
+      </div>
+
+      <!-- SCREEN: PAYMENT CODE (Mobile Money) -->
+      <div id="s-payment-code" class="screen">
+        <!-- Contenu dynamique -->
+      </div>
+
+      <!-- SCREEN: DASHBOARD PATRON -->
+      <div id="s-dashboard-patron" class="screen">
+        <div class="card">
+          <div class="card-title">📊 Tableau de Bord</div>
+          <div class="stats-grid" id="patron-stats">
+            <!-- Stats dynamiques -->
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">⚠️ Articles en alerte</div>
+          <div id="patron-articles">
+            <!-- Alertes articles -->
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📋 Dernières ventes</div>
+          <div id="patron-transactions">
+            <!-- Transactions récentes -->
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button onclick="openArticlesManager()" class="btn-primary" style="flex: 1;">📦 Gestion Articles</button>
+          <button onclick="openClientsCredit()" class="btn-primary" style="flex: 1;">💰 Clients Crédit</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <div id="history-modal" class="modal"></div>
+
+  <!-- LOADING -->
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/caisse.js"></script>
+  <script src="js/mobile-money-simple.js"></script>
+  <script src="js/dashboard-patron.js"></script>
+  <script src="js/credit.js"></script>
+
+  <script>
+    // Initialisation app
+    window.APP_STATE = {
+      boutique: null,
+      vendeur: null,
+      user: null
+    };
+
+    async function initApp() {
+      try {
+        showLoading(true);
+        
+        // Charger boutique & vendeur depuis sessionStorage
+        const boutique = JSON.parse(sessionStorage.getItem('boutique'));
+        const vendeur = JSON.parse(sessionStorage.getItem('vendeur'));
+        const user = JSON.parse(sessionStorage.getItem('user'));
+
+        if (!boutique) {
+          alert('❌ Aucune boutique sélectionnée. Redirection...');
+          window.location.href = 'index.html';
+          return;
+        }
+
+        APP_STATE.boutique = boutique;
+        APP_STATE.vendeur = vendeur;
+        APP_STATE.user = user;
+
+        // Mettre à jour affichage
+        document.getElementById('app-user-name').textContent = `👤 ${vendeur?.nom || 'Vendeur'}`;
+        document.getElementById('app-shop-name').textContent = boutique.nom;
+
+        // Initialiser SMS config
+        await setupSMSConfiguration();
+
+        // Charger caisse
+        await loadCaisse();
+
+        showLoading(false);
+
+      } catch (err) {
+        console.error('Erreur initialisation:', err);
+        showToast('❌ Erreur initialisation');
+        showLoading(false);
+      }
+    }
+
+    function showLoading(show) {
+      const loader = document.getElementById('loading');
+      if (loader) {
+        loader.classList.toggle('active', show);
+      }
+    }
+
+    function goScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const screen = document.getElementById(screenId);
+      if (screen) screen.classList.add('active');
+    }
+
+    function showToast(message) {
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function openPaymentModal() {
+      // Afficher options de paiement
+      const choice = prompt('Choisir type de paiement:\n1 = Espèces\n2 = Mobile Money');
+      
+      if (choice === '1') {
+        // Paiement espèces
+        const amount = prompt('Montant à encaisser:');
+        if (amount) {
+          // TODO: Implémenter paiement espèces
+          showToast('Paiement espèces enregistré');
+        }
+      } else if (choice === '2') {
+        // Paiement Mobile Money
+        openMobileMoneyPayment();
+      }
+    }
+
+    async function openMobileMoneyPayment() {
+      if (cartItems.length === 0) {
+        showToast('⚠️ Ajoute des articles au panier');
+        return;
+      }
+
+      const total = getCartTotal();
+      const paymentData = await createMobileMoneyTransaction(total, cartItems);
+      
+      if (paymentData) {
+        showPaymentCodeScreen(paymentData);
+      }
+    }
+
+    function openClientsCredit() {
+      goScreen('s-dashboard-patron');
+      showToast('Module crédit en développement');
+    }
+
+    function openArticlesManager() {
+      goScreen('s-dashboard-patron');
+      showToast('Module gestion articles en développement');
+    }
+
+    // Démarrer app
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
