@@ -1178,6 +1178,8 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
         </div>
         <button type="button" id="btn-photo-real" class="photo-upl-btn" onclick="document.getElementById('inp-photo-real').click()" style="width:100%;background:#E8F5E9;color:var(--G);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:6px">🖼️ <span id="lbl-photo-real">Ajouter une vraie photo (légère)</span></button>
         <input type="file" id="inp-photo-real" accept="image/*" style="display:none" onchange="uploadPhotoReelle(event,'new')">
+        <button type="button" id="btn-photo-bulk" class="photo-upl-btn" onclick="document.getElementById('inp-photo-bulk').click()" style="width:100%;background:#E8F5E9;color:#1B5E20;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:6px">📚 <span id="lbl-photo-bulk">Importer en masse (50 / 100 photos)</span></button>
+        <input type="file" id="inp-photo-bulk" accept="image/*" multiple style="display:none" onchange="importerPhotosMasse(event)">
         <button type="button" id="btn-photo-emoji" onclick="document.getElementById('inp-photo-emoji').click()" style="width:100%;background:#F0F4FF;color:var(--B);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:6px">📷 <span id="lbl-photo-emoji">Photo → emoji automatique</span></button>
         <input type="file" id="inp-photo-emoji" accept="image/*" style="display:none" onchange="photoVersEmoji(event)">
         <div class="egrd" id="egrd"></div>
@@ -2650,6 +2652,17 @@ function compresserImage(file,maxDim,quality){
     img.src=url;
   });
 }
+function uploadBlobProduit(blob){
+  var path='products/'+(DB.cfg.code||'shop')+'-'+Date.now()+'-'+Math.floor(Math.random()*9999)+'.jpg';
+  return fetch(SUPA_URL+'/storage/v1/object/APP/'+path,{
+    method:'POST',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'image/jpeg','x-upsert':'true'},
+    body:blob
+  }).then(function(r){
+    if(!r.ok)throw new Error('upload http '+r.status);
+    return SUPA_URL+'/storage/v1/object/public/APP/'+path;
+  });
+}
 function uploadPhotoReelle(ev,mode){
   var file=ev.target.files&&ev.target.files[0];if(!file)return;
   if(!supa){showToast('⛔ '+(lang==='fr'?'Connexion requise pour uploader une photo':'Connection required to upload a photo'));ev.target.value='';return;}
@@ -2657,14 +2670,7 @@ function uploadPhotoReelle(ev,mode){
   if(btn)btn.classList.add('busy');
   showToast('🔄 '+(lang==='fr'?'Compression et envoi...':'Compressing and uploading...'));
   compresserImage(file,300,0.6).then(function(blob){
-    var path='products/'+(DB.cfg.code||'shop')+'-'+Date.now()+'-'+Math.floor(Math.random()*9999)+'.jpg';
-    return fetch(SUPA_URL+'/storage/v1/object/APP/'+path,{
-      method:'POST',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'image/jpeg','x-upsert':'true'},
-      body:blob
-    }).then(function(r){
-      if(!r.ok)throw new Error('upload http '+r.status);
-      var publicUrl=SUPA_URL+'/storage/v1/object/public/APP/'+path;
+    return uploadBlobProduit(blob).then(function(publicUrl){
       var sizeKo=Math.round(blob.size/1024);
       if(mode==='new'){
         selImg=publicUrl;
@@ -2683,6 +2689,89 @@ function uploadPhotoReelle(ev,mode){
     if(btn)btn.classList.remove('busy');
     ev.target.value='';
   });
+}
+function nettoyerNomFichierProduit(name){
+  var base=String(name||'').replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
+  if(!base)return '';
+  return base.charAt(0).toUpperCase()+base.slice(1);
+}
+function txtNorm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+function emojiDepuisNomProduit(nm){
+  var s=txtNorm(nm);
+  if(/eau|water/.test(s))return '💧';
+  if(/coca|soda|boisson|jus|drink/.test(s))return '🥤';
+  if(/biere|beer|vin|whisky|alcool/.test(s))return '🍺';
+  if(/riz|farine|sucre|huile|pain|sardine|lait|food|aliment/.test(s))return '🍚';
+  if(/savon|lessive|javel|menage|house/.test(s))return '🧼';
+  if(/creme|gel|shampoing|hygiene/.test(s))return '🧴';
+  if(/telephone|phone|chargeur|ecouteur|electro/.test(s))return '📱';
+  return '📦';
+}
+function categorieDepuisNomProduit(nm){
+  var s=txtNorm(nm);
+  var fr=lang==='fr';
+  if(/biere|beer|vin|whisky|alcool/.test(s))return fr?'Boissons':'Drinks';
+  if(/eau|water|coca|soda|jus|drink/.test(s))return fr?'Boissons':'Drinks';
+  if(/savon|lessive|javel|menage|house/.test(s))return fr?'Ménage':'Household';
+  if(/creme|gel|shampoing|hygiene/.test(s))return fr?'Hygiène':'Hygiene';
+  if(/telephone|phone|chargeur|ecouteur|electro/.test(s))return fr?'Électronique':'Electronics';
+  return fr?'Alimentation':'Food';
+}
+var _bulkImportRunning=false;
+function importerPhotosMasse(ev){
+  var files=Array.from(ev.target.files||[]);
+  if(!files.length)return;
+  if(!supa){showToast('⛔ '+(lang==='fr'?'Connexion requise pour importer des photos':'Connection required to import photos'));ev.target.value='';return;}
+  if(_bulkImportRunning){showToast('⏳ '+(lang==='fr'?'Import déjà en cours':'Import already running'));ev.target.value='';return;}
+  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));ev.target.value='';return;}
+  var maxBatch=100;
+  if(files.length>maxBatch){
+    files=files.slice(0,maxBatch);
+    showToast('ℹ️ '+(lang==='fr'?'Import limité à 100 photos par lot':'Import limited to 100 photos per batch'));
+  }
+  var pxIn=prompt(lang==='fr'?'Prix de vente par défaut pour les articles importés ?':'Default selling price for imported items?','1000');
+  if(pxIn===null){ev.target.value='';return;}
+  var pvDef=Math.max(1,parseFloat(pxIn)||1000);
+  var stIn=prompt(lang==='fr'?'Stock initial par défaut ?':'Default initial stock?','0');
+  if(stIn===null){ev.target.value='';return;}
+  var stkDef=Math.max(0,parseInt(stIn,10)||0);
+  var alIn=prompt(lang==='fr'?'Alerte stock bas par défaut ?':'Default low stock alert?','5');
+  if(alIn===null){ev.target.value='';return;}
+  var alDef=Math.max(0,parseInt(alIn,10)||5);
+  _bulkImportRunning=true;
+  var btn=document.getElementById('btn-photo-bulk');if(btn)btn.classList.add('busy');
+  var total=files.length,idx=0,ok=0,ko=0;
+  if(!DB.nextId)DB.nextId=100;
+  function finalizeImport(){
+    _bulkImportRunning=false;
+    if(btn)btn.classList.remove('busy');
+    ev.target.value='';
+    save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();
+    showToast((lang==='fr'?'✅ Import terminé: ':'✅ Import finished: ')+ok+'/'+total+(ko?(' · '+ko+' erreur(s)'):''));
+  }
+  function step(){
+    if(idx>=total){finalizeImport();return;}
+    var file=files[idx++];
+    var nm=nettoyerNomFichierProduit(file.name)||('Article '+DB.nextId);
+    var emoji=emojiDepuisNomProduit(nm);
+    var cat=categorieDepuisNomProduit(nm);
+    compresserImage(file,300,0.6).then(function(blob){
+      return uploadBlobProduit(blob).then(function(publicUrl){
+        DB.articles.push({id:DB.nextId++,nm:nm,e:emoji,img:publicUrl,cat:cat,px:pvDef,pa:0,stk:stkDef,al:alDef,vd:0,vr:[],rt:true});
+        ok++;
+      });
+    }).catch(function(e){
+      console.warn('Import masse photo:',e);
+      ko++;
+    }).finally(function(){
+      if(idx===1||idx%5===0||idx===total){
+        showToast('📦 '+(lang==='fr'?'Import en cours':'Importing')+' '+idx+'/'+total);
+      }
+      setTimeout(step,10);
+    });
+  }
+  showToast('🔄 '+(lang==='fr'?'Démarrage import en masse...':'Starting bulk import...'));
+  step();
 }
 function retirerPhotoReelle(){selImg=null;document.getElementById('photo-real-preview').style.display='none';}
 
