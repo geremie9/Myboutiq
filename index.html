@@ -614,12 +614,30 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
     <button class="btn-ob" id="ob5-btn" onclick="goOb(6)">Continuer →</button>
   </div>
 
-  <!-- Step 6: Confirmation -->
+  <!-- Step 6: OTP Vérification -->
   <div class="ob-step" id="obs6">
     <button class="btn-bk" onclick="goOb(5)">←</button>
-    <div class="ob-step-h" id="ob6-h">✅ Tout est prêt !</div>
+    <div class="ob-step-h" id="ob6-h">📱 Vérification</div>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:48px;margin-bottom:10px">📲</div>
+      <div id="otp-tel-display" style="color:rgba(255,255,255,.7);font-size:14px;margin-bottom:6px">Code envoyé via WhatsApp</div>
+      <div style="color:rgba(255,255,255,.5);font-size:12px" id="otp-hint">Entre le code à 4 chiffres reçu</div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px">
+      <input class="ob-inp otp-digit" type="tel" maxlength="1" inputmode="numeric" id="otp-d1" oninput="otpNext(this,'otp-d2')" style="width:60px;text-align:center;font-size:28px;font-weight:800;letter-spacing:0;padding:14px 0">
+      <input class="ob-inp otp-digit" type="tel" maxlength="1" inputmode="numeric" id="otp-d2" oninput="otpNext(this,'otp-d3')" onkeydown="otpBack(event,this,'otp-d1')" style="width:60px;text-align:center;font-size:28px;font-weight:800;letter-spacing:0;padding:14px 0">
+      <input class="ob-inp otp-digit" type="tel" maxlength="1" inputmode="numeric" id="otp-d3" oninput="otpNext(this,'otp-d4')" onkeydown="otpBack(event,this,'otp-d2')" style="width:60px;text-align:center;font-size:28px;font-weight:800;letter-spacing:0;padding:14px 0">
+      <input class="ob-inp otp-digit" type="tel" maxlength="1" inputmode="numeric" id="otp-d4" oninput="otpNext(this,null)" onkeydown="otpBack(event,this,'otp-d3')" style="width:60px;text-align:center;font-size:28px;font-weight:800;letter-spacing:0;padding:14px 0">
+    </div>
+    <button class="btn-ob" id="ob6-btn" onclick="verifierOTP()">✅ Vérifier le code</button>
+    <button onclick="renvoyerOTP()" style="margin-top:10px;background:transparent;border:2px solid rgba(255,255,255,.25);border-radius:14px;padding:13px;width:100%;color:rgba(255,255,255,.7);font-size:14px;font-weight:700;font-family:Outfit,sans-serif;cursor:pointer">📲 Renvoyer via WhatsApp</button>
+  </div>
+
+  <!-- Step 7: Confirmation -->
+  <div class="ob-step" id="obs7">
+    <div class="ob-step-h" id="ob7-h">✅ Tout est prêt !</div>
     <div class="ob-confirm" id="ob-confirm"></div>
-    <button class="btn-ob" id="ob6-btn" onclick="finaliserOb()">🚀 Lancer MyBoutiQ</button>
+    <button class="btn-ob" id="ob7-btn" onclick="finaliserOb()">🚀 Lancer MyBoutiQ</button>
   </div>
 </div>
 
@@ -629,7 +647,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
     <div style="font-size:32px;text-align:center;margin-bottom:8px">🔑</div>
     <div style="color:#fff;font-size:18px;font-weight:800;text-align:center;margin-bottom:4px" id="rst-title">Restaurer ma boutique</div>
     <div style="color:rgba(255,255,255,.5);font-size:13px;text-align:center;margin-bottom:20px" id="rst-sub">Entre ton code boutique pour récupérer tes données</div>
-    <input id="rst-code" type="text" style="width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;color:#fff;font-size:18px;font-weight:800;text-align:center;letter-spacing:4px;text-transform:uppercase;font-family:Outfit,sans-serif;outline:none;margin-bottom:14px" placeholder="MB-XXXXXX">
+    <input id="rst-code" type="text" style="width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;color:#fff;font-size:18px;font-weight:800;text-align:center;letter-spacing:4px;text-transform:uppercase;font-family:Outfit,sans-serif;outline:none;margin-bottom:14px" placeholder="123456">
     <button onclick="restaurerBoutique()" style="width:100%;background:#F5A623;border:none;border-radius:14px;padding:14px;color:#1A1A2E;font-size:16px;font-weight:800;font-family:Outfit,sans-serif;cursor:pointer;margin-bottom:10px" id="rst-btn">🚀 Restaurer</button>
     <button onclick="fermerRestauration()" style="width:100%;background:transparent;border:2px solid rgba(255,255,255,.2);border-radius:14px;padding:12px;color:rgba(255,255,255,.6);font-size:14px;font-weight:700;font-family:Outfit,sans-serif;cursor:pointer">✕ Annuler</button>
   </div>
@@ -656,7 +674,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
       <button class="btn-login" id="btn-bio-login" onclick="loginBiometrique()" style="display:none;margin-top:8px;background:var(--BG);color:var(--T)">🔐 <span id="lbl-bio-login">Empreinte / Face ID</span></button>
     </div>
     <div id="fv" style="width:100%;display:none">
-      <div class="fg"><label class="fl" id="lbl-code">🏪 Code boutique</label><input class="fi" type="text" id="v-code" style="letter-spacing:3px;font-weight:800;text-transform:uppercase" placeholder="MB-ABC123"></div>
+      <div class="fg"><label class="fl" id="lbl-code">🏪 Code boutique</label><input class="fi" type="text" id="v-code" style="letter-spacing:3px;font-weight:800;text-transform:uppercase" placeholder="123456"></div>
       <div class="fg"><label class="fl" id="lbl-prenom">👤 Prénom</label><input class="fi" type="text" id="v-nom" placeholder="Amadou"></div>
       <div class="fg"><label class="fl">🔐 PIN</label><input class="fi" type="password" placeholder="••••" maxlength="4" id="v-pin" inputmode="numeric"></div>
       <button class="btn-login" id="btn-lv" onclick="loginV()">Connexion 👦</button>
@@ -781,7 +799,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
     <!-- Code boutique avec QR -->
     <div class="qr-wrap" style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px;margin-bottom:0">
       <div class="ccl" id="lbl-code-shop">Code de ta boutique</div>
-      <div class="ccv" id="code-val">MB-XXXXXX</div>
+      <div class="ccv" id="code-val">123456</div>
       <div class="cch" id="lbl-code-hint">Partage ce code avec tes vendeurs</div>
       <div style="display:flex;gap:8px;margin-top:9px">
         <button class="bcopy" onclick="copierCode()" id="btn-copy">📋 Copier</button>
@@ -1275,7 +1293,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
     <div class="shhdr"><div class="shtit">🏬 Mes boutiques</div><button class="bcl" onclick="closeSheet('ov-boutiques')">✕</button></div>
     <div class="pstps">
       <div id="mb-lst"></div>
-      <div class="pig" style="margin-top:14px"><label class="pl">Ajouter une boutique existante (code)</label><input class="pi sm" type="text" id="mb-code" placeholder="MB-XXXXXX" style="text-transform:uppercase"></div>
+      <div class="pig" style="margin-top:14px"><label class="pl">Ajouter une boutique existante (code)</label><input class="pi sm" type="text" id="mb-code" placeholder="123456" style="text-transform:uppercase"></div>
       <button class="bnxt" onclick="ajouterBoutiqueParCode()">➕ Ajouter cette boutique</button>
     </div>
   </div>
@@ -1591,6 +1609,18 @@ var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
 function initSupa(){
   if(typeof supabase!=='undefined')supa=supabase.createClient(SUPA_URL,SUPA_KEY);
 }
+function isInvalidCredError(err){
+  var msg=String(err&&err.message||'').toLowerCase();
+  return msg.indexOf('invalid login credentials')!==-1||msg.indexOf('invalid credentials')!==-1;
+}
+function authFriendlyError(err){
+  if(isInvalidCredError(err)){
+    return new Error(lang==='fr'
+      ?'❌ Ce numéro existe déjà avec un autre PIN. Utilise le PIN d\'origine en mode "Ancien utilisateur".'
+      :'❌ This phone already exists with another PIN. Use the original PIN in "Existing user" mode.');
+  }
+  return err;
+}
 function normalizePhone(t){
   var raw=String(t||'').trim();
   if(!raw)return '';
@@ -1620,21 +1650,56 @@ async function signUpOwnerAuth(phone,pin){
   if(!supa||!supa.auth)return {user:null,error:new Error('auth indisponible')};
   var email=authEmailFromPhone(phone);
   var res=await supa.auth.signUp({email:email,password:pin,options:{data:{phone:normalizePhone(phone)}}});
-  if(res.error)return {user:null,error:res.error};
+  if(res.error){
+    var msg=String(res.error.message||'').toLowerCase();
+    if(msg.indexOf('already registered')!==-1||msg.indexOf('already been registered')!==-1||msg.indexOf('user already registered')!==-1){
+      var loginRes=await supa.auth.signInWithPassword({email:email,password:pin});
+      if(loginRes.error)return {user:null,error:authFriendlyError(loginRes.error)};
+      var existingUser=await getAuthUser();
+      return {user:existingUser,error:null};
+    }
+    return {user:null,error:authFriendlyError(res.error)};
+  }
   if(res.data&&res.data.user&&!res.data.session&&res.data.user.identities&&res.data.user.identities.length===0){
     return {user:null,error:new Error(t('confirmMailOff'))};
   }
-  return {user:res.data&&res.data.user?res.data.user:null,error:null};
+  if(!res.data||!res.data.session){
+    var loginRes=await supa.auth.signInWithPassword({email:email,password:pin});
+    if(loginRes.error)return {user:null,error:authFriendlyError(loginRes.error)};
+  }
+  var user=await getAuthUser();
+  return {user:user||(res.data&&res.data.user?res.data.user:null),error:null};
 }
 async function syncToSupa(){
   if(!supa||!DB||!DB.cfg||!DB.cfg.code)return;
   try{
     var user=await getAuthUser();
-    if(!user)return;
+    if(!user)throw new Error(lang==='fr'?'Session patron introuvable':'Owner session not found');
     DB.cfg.ownerId=user.id;
-    await supa.from('boutiques').upsert({code:DB.cfg.code,owner_id:user.id,data:DB,updated_at:new Date().toISOString()},{onConflict:'code'});
+    var payload={code:DB.cfg.code,owner_id:user.id,data:DB,updated_at:new Date().toISOString()};
+    var byOwner=await supa.from('boutiques').select('id,code').eq('owner_id',user.id).limit(1);
+    if(byOwner.error)throw byOwner.error;
+    if(byOwner.data&&byOwner.data.length){
+      var updOwner=await supa.from('boutiques').update(payload).eq('id',byOwner.data[0].id);
+      if(updOwner.error)throw updOwner.error;
+    }else{
+      var byCode=await supa.from('boutiques').select('id,owner_id').eq('code',DB.cfg.code).limit(1);
+      if(byCode.error)throw byCode.error;
+      if(byCode.data&&byCode.data.length){
+        var updCode=await supa.from('boutiques').update(payload).eq('id',byCode.data[0].id);
+        if(updCode.error)throw updCode.error;
+      }else{
+        var ins=await supa.from('boutiques').insert(payload);
+        if(ins.error)throw ins.error;
+      }
+    }
     showSync();
-  }catch(e){console.warn('Sync:',e);}
+    return true;
+  }catch(e){
+    console.warn('Sync:',e);
+    showToast((e&&e.message)?e.message:(lang==='fr'?'❌ Sync boutique impossible':'❌ Store sync failed'));
+    return false;
+  }
 }
 async function loadFromSupa(code){
   if(!supa)return null;
@@ -1693,9 +1758,12 @@ document.addEventListener('DOMContentLoaded',function(){
       setModeEntree('old');
       goScreen('s-login');
     } else {
+      // Pas de DB locale : montrer la page de connexion en mode "nouvelle inscription"
+      // Le vendeur peut basculer vers "Ancien utilisateur" pour entrer son code boutique
       renderPaysLst('pays-lst','pays-src',PAYS,null);
       renderSecGrid('sec-grid','boutique');
-      goScreen('s-onboard');
+      setModeEntree('new');
+      goScreen('s-login');
     }
   },2200);
 });
@@ -1778,7 +1846,14 @@ function goOb(n){
   if(el)el.classList.add('on');
   var dots=document.querySelectorAll('.ob-dot');
   dots.forEach(function(d,i){d.classList.remove('cur','done');if(i+1<n)d.classList.add('done');else if(i+1===n)d.classList.add('cur');});
-  if(n===6)buildObConfirm();
+  if(n===6){
+    // Intercepter étape 6 : envoyer OTP avant confirmation
+    var tel=(document.getElementById('ob-tel')?.value.trim()||'');
+    var pin=(document.getElementById('ob-pin')?.value.trim()||'');
+    if(!tel||!pin||pin.length<4){showToast(obLang==='fr'?'⚠️ Remplis téléphone + PIN':'⚠️ Fill phone + PIN');goOb(5);return;}
+    envoyerOTP(normalizePhone(tel));
+  }
+  if(n===7)buildObConfirm();
 }
 function setLang(l){
   obLang=l;lang=l;
@@ -1823,13 +1898,54 @@ function buildObConfirm(){
   var s=SECTEURS.find(function(x){return x.id===obSecteur;})||SECTEURS[0];
   var nm=document.getElementById('ob-nom')?.value||'Ma Boutique';
   var reg=document.getElementById('ob-region')?.value||'-';
-  document.getElementById('ob-confirm').innerHTML=
+  var confirmEl=document.getElementById('ob-confirm');
+  if(!confirmEl)return;
+  confirmEl.innerHTML=
     '<div class="ob-cr"><span class="ob-cl">🌍 '+(obLang==='fr'?'Langue':'Language')+'</span><span class="ob-cv">'+(obLang==='fr'?'Français 🇫🇷':'English 🇬🇧')+'</span></div>'+
     '<div class="ob-cr"><span class="ob-cl">📍 '+(obLang==='fr'?'Pays':'Country')+'</span><span class="ob-cv">'+p.f+' '+(obLang==='fr'?p.n:p.ne)+'</span></div>'+
     '<div class="ob-cr"><span class="ob-cl">🗺️ '+(obLang==='fr'?'Région':'Region')+'</span><span class="ob-cv">'+reg+'</span></div>'+
     '<div class="ob-cr"><span class="ob-cl">💱 '+(obLang==='fr'?'Devise':'Currency')+'</span><span class="ob-cv">'+p.s+' '+p.d+'</span></div>'+
     '<div class="ob-cr"><span class="ob-cl">🏪 '+(obLang==='fr'?'Secteur':'Sector')+'</span><span class="ob-cv">'+s.e+' '+(obLang==='fr'?s.n:s.ne)+'</span></div>'+
     '<div class="ob-cr"><span class="ob-cl">🏪 '+(obLang==='fr'?'Boutique':'Store')+'</span><span class="ob-cv">'+nm+'</span></div>';
+}
+
+// ── OTP VÉRIFICATION ──
+var _otpCode='',_otpTel='',_otpExpiry=0;
+function genOTP(){return String(Math.floor(1000+Math.random()*9000));}
+function envoyerOTP(tel){
+  _otpCode=genOTP();
+  _otpTel=tel;
+  _otpExpiry=Date.now()+5*60*1000; // expire dans 5 min
+  ['otp-d1','otp-d2','otp-d3','otp-d4'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  var dispEl=document.getElementById('otp-tel-display');
+  var hintEl=document.getElementById('otp-hint');
+  var ph=tel.replace(/(\d{3})(\d+)(\d{4})$/,function(m,a,b,c){return a+'****'+c;});
+  if(dispEl)dispEl.textContent=(obLang==='fr'?'Code envoyé au ':'Code sent to ')+ph;
+  if(hintEl)hintEl.textContent=obLang==='fr'?'Entre le code à 4 chiffres reçu via WhatsApp':'Enter the 4-digit code received via WhatsApp';
+  // Ouvrir WhatsApp pour envoyer le code au numéro du patron
+  var msg='🏪 MyBoutiQ\n\n'+(obLang==='fr'?'Votre code de vérification :':'Your verification code:')+'\n\n*'+_otpCode+'*\n\n'+(obLang==='fr'?'Ce code expire dans 5 minutes.':'This code expires in 5 minutes.');
+  var waNum=tel.replace(/[^0-9]/g,'');
+  setTimeout(function(){window.open('https://wa.me/'+waNum+'?text='+encodeURIComponent(msg),'_blank');},300);
+  var d1=document.getElementById('otp-d1');if(d1)setTimeout(function(){d1.focus();},400);
+}
+function renvoyerOTP(){envoyerOTP(_otpTel||normalizePhone(document.getElementById('ob-tel')?.value.trim()||''));showToast(obLang==='fr'?'📲 Code renvoyé !':'📲 Code resent!');}
+function otpNext(el,nextId){
+  el.value=el.value.replace(/[^0-9]/g,'').slice(-1);
+  if(el.value&&nextId){var nx=document.getElementById(nextId);if(nx)nx.focus();}
+  if(!nextId&&el.value){
+    // dernier chiffre saisi → vérifier auto
+    var code=['otp-d1','otp-d2','otp-d3','otp-d4'].map(function(id){var e=document.getElementById(id);return e?e.value:'';}).join('');
+    if(code.length===4)setTimeout(verifierOTP,200);
+  }
+}
+function otpBack(e,el,prevId){if(e.key==='Backspace'&&!el.value&&prevId){var pv=document.getElementById(prevId);if(pv){pv.value='';pv.focus();}}}
+function verifierOTP(){
+  var code=['otp-d1','otp-d2','otp-d3','otp-d4'].map(function(id){var e=document.getElementById(id);return e?e.value:'';}).join('');
+  if(code.length<4){showToast(obLang==='fr'?'⚠️ Entre les 4 chiffres':'⚠️ Enter all 4 digits');return;}
+  if(Date.now()>_otpExpiry){showToast(obLang==='fr'?'⏱️ Code expiré. Renvoie un code.':'⏱️ Code expired. Resend.');return;}
+  if(code!==_otpCode){showToast(obLang==='fr'?'❌ Code incorrect. Réessaie.':'❌ Wrong code. Try again.');['otp-d1','otp-d2','otp-d3','otp-d4'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var d1=document.getElementById('otp-d1');if(d1)d1.focus();return;}
+  showToast(obLang==='fr'?'✅ Numéro vérifié !':'✅ Phone verified!');
+  goOb(7);
 }
 async function finaliserOb(){
   var nm=document.getElementById('ob-nom')?.value.trim()||'';
@@ -1858,7 +1974,8 @@ async function finaliserOb(){
     stats:{totalUsers:1,boutiquesActives:1,patrons:1,vendeurs:0}
   };
   save();
-  await syncToSupa();
+  var synced=await syncToSupa();
+  if(!synced)return;
   lang=obLang;
   appliquerLang();
   document.getElementById('p-tel').value=tel;
@@ -1985,7 +2102,7 @@ async function loginP(){
       var reg=await signUpOwnerAuth(tel,pin);
       if(reg.error){showToast(reg.error.message||t('compteIntrouvable'));return;}
     }else{
-      showToast(t('compteIntrouvable'));return;
+      showToast((authFriendlyError(authRes.error).message)||t('compteIntrouvable'));return;
     }
   }
   var remoteDB=await loadOwnerBoutiqueFromSupa();
@@ -2009,12 +2126,16 @@ async function loginV(){
   var nm=(document.getElementById('v-nom').value||'').trim();
   if(!code){showToast(t('errCode'));return;}
   if(!nm){showToast(t('errPrenom'));return;}
+  // Vérifier le PIN vendeur si renseigné
+  var pin=(document.getElementById('v-pin').value||'').trim();
+  if(pin&&pin.length>0&&pin.length<4){showToast(lang==='fr'?'⚠️ PIN minimum 4 chiffres':'⚠️ PIN minimum 4 digits');return;}
   // Code correspond à la DB locale
   if(DB&&code===DB.cfg.code){_finishLoginV(nm,code);return;}
   // Essayer Supabase
+  if(!supa){showToast(lang==='fr'?'❌ Connexion réseau requise':'❌ Internet connection required');return;}
   showToast('🔄 '+(lang==='fr'?'Recherche boutique...':'Looking up store...'));
   var remoteDB=await loadFromSupa(code);
-  if(!remoteDB){showToast(t('errCode'));return;}
+  if(!remoteDB){showToast(lang==='fr'?'❌ Code boutique introuvable. Vérifie le code avec ton patron.':'❌ Store not found. Check the code with your manager.');return;}
   DB=remoteDB;
   save();
   _finishLoginV(nm,code);
@@ -2972,13 +3093,9 @@ async function restaurerBoutique(){
 function showToast(msg){var t2=document.getElementById('toast');t2.textContent=msg;t2.classList.add('show');setTimeout(function(){t2.classList.remove('show');},2800);}
 function copierCode(){navigator.clipboard&&navigator.clipboard.writeText(DB.cfg.code).then(function(){showToast(t('codeCopie')+' '+DB.cfg.code);});}
 // ── Génération code boutique scalable ──
-// Charset: 32 chars sans ambiguïtés (0/O, 1/I/L exclus) → MB-XXXXXX = 1,07 milliard combos
-function genCode(){
-  var chars='23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-  var code='MB-';
-  for(var i=0;i<6;i++)code+=chars[Math.floor(Math.random()*chars.length)];
-  return code;
-}
+
+// Code boutique : 6 chiffres (100000-999999)
+function genCode(){return String(Math.floor(100000+Math.random()*900000));}
 function partagerCode(){var msg='🏪 *MyBoutiQ*\n\n'+(lang==='fr'?'Rejoins ma boutique :':'Join my store:')+' '+DB.cfg.nom+'\n\n'+(lang==='fr'?'Code boutique :':'Store code:')+' *'+DB.cfg.code+'*\n\n'+(lang==='fr'?'Télécharge MyBoutiQ et entre ce code pour te connecter comme vendeur.':'Download MyBoutiQ and enter this code to connect as a seller.');window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');}
 function voiceSearch(){if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}var SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();r.lang=lang==='fr'?'fr-FR':'en-US';r.onresult=function(e){var q=e.results[0][0].transcript;document.getElementById('src-c').value=q;filtrC(q);};r.onerror=function(){showToast('🎤');};r.start();showToast(t('microParle'));}
 var ecouteContinue=false,recogContinue=null;
