@@ -873,7 +873,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
           <div class="stii"><div class="stitl" id="st-veille">Garder l'écran allumé</div><div class="stisub" id="st-veille-s">Évite le verrouillage pendant les ventes</div></div>
           <button class="tog off" id="tog-veille" onclick="toggleVeille()"></button>
         </div>
-        <div class="stit2" style="cursor:default">
+        <div class="stit2" style="cursor:default" id="st-bio-row">
           <div class="stico" style="background:#E3F2FD">🔐</div>
           <div class="stii"><div class="stitl" id="st-bio">Empreinte / Face ID</div><div class="stisub" id="st-bio-s">Connexion rapide du patron</div></div>
           <button class="tog off" id="tog-bio" onclick="toggleBiometrie()"></button>
@@ -1874,9 +1874,19 @@ function majModeParametres(){
   ids.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=adv?'block':'none';});
   var sc=document.getElementById('sec-commandes');
   if(sc)sc.style.display=(adv&&role==='patron')?'block':'none';
+  var bioRow=document.getElementById('st-bio-row');
+  if(bioRow)bioRow.style.display=adv?'flex':'none';
+  document.querySelectorAll(".bnav .ni[onclick*=\"navTo('dash'\"]").forEach(function(btn){
+    btn.style.display=adv?'block':'none';
+  });
+  var emojiBtn=document.getElementById('btn-photo-emoji');
+  if(emojiBtn)emojiBtn.style.display=adv?'flex':'none';
+  if(!adv&&document.getElementById('s-dashboard')&&document.getElementById('s-dashboard').classList.contains('on')){
+    goScreen('s-caisse');
+  }
   var t=document.getElementById('st-adv-t'),s=document.getElementById('st-adv-s'),a=document.getElementById('st-adv-arr');
-  if(t)t.textContent=adv?(lang==='fr'?'Masquer les paramètres avancés':'Hide advanced settings'):(lang==='fr'?'Afficher les paramètres avancés':'Show advanced settings');
-  if(s)s.textContent=adv?(lang==='fr'?'Revenir à la vue simple':'Back to simple view'):(lang==='fr'?'Catalogue, facturation, abonnements...':'Catalog, billing, subscriptions...');
+  if(t)t.textContent=adv?(lang==='fr'?'Mode expert activé':'Expert mode enabled'):(lang==='fr'?'Activer le mode expert':'Enable expert mode');
+  if(s)s.textContent=adv?(lang==='fr'?'Fonctions avancées visibles':'Advanced features visible'):(lang==='fr'?'Vue essentielle recommandée pour la boutique':'Essential view recommended for shopkeepers');
   if(a)a.textContent=adv?'˅':'›';
 }
 function toggleParametresAvances(){
@@ -2776,7 +2786,7 @@ function importerPhotosMasse(ev){
 function retirerPhotoReelle(){selImg=null;document.getElementById('photo-real-preview').style.display='none';}
 
 function initCatGrid(){var g=document.getElementById('cgrd');g.innerHTML='';var cats=lang==='fr'?CATS_FR:CATS_EN;cats.forEach(function(c){var b=document.createElement('button');b.className='cbtn'+(c===selCat?' on':'');b.textContent=(CE[c]||'📦')+' '+c;b.onclick=function(){selCat=c;document.querySelectorAll('.cgrd .cbtn').forEach(function(x){x.classList.remove('on');});b.classList.add('on');};g.appendChild(b);});}
-function ouvrirAjout(){if(role!=='patron')return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';document.getElementById('tog-rupt').className='tog on';initEmoGrid();initCatGrid();goAS(0);document.getElementById('ov-art').classList.add('show');}
+function ouvrirAjout(){if(role!=='patron')return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display=(DB&&DB.cfg&&DB.cfg.paramAvances)?'flex':'none';initEmoGrid();initCatGrid();goAS(0);document.getElementById('ov-art').classList.add('show');}
 function goAS(n){document.querySelectorAll('#ov-art .pst').forEach(function(s){s.classList.remove('on');});document.getElementById('as'+n).classList.add('on');if(n===1){var nm=document.getElementById('art-nm').value||'Article';document.getElementById('ae-as').textContent=selEmo;document.getElementById('an-as').textContent=nm;document.getElementById('ae-as2').textContent=selEmo;document.getElementById('an-as2').textContent=nm;selTypeA('carton');}}
 function selTypeA(tp){achatTypeA=tp;['carton','lot','unite'].forEach(function(x){document.getElementById('at-'+x[0]).classList.toggle('on',x===tp);});var qs=document.getElementById('aqsec');if(tp==='unite')qs.style.display='none';else{qs.style.display='block';}calcAutoA();}
 function calcAutoA(){var q=parseInt(document.getElementById('ainp-qte').value)||0,pa=parseFloat(document.getElementById('ainp-pa').value)||0,transp=parseFloat(document.getElementById('ainp-transp').value)||0,ca=document.getElementById('acauto');if(achatTypeA!=='unite'&&q>0&&pa>0){pxAUA=Math.round((pa+transp)/q);ca.style.display='block';document.getElementById('ac-unit').textContent='= '+fmt(pxAUA);}else if(achatTypeA==='unite'&&pa>0){pxAUA=pa+transp;ca.style.display='none';}else{ca.style.display='none';pxAUA=0;}}
