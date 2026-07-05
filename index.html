@@ -653,6 +653,22 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
   </div>
 </div>
 
+
+<!-- RESET PIN -->
+<div id="ov-reset-pin" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;padding:24px">
+  <div style="background:#1A1A2E;border-radius:24px;padding:28px 22px;width:100%;max-width:380px">
+    <div style="font-size:32px;text-align:center;margin-bottom:8px">🔁</div>
+    <div style="color:#fff;font-size:18px;font-weight:800;text-align:center;margin-bottom:4px">Réinitialiser PIN</div>
+    <div style="color:rgba(255,255,255,.5);font-size:13px;text-align:center;margin-bottom:16px">Vérifie ton numéro via WhatsApp, puis choisis un nouveau PIN.</div>
+    <input id="rp-tel" type="tel" style="width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;color:#fff;font-size:15px;font-weight:700;font-family:Outfit,sans-serif;outline:none;margin-bottom:10px" placeholder="+237 6XXXXXXXX">
+    <button onclick="envoyerOtpResetPin()" style="width:100%;background:#F5A623;border:none;border-radius:14px;padding:12px;color:#1A1A2E;font-size:14px;font-weight:800;font-family:Outfit,sans-serif;cursor:pointer;margin-bottom:10px">📲 Envoyer code WhatsApp</button>
+    <input id="rp-otp" type="tel" maxlength="4" inputmode="numeric" style="width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;color:#fff;font-size:18px;font-weight:800;letter-spacing:8px;text-align:center;font-family:Outfit,sans-serif;outline:none;margin-bottom:10px" placeholder="••••">
+    <input id="rp-new-pin" type="password" maxlength="6" inputmode="numeric" style="width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;color:#fff;font-size:16px;font-weight:700;font-family:Outfit,sans-serif;outline:none;margin-bottom:10px" placeholder="Nouveau PIN (4 à 6 chiffres)">
+    <button onclick="confirmerResetPin()" style="width:100%;background:#00C853;border:none;border-radius:14px;padding:12px;color:#fff;font-size:14px;font-weight:800;font-family:Outfit,sans-serif;cursor:pointer;margin-bottom:10px">✅ Confirmer</button>
+    <button onclick="demanderResetSupport()" style="width:100%;background:transparent;border:2px solid rgba(255,255,255,.2);border-radius:14px;padding:12px;color:#fff;font-size:13px;font-weight:700;font-family:Outfit,sans-serif;cursor:pointer;margin-bottom:10px">📞 Support manuel (si PIN serveur oublié)</button>
+    <button onclick="fermerResetPin()" style="width:100%;background:transparent;border:2px solid rgba(255,255,255,.2);border-radius:14px;padding:12px;color:rgba(255,255,255,.6);font-size:14px;font-weight:700;font-family:Outfit,sans-serif;cursor:pointer">✕ Annuler</button>
+  </div>
+</div>
 <!-- LOGIN -->
 <div id="s-login" class="scr">
   <div class="login-logo">🏪</div>
@@ -671,6 +687,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
       <div class="fg"><label class="fl" id="lbl-patron-tel">📱 Téléphone patron</label><input class="fi" type="tel" id="p-tel" placeholder="+237 6XXXXXXXX"></div>
       <div class="fg"><label class="fl">🔐 PIN</label><input class="fi" type="password" placeholder="••••••" maxlength="6" id="p-pin" inputmode="numeric"></div>
       <button class="btn-login" id="btn-lp" onclick="loginP()">Connexion 👑</button>
+      <button class="btn-login" id="btn-forgot-pin" onclick="ouvrirResetPin()" style="margin-top:8px;background:rgba(255,255,255,.12);color:#fff">🔁 PIN oublié ?</button>
       <button class="btn-login" id="btn-bio-login" onclick="loginBiometrique()" style="display:none;margin-top:8px;background:var(--BG);color:var(--T)">🔐 <span id="lbl-bio-login">Empreinte / Face ID</span></button>
     </div>
     <div id="fv" style="width:100%;display:none">
@@ -862,6 +879,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
       <div class="stcd">
         <div class="stit2" onclick="ouvrirMesBoutiques()"><div class="stico" style="background:#FFF3E0">🏬</div><div class="stii"><div class="stitl">Mes boutiques</div><div class="stisub">Gérer plusieurs boutiques</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="contacterSupport()"><div class="stico" style="background:#E8F5E9">📞</div><div class="stii"><div class="stitl">Contacter le support</div><div class="stisub">Assistance via WhatsApp</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirParrainage()"><div class="stico" style="background:#EDE7F6">🤝</div><div class="stii"><div class="stitl">Programme parrainage</div><div class="stisub">Inviter une boutique et gagner des bonus</div></div><span class="starr">›</span></div>
       </div>
     </div>
     <div class="stsc" id="sec-commandes" style="display:none">
@@ -2069,6 +2087,43 @@ function appliquerLang(){
 var role='patron';
 var nomVendeur='';
 var ventAnnulEnCours=null;
+var _rpCode="",_rpPhone="",_rpExp=0;
+function ouvrirResetPin(){
+  var ov=document.getElementById('ov-reset-pin');
+  if(!ov)return;
+  var tel=document.getElementById('p-tel');
+  var rt=document.getElementById('rp-tel');
+  if(rt&&tel&&tel.value)rt.value=tel.value;
+  ['rp-otp','rp-new-pin'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  ov.style.display='flex';
+}
+function fermerResetPin(){var ov=document.getElementById('ov-reset-pin');if(ov)ov.style.display='none';}
+function envoyerOtpResetPin(){
+  var tel=normalizePhone(document.getElementById('rp-tel').value||'');
+  if(!tel){showToast(lang==='fr'?'⚠️ Entre ton numéro':'⚠️ Enter your phone');return;}
+  _rpCode=String(Math.floor(1000+Math.random()*9000));
+  _rpPhone=tel;
+  _rpExp=Date.now()+5*60*1000;
+  var msg='🏪 MyBoutiQ\n\n'+(lang==='fr'?'Code réinitialisation PIN :':'PIN reset code:')+'\n\n*'+_rpCode+'*\n\n'+(lang==='fr'?'Expire dans 5 minutes.':'Expires in 5 minutes.');
+  var wa=tel.replace(/\D/g,'');
+  window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(msg),'_blank');
+  showToast(lang==='fr'?'📲 Code envoyé sur WhatsApp':'📲 Code sent on WhatsApp');
+}
+async function confirmerResetPin(){
+  var otp=(document.getElementById('rp-otp').value||'').trim();
+  var newPin=(document.getElementById('rp-new-pin').value||'').trim();
+  var tel=normalizePhone(document.getElementById('rp-tel').value||'');
+  if(!tel||tel!==_rpPhone){showToast(lang==='fr'?'⚠️ Renvoie le code d\'abord':'⚠️ Send code first');return;}
+  if(Date.now()>_rpExp){showToast(lang==='fr'?'⏱️ Code expiré':'⏱️ Code expired');return;}
+  if(otp!==_rpCode){showToast(lang==='fr'?'❌ Code incorrect':'❌ Wrong code');return;}
+  if(!newPin||newPin.length<4){showToast(lang==='fr'?'⚠️ PIN minimum 4 chiffres':'⚠️ PIN min 4 digits');return;}
+  if(DB&&DB.cfg&&normalizePhone(DB.cfg.tel||'')===tel){
+    DB.cfg.pin=newPin;save();
+    showToast(lang==='fr'?'✅ PIN local mis à jour':'✅ Local PIN updated');
+  }
+  showToast(lang==='fr'?'✅ Vérifié. Si le PIN serveur est oublié, utilisez le support admin pour reset final.':'✅ Verified. If server PIN is forgotten, use admin support for final reset.');
+  fermerResetPin();
+}
 function swTab(btn,fid){document.querySelectorAll('.ltab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.getElementById('fp').style.display=fid==='fp'?'block':'none';document.getElementById('fv').style.display=fid==='fv'?'block':'none';}
 function _finishLoginP(){
   role='patron';
@@ -2875,6 +2930,34 @@ var SUPPORT_TEL='237689335389';
 function contacterSupport(){
   var msg=lang==='fr'?'Bonjour, j\'ai besoin d\'aide avec MyBoutiQ (boutique '+(DB&&DB.cfg&&DB.cfg.code||'')+').':'Hello, I need help with MyBoutiQ (store '+(DB&&DB.cfg&&DB.cfg.code||'')+').';
   window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(msg),'_blank');
+}
+function demanderResetSupport(){
+  var tel=normalizePhone((document.getElementById('rp-tel')&&document.getElementById('rp-tel').value)||'');
+  var code=(DB&&DB.cfg&&DB.cfg.code)||'';
+  var justif='RP-'+String(Date.now()).slice(-6);
+  var msg=lang==='fr'
+    ?('Bonjour support MyBoutiQ. Je demande une réinitialisation PIN serveur.\n\nTéléphone: '+tel+'\nCode boutique: '+code+'\nJustificatif: '+justif)
+    :('Hello MyBoutiQ support. I request server PIN reset.\n\nPhone: '+tel+'\nStore code: '+code+'\nProof: '+justif);
+  window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(msg),'_blank');
+}
+function getParrainCode(){
+  if(!DB||!DB.cfg)return '';
+  if(!DB.cfg.parrainCode){
+    var c=(DB.cfg.code||'').replace(/\s+/g,'');
+    var p=(DB.cfg.nom||'BOUTIQUE').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);
+    DB.cfg.parrainCode='PR-'+p+'-'+c.slice(0,5);
+    save();
+  }
+  return DB.cfg.parrainCode;
+}
+function ouvrirParrainage(){
+  var pcode=getParrainCode();
+  if(!pcode){showToast(lang==='fr'?'⚠️ Ouvre ta boutique patron d\'abord':'⚠️ Open your owner store first');return;}
+  var msg=lang==='fr'
+    ?('🤝 *Parrainage MyBoutiQ*\n\nMa boutique: '+(DB.cfg.nom||'')+'\nMon code boutique: '+(DB.cfg.code||'')+'\nMon code parrain: *'+pcode+'*\n\nInstalle MyBoutiQ et donne ce code au support pour activer ton bonus.')
+    :('🤝 *MyBoutiQ referral*\n\nMy store: '+(DB.cfg.nom||'')+'\nMy store code: '+(DB.cfg.code||'')+'\nMy referral code: *'+pcode+'*\n\nInstall MyBoutiQ and share this code with support to activate your bonus.');
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+  showToast('🤝 '+(lang==='fr'?'Message parrainage prêt':'Referral message ready'));
 }
 // ── MES BOUTIQUES (multi-boutiques pour un même patron, sur le même appareil) ──
 function getMesBoutiques(){try{return JSON.parse(localStorage.getItem('myboutiq_mesboutiques')||'[]');}catch(e){return [];}}
