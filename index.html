@@ -647,7 +647,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
     <div style="font-size:32px;text-align:center;margin-bottom:8px">🔑</div>
     <div style="color:#fff;font-size:18px;font-weight:800;text-align:center;margin-bottom:4px" id="rst-title">Restaurer ma boutique</div>
     <div style="color:rgba(255,255,255,.5);font-size:13px;text-align:center;margin-bottom:20px" id="rst-sub">Entre ton code boutique pour récupérer tes données</div>
-    <input id="rst-code" type="text" style="width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;color:#fff;font-size:18px;font-weight:800;text-align:center;letter-spacing:4px;text-transform:uppercase;font-family:Outfit,sans-serif;outline:none;margin-bottom:14px" placeholder="123456">
+    <input id="rst-code" type="text" style="width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;color:#fff;font-size:18px;font-weight:800;text-align:center;letter-spacing:4px;text-transform:uppercase;font-family:Outfit,sans-serif;outline:none;margin-bottom:14px" placeholder="12345 67890">
     <button onclick="restaurerBoutique()" style="width:100%;background:#F5A623;border:none;border-radius:14px;padding:14px;color:#1A1A2E;font-size:16px;font-weight:800;font-family:Outfit,sans-serif;cursor:pointer;margin-bottom:10px" id="rst-btn">🚀 Restaurer</button>
     <button onclick="fermerRestauration()" style="width:100%;background:transparent;border:2px solid rgba(255,255,255,.2);border-radius:14px;padding:12px;color:rgba(255,255,255,.6);font-size:14px;font-weight:700;font-family:Outfit,sans-serif;cursor:pointer">✕ Annuler</button>
   </div>
@@ -674,7 +674,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
       <button class="btn-login" id="btn-bio-login" onclick="loginBiometrique()" style="display:none;margin-top:8px;background:var(--BG);color:var(--T)">🔐 <span id="lbl-bio-login">Empreinte / Face ID</span></button>
     </div>
     <div id="fv" style="width:100%;display:none">
-      <div class="fg"><label class="fl" id="lbl-code">🏪 Code boutique</label><input class="fi" type="text" id="v-code" style="letter-spacing:3px;font-weight:800;text-transform:uppercase" placeholder="123456"></div>
+      <div class="fg"><label class="fl" id="lbl-code">🏪 Code boutique</label><input class="fi" type="text" id="v-code" style="letter-spacing:3px;font-weight:800;text-transform:uppercase" placeholder="12345 67890"></div>
       <div class="fg"><label class="fl" id="lbl-prenom">👤 Prénom</label><input class="fi" type="text" id="v-nom" placeholder="Amadou"></div>
       <div class="fg"><label class="fl">🔐 PIN</label><input class="fi" type="password" placeholder="••••" maxlength="4" id="v-pin" inputmode="numeric"></div>
       <button class="btn-login" id="btn-lv" onclick="loginV()">Connexion 👦</button>
@@ -1293,7 +1293,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
     <div class="shhdr"><div class="shtit">🏬 Mes boutiques</div><button class="bcl" onclick="closeSheet('ov-boutiques')">✕</button></div>
     <div class="pstps">
       <div id="mb-lst"></div>
-      <div class="pig" style="margin-top:14px"><label class="pl">Ajouter une boutique existante (code)</label><input class="pi sm" type="text" id="mb-code" placeholder="123456" style="text-transform:uppercase"></div>
+      <div class="pig" style="margin-top:14px"><label class="pl">Ajouter une boutique existante (code)</label><input class="pi sm" type="text" id="mb-code" placeholder="12345 67890" style="text-transform:uppercase"></div>
       <button class="bnxt" onclick="ajouterBoutiqueParCode()">➕ Ajouter cette boutique</button>
     </div>
   </div>
@@ -3095,7 +3095,7 @@ function copierCode(){navigator.clipboard&&navigator.clipboard.writeText(DB.cfg.
 // ── Génération code boutique scalable ──
 
 // Code boutique : 6 chiffres (100000-999999)
-function genCode(){return String(Math.floor(100000+Math.random()*900000));}
+function genCode(){var n=String(Math.floor(Math.random()*9000000000+1000000000));return n.slice(0,5)+" "+n.slice(5);}
 function partagerCode(){var msg='🏪 *MyBoutiQ*\n\n'+(lang==='fr'?'Rejoins ma boutique :':'Join my store:')+' '+DB.cfg.nom+'\n\n'+(lang==='fr'?'Code boutique :':'Store code:')+' *'+DB.cfg.code+'*\n\n'+(lang==='fr'?'Télécharge MyBoutiQ et entre ce code pour te connecter comme vendeur.':'Download MyBoutiQ and enter this code to connect as a seller.');window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');}
 function voiceSearch(){if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}var SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();r.lang=lang==='fr'?'fr-FR':'en-US';r.onresult=function(e){var q=e.results[0][0].transcript;document.getElementById('src-c').value=q;filtrC(q);};r.onerror=function(){showToast('🎤');};r.start();showToast(t('microParle'));}
 var ecouteContinue=false,recogContinue=null;
