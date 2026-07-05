@@ -1,0 +1,16 @@
+name: MyBoutiQ CI
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  validate-html:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check embedded JavaScript syntax
+        run: |
+          node -e "const fs=require('fs'); const html=fs.readFileSync('index.html','utf8'); const m=html.match(/<script>([\\s\\S]*)<\\/script>\\s*<\\/body>/); if(!m){console.error('Script block not found in index.html'); process.exit(1);} fs.writeFileSync('tmp-check.js',m[1]);"
+          node --check tmp-check.js
