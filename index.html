@@ -904,6 +904,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
       <div class="stcd">
         <div class="stit2" onclick="editNumFiscal()"><div class="stico" style="background:#EDE7F6">🧾</div><div class="stii"><div class="stitl" id="st-fiscal">N° d'identifiant boutique</div><div class="stisub" id="st-fiscal-s">Apparaît sur la facture</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="choisirFormatRecu()"><div class="stico" style="background:#E3F2FD">📄</div><div class="stii"><div class="stitl" id="st-fmt">Format du reçu</div><div class="stisub" id="st-fmt-s">Ticket, A5 ou A6</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="choisirImprimanteThermique()"><div class="stico" style="background:#FFF8E1">🖨️</div><div class="stii"><div class="stitl">Imprimante thermique</div><div class="stisub">58mm / 80mm (mode Ticket)</div></div><span class="starr">›</span></div>
       </div>
       <div class="sttit">🏬 Multi-boutiques & Support</div>
       <div class="stcd">
@@ -2530,10 +2531,13 @@ function afficherRecu(){
 function imprimerRecu(){
   var html=document.getElementById('recu-print');if(!html)return;
   var fmt=(DB.cfg.recuFormat||'ticket');
-  var pageSize=fmt==='a5'?'A5':fmt==='a6'?'A6':'58mm auto';
-  var bodyW=fmt==='a5'?'148mm':fmt==='a6'?'105mm':'58mm';
-  var fs=fmt==='ticket'?'11px':fmt==='a6'?'13px':'15px';
-  var titleFs=fmt==='ticket'?'13px':fmt==='a6'?'16px':'19px';
+  var thermalOn=!!DB.cfg.thermalEnabled;
+  var thermalW=(DB.cfg.thermalWidth==='80')?'80':'58';
+  var ticketW=(thermalOn&&thermalW==='80')?'80mm':'58mm';
+  var pageSize=fmt==='a5'?'A5':fmt==='a6'?'A6':(ticketW+' auto');
+  var bodyW=fmt==='a5'?'148mm':fmt==='a6'?'105mm':ticketW;
+  var fs=fmt==='ticket'?(ticketW==='80mm'?'12px':'11px'):fmt==='a6'?'13px':'15px';
+  var titleFs=fmt==='ticket'?(ticketW==='80mm'?'15px':'13px'):fmt==='a6'?'16px':'19px';
   var w=window.open('','_blank','width=320,height=600');
   if(!w){showToast('⛔ '+(lang==='fr'?'Pop-up bloquée — autorise les pop-ups':'Pop-up blocked — allow pop-ups'));return;}
   w.document.write('<html><head><title>Reçu</title><style>'+
@@ -3064,6 +3068,23 @@ function choisirFormatRecu(){
   DB.cfg.recuFormat=fmt;save();
   showToast('✅ '+(lang==='fr'?'Format':'Format')+': '+fmt.toUpperCase());
 }
+function choisirImprimanteThermique(){
+  if(!DB||!DB.cfg)return;
+  var on=!!DB.cfg.thermalEnabled;
+  var w=(DB.cfg.thermalWidth==='80')?'80':'58';
+  var msg=(lang==='fr'
+    ?'Imprimante thermique (mode Ticket)\n1 = Activer 58mm\n2 = Activer 80mm\n3 = Désactiver'
+    :'Thermal printer (Ticket mode)\n1 = Enable 58mm\n2 = Enable 80mm\n3 = Disable')+
+    '\n\n('+(lang==='fr'?'actuel':'current')+': '+(on?('ON '+w+'mm'):'OFF')+')';
+  var v=prompt(msg,on?(w==='80'?'2':'1'):'3');
+  if(v===null)return;
+  v=v.trim();
+  if(v==='1'){DB.cfg.thermalEnabled=true;DB.cfg.thermalWidth='58';}
+  else if(v==='2'){DB.cfg.thermalEnabled=true;DB.cfg.thermalWidth='80';}
+  else {DB.cfg.thermalEnabled=false;}
+  save();
+  showToast('✅ '+(lang==='fr'?'Thermique':'Thermal')+': '+(DB.cfg.thermalEnabled?(DB.cfg.thermalWidth+'mm'):'OFF'));
+}
 
 // ═══════════════════════════════════════════
 // CLÔTURE
@@ -3275,6 +3296,8 @@ function migrateDBData(d){
   d.cfg=d.cfg||{};
   if(d.cfg.notifOk===undefined)d.cfg.notifOk=false;
   if(d.cfg.notifAsked===undefined)d.cfg.notifAsked=false;
+  if(d.cfg.thermalEnabled===undefined)d.cfg.thermalEnabled=false;
+  if(d.cfg.thermalWidth===undefined)d.cfg.thermalWidth='58';
   if(!d.cfg.lastNotifCheck||typeof d.cfg.lastNotifCheck!=='object')d.cfg.lastNotifCheck={sent:{}};
   if(!d.cfg.lastNotifCheck.sent)d.cfg.lastNotifCheck.sent={};
   d.commandes=Array.isArray(d.commandes)?d.commandes:[];
