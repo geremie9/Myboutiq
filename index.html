@@ -1657,6 +1657,31 @@ function save(){
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
+var _deviceId=(function(){
+  try{
+    var id=sessionStorage.getItem('mb_device_id');
+    if(!id){id='d_'+Date.now()+'_'+Math.random().toString(36).slice(2);sessionStorage.setItem('mb_device_id',id);}
+    return id;
+  }catch(e){return 'd_'+Math.random().toString(36).slice(2);}
+})();
+var _pendingRemoteDB=null,_pendingRemoteTimer=null;
+function _venteEnCours(){
+  var succ=document.getElementById('succ');
+  var ovCalc=document.getElementById('ov-calc');
+  var ovRecu=document.getElementById('ov-recu');
+  return(succ&&succ.classList.contains('show'))||(ovCalc&&ovCalc.classList.contains('show'))||(ovRecu&&ovRecu.classList.contains('show'))||Object.keys(panier||{}).length>0;
+}
+function _applyRemoteDB(data,silent){
+  _suppressSync=true;
+  DB=migrateDBData(data);
+  localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
+  _suppressSync=false;
+  renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();renderDashboard();renderNotifPanel();updateStats();updateNotifBadge();updateClientVenteUI();
+  var codeEl=document.getElementById('code-val');if(codeEl)codeEl.textContent=DB.cfg.code;
+  var hdr=document.getElementById('bn-hdr');if(hdr)hdr.textContent=DB.cfg.nom||'Ma Boutique';
+  if(role==='vendeur'){var un=document.getElementById('u-nm');if(un)un.textContent=nomVendeur||'Vendeur';}
+  if(!silent)showSync();
+}
 function initSupa(){
   if(typeof supabase!=='undefined')supa=supabase.createClient(SUPA_URL,SUPA_KEY);
 }
@@ -1734,6 +1759,7 @@ async function syncToSupa(){
   try{
     var user=await getAuthUser();
     if(user)DB.cfg.ownerId=user.id;
+    DB.cfg._dev=_deviceId;
     for(var attempt=0;attempt<3;attempt++){
       DB.cfg.code=formatShopCode(DB.cfg.code||genCode());
       var payload={
@@ -3468,17 +3494,21 @@ subscribeRealtime=function(code){
   if(realtimeChan){supa.removeChannel(realtimeChan);realtimeChan=null;}
   realtimeChan=supa.channel('boutique:'+code)
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'boutiques',filter:'code=eq.'+code},function(payload){
-      if(payload.new&&payload.new.data){
-        _suppressSync=true;
-        DB=migrateDBData(payload.new.data);
-        localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
-        _suppressSync=false;
-        renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();renderDashboard();renderNotifPanel();updateStats();updateNotifBadge();updateClientVenteUI();
-        var codeEl=document.getElementById('code-val');if(codeEl)codeEl.textContent=DB.cfg.code;
-        var hdr=document.getElementById('bn-hdr');if(hdr)hdr.textContent=DB.cfg.nom||'Ma Boutique';
-        if(role==='vendeur'){var un=document.getElementById('u-nm');if(un)un.textContent=nomVendeur||'Vendeur';}
-        showToast('🔄 '+(lang==='fr'?'Mise à jour reçue !':'Update received!'));
+      if(!payload.new||!payload.new.data)return;
+      var incoming=payload.new.data;
+      // Écho de notre propre écriture (même appareil) : déjà appliqué localement, on ignore silencieusement
+      if(incoming.cfg&&incoming.cfg._dev&&incoming.cfg._dev===_deviceId)return;
+      if(_venteEnCours()){
+        // Une vente est en cours d'affichage : on stocke la mise à jour et on l'applique après, sans perturber l'écran
+        _pendingRemoteDB=incoming;
+        clearTimeout(_pendingRemoteTimer);
+        _pendingRemoteTimer=setTimeout(function _retry(){
+          if(_venteEnCours()){_pendingRemoteTimer=setTimeout(_retry,1000);return;}
+          if(_pendingRemoteDB){_applyRemoteDB(_pendingRemoteDB,true);_pendingRemoteDB=null;}
+        },1000);
+        return;
       }
+      _applyRemoteDB(incoming,false);
     })
     .subscribe();
 };
