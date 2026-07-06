@@ -1727,7 +1727,25 @@ async function syncToSupa(){
     var user=await getAuthUser();
     if(!user)throw new Error(lang==='fr'?'Session patron introuvable':'Owner session not found');
     DB.cfg.ownerId=user.id;
-    var payload={code:DB.cfg.code,owner_id:user.id,data:DB,updated_at:new Date().toISOString()};
+    var payload={
+      nom:DB.cfg.nom||'Ma Boutique',
+      code:DB.cfg.code,
+      secteur:DB.cfg.secteur||null,
+      pays:(DB.cfg.pays&&DB.cfg.pays.c)||DB.cfg.pays||null,
+      region:DB.cfg.region||null,
+      devise_symbole:DB.cfg.s||null,
+      devise_code:(DB.cfg.pays&&DB.cfg.pays.c)||DB.cfg.devise_code||null,
+      langue:DB.cfg.lang||'fr',
+      pin:String(DB.cfg.pin||'0000'),
+      telephone:DB.cfg.tel||null,
+      fonds_depart:Number(DB.fondsDepart||0),
+      objectif:Number(DB.objectif||0),
+      plan:DB.cfg.plan||'gratuit',
+      actif:true,
+      owner_id:user.id,
+      data:DB,
+      updated_at:new Date().toISOString()
+    };
     var byOwner=await supa.from('boutiques').select('id,code').eq('owner_id',user.id).limit(1);
     if(byOwner.error)throw byOwner.error;
     if(byOwner.data&&byOwner.data.length){
