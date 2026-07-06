@@ -1678,6 +1678,14 @@ function normalizePhone(t){
   raw=raw.replace(/\s+/g,'').replace(/^00/,'+').replace(/[^0-9+]/g,'');
   return raw[0]==='+'?('+'+raw.slice(1).replace(/\D/g,'')):raw.replace(/\D/g,'');
 }
+function normalizeShopCode(code){
+  return String(code||'').replace(/\D/g,'');
+}
+function formatShopCode(code){
+  var digits=normalizeShopCode(code);
+  if(digits.length===10)return digits.slice(0,5)+' '+digits.slice(5);
+  return String(code||'').trim().toUpperCase();
+}
 function authEmailFromPhone(phone){
   var digits=normalizePhone(phone).replace(/\D/g,'');
   return digits?('owner-'+digits+'@myboutiq.app'):'';
@@ -1727,43 +1735,55 @@ async function syncToSupa(){
     var user=await getAuthUser();
     if(!user)throw new Error(lang==='fr'?'Session patron introuvable':'Owner session not found');
     DB.cfg.ownerId=user.id;
-    var payload={
-      nom:DB.cfg.nom||'Ma Boutique',
-      code:DB.cfg.code,
-      secteur:DB.cfg.secteur||null,
-      pays:(DB.cfg.pays&&DB.cfg.pays.c)||DB.cfg.pays||null,
-      region:DB.cfg.region||null,
-      devise_symbole:DB.cfg.s||null,
-      devise_code:(DB.cfg.pays&&DB.cfg.pays.c)||DB.cfg.devise_code||null,
-      langue:DB.cfg.lang||'fr',
-      pin:String(DB.cfg.pin||'0000'),
-      telephone:DB.cfg.tel||null,
-      fonds_depart:Number(DB.fondsDepart||0),
-      objectif:Number(DB.objectif||0),
-      plan:DB.cfg.plan||'gratuit',
-      actif:true,
-      owner_id:user.id,
-      data:DB,
-      updated_at:new Date().toISOString()
-    };
-    var byOwner=await supa.from('boutiques').select('id,code').eq('owner_id',user.id).limit(1);
-    if(byOwner.error)throw byOwner.error;
-    if(byOwner.data&&byOwner.data.length){
-      var updOwner=await supa.from('boutiques').update(payload).eq('id',byOwner.data[0].id);
-      if(updOwner.error)throw updOwner.error;
-    }else{
-      var byCode=await supa.from('boutiques').select('id,owner_id').eq('code',DB.cfg.code).limit(1);
+    for(var attempt=0;attempt<3;attempt++){
+      DB.cfg.code=formatShopCode(DB.cfg.code||genCode());
+      var payload={
+        nom:DB.cfg.nom||'Ma Boutique',
+        code:DB.cfg.code,
+        secteur:DB.cfg.secteur||null,
+        pays:(DB.cfg.pays&&DB.cfg.pays.c)||DB.cfg.pays||null,
+        region:DB.cfg.region||null,
+        devise_symbole:DB.cfg.s||null,
+        devise_code:(DB.cfg.pays&&DB.cfg.pays.c)||DB.cfg.devise_code||null,
+        langue:DB.cfg.lang||'fr',
+        pin:String(DB.cfg.pin||'0000'),
+        telephone:DB.cfg.tel||null,
+        fonds_depart:Number(DB.fondsDepart||0),
+        objectif:Number(DB.objectif||0),
+        plan:DB.cfg.plan||'gratuit',
+        actif:true,
+        owner_id:user.id,
+        data:DB,
+        updated_at:new Date().toISOString()
+      };
+      var byOwner=await supa.from('boutiques').select('id,code,updated_at').eq('owner_id',user.id).order('updated_at',{ascending:false});
+      if(byOwner.error)throw byOwner.error;
+      var ownerRows=byOwner.data||[];
+      var ownerExact=ownerRows.find(function(r){return normalizeShopCode(r.code)===normalizeShopCode(DB.cfg.code);})||null;
+      if(ownerExact){
+        var updExact=await supa.from('boutiques').update(payload).eq('id',ownerExact.id);
+        if(!updExact.error){showSync();return true;}
+        if(String(updExact.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
+        throw updExact.error;
+      }
+      if(ownerRows.length){
+        var updOwner=await supa.from('boutiques').update(payload).eq('id',ownerRows[0].id);
+        if(!updOwner.error){showSync();return true;}
+        if(String(updOwner.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
+        throw updOwner.error;
+      }
+      var byCode=await supa.from('boutiques').select('id,owner_id,code').eq('code',DB.cfg.code).limit(1);
       if(byCode.error)throw byCode.error;
       if(byCode.data&&byCode.data.length){
-        var updCode=await supa.from('boutiques').update(payload).eq('id',byCode.data[0].id);
-        if(updCode.error)throw updCode.error;
-      }else{
-        var ins=await supa.from('boutiques').insert(payload);
-        if(ins.error)throw ins.error;
+        DB.cfg.code=genCode();
+        continue;
       }
+      var ins=await supa.from('boutiques').insert(payload);
+      if(!ins.error){showSync();return true;}
+      if(String(ins.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
+      throw ins.error;
     }
-    showSync();
-    return true;
+    throw new Error(lang==='fr'?'❌ Impossible de générer un code boutique unique':'❌ Unable to generate a unique store code');
   }catch(e){
     console.warn('Sync:',e);
     showToast((e&&e.message)?e.message:(lang==='fr'?'❌ Sync boutique impossible':'❌ Store sync failed'));
@@ -1773,6 +1793,7 @@ async function syncToSupa(){
 async function loadFromSupa(code){
   if(!supa)return null;
   try{
+    code=formatShopCode(code);
     var res=await supa.from('boutiques').select('data').eq('code',code).single();
     return(res.data&&!res.error)?res.data.data:null;
   }catch(e){return null;}
@@ -2235,7 +2256,7 @@ async function loginP(){
   _finishLoginP();
 }
 async function loginV(){
-  var code=(document.getElementById('v-code').value||'').trim().toUpperCase();
+  var code=formatShopCode((document.getElementById('v-code').value||'').trim());
   var nm=(document.getElementById('v-nom').value||'').trim();
   if(!code){showToast(t('errCode'));return;}
   if(!nm){showToast(t('errPrenom'));return;}
@@ -2243,7 +2264,7 @@ async function loginV(){
   var pin=(document.getElementById('v-pin').value||'').trim();
   if(pin&&pin.length>0&&pin.length<4){showToast(lang==='fr'?'⚠️ PIN minimum 4 chiffres':'⚠️ PIN minimum 4 digits');return;}
   // Code correspond à la DB locale
-  if(DB&&code===DB.cfg.code){_finishLoginV(nm,code);return;}
+  if(DB&&normalizeShopCode(code)===normalizeShopCode(DB.cfg.code)){_finishLoginV(nm,DB.cfg.code);return;}
   // Essayer Supabase
   if(!supa){showToast(lang==='fr'?'❌ Connexion réseau requise':'❌ Internet connection required');return;}
   showToast('🔄 '+(lang==='fr'?'Recherche boutique...':'Looking up store...'));
@@ -3321,7 +3342,7 @@ function fermerRestauration(){
   document.getElementById('ov-restore').style.display='none';
 }
 async function restaurerBoutique(){
-  var code=(document.getElementById('rst-code').value||'').trim().toUpperCase();
+  var code=formatShopCode((document.getElementById('rst-code').value||'').trim());
   if(!code){showToast('⚠️ Entre ton code boutique');return;}
   var btn=document.getElementById('rst-btn');
   btn.textContent='🔄 Recherche...';btn.disabled=true;
