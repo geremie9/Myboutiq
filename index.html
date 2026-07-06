@@ -1186,6 +1186,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
         <input type="file" id="inp-photo-real" accept="image/*" style="display:none" onchange="uploadPhotoReelle(event,'new')">
         <button type="button" id="btn-photo-bulk" class="photo-upl-btn" onclick="document.getElementById('inp-photo-bulk').click()" style="width:100%;background:#E8F5E9;color:#1B5E20;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:6px">📚 <span id="lbl-photo-bulk">Importer en masse (50 / 100 photos)</span></button>
         <input type="file" id="inp-photo-bulk" accept="image/*" multiple style="display:none" onchange="importerPhotosMasse(event)">
+        <button type="button" id="btn-photo-catalog" onclick="ouvrirCatalogueRegional()" style="width:100%;background:#FFF3E0;color:#B45309;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:6px">🗺️ <span id="lbl-photo-catalog">Modèles des boutiques de ma région</span></button>
         <button type="button" id="btn-photo-emoji" onclick="document.getElementById('inp-photo-emoji').click()" style="width:100%;background:#F0F4FF;color:var(--B);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:6px">📷 <span id="lbl-photo-emoji">Photo → emoji automatique</span></button>
         <input type="file" id="inp-photo-emoji" accept="image/*" style="display:none" onchange="photoVersEmoji(event)">
         <div class="egrd" id="egrd"></div>
@@ -1241,9 +1242,21 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
         <button class="bvid" style="margin-top:7px" onclick="document.getElementById('stk-form').style.display='none'" id="btn-chg-art">← <span id="lbl-chg-art">Changer</span></button>
       </div>
     </div>
-  </div></div>
+  </div>  </div>
 
-<!-- BULK IMPORT REVIEW -->
+  <!-- CATALOGUE REGIONAL -->
+  <div class="ov" id="ov-catalog" onclick="closeOv(event,'ov-catalog')">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">🗺️ Modèles de la région</div><button class="bcl" onclick="closeSheet('ov-catalog')">✕</button></div>
+      <div class="pstps">
+        <div style="font-size:11px;font-weight:700;color:var(--M);margin-bottom:9px" id="catalog-cnt">Recherche...</div>
+        <div id="catalog-grid" style="max-height:52vh;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
+        <button class="bnxt" style="margin-top:9px" onclick="importerSelectionCatalogue()" id="btn-catalog-import">⬇️ <span id="lbl-catalog-import">Importer la sélection</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BULK IMPORT REVIEW -->
 <div class="ov" id="ov-bulk-review" onclick="closeOv(event,'ov-bulk-review')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">🖼️ Prix des articles importés</div><button class="bcl" onclick="closeSheet('ov-bulk-review')">✕</button></div>
@@ -2945,6 +2958,71 @@ function validerRevueImport(){
   save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();
   closeSheet('ov-bulk-review');
   showToast(missing?('⚠️ '+missing+' '+(lang==='fr'?'article(s) sans prix — modifiable via 💰':'item(s) without price — editable via 💰')):('✅ '+(lang==='fr'?'Prix enregistrés':'Prices saved')));
+}
+var _catalogModeles=[];
+async function ouvrirCatalogueRegional(){
+  if(!(role==='patron'||hasPerm('produits')))return;
+  if(!supa){showToast('⛔ '+(lang==='fr'?'Connexion requise':'Connection required'));return;}
+  document.getElementById('ov-catalog').classList.add('show');
+  var g=document.getElementById('catalog-grid');g.innerHTML='';
+  document.getElementById('catalog-cnt').textContent='🔄 '+(lang==='fr'?'Recherche des boutiques voisines...':'Searching nearby shops...');
+  try{
+    var secteur=DB.cfg.secteur||null,region=DB.cfg.region||null;
+    var q=supa.from('boutiques').select('nom,code,secteur,region,data').neq('code',DB.cfg.code).limit(60);
+    if(secteur)q=q.eq('secteur',secteur);
+    var res=await q;
+    if(res.error)throw res.error;
+    var rows=res.data||[];
+    var rNorm=txtNorm(region||'');
+    if(rNorm)rows=rows.filter(function(r){return txtNorm(r.region||'')===rNorm;});
+    var seenNm={};
+    _catalogModeles=[];
+    rows.forEach(function(r){
+      var arts=(r.data&&r.data.articles)||[];
+      arts.forEach(function(a){
+        if(!a.img)return;
+        var key=txtNorm(a.nm);
+        if(seenNm[key])return;
+        seenNm[key]=true;
+        _catalogModeles.push({nm:a.nm,e:a.e,img:a.img,cat:a.cat,boutique:r.nom});
+      });
+    });
+    if(!_catalogModeles.length){
+      document.getElementById('catalog-cnt').textContent='😕 '+(lang==='fr'?'Aucun modèle trouvé dans votre secteur/région pour le moment':'No template found in your sector/region yet');
+      return;
+    }
+    document.getElementById('catalog-cnt').textContent=_catalogModeles.length+' '+(lang==='fr'?'modèle(s) trouvé(s) — sélectionnez ceux à importer':'template(s) found — select the ones to import');
+    _catalogModeles.forEach(function(m,i){
+      var c=document.createElement('div');
+      c.className='pcard has-photo';
+      c.style.cursor='pointer';
+      c.dataset.idx=i;
+      c.innerHTML='<img class="pcard-img" src="'+m.img+'" loading="lazy"><div class="pcard-overlay"><div class="pnm-ov">'+m.nm+'</div></div>';
+      c.onclick=function(){c.classList.toggle('sel');};
+      g.appendChild(c);
+    });
+  }catch(e){
+    console.warn('Catalogue régional:',e);
+    document.getElementById('catalog-cnt').textContent='⚠️ '+(lang==='fr'?'Erreur de recherche':'Search error');
+  }
+}
+function importerSelectionCatalogue(){
+  var g=document.getElementById('catalog-grid');
+  var sel=Array.from(g.querySelectorAll('.pcard.sel'));
+  if(!sel.length){showToast('⚠️ '+(lang==='fr'?'Sélectionnez au moins un modèle':'Select at least one template'));return;}
+  if(!DB.nextId)DB.nextId=100;
+  var newIds=[];
+  sel.forEach(function(c){
+    var m=_catalogModeles[parseInt(c.dataset.idx,10)];
+    if(!m)return;
+    var newId=DB.nextId++;
+    DB.articles.push({id:newId,nm:m.nm,e:m.e||'📦',img:m.img,cat:m.cat||(lang==='fr'?'Alimentation':'Food'),px:0,pa:0,stk:0,al:5,vd:0,vr:[],rt:true});
+    newIds.push(newId);
+  });
+  save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();
+  closeSheet('ov-catalog');
+  showToast('✅ '+newIds.length+' '+(lang==='fr'?'article(s) importé(s)':'item(s) imported'));
+  if(newIds.length)ouvrirRevueImport(newIds);
 }
 
 function initCatGrid(){var g=document.getElementById('cgrd');g.innerHTML='';var cats=lang==='fr'?CATS_FR:CATS_EN;cats.forEach(function(c){var b=document.createElement('button');b.className='cbtn'+(c===selCat?' on':'');b.textContent=(CE[c]||'📦')+' '+c;b.onclick=function(){selCat=c;document.querySelectorAll('.cgrd .cbtn').forEach(function(x){x.classList.remove('on');});b.classList.add('on');};g.appendChild(b);});}
