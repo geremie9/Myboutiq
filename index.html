@@ -430,7 +430,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .pmnt-nm{font-size:11px;font-weight:700;color:var(--T)}
 
 /* ── SYNC ── */
-.syncb{margin:0 15px 9px;background:#FFF8E1;border:1.5px solid #FFD54F;border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:#E65100}
+.syncb{position:fixed;left:15px;right:15px;max-width:400px;margin:0 auto;bottom:78px;background:#FFF8E1;border:1.5px solid #FFD54F;border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:#E65100;z-index:60;box-shadow:0 4px 14px rgba(0,0,0,.12);pointer-events:none}
 .syncb.hide{display:none}
 
 /* ── SUCCESS ── */
@@ -524,7 +524,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .conf-cancel{flex:1;background:var(--BG);color:var(--M);border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer}
 /* ── V9 DASHBOARD / HISTORY / FIDELITE / COMMANDES / NOTIFS ── */
 .loyalty-box,.dash-card,.hist-card,.notif-card,.cmd-card{background:var(--C);border:1px solid var(--BD);border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
-.loyalty-box{padding:11px 12px;margin:0 15px 10px}.loyalty-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.loyalty-top b{font-size:12px;color:var(--T)}.loyalty-sel{font-size:12px;color:var(--M);font-weight:700;line-height:1.45}.loyalty-sel strong{color:var(--T)}.loyalty-act{display:flex;gap:7px;margin-top:8px}.loyalty-act button{flex:1}
+.loyalty-box{padding:0;margin:0 15px 10px;background:none;border:none;box-shadow:none}.loyalty-top{display:none}.loyalty-btn{width:100%;display:flex;align-items:center;gap:7px;background:var(--C);border:1px solid var(--BD);border-radius:12px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--M);cursor:pointer}.loyalty-btn.has-cli{color:var(--T);border-color:var(--P)}.loyalty-sel{font-size:12px;color:var(--M);font-weight:700;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.loyalty-sel strong{color:var(--T)}.loyalty-act{display:flex;gap:7px;margin-top:8px}.loyalty-act button{flex:1}
 .lv-badge{display:inline-flex;align-items:center;gap:5px;background:#FFF8E1;color:#8D5A00;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:800;margin-top:4px}.lv-bar{height:8px;background:var(--BG);border-radius:999px;overflow:hidden;margin-top:7px}.lv-fill{height:100%;background:linear-gradient(90deg,var(--A),var(--G));border-radius:999px}.lv-meta{display:flex;justify-content:space-between;font-size:10px;color:var(--M);font-weight:700;margin-top:5px}
 .dash-wrap{padding:13px 15px 90px;display:flex;flex-direction:column;gap:11px}.dash-title{font-size:12px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.8px;margin-bottom:9px}.dash-card{padding:13px}.dash-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.dash-kpi{background:var(--BG);border-radius:14px;padding:11px}.dash-kpi-l{font-size:10px;color:var(--M);font-weight:700}.dash-kpi-v{font-size:16px;color:var(--T);font-weight:900;margin-top:4px}.dash-kpi-v.g{color:var(--G)}.dash-kpi-v.a{color:var(--A)}
 .dash-top-row{display:flex;align-items:center;gap:8px;margin-bottom:9px}.dash-top-row:last-child{margin-bottom:0}.dash-emo{font-size:24px}.dash-track{flex:1;height:10px;background:var(--BG);border-radius:999px;overflow:hidden}.dash-fill{height:100%;background:linear-gradient(90deg,var(--B),var(--A));border-radius:999px}.dash-name{font-size:12px;font-weight:800;color:var(--T)}.dash-sub{font-size:10px;color:var(--M);font-weight:700}
@@ -736,8 +736,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
       </div>
       <div class="tscr" id="tabs-c"></div>
       <div class="loyalty-box">
-        <div class="loyalty-top"><b>👤 Client fidèle</b><button class="sact" onclick="ouvrirClientVente()">👤 Client</button></div>
-        <div class="loyalty-sel" id="client-vente-info">Aucun client sélectionné pour cette vente.</div>
+        <button class="loyalty-btn" id="loyalty-btn" onclick="ouvrirClientVente()">👤 <span class="loyalty-sel" id="client-vente-info">Client fidèle (optionnel)</span></button>
       </div>
     </div>
     <div class="shdr"><span class="stit" id="sec-lbl">⭐</span><button class="sact" id="btn-add" onclick="ouvrirAjout()" style="display:none">+ Ajouter</button></div>
@@ -1676,7 +1675,7 @@ function _applyRemoteDB(data,silent){
   DB=migrateDBData(data);
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
   _suppressSync=false;
-  renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();renderDashboard();renderNotifPanel();updateStats();updateNotifBadge();updateClientVenteUI();
+  renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();renderDashboard();renderNotifPanel();recalcTotaux();updateNotifBadge();updateClientVenteUI();updateObjBar();
   var codeEl=document.getElementById('code-val');if(codeEl)codeEl.textContent=DB.cfg.code;
   var hdr=document.getElementById('bn-hdr');if(hdr)hdr.textContent=DB.cfg.nom||'Ma Boutique';
   if(role==='vendeur'){var un=document.getElementById('u-nm');if(un)un.textContent=nomVendeur||'Vendeur';}
@@ -3261,7 +3260,7 @@ function choisirImprimanteThermique(){
 // ═══════════════════════════════════════════
 function ouvrirClot(){var att=DB.fondsDepart+totalV;document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+t('ventes')+'</span><span class="rval g">'+fmt(totalV)+'</span></div><div class="rrow"><span class="rlbl">'+t('benefice')+'</span><span class="rval g">'+fmt(totalB)+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue':'Expected cash')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';document.getElementById('ov-clot').classList.add('show');}
 function calcEcart(){var compt=parseFloat(document.getElementById('inp-compt').value)||0,att=DB.fondsDepart+totalV,ec=compt-att,el=document.getElementById('ecart-cd');el.style.display='flex';el.className='bcard '+(Math.abs(ec)<100?'bon':'bad');document.getElementById('ecart-lbl').textContent=ec===0?'✅ '+(lang==='fr'?'Équilibrée':'Balanced'):ec>0?'📈 '+(lang==='fr'?'Excédent':'Surplus'):'⚠️ '+(lang==='fr'?'Déficit':'Deficit');document.getElementById('ecart-amt').textContent=(ec>=0?'+':'')+fmt(ec);}
-function validerClot(){closeSheet('ov-clot');showToast(t('clotureOk')+' '+t('benefice')+': '+fmt(totalB));totalV=0;totalB=0;nbT=0;DB.depenses=[];updateStats();updateObjBar();}
+function validerClot(){closeSheet('ov-clot');showToast(t('clotureOk')+' '+t('benefice')+': '+fmt(totalB));(DB.ventes||[]).forEach(function(v){if(!v.annulee&&!v.cloturee&&isSaleToday(v))v.cloturee=true;});DB.depenses=[];save();recalcTotaux();updateObjBar();}
 
 // ═══════════════════════════════════════════
 // DÉPENSES
@@ -3450,6 +3449,14 @@ function getSaleBenef(v){return Number(v&&((v.benefice!==undefined&&v.benefice!=
 function getSaleDateObj(v){var d=parseDateFR(v.date)||new Date();var h=getSaleHeure(v).split(':');d.setHours(parseInt(h[0],10)||0,parseInt(h[1],10)||0,0,0);return d;}
 function isSaleToday(v){return isoJour(getSaleDateObj(v))===isoJour(new Date());}
 function getTodaySales(){return (DB.ventes||[]).filter(function(v){return !v.annulee&&isSaleToday(v);});}
+function getCaisseSales(){return getTodaySales().filter(function(v){return !v.cloturee;});}
+function recalcTotaux(){
+  var s=getCaisseSales();
+  totalV=s.reduce(function(a,v){return a+Number(v.total||0);},0);
+  totalB=s.reduce(function(a,v){return a+getSaleBenef(v);},0);
+  nbT=s.length;
+  updateStats();
+}
 function getVisibleSales(){return (DB.ventes||[]).filter(function(v){return !v.annulee;});}
 function saleLinesLabel(v){return (v.lignes||[]).map(function(l){return l.nm||'Article';}).join(', ');}
 function saleArticleBaseName(nm){return String(nm||'').replace(/\s×\d+$/,'').split(' — ')[0].trim();}
@@ -3481,7 +3488,7 @@ function migrateDBData(d){
     a.vr.forEach(function(v){if(v.qBase===undefined)v.qBase=1;});
   });
   d.clients.forEach(function(cl,i){if(cl.id===undefined)cl.id=i+1;if(cl.points===undefined)cl.points=0;majNiveauClient(cl);if(!Array.isArray(cl.hist))cl.hist=[];});
-  d.ventes.forEach(function(v){if(v.annulee===undefined)v.annulee=false;if(v.benefice===undefined&&v.ben!==undefined)v.benefice=v.ben;if(v.ben===undefined&&v.benefice!==undefined)v.ben=v.benefice;if(v.heure===undefined&&v.h!==undefined)v.heure=v.h;if(v.h===undefined&&v.heure!==undefined)v.h=v.heure;if(!v.vendeur)v.vendeur='Patron';if(Array.isArray(v.lignes))v.lignes.forEach(function(l){if(l.qte===undefined&&l.qty!==undefined)l.qte=l.qty;if(l.qty===undefined&&l.qte!==undefined)l.qty=l.qte;if(l.pa===undefined)l.pa=0;});});
+  d.ventes.forEach(function(v){if(v.annulee===undefined)v.annulee=false;if(v.cloturee===undefined)v.cloturee=false;if(v.benefice===undefined&&v.ben!==undefined)v.benefice=v.ben;if(v.ben===undefined&&v.benefice!==undefined)v.ben=v.benefice;if(v.heure===undefined&&v.h!==undefined)v.heure=v.h;if(v.h===undefined&&v.heure!==undefined)v.h=v.heure;if(!v.vendeur)v.vendeur='Patron';if(Array.isArray(v.lignes))v.lignes.forEach(function(l){if(l.qte===undefined&&l.qty!==undefined)l.qte=l.qty;if(l.qty===undefined&&l.qte!==undefined)l.qty=l.qte;if(l.pa===undefined)l.pa=0;});});
   return d;
 }
 loadDB=function(){var d=localStorage.getItem('myboutiq_v6');return d?migrateDBData(JSON.parse(d)):null;};
@@ -3535,16 +3542,16 @@ setInterval(function(){if(DB)checkNotifications();},60000);
 updateNotifBadge=function(){var badge=document.getElementById('notif-badge');if(!badge||!DB)return;var total=(DB.notifs||[]).length;badge.textContent=total;badge.classList.toggle('show',total>0);};
 function renderNotifPanel(){var c=document.getElementById('notif-list');if(!c||!DB)return;c.innerHTML=(DB.notifs||[]).length?(DB.notifs||[]).map(function(n){var d=new Date(n.ts||Date.now());return '<div class="notif-item"><div style="font-size:22px">🔔</div><div><div class="notif-time">'+d.toLocaleDateString('fr-FR')+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</div><div class="notif-msg">'+n.msg+'</div></div></div>';}).join(''):'<div class="dash-empty">Aucune alerte récente</div>';}
 showNotifs=function(){renderNotifPanel();document.getElementById('ov-notifs').classList.add('show');};
-var _appliquerLangBase=appliquerLang;appliquerLang=function(){_appliquerLangBase();['dash','dash2','dash3','dash4','dash5'].forEach(function(id){var el=document.getElementById('n-'+id);if(el)el.textContent='Dashboard';});var btnUse=document.getElementById('btn-use-points');if(btnUse)btnUse.textContent=lang==='fr'?'⭐ Utiliser points':'⭐ Use points';var info=document.getElementById('client-vente-info');if(info&&!clientVente)info.textContent=lang==='fr'?'Aucun client sélectionné pour cette vente.':'No customer selected for this sale.';};
+var _appliquerLangBase=appliquerLang;appliquerLang=function(){_appliquerLangBase();['dash','dash2','dash3','dash4','dash5'].forEach(function(id){var el=document.getElementById('n-'+id);if(el)el.textContent='Dashboard';});var btnUse=document.getElementById('btn-use-points');if(btnUse)btnUse.textContent=lang==='fr'?'⭐ Utiliser points':'⭐ Use points';var info=document.getElementById('client-vente-info');if(info&&!clientVente)info.textContent=lang==='fr'?'Client fidèle (optionnel)':'Loyal customer (optional)';};
 navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(function(n){var oc=n.getAttribute('onclick')||'';n.classList.toggle('on',oc.indexOf("navTo('"+tab+"'")>-1);});var m={caisse:'s-caisse',stock:'s-stock',rapports:'s-rapports',clients:'s-clients',dash:'s-dashboard'};goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);if(tab==='dash')renderDashboard();};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();updateClientVenteUI();ensureNotifPermission();checkNotifications();};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();ensureNotifPermission();checkNotifications();};
 var _logoutBase=logout;logout=function(){clientVente=null;remisePoints=0;_logoutBase();};
 viderPanier=function(){panier={};remisePoints=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');};
 function renderClientVenteList(){var c=document.getElementById('client-vente-list');if(!c||!DB)return;c.innerHTML=DB.clients.length?DB.clients.map(function(cl){majNiveauClient(cl);return '<div class="hist-sale" onclick="choisirClientVente('+cl.id+')"><div class="hist-h"><div><div class="hist-d">'+cl.nm+'</div><div class="hist-s">'+cl.niveau+' · '+(cl.points||0)+' pts</div></div><div class="hist-t">'+fmt(cl.credit||0)+'</div></div></div>';}).join(''):'<div class="dash-empty">Aucun client enregistré</div>'; }
 function ouvrirClientVente(){renderClientVenteList();document.getElementById('ov-client-vente').classList.add('show');}
 function choisirClientVente(id){clientVente=DB.clients.find(function(c){return c.id===id;})||null;remisePoints=0;updateClientVenteUI();closeSheet('ov-client-vente');showToast(clientVente?'👤 '+clientVente.nm+' sélectionné':'Client retiré');}
 function retirerClientVente(){clientVente=null;remisePoints=0;updateClientVenteUI();closeSheet('ov-client-vente');showToast('Client retiré');}
-function updateClientVenteUI(){var el=document.getElementById('client-vente-info');if(!el)return;if(!clientVente){el.innerHTML=lang==='fr'?'Aucun client sélectionné pour cette vente.':'No customer selected for this sale.';return;}majNiveauClient(clientVente);el.innerHTML='<strong>'+clientVente.nm+'</strong><br>'+clientVente.niveau+' · '+(clientVente.points||0)+' pts'+(remisePoints>0?' · remise active: <strong>'+fmt(remisePoints)+'</strong>':'');if(Object.keys(panier).length)updatePUI(parseInt(Object.keys(panier)[0].split('-')[0],10)||0);}
+function updateClientVenteUI(){var el=document.getElementById('client-vente-info');var btn=document.getElementById('loyalty-btn');if(!el)return;if(!clientVente){el.innerHTML=lang==='fr'?'Client fidèle (optionnel)':'Loyal customer (optional)';if(btn)btn.classList.remove('has-cli');return;}majNiveauClient(clientVente);el.innerHTML='<strong>'+clientVente.nm+'</strong> · '+clientVente.niveau+' · '+(clientVente.points||0)+' pts'+(remisePoints>0?' · -'+fmt(remisePoints):'');if(btn)btn.classList.add('has-cli');if(Object.keys(panier).length)updatePUI(parseInt(Object.keys(panier)[0].split('-')[0],10)||0);}
 function utiliserPointsClient(){
   var cl=cliCours||clientVente;if(!cl){showToast('⚠️ Sélectionne un client');return;}clientVente=cl;majNiveauClient(clientVente);
   var brut=calcTotalBrut();if(!brut){closeSheet('ov-cli-det');updateClientVenteUI();showToast('👤 Client associé. Ajoute des articles pour utiliser ses points.');return;}
@@ -3566,7 +3573,6 @@ enregPmt=function(){var amt=parseFloat(document.getElementById('cli-pmt').value)
 encaisser=function(){
   var totalBrut=calcTotalBrut(),total=calcTotal(),ben=calcBenTotal(),lignes=[];
   Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1],parts=key.split('-'),pid=parts[0],vid=parts[1],p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;var px=v?v.px:p.px,pa=v?v.pa:p.pa,qBase=v?getQBase(v):1;if(v){if(utiliseStockBase(p))p.stk-=qty*qBase;else v.stk-=qty;}else{p.stk-=qty;}p.vd+=qty;lignes.push({nm:p.nm+(v?' — '+v.nm:''),px:px,pa:pa,qte:qty,qty:qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:qBase});});
-  totalV+=total;totalB+=ben;nbT++;
   var now=new Date(),h=now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),dateFr=now.toLocaleDateString('fr-FR');
   var ptsGagnes=0,ptsUtilises=Math.round(remisePoints/1000*100),clientId=null,clientNm='';
   if(clientVente){var cl=DB.clients.find(function(c){return c.id===clientVente.id;})||clientVente;clientId=cl.id;clientNm=cl.nm;if(ptsUtilises>0){cl.points=Math.max(0,(cl.points||0)-ptsUtilises);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'points_use',pts:ptsUtilises,amt:remisePoints});}ptsGagnes=pointsGagnesPour(total);cl.points=(cl.points||0)+ptsGagnes;majNiveauClient(cl);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'achat',amt:total,pts:ptsGagnes});}
@@ -3574,7 +3580,7 @@ encaisser=function(){
   DB.ventes.push({id:DB.ventes.length+1,total:total,totalBrut:totalBrut,benefice:ben,ben:ben,lignes:lignes,h:h,heure:h,date:dateFr,vendeur:vendeur,clientId:clientId,clientNom:clientNm,pointsGagnes:ptsGagnes,pointsUtilises:ptsUtilises,reductionPoints:remisePoints,annulee:false});
   save();dernierRecu={boutique:DB.cfg.nom,lignes:lignes.map(function(l){return {nm:l.nm+' ×'+l.qte,px:l.px*l.qte};}),total:total,h:h,date:dateFr};
   panier={};remisePoints=0;clientVente=null;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
-  renderProd(DB.articles);renderStock(DB.articles);renderClients();renderDashboard();updateStats();updateObjBar();updateNotifBadge();updateClientVenteUI();
+  renderProd(DB.articles);renderStock(DB.articles);renderClients();renderDashboard();recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
   document.getElementById('succ-amt').textContent=fmt(total);
   var sc=document.getElementById('succ');sc.classList.add('show');if(navigator.vibrate)navigator.vibrate([50,30,50]);
   setTimeout(function(){sc.classList.remove('show');afficherRecu();},1800);
@@ -3585,7 +3591,7 @@ confirmerAnnulVente=function(){
   if(!v||v.annulee){fermerConfAnnul();return;}
   v.lignes.forEach(function(l){if(!l.pid)return;var p=DB.articles.find(function(x){return x.id==l.pid;});if(!p)return;var q=(l.qte||l.qty||0);if(l.vid){var vr=p.vr.find(function(x){return x.id==l.vid;});if(vr){if(utiliseStockBase(p))p.stk+=q*(l.qBase||1);else vr.stk+=q;}}else p.stk+=q;p.vd=Math.max(0,p.vd-q);});
   if(v.clientId){var cl=DB.clients.find(function(c){return c.id===v.clientId;});if(cl){cl.points=Math.max(0,(cl.points||0)-((v.pointsGagnes)||0))+(v.pointsUtilises||0);majNiveauClient(cl);if(!cl.hist)cl.hist=[];cl.hist.push({date:new Date().toLocaleDateString('fr-FR'),type:'points_use',pts:-(v.pointsUtilises||0),amt:0});}}
-  totalV=Math.max(0,totalV-(v.total||0));totalB-=getSaleBenef(v);nbT=Math.max(0,nbT-1);v.annulee=true;save();renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();renderDashboard();updateStats();updateObjBar();updateNotifBadge();if(document.getElementById('ov-history').classList.contains('show'))filtrerHistory();fermerConfAnnul();showToast('↩️ '+(lang==='fr'?'Vente annulée, stock restitué':'Sale cancelled, stock restored'));
+  v.annulee=true;save();renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();renderDashboard();recalcTotaux();updateObjBar();updateNotifBadge();if(document.getElementById('ov-history').classList.contains('show'))filtrerHistory();fermerConfAnnul();showToast('↩️ '+(lang==='fr'?'Vente annulée, stock restitué':'Sale cancelled, stock restored'));
 };
 function renderDashboard(){
   var c=document.getElementById('dash-cont');if(!c||!DB)return;var sales=getTodaySales(),total=sales.reduce(function(s,v){return s+Number(v.total||0);},0),ben=sales.reduce(function(s,v){return s+getSaleBenef(v);},0),count=sales.length,avg=count?Math.round(total/count):0;
