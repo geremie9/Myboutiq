@@ -1680,7 +1680,7 @@ function save(){
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
   if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){
     clearTimeout(syncTimeout);
-    syncTimeout=setTimeout(syncToSupa,800);
+    syncTimeout=setTimeout(syncToSupa,300);
   }
 }
 
@@ -1703,14 +1703,19 @@ function _venteEnCours(){
   return(succ&&succ.classList.contains('show'))||(ovCalc&&ovCalc.classList.contains('show'))||(ovRecu&&ovRecu.classList.contains('show'))||Object.keys(panier||{}).length>0;
 }
 function _applyRemoteDB(data,silent){
+  var oldEquipeNames=(DB&&Array.isArray(DB.equipe))?DB.equipe.filter(function(v){return v.role==='vendeur';}).map(function(v){return v.nm;}):[];
   _suppressSync=true;
   DB=migrateDBData(data);
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
   _suppressSync=false;
-  renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();renderDashboard();renderNotifPanel();recalcTotaux();updateNotifBadge();updateClientVenteUI();updateObjBar();
+  renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();renderDashboard();renderNotifPanel();renderEquipe();recalcTotaux();updateNotifBadge();updateClientVenteUI();updateObjBar();
   var codeEl=document.getElementById('code-val');if(codeEl)codeEl.textContent=DB.cfg.code;
   var hdr=document.getElementById('bn-hdr');if(hdr)hdr.textContent=DB.cfg.nom||'Ma Boutique';
   if(role==='vendeur'){var un=document.getElementById('u-nm');if(un)un.textContent=nomVendeur||'Vendeur';}
+  if(role==='patron'&&Array.isArray(DB.equipe)){
+    var nouveaux=DB.equipe.filter(function(v){return v.role==='vendeur'&&v.actif&&oldEquipeNames.indexOf(v.nm)===-1;});
+    nouveaux.forEach(function(v){showToast('🆕 '+(lang==='fr'?v.nm+' vient de se connecter':v.nm+' just connected'));});
+  }
   if(typeof applyRolePerms==='function')applyRolePerms();
   if(!silent)showSync();
 }
@@ -1792,6 +1797,7 @@ async function syncToSupa(){
     var user=await getAuthUser();
     if(user)DB.cfg.ownerId=user.id;
     DB.cfg._dev=_deviceId;
+    console.log('[MyBoutiQ][sync] envoi vers Supabase, device:',_deviceId,'code:',DB.cfg.code);
     for(var attempt=0;attempt<3;attempt++){
       DB.cfg.code=formatShopCode(DB.cfg.code||genCode());
       var payload={
@@ -1865,23 +1871,8 @@ async function loadFromSupa(code){
     return(res.data&&!res.error)?res.data.data:null;
   }catch(e){return null;}
 }
-function subscribeRealtime(code){
-  if(!supa)return;
-  if(realtimeChan){supa.removeChannel(realtimeChan);realtimeChan=null;}
-  realtimeChan=supa.channel('boutique:'+code)
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'boutiques',filter:'code=eq.'+code},function(payload){
-      if(payload.new&&payload.new.data){
-        _suppressSync=true;
-        DB=payload.new.data;
-        localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
-        _suppressSync=false;
-        renderProd(DB.articles);renderStock(DB.articles);
-        renderRpt();renderClients();updateStats();
-        showToast('🔄 '+(lang==='fr'?'Mise à jour reçue !':'Update received!'));
-      }
-    })
-    .subscribe();
-}
+// NOTE: la fonction subscribeRealtime "réelle" (avec anti-écho + report pendant une vente) est définie plus bas,
+// après la déclaration de _venteEnCours/_applyRemoteDB dans la section V9 EXTENSIONS, via `subscribeRealtime=function(code){...}`.
 
 var DB=null;
 var lang='fr',obLang='fr',obPays=null,obSecteur='boutique',obRegion='';
@@ -3663,7 +3654,7 @@ function migrateDBData(d){
 }
 loadDB=function(){var d=localStorage.getItem('myboutiq_v6');return d?migrateDBData(JSON.parse(d)):null;};
 var _loadFromSupaBase=loadFromSupa;loadFromSupa=async function(code){var data=await _loadFromSupaBase(code);return migrateDBData(data);};
-function persistDB(){localStorage.setItem('myboutiq_v6',JSON.stringify(DB));if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){clearTimeout(syncTimeout);syncTimeout=setTimeout(syncToSupa,800);}}
+function persistDB(){localStorage.setItem('myboutiq_v6',JSON.stringify(DB));if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){clearTimeout(syncTimeout);syncTimeout=setTimeout(syncToSupa,300);}}
 save=function(skipNotif){DB=migrateDBData(DB);persistDB();if(!skipNotif)checkNotifications(true);};
 subscribeRealtime=function(code){
   if(!supa)return;
@@ -3671,12 +3662,14 @@ subscribeRealtime=function(code){
   if(realtimeChan){supa.removeChannel(realtimeChan);realtimeChan=null;}
   realtimeChan=supa.channel('boutique:'+code)
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'boutiques',filter:'code=eq.'+code},function(payload){
+      console.log('[MyBoutiQ][realtime] update reçu pour',code,'device distant:',payload.new&&payload.new.data&&payload.new.data.cfg&&payload.new.data.cfg._dev,'notre device:',_deviceId);
       if(!payload.new||!payload.new.data)return;
       var incoming=payload.new.data;
       // Écho de notre propre écriture (même appareil) : déjà appliqué localement, on ignore silencieusement
-      if(incoming.cfg&&incoming.cfg._dev&&incoming.cfg._dev===_deviceId)return;
+      if(incoming.cfg&&incoming.cfg._dev&&incoming.cfg._dev===_deviceId){console.log('[MyBoutiQ][realtime] écho ignoré (même appareil)');return;}
       if(_venteEnCours()){
         // Une vente est en cours d'affichage : on stocke la mise à jour et on l'applique après, sans perturber l'écran
+        console.log('[MyBoutiQ][realtime] vente en cours, mise à jour différée');
         _pendingRemoteDB=incoming;
         clearTimeout(_pendingRemoteTimer);
         _pendingRemoteTimer=setTimeout(function _retry(){
@@ -3685,9 +3678,10 @@ subscribeRealtime=function(code){
         },1000);
         return;
       }
+      console.log('[MyBoutiQ][realtime] application immédiate de la mise à jour distante');
       _applyRemoteDB(incoming,false);
     })
-    .subscribe();
+    .subscribe(function(status){console.log('[MyBoutiQ][realtime] statut canal',code,':',status);});
 };
 function ensureNotifPermission(){
   if(!DB||!DB.cfg||DB.cfg.notifAsked||typeof Notification==='undefined')return;
