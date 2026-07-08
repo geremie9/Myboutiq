@@ -4,12 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>MyBoutiQ V9</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2979FF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MyBoutiQ">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--P:#1A1A2E;--A:#F5A623;--G:#00C853;--R:#FF3D00;--B:#2979FF;--PU:#7C4DFF;--O:#FF6D00;--BG:#F0F2F5;--C:#FFF;--T:#1A1A2E;--M:#9E9E9E;--BD:#E8E8E8}
 body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden}
+@media (min-width:768px){
+  body{max-width:900px;background:#E4E8F0}
+  .pgrid{grid-template-columns:repeat(5,1fr)}
+}
+@media (min-width:1024px){
+  body{max-width:1100px}
+  .pgrid{grid-template-columns:repeat(6,1fr)}
+}
 .scr{display:none;flex-direction:column;min-height:100vh}.scr.on{display:flex}
 
 /* ── SPLASH ── */
@@ -3839,6 +3855,13 @@ function creerCommande(){var fi=parseInt(document.getElementById('cmd-fourn').va
 function receptionnerCommande(id){var cmd=(DB.commandes||[]).find(function(x){return x.id===id;});if(!cmd||cmd.statut!=='en_attente')return;cmd.articles.forEach(function(it){var art=(DB.articles||[]).find(function(a){return a.nm===it.nm;});if(art)art.stk=(art.stk||0)+Number(it.qte||0);});cmd.statut='recue';cmd.dateReception=new Date().toLocaleDateString('fr-FR');save();renderStock(DB.articles);renderProd(DB.articles);ouvrirCommandes('recue');showToast('📦 Commande réceptionnée');}
 renderFourn=function(){var c=document.getElementById('fourn-lst');if(!c)return;c.innerHTML='<div class="sth" style="margin-bottom:11px">🚚 '+(lang==='fr'?'Mes fournisseurs':'My suppliers')+'</div>'+(DB.fournisseurs||[]).map(function(f,fi){return '<div class="fourn-cd"><div style="font-size:28px">🏭</div><div class="fourn-inf"><div class="fourn-nm">'+f.nm+'</div><div class="fourn-det">'+f.articles+'</div></div><button class="bwa" onclick="cmdFourn('+fi+')">📱</button></div>';}).join('')+'<button class="bpay" style="margin-top:10px" onclick="ouvrirCommandes();closeSheet(\'ov-fourn\')">📦 Voir commandes</button>';};
 
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js').catch(function(e){console.warn('SW:',e);});
+  });
+}
 </script>
 </body>
 </html>
