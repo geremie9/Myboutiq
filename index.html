@@ -1689,6 +1689,18 @@ function save(){
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
+var _offlinePending=false,_offlineToastShown=false;
+window.addEventListener('online',function(){
+  if(_offlinePending){
+    _offlinePending=false;_offlineToastShown=false;
+    showToast('🔄 '+(lang==='fr'?'Connexion rétablie, synchronisation...':'Back online, syncing...'));
+    syncToSupa();
+    if(DB&&DB.cfg&&DB.cfg.code)subscribeRealtime(DB.cfg.code);
+  }
+});
+window.addEventListener('offline',function(){
+  if(!_offlineToastShown){_offlineToastShown=true;showToast('📴 '+(lang==='fr'?'Hors ligne — tes ventes sont enregistrées, elles se synchroniseront au retour du réseau':'Offline — your sales are saved, they will sync when back online'));}
+});
 var _deviceId=(function(){
   try{
     var id=sessionStorage.getItem('mb_device_id');
@@ -1859,6 +1871,11 @@ async function syncToSupa(){
     throw new Error(lang==='fr'?'❌ Impossible de générer un code boutique unique':'❌ Unable to generate a unique store code');
   }catch(e){
     console.warn('Sync:',e);
+    if(!navigator.onLine){
+      _offlinePending=true;
+      if(!_offlineToastShown){_offlineToastShown=true;showToast('📴 '+(lang==='fr'?'Hors ligne — tes ventes sont enregistrées, elles se synchroniseront au retour du réseau':'Offline — your sales are saved, they will sync when back online'));}
+      return false;
+    }
     showToast((e&&e.message)?e.message:(lang==='fr'?'❌ Sync boutique impossible':'❌ Store sync failed'));
     return false;
   }
@@ -2360,7 +2377,10 @@ async function loginV(){
   if(!supa){showToast(lang==='fr'?'❌ Connexion réseau requise':'❌ Internet connection required');return;}
   showToast('🔄 '+(lang==='fr'?'Recherche boutique...':'Looking up store...'));
   var remoteDB=await loadFromSupa(code);
-  if(!remoteDB){showToast(lang==='fr'?'❌ Code boutique introuvable. Vérifie le code avec ton patron.':'❌ Store not found. Check the code with your manager.');return;}
+  if(!remoteDB){
+    if(!navigator.onLine){showToast('📴 '+(lang==='fr'?'Pas de réseau. Connecte-toi une première fois avec internet, ensuite ça marchera hors-ligne.':'No network. Connect once with internet first, then it will work offline.'));return;}
+    showToast(lang==='fr'?'❌ Code boutique introuvable. Vérifie le code avec ton patron.':'❌ Store not found. Check the code with your manager.');return;
+  }
   DB=remoteDB;
   save();
   _finishLoginV(nm,code);
