@@ -964,6 +964,14 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
       </div>
     </div>
     <!-- Déconnexion -->
+    <div class="stsc" id="sec-patron-backup" style="display:none">
+      <div class="sttit">🗄️ Sauvegarde</div>
+      <div class="stcd">
+        <div class="stit2" onclick="exporterSauvegardeComplete()"><div class="stico" style="background:#E8F5E9">💾</div><div class="stii"><div class="stitl">Exporter une sauvegarde complète</div><div class="stisub">Toutes tes données, en un fichier</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="document.getElementById('inp-restore-backup').click()"><div class="stico" style="background:#FFEBEE">♻️</div><div class="stii"><div class="stitl">Restaurer une sauvegarde</div><div class="stisub">Remplace toutes les données actuelles</div></div><span class="starr">›</span></div>
+        <input type="file" id="inp-restore-backup" accept="application/json" style="display:none" onchange="restaurerSauvegarde(this.files[0])">
+      </div>
+    </div>
     <div class="stsc"><div class="stcd"><div class="stit2" onclick="logout()"><div class="stico" style="background:#FFEBEE">🚪</div><div class="stii"><div class="stitl" id="st-logout" style="color:var(--R)">Se déconnecter</div></div><span class="starr">›</span></div></div></div>
   </div>
 </div>
@@ -2343,7 +2351,7 @@ function _finishLoginP(){
   ['btn-st','btn-add-stk','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
   document.getElementById('btn-add').style.display='block';
   document.getElementById('btn-exp-stk').style.display='block';
-  document.getElementById('sec-patron').style.display='block';
+  document.getElementById('sec-patron').style.display='block';document.getElementById('sec-patron-backup').style.display='block';
   subscribeRealtime(DB.cfg.code);
   syncToSupa(); // S'assurer que les données sont bien dans Supabase
   enregistrerBoutiqueActuelle();
@@ -2416,7 +2424,7 @@ function _finishLoginV(nm,code){
   document.getElementById('u-role').className='rbdg rb-v';
   ['btn-st','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
   var bes=document.getElementById('btn-exp-stk');if(bes)bes.style.display='none';
-  document.getElementById('sec-patron').style.display='none';
+  document.getElementById('sec-patron').style.display='none';var spb=document.getElementById('sec-patron-backup');if(spb)spb.style.display='none';
   registerVendeurEquipe(nm);
   save();
   subscribeRealtime(DB.cfg.code||code);
@@ -3633,7 +3641,7 @@ async function switchBoutiqueParCode(code){
   ['btn-st','btn-add-stk','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
   document.getElementById('btn-add').style.display='block';
   document.getElementById('btn-exp-stk').style.display='block';
-  document.getElementById('sec-patron').style.display='block';
+  document.getElementById('sec-patron').style.display='block';document.getElementById('sec-patron-backup').style.display='block';
   subscribeRealtime(DB.cfg.code);
   lancerApp();
   showToast('✅ '+(lang==='fr'?'Boutique changée : ':'Switched to: ')+DB.cfg.nom);
@@ -4028,6 +4036,39 @@ function telechargerTableExcel(rows,filename){
     '</table></body></html>';
   var blob=new Blob(['\uFEFF'+html],{type:'application/vnd.ms-excel;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+function exporterSauvegardeComplete(){
+  if(!DB){showToast('⚠️ Aucune donnée à sauvegarder');return;}
+  var data=JSON.stringify(DB,null,2);
+  var blob=new Blob([data],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var d=new Date();
+  var stamp=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var a=document.createElement('a');
+  a.href=url;a.download='MyBoutiQ_sauvegarde_'+(DB.cfg.code||'').replace(/\s/g,'')+'_'+stamp+'.json';
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  showToast('✅ '+(lang==='fr'?'Sauvegarde téléchargée':'Backup downloaded'));
+}
+function restaurerSauvegarde(file){
+  if(!file)return;
+  var ok=confirm(lang==='fr'?'⚠️ Ceci va REMPLACER toutes les données actuelles de la boutique par celles du fichier. Cette action ne peut pas être annulée. Continuer ?':"⚠️ This will REPLACE all current store data with the file's data. This cannot be undone. Continue?");
+  document.getElementById('inp-restore-backup').value='';
+  if(!ok)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var parsed=JSON.parse(e.target.result);
+      if(!parsed||!parsed.cfg||!Array.isArray(parsed.articles)){showToast('❌ '+(lang==='fr'?'Fichier de sauvegarde invalide':'Invalid backup file'));return;}
+      DB=migrateDBData(parsed);
+      persistDB();
+      initTabs();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();
+      syncToSupa();
+      showToast('✅ '+(lang==='fr'?'Sauvegarde restaurée':'Backup restored'));
+    }catch(err){
+      showToast('❌ '+(lang==='fr'?'Impossible de lire ce fichier':'Could not read this file'));
+    }
+  };
+  reader.readAsText(file);
 }
 function exportCSV(){
   if(!historyFiltered.length){showToast('Aucune vente à exporter');return;}
