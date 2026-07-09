@@ -1276,12 +1276,10 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
   <!-- BULK IMPORT REVIEW -->
 <div class="ov" id="ov-bulk-review" onclick="closeOv(event,'ov-bulk-review')">
   <div class="bsht"><div class="shndl"></div>
-    <div class="shhdr"><div class="shtit">🖼️ Prix des articles importés</div><button class="bcl" onclick="closeSheet('ov-bulk-review')">✕</button></div>
+    <div class="shhdr"><div class="shtit">🖼️ Config. article</div><button class="bcl" onclick="closeSheet('ov-bulk-review')">✕</button></div>
     <div class="pstps">
-      <div style="font-size:11px;font-weight:700;color:var(--M);margin-bottom:9px" id="bulk-review-cnt"></div>
-      <div id="bulk-review-list" style="max-height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:9px"></div>
-      <button class="bvid" style="margin:9px 0" onclick="appliquerPremierPartout()">⬇️ <span id="lbl-bulk-copy">Appliquer le 1er prix à tous</span></button>
-      <button class="bnxt" onclick="validerRevueImport()" id="btn-bulk-valider">✅ <span id="lbl-bulk-valider">Valider tout</span></button>
+      <div style="font-size:12px;font-weight:800;color:var(--B);margin-bottom:9px;text-align:center" id="bulk-review-cnt"></div>
+      <div id="bulk-review-single"></div>
     </div>
   </div>
 </div>
@@ -2954,101 +2952,103 @@ function retirerPhotoReelle(){selImg=null;document.getElementById('photo-real-pr
 function nomFichierGenerique(name){
   return /^(img|image|photo|pic|dsc|screenshot|capture|whatsapp)[-_ ]?\d{3,}/i.test(String(name||'').trim());
 }
+var _bulkReviewIds=[],_bulkReviewIdx=0,_brLastPa=null,_brLastPv=null;
 function ouvrirRevueImport(ids){
-  var lst=DB.articles.filter(function(a){return ids.indexOf(a.id)!==-1;});
-  if(!lst.length)return;
-  var c=document.getElementById('bulk-review-list');c.innerHTML='';
-  document.getElementById('bulk-review-cnt').textContent=lst.length+' '+(lang==='fr'?'article(s) importé(s) — vérifiez nom/catégorie et indiquez prix + stock de chacun':'item(s) imported — check name/category and set price + stock for each');
-  var cats=lang==='fr'?CATS_FR:CATS_EN;
-  lst.forEach(function(a){
-    var dup=DB.articles.find(function(x){return x.id!==a.id&&txtNorm(x.nm)===txtNorm(a.nm);});
-    var genName=a._srcName&&nomFichierGenerique(a._srcName);
-    var row=document.createElement('div');
-    row.id='bulkrow-'+a.id;
-    row.style.cssText='background:var(--BG);border-radius:12px;padding:9px;display:flex;flex-direction:column;gap:6px'+(dup?';border:1.5px solid var(--O)':(genName?';border:1.5px solid #FFD54F':''));
-    row.innerHTML=
-      '<div style="display:flex;gap:8px;align-items:center">'+
-      '<img src="'+a.img+'" style="width:44px;height:44px;object-fit:cover;border-radius:9px;flex-shrink:0">'+
-      '<div style="flex:1;min-width:0">'+
-      '<input class="pi sm" style="margin-bottom:4px;font-weight:700" type="text" value="'+a.nm.replace(/"/g,'&quot;')+'" data-bid="'+a.id+'" data-f="nm" oninput="checkDupImport('+a.id+')">'+
-      '<select class="pi sm" style="margin-bottom:4px" data-bid="'+a.id+'" data-f="cat">'+
-      cats.map(function(cc){return '<option value="'+cc+'"'+(cc===a.cat?' selected':'')+'>'+(CE[cc]||'📦')+' '+cc+'</option>';}).join('')+
-      '</select>'+
-      '<div style="display:flex;gap:6px">'+
-      '<input class="pi sm" style="flex:1" type="number" inputmode="numeric" placeholder="'+(lang==='fr'?'Achat':'Cost')+'" data-bid="'+a.id+'" data-f="pa">'+
-      '<input class="pi sm" style="flex:1" type="number" inputmode="numeric" placeholder="'+(lang==='fr'?'Vente':'Sell')+'" data-bid="'+a.id+'" data-f="pv">'+
-      '<input class="pi sm" style="flex:1" type="number" inputmode="numeric" placeholder="'+(lang==='fr'?'Stock':'Stock')+'" data-bid="'+a.id+'" data-f="stk">'+
-      '</div></div></div>'+
-      (genName?('<div style="display:flex;align-items:center;gap:6px;background:#FFF9E1;border-radius:8px;padding:6px 8px;font-size:11px;color:#8A6D00;font-weight:700">📸 '+(lang==='fr'?'Nom du fichier non reconnu — vérifie le nom et la catégorie ci-dessus':'File name not recognized — check the name and category above')+'</div>'):'')+
-      '<div id="dupwarn-'+a.id+'" style="display:'+(dup?'flex':'none')+';align-items:center;gap:6px;background:#FFF4E5;border-radius:8px;padding:6px 8px;font-size:11px;color:#8A5A00;font-weight:700">'+
-      '⚠️ <span style="flex:1" id="dupwarn-txt-'+a.id+'">'+(lang==='fr'?'existe déjà':'already exists')+'</span>'+
-      '<button type="button" class="mini-btn" style="background:var(--O);color:#fff;padding:4px 8px;font-size:10px;border-radius:6px;border:none;font-weight:800;cursor:pointer" onclick="fusionnerArticleImporte('+a.id+')">'+(lang==='fr'?'Fusionner':'Merge')+'</button>'+
-      '</div>';
-    c.appendChild(row);
-  });
+  if(!ids||!ids.length)return;
+  _bulkReviewIds=ids.slice();
+  _bulkReviewIdx=0;_brLastPa=null;_brLastPv=null;
   document.getElementById('ov-bulk-review').classList.add('show');
+  renderBulkReviewStep();
 }
-function checkDupImport(id){
-  var input=document.querySelector('#bulkrow-'+id+' input[data-f="nm"]');
-  var warn=document.getElementById('dupwarn-'+id);
-  var txt=document.getElementById('dupwarn-txt-'+id);
-  if(!input||!warn)return;
-  var nm=input.value;
-  var dup=DB.articles.find(function(x){return x.id!==id&&txtNorm(x.nm)===txtNorm(nm);});
-  warn.style.display=dup?'flex':'none';
-  document.getElementById('bulkrow-'+id).style.border=dup?'1.5px solid var(--O)':'none';
-  if(dup&&txt)txt.textContent=(lang==='fr'?'"':'"')+dup.nm+(lang==='fr'?'" existe déjà':'" already exists');
+function renderBulkReviewStep(){
+  if(_bulkReviewIdx>=_bulkReviewIds.length){finirRevueImport();return;}
+  var id=_bulkReviewIds[_bulkReviewIdx];
+  var a=DB.articles.find(function(x){return x.id===id;});
+  if(!a){_bulkReviewIds.splice(_bulkReviewIdx,1);renderBulkReviewStep();return;}
+  var host=document.getElementById('bulk-review-single');
+  var cats=lang==='fr'?CATS_FR:CATS_EN;
+  var dup=DB.articles.find(function(x){return x.id!==a.id&&txtNorm(x.nm)===txtNorm(a.nm);});
+  var genName=a._srcName&&nomFichierGenerique(a._srcName);
+  var isLast=_bulkReviewIdx===_bulkReviewIds.length-1;
+  document.getElementById('bulk-review-cnt').textContent=(lang==='fr'?'Article ':'Item ')+(_bulkReviewIdx+1)+' / '+_bulkReviewIds.length;
+  host.innerHTML=
+    '<div style="text-align:center;margin-bottom:11px"><img src="'+a.img+'" style="width:120px;height:120px;object-fit:cover;border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.15)"></div>'+
+    (genName?('<div style="display:flex;align-items:center;gap:6px;background:#FFF9E1;border-radius:8px;padding:7px 9px;font-size:11px;color:#8A6D00;font-weight:700;margin-bottom:9px">📸 '+(lang==='fr'?'Nom du fichier non reconnu — vérifie le nom et la catégorie':'File name not recognized — check name and category')+'</div>'):'')+
+    '<div class="pig"><label class="pl">'+(lang==='fr'?'Nom':'Name')+'</label><input class="pi sm" id="br-nm" type="text" value="'+a.nm.replace(/"/g,'&quot;')+'" style="font-weight:700" oninput="brCheckDup()"></div>'+
+    '<div id="br-dupwarn" style="display:'+(dup?'flex':'none')+';align-items:center;gap:6px;background:#FFF4E5;border-radius:8px;padding:7px 9px;font-size:11px;color:#8A5A00;font-weight:700;margin:-3px 0 9px">⚠️ <span style="flex:1" id="br-dupwarn-txt">'+(dup?((lang==='fr'?'"':'"')+dup.nm+(lang==='fr'?'" existe déjà':'" already exists')):'')+'</span><button type="button" style="background:var(--O);color:#fff;padding:4px 8px;font-size:10px;border-radius:6px;border:none;font-weight:800;cursor:pointer" onclick="brFusionner()">'+(lang==='fr'?'Fusionner':'Merge')+'</button></div>'+
+    '<div class="pig"><label class="pl">'+(lang==='fr'?'Catégorie':'Category')+'</label><select class="pi sm" id="br-cat">'+cats.map(function(cc){return '<option value="'+cc+'"'+(cc===a.cat?' selected':'')+'>'+(CE[cc]||'📦')+' '+cc+'</option>';}).join('')+'</select></div>'+
+    '<div style="display:flex;gap:8px">'+
+    '<div class="pig" style="flex:1"><label class="pl">'+(lang==='fr'?'Achat':'Cost')+'</label><input class="pi sm" id="br-pa" type="number" inputmode="numeric" value="'+(a.pa||'')+'"></div>'+
+    '<div class="pig" style="flex:1"><label class="pl">'+(lang==='fr'?'Vente':'Sell')+'</label><input class="pi sm" id="br-pv" type="number" inputmode="numeric" value="'+(a.px||'')+'"></div>'+
+    '</div>'+
+    '<div class="pig"><label class="pl">'+(lang==='fr'?'Stock de départ':'Starting stock')+'</label><input class="pi sm" id="br-stk" type="number" inputmode="numeric" value="'+(a.stk||'')+'"></div>'+
+    (_bulkReviewIdx>0&&(_brLastPa!==null||_brLastPv!==null)?'<button class="bvid" style="margin-top:2px" onclick="brReprendrePrecedent()">↩️ '+(lang==='fr'?'Reprendre le prix précédent':'Reuse previous price')+'</button>':'')+
+    '<div style="display:flex;gap:8px;margin-top:11px">'+
+    (_bulkReviewIdx>0?'<button class="bvid" style="flex:1" onclick="brNav(-1)">← '+(lang==='fr'?'Précédent':'Previous')+'</button>':'')+
+    '<button class="bnxt" style="flex:2" onclick="brNav(1)">'+(isLast?('✅ '+(lang==='fr'?'Terminer':'Finish')):((lang==='fr'?'Suivant':'Next')+' →'))+'</button>'+
+    '</div>';
 }
-function fusionnerArticleImporte(id){
+function brCheckDup(){
+  var nmInput=document.getElementById('br-nm');
+  var id=_bulkReviewIds[_bulkReviewIdx];
+  var dup=DB.articles.find(function(x){return x.id!==id&&txtNorm(x.nm)===txtNorm(nmInput.value);});
+  var w=document.getElementById('br-dupwarn'),t2=document.getElementById('br-dupwarn-txt');
+  if(!w)return;
+  w.style.display=dup?'flex':'none';
+  if(dup&&t2)t2.textContent=(lang==='fr'?'"':'"')+dup.nm+(lang==='fr'?'" existe déjà':'" already exists');
+}
+function brFusionner(){
+  var id=_bulkReviewIds[_bulkReviewIdx];
   var a=DB.articles.find(function(x){return x.id===id;});
   if(!a)return;
-  var nmInput=document.querySelector('#bulkrow-'+id+' input[data-f="nm"]');
-  var nm=nmInput?nmInput.value:a.nm;
+  var nm=document.getElementById('br-nm').value;
   var dup=DB.articles.find(function(x){return x.id!==id&&txtNorm(x.nm)===txtNorm(nm);});
   if(!dup){showToast('⚠️ '+(lang==='fr'?'Aucun doublon trouvé':'No duplicate found'));return;}
-  var paInput=document.querySelector('#bulkrow-'+id+' input[data-f="pa"]');
-  var pvInput=document.querySelector('#bulkrow-'+id+' input[data-f="pv"]');
-  var stkInput=document.querySelector('#bulkrow-'+id+' input[data-f="stk"]');
+  var pa=parseFloat(document.getElementById('br-pa').value)||0;
+  var pv=parseFloat(document.getElementById('br-pv').value)||0;
+  var stk=parseInt(document.getElementById('br-stk').value,10)||0;
   if(a.img)dup.img=a.img;
-  if(paInput&&paInput.value)dup.pa=parseFloat(paInput.value)||dup.pa;
-  if(pvInput&&pvInput.value)dup.px=parseFloat(pvInput.value)||dup.px;
-  if(stkInput&&stkInput.value)dup.stk=(dup.stk||0)+(parseInt(stkInput.value,10)||0);
+  if(pa)dup.pa=pa;
+  if(pv)dup.px=pv;
+  if(stk)dup.stk=(dup.stk||0)+stk;
   DB.articles=DB.articles.filter(function(x){return x.id!==id;});
-  var row=document.getElementById('bulkrow-'+id);if(row)row.remove();
   showToast('✅ '+(lang==='fr'?'Fusionné avec ':'Merged with ')+dup.nm);
+  _bulkReviewIds.splice(_bulkReviewIdx,1);
+  if(_bulkReviewIdx>=_bulkReviewIds.length)_bulkReviewIdx=Math.max(0,_bulkReviewIds.length-1);
+  renderBulkReviewStep();
 }
-function appliquerPremierPartout(){
-  var c=document.getElementById('bulk-review-list');
-  var firstPa=c.querySelector('input[data-f="pa"]'),firstPv=c.querySelector('input[data-f="pv"]');
-  if(!firstPa||!firstPv||!firstPv.value){showToast('⚠️ '+(lang==='fr'?'Remplissez le premier article d\'abord':'Fill the first item first'));return;}
-  c.querySelectorAll('input[data-f="pa"]').forEach(function(i){if(!i.value)i.value=firstPa.value;});
-  c.querySelectorAll('input[data-f="pv"]').forEach(function(i){if(!i.value)i.value=firstPv.value;});
-  showToast('✅ '+(lang==='fr'?'Prix appliqué à tous':'Price applied to all'));
+function brReprendrePrecedent(){
+  if(_brLastPa!==null)document.getElementById('br-pa').value=_brLastPa;
+  if(_brLastPv!==null)document.getElementById('br-pv').value=_brLastPv;
 }
-function validerRevueImport(){
-  var c=document.getElementById('bulk-review-list');
-  var byId={};
-  c.querySelectorAll('input,select').forEach(function(i){
-    var bid=parseInt(i.dataset.bid,10);
-    if(!byId[bid])byId[bid]={};
-    byId[bid][i.dataset.f]=i.value;
-  });
+function brSaveCurrent(){
+  var id=_bulkReviewIds[_bulkReviewIdx];
+  var a=DB.articles.find(function(x){return x.id===id;});
+  if(!a)return;
+  var nm=document.getElementById('br-nm').value.trim();
+  if(nm)a.nm=nm;
+  a.cat=document.getElementById('br-cat').value;
+  a.pa=parseFloat(document.getElementById('br-pa').value)||0;
+  a.px=parseFloat(document.getElementById('br-pv').value)||0;
+  a.stk=parseInt(document.getElementById('br-stk').value,10)||0;
+  delete a._srcName;
+  if(a.pa)_brLastPa=a.pa;
+  if(a.px)_brLastPv=a.px;
+}
+function brNav(dir){
+  brSaveCurrent();
+  if(dir>0&&_bulkReviewIdx===_bulkReviewIds.length-1){finirRevueImport();return;}
+  _bulkReviewIdx+=dir;
+  if(_bulkReviewIdx<0)_bulkReviewIdx=0;
+  renderBulkReviewStep();
+}
+function finirRevueImport(){
   var missing=0;
-  Object.keys(byId).forEach(function(bid){
-    var a=DB.articles.find(function(x){return x.id==bid;});
-    if(!a)return;
-    var v=byId[bid];
-    if(v.nm&&v.nm.trim())a.nm=v.nm.trim();
-    if(v.cat)a.cat=v.cat;
-    a.pa=parseFloat(v.pa)||0;
-    a.px=parseFloat(v.pv)||0;
-    a.stk=parseInt(v.stk,10)||0;
-    delete a._srcName;
-    if(!a.px)missing++;
-  });
+  _bulkReviewIds.forEach(function(id){var a=DB.articles.find(function(x){return x.id===id;});if(a&&!a.px)missing++;});
   save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();
   closeSheet('ov-bulk-review');
-  showToast(missing?('⚠️ '+missing+' '+(lang==='fr'?'article(s) sans prix — modifiable via 💰':'item(s) without price — editable via 💰')):('✅ '+(lang==='fr'?'Prix enregistrés':'Prices saved')));
+  showToast(missing?('⚠️ '+missing+' '+(lang==='fr'?'article(s) sans prix — modifiable via 💰':'item(s) without price — editable via 💰')):('✅ '+(lang==='fr'?'Articles enregistrés':'Items saved')));
+  _bulkReviewIds=[];_bulkReviewIdx=0;_brLastPa=null;_brLastPv=null;
 }
 var _catalogModeles=[];
 async function ouvrirCatalogueRegional(){
