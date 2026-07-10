@@ -2347,7 +2347,8 @@ function applyRolePerms(){
 }
 function registerVendeurEquipe(nm){
   if(!DB.equipe)DB.equipe=[];
-  var existant=DB.equipe.find(function(v){return v.role==='vendeur'&&v.nm===nm;});
+  var nmNorm=txtNorm(nm);
+  var existant=DB.equipe.find(function(v){return v.role==='vendeur'&&txtNorm(v.nm)===nmNorm;});
   if(existant){existant.actif=true;return;}
   var bgs=[['#E3F2FD','#2979FF'],['#FFF8E1','#F5A623'],['#E8F5E9','#00C853'],['#FCE4EC','#E91E63'],['#F3E5F5','#7C4DFF']];
   var c=bgs[DB.equipe.length%bgs.length];
@@ -3501,8 +3502,8 @@ function autoriserToutVendeur(){
 }
 function hasPerm(k){
   if(role==='patron')return true;
-  // Trouver le vendeur par son prénom exact en priorité
-  var moi=DB.equipe.find(function(x){return x.role==='vendeur'&&x.actif&&x.nm===nomVendeur;});
+  var nvNorm=txtNorm(nomVendeur);
+  var moi=DB.equipe.find(function(x){return x.role==='vendeur'&&x.actif&&txtNorm(x.nm)===nvNorm;});
   if(!moi)moi=DB.equipe.find(function(x){return x.role==='vendeur'&&x.actif;});
   if(!moi||!moi.perms)return k==='vente';
   return !!moi.perms[k];
