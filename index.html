@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>MyBoutiQ V9</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2979FF">
+<meta name="theme-color" content="#7B1F6E">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -29,7 +29,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .scr{display:none;flex-direction:column;min-height:100vh}.scr.on{display:flex}
 
 /* ── SPLASH ── */
-#s-splash{background:var(--P);align-items:center;justify-content:center;gap:12px}
+#s-splash{background:linear-gradient(135deg,#2E1065 0%,#7B1F6E 45%,#C44A3A 75%,#F7B538 100%);align-items:center;justify-content:center;gap:12px}
 .splash-logo{font-size:72px;animation:pulse 1.5s ease-in-out infinite}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 .splash-title{font-family:'Nunito',sans-serif;font-size:40px;font-weight:900;color:#fff}
@@ -741,7 +741,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
   </div>
   <div class="stats-bar">
     <div class="sc"><div class="sl" id="sl-ventes">Ventes</div><div class="sv sv-a" id="sv">0</div></div>
-    <div class="sc"><div class="sl" id="sl-ben">Bénéfice</div><div class="sv sv-g" id="sb">0</div></div>
+    <div class="sc" id="card-ben"><div class="sl" id="sl-ben">Bénéfice</div><div class="sv sv-g" id="sb">0</div></div>
     <div class="sc"><div class="sl" id="sl-trans">Trans.</div><div class="sv" id="st">0</div></div>
   </div>
   <div class="obj-bar" id="obj-bar" style="display:none">
@@ -2340,9 +2340,11 @@ function applyRolePerms(){
   var showAdd=(role==='patron'||hasPerm('produits'));
   var showStk=(role==='patron'||hasPerm('stock'));
   var showExp=(role==='patron'||hasPerm('depenses'));
+  var showBen=(role==='patron'||hasPerm('rapports'));
   var ba=document.getElementById('btn-add');if(ba)ba.style.display=showAdd?'block':'none';
   var bas=document.getElementById('btn-add-stk');if(bas)bas.style.display=showStk?'flex':'none';
   var bd=document.getElementById('btn-dep');if(bd)bd.style.display=showExp?'flex':'none';
+  var cb=document.getElementById('card-ben');if(cb)cb.style.display=showBen?'':'none';
   renderProd(DB.articles);
 }
 function registerVendeurEquipe(nm){
@@ -2369,6 +2371,16 @@ function _finishLoginP(){
   lancerApp();
   applyRolePerms();
 }
+function altPhoneDigits(tel){
+  var digits=String(tel||'').replace(/\D/g,'');
+  var country=(DB&&DB.cfg&&DB.cfg.pays)||((typeof obPays!=='undefined')?obPays:null);
+  var cc=country&&country.cc;
+  var out=[];
+  if(cc&&digits.indexOf(cc)===0&&digits.length>cc.length)out.push(digits.slice(cc.length));
+  if(cc&&digits.indexOf(cc)!==0)out.push(cc+digits);
+  if(digits[0]==='0')out.push(digits.slice(1));
+  return out.filter(function(d,i,arr){return d&&arr.indexOf(d)===i;});
+}
 async function loginP(){
   var tel=normalizePhone(document.getElementById('p-tel').value||'');
   var pin=(document.getElementById('p-pin').value||'').trim();
@@ -2381,6 +2393,15 @@ async function loginP(){
   }
   var email=authEmailFromPhone(tel);
   var authRes=await supa.auth.signInWithPassword({email:email,password:pin});
+  if(authRes.error){
+    // Essayer les autres formats du meme numero (compte cree avant/apres l'ajout de l'indicatif pays)
+    var alts=altPhoneDigits(tel);
+    for(var ai=0;ai<alts.length&&authRes.error;ai++){
+      var altEmail='owner-'+alts[ai]+'@myboutiq.app';
+      var altRes=await supa.auth.signInWithPassword({email:altEmail,password:pin});
+      if(!altRes.error){authRes=altRes;email=altEmail;break;}
+    }
+  }
   if(authRes.error){
     var canMigrate=DB&&normalizePhone(DB.cfg.tel||'')===tel&&pin===DB.cfg.pin;
     if(canMigrate){
