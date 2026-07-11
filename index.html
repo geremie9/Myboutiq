@@ -3313,16 +3313,28 @@ function importerSelectionCatalogue(){
 }
 
 function initCatGrid(){var g=document.getElementById('cgrd');g.innerHTML='';var cats=lang==='fr'?CATS_FR:CATS_EN;cats.forEach(function(c){var b=document.createElement('button');b.className='cbtn'+(c===selCat?' on':'');b.textContent=(CE[c]||'📦')+' '+c;b.onclick=function(){selCat=c;document.querySelectorAll('.cgrd .cbtn').forEach(function(x){x.classList.remove('on');});b.classList.add('on');};g.appendChild(b);});}
-function ouvrirAjout(){if(!(role==='patron'||hasPerm('produits')))return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp','ainp-mult','ainp-parcont'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display=(DB&&DB.cfg&&DB.cfg.paramAvances)?'flex':'none';initEmoGrid();initCatGrid();goAS(0);document.getElementById('ov-art').classList.add('show');}
+function ouvrirAjout(){if(!(role==='patron'||hasPerm('produits')))return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;_lastAutoStk=null;document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp','ainp-mult','ainp-parcont'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display=(DB&&DB.cfg&&DB.cfg.paramAvances)?'flex':'none';initEmoGrid();initCatGrid();goAS(0);document.getElementById('ov-art').classList.add('show');}
 function goAS(n){document.querySelectorAll('#ov-art .pst').forEach(function(s){s.classList.remove('on');});document.getElementById('as'+n).classList.add('on');if(n===1){var nm=document.getElementById('art-nm').value||'Article';document.getElementById('ae-as').textContent=selEmo;document.getElementById('an-as').textContent=nm;document.getElementById('ae-as2').textContent=selEmo;document.getElementById('an-as2').textContent=nm;selTypeA('carton');}}
 function selTypeA(tp){achatTypeA=tp;['carton','palette','lot','unite'].forEach(function(x){var el=document.getElementById('at-'+x[0]);if(el)el.classList.toggle('on',x===tp);});var qs=document.getElementById('aqsec'),qm=document.getElementById('aqmult');if(tp==='unite'){qs.style.display='none';qm.style.display='none';}else{qs.style.display='block';qm.style.display='flex';}document.getElementById('albl-mult').textContent=tp==='palette'?'Nb. de palettes':(lang==='fr'?'Nb. de casiers/cartons':'Nb of crates/boxes');document.getElementById('albl-parcont').textContent=tp==='palette'?'Unités par palette':'Unités par casier';calcAutoA();}
+var _lastAutoStk=null;
+function syncStkFromQte(){
+  var qteEl=document.getElementById('ainp-qte');
+  var stkEl=document.getElementById('ainp-stk');
+  if(!qteEl||!stkEl)return;
+  var q=parseInt(qteEl.value)||0;
+  if(q>0&&(stkEl.value===''||parseInt(stkEl.value)===_lastAutoStk)){
+    stkEl.value=q;
+    _lastAutoStk=q;
+  }
+}
 function calcMultA(){
   var mult=parseFloat(document.getElementById('ainp-mult').value)||0;
   var parcont=parseFloat(document.getElementById('ainp-parcont').value)||0;
   if(mult>0&&parcont>0){document.getElementById('ainp-qte').value=Math.round(mult*parcont);}
   calcAutoA();
+  syncStkFromQte();
 }
-function calcAutoA(){var q=parseInt(document.getElementById('ainp-qte').value)||0,pa=parseFloat(document.getElementById('ainp-pa').value)||0,transp=parseFloat(document.getElementById('ainp-transp').value)||0,ca=document.getElementById('acauto');if(achatTypeA!=='unite'&&q>0&&pa>0){pxAUA=Math.round((pa+transp)/q);ca.style.display='block';document.getElementById('ac-unit').textContent='= '+fmt(pxAUA);}else if(achatTypeA==='unite'&&pa>0){pxAUA=pa+transp;ca.style.display='none';}else{ca.style.display='none';pxAUA=0;}}
+function calcAutoA(){var q=parseInt(document.getElementById('ainp-qte').value)||0,pa=parseFloat(document.getElementById('ainp-pa').value)||0,transp=parseFloat(document.getElementById('ainp-transp').value)||0,ca=document.getElementById('acauto');if(achatTypeA!=='unite'&&q>0&&pa>0){pxAUA=Math.round((pa+transp)/q);ca.style.display='block';document.getElementById('ac-unit').textContent='= '+fmt(pxAUA);}else if(achatTypeA==='unite'&&pa>0){pxAUA=pa+transp;ca.style.display='none';}else{ca.style.display='none';pxAUA=0;}syncStkFromQte();}
 function calcBenA(){var pv=parseFloat(document.getElementById('ainp-pv').value)||0,bc=document.getElementById('abc');if(pv>0&&pxAUA>0){bc.style.display='flex';var d=pv-pxAUA,m=pv>0?Math.round(d/pv*100):0;bc.className='bcard '+(d>=0?'bon':'bad');document.getElementById('abl').textContent=d>=0?t('beneficeUnit'):t('venteAPerte');document.getElementById('aba').textContent=(d>=0?'+':'')+fmt(d);document.getElementById('absub').textContent=t('marge')+' '+m+'%';}else bc.style.display='none';}
 function setAS(n){document.getElementById('ainp-stk').value=n;}
 function toggleRupt(){ruptSel=!ruptSel;document.getElementById('tog-rupt').className='tog '+(ruptSel?'on':'off');}
