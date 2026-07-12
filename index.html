@@ -2197,6 +2197,12 @@ async function finaliserOb(){
   // Générer code boutique scalable (1 milliard de combinaisons)
   var code=genCode();
   var arts=JSON.parse(JSON.stringify(ART_SECTEUR[obSecteur]||ART_SECTEUR.boutique));
+  try{
+    var modRes=await supa.rpc('obtenir_modele_articles',{p_secteur:obSecteur});
+    if(!modRes.error&&modRes.data&&Array.isArray(modRes.data)&&modRes.data.length){
+      arts=JSON.parse(JSON.stringify(modRes.data)).map(function(a,i){a.id=i+1;a.vd=0;if(!Array.isArray(a.vr))a.vr=[];return a;});
+    }
+  }catch(e){/* silencieux : on garde le modele statique en secours si le direct echoue */}
   DB={
     cfg:{lang:obLang,pays:p,secteur:obSecteur,nom:nm,tel,pin,s:p.s,d:p.d,code,region:reg,veille:false,idFiscal:'',plan:'gratuit',biometrie:false,paramAvances:false,ownerEmail:authEmailFromPhone(tel),ownerId:authUser?authUser.id:null},
     articles:arts,
