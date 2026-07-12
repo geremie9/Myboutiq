@@ -3975,8 +3975,9 @@ subscribeRealtime=function(code){
   code=formatShopCode(code);
   if(realtimeChan){supa.removeChannel(realtimeChan);realtimeChan=null;}
   realtimeChan=supa.channel('boutique:'+code)
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'boutiques',filter:'code=eq.'+code},function(payload){
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'boutiques'},function(payload){
       if(!payload.new||!payload.new.data)return;
+      if(formatShopCode(payload.new.code)!==code)return;
       var incoming=payload.new.data;
       // Écho de notre propre écriture (même appareil) : déjà appliqué localement, on ignore silencieusement
       if(incoming.cfg&&incoming.cfg._dev&&incoming.cfg._dev===_deviceId)return;
