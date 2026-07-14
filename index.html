@@ -1067,7 +1067,25 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 <div class="ov" id="ov-calc" onclick="closeOv(event,'ov-calc')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="ov-calc-t">💵 Monnaie à rendre</div><button class="bcl" onclick="closeSheet('ov-calc');encaisser()">✅</button></div>
-    <div class="calc-wrap">
+    <div style="padding:0 19px 11px">
+      <div class="pmnt-grid" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:9px">
+        <div class="pmnt-btn on" id="pmv-especes" onclick="selPmntVente('especes')"><span class="pmnt-emo">💵</span><div class="pmnt-nm">Espèces</div></div>
+        <div class="pmnt-btn" id="pmv-orange" onclick="selPmntVente('orange')"><span class="pmnt-emo">🟠</span><div class="pmnt-nm">Orange</div></div>
+        <div class="pmnt-btn" id="pmv-mtn" onclick="selPmntVente('mtn')"><span class="pmnt-emo">🟡</span><div class="pmnt-nm">MTN</div></div>
+        <div class="pmnt-btn" id="pmv-moov" onclick="selPmntVente('moov')"><span class="pmnt-emo">🔵</span><div class="pmnt-nm">Moov</div></div>
+      </div>
+      <div id="btn-split-toggle" onclick="toggleSplitVente()" style="text-align:center;font-size:12px;font-weight:700;color:var(--B);padding:6px;cursor:pointer">➕ Paiement en 2 parties (espèces + mobile money)</div>
+    </div>
+    <div id="split-wrap" style="display:none;padding:0 19px 9px">
+      <div class="pig"><label class="pl">Montant payé en espèces</label><input class="pi" type="number" id="split-especes" oninput="calcSplitVente()" inputmode="numeric" placeholder="0"></div>
+      <div style="display:flex;gap:7px;margin-bottom:9px">
+        <div class="pmnt-btn on" id="splitm-orange" onclick="selSplitMode('orange')" style="flex:1"><span class="pmnt-emo">🟠</span><div class="pmnt-nm">Orange</div></div>
+        <div class="pmnt-btn" id="splitm-mtn" onclick="selSplitMode('mtn')" style="flex:1"><span class="pmnt-emo">🟡</span><div class="pmnt-nm">MTN</div></div>
+        <div class="pmnt-btn" id="splitm-moov" onclick="selSplitMode('moov')" style="flex:1"><span class="pmnt-emo">🔵</span><div class="pmnt-nm">Moov</div></div>
+      </div>
+      <div style="background:var(--BG);border-radius:10px;padding:9px;text-align:center;font-size:13px;font-weight:700" id="split-reste">Reste en mobile money : 0</div>
+    </div>
+    <div class="calc-wrap" id="calc-wrap-normal">
       <div class="calc-card">
         <div class="calc-lbl" id="calc-lbl-tot">Total de la vente</div>
         <div class="calc-tot" id="calc-tot">0</div>
@@ -1078,6 +1096,13 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
           <div class="calc-res-lbl" id="calc-res-lbl">Monnaie à rendre</div>
           <div class="calc-res-amt" id="calc-res-amt">0</div>
         </div>
+      </div>
+    </div>
+    <div id="calc-wrap-mobile" style="display:none;padding:0 19px">
+      <div class="calc-card">
+        <div class="calc-lbl">Total de la vente</div>
+        <div class="calc-tot" id="calc-tot-mobile">0</div>
+        <div style="text-align:center;font-size:12px;color:var(--M);font-weight:700;margin-top:9px" id="calc-mobile-hint">Montant exact reçu via mobile money — aucune monnaie à rendre</div>
       </div>
     </div>
     <div style="padding:0 19px">
@@ -2711,10 +2736,47 @@ function procederPmt(){
   var total=calcTotal();
   document.getElementById('calc-tot').textContent=fmt(total);
   document.getElementById('calc-recu').value='';document.getElementById('calc-res').style.display='none';
+  pmntModeVente='especes';splitVenteOn=false;splitModeVente='orange';
+  document.getElementById('split-wrap').style.display='none';
+  document.getElementById('calc-wrap-normal').style.display='block';
+  document.getElementById('calc-wrap-mobile').style.display='none';
+  document.getElementById('btn-split-toggle').style.display='block';
+  document.getElementById('btn-split-toggle').textContent='➕ '+(lang==='fr'?'Paiement en 2 parties (espèces + mobile money)':'Split payment (cash + mobile money)');
+  ['especes','orange','mtn','moov'].forEach(function(m){var el=document.getElementById('pmv-'+m);if(el)el.classList.toggle('on',m==='especes');});
   var shcts=document.getElementById('calc-shcts');shcts.innerHTML='';
   var rds=[Math.ceil(total/500)*500,Math.ceil(total/1000)*1000,Math.ceil(total/2000)*2000,Math.ceil(total/5000)*5000].filter(function(v,i,a){return a.indexOf(v)===i&&v>=total;}).slice(0,4);
   rds.forEach(function(r){var b=document.createElement('button');b.className='calc-shct';b.textContent=fmt(r);b.onclick=function(){document.getElementById('calc-recu').value=r;calcMonnaie();};shcts.appendChild(b);});
   document.getElementById('ov-calc').classList.add('show');
+}
+var pmntModeVente='especes',splitVenteOn=false,splitModeVente='orange';
+function selPmntVente(mode){
+  pmntModeVente=mode;
+  ['especes','orange','mtn','moov'].forEach(function(m){var el=document.getElementById('pmv-'+m);if(el)el.classList.toggle('on',m===mode);});
+  splitVenteOn=false;document.getElementById('split-wrap').style.display='none';
+  document.getElementById('btn-split-toggle').style.display=mode==='especes'?'block':'none';
+  if(mode==='especes'){
+    document.getElementById('calc-wrap-normal').style.display='block';
+    document.getElementById('calc-wrap-mobile').style.display='none';
+  }else{
+    document.getElementById('calc-wrap-normal').style.display='none';
+    document.getElementById('calc-wrap-mobile').style.display='block';
+    document.getElementById('calc-tot-mobile').textContent=fmt(calcTotal());
+  }
+}
+function toggleSplitVente(){
+  splitVenteOn=!splitVenteOn;
+  document.getElementById('split-wrap').style.display=splitVenteOn?'block':'none';
+  document.getElementById('calc-wrap-normal').style.display=splitVenteOn?'none':'block';
+  document.getElementById('btn-split-toggle').textContent=splitVenteOn?'➖ '+(lang==='fr'?'Annuler le paiement en 2 parties':'Cancel split payment'):'➕ '+(lang==='fr'?'Paiement en 2 parties (espèces + mobile money)':'Split payment (cash + mobile money)');
+  if(splitVenteOn){document.getElementById('split-especes').value='';calcSplitVente();}
+}
+function selSplitMode(mode){splitModeVente=mode;['orange','mtn','moov'].forEach(function(m){var el=document.getElementById('splitm-'+m);if(el)el.classList.toggle('on',m===mode);});}
+function calcSplitVente(){
+  var total=calcTotal(),esp=parseFloat(document.getElementById('split-especes').value)||0;
+  var reste=Math.max(0,total-esp);
+  var el=document.getElementById('split-reste');
+  el.textContent=(lang==='fr'?'Reste en mobile money : ':'Remaining via mobile money: ')+fmt(reste);
+  el.style.color=esp>total?'var(--R)':'var(--T)';
 }
 function calcMonnaie(){
   var total=calcTotal(),recu=parseFloat(document.getElementById('calc-recu').value)||0;
@@ -2729,8 +2791,15 @@ function encaisser(){
   Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1];var parts=key.split('-');var pid=parts[0],vid=parts[1];var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;var qBase=v?getQBase(v):1;if(v){if(utiliseStockBase(p))p.stk-=qty*qBase;else v.stk-=qty;}else{p.stk-=qty;}p.vd+=qty;lignes.push({nm:p.nm+(v?' — '+v.nm:'')+' ×'+qty,px:(v?v.px:p.px)*qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qty:qty,qBase:qBase});});
   totalV+=total;totalB+=ben;nbT++;
   var h=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-  DB.ventes.push({id:genVenteId(),total,ben,lignes,h,date:new Date().toLocaleDateString('fr-FR'),annulee:false});
-  save();dernierRecu={boutique:DB.cfg.nom,lignes,total,h,date:new Date().toLocaleDateString('fr-FR')};
+  var paiement;
+  if(splitVenteOn){
+    var esp=parseFloat(document.getElementById('split-especes').value)||0;
+    paiement={mode:'mixte',especes:esp,mobile:Math.max(0,total-esp),moyenMobile:splitModeVente};
+  }else{
+    paiement={mode:pmntModeVente};
+  }
+  DB.ventes.push({id:genVenteId(),total,ben,lignes,h,date:new Date().toLocaleDateString('fr-FR'),annulee:false,paiement:paiement});
+  save();dernierRecu={boutique:DB.cfg.nom,lignes,total,h,date:new Date().toLocaleDateString('fr-FR'),paiement:paiement};
   panier={};closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
   renderProd(DB.articles);renderStock(DB.articles);updateStats();updateObjBar();updateNotifBadge();
   document.getElementById('succ-amt').textContent=fmt(total);
@@ -2767,9 +2836,15 @@ function confirmerAnnulVente(){
   fermerConfAnnul();
   showToast('↩️ '+(lang==='fr'?'Vente annulée, stock restitué':'Sale cancelled, stock restored'));
 }
+function pmntLabel(p){
+  if(!p)return '';
+  var noms={especes:'💵 Espèces',orange:'🟠 Orange Money',mtn:'🟡 MTN MoMo',moov:'🔵 Moov Money'};
+  if(p.mode==='mixte')return '💵 '+fmt(p.especes)+' + '+(noms[p.moyenMobile]||p.moyenMobile)+' '+fmt(p.mobile);
+  return noms[p.mode]||p.mode;
+}
 function afficherRecu(){
   if(!dernierRecu)return;var r=dernierRecu;
-  document.getElementById('recu-cont').innerHTML='<div class="recu-cd" id="recu-print"><div class="recu-h"><div class="recu-sh">🏪 '+r.boutique+'</div>'+(DB.cfg.numFiscal?'<div class="recu-dt">'+(lang==='fr'?'ID':'ID')+': '+DB.cfg.numFiscal+'</div>':'')+'<div class="recu-dt">'+r.date+' '+r.h+'</div></div>'+r.lignes.map(function(l){return '<div class="recu-rw"><span>'+l.nm+'</span><span>'+fmt(l.px)+'</span></div>';}).join('')+'<div class="recu-tt"><span>TOTAL</span><span>'+fmt(r.total)+'</span></div><div class="recu-tk">'+t('merci')+'</div></div>';
+  document.getElementById('recu-cont').innerHTML='<div class="recu-cd" id="recu-print"><div class="recu-h"><div class="recu-sh">🏪 '+r.boutique+'</div>'+(DB.cfg.numFiscal?'<div class="recu-dt">'+(lang==='fr'?'ID':'ID')+': '+DB.cfg.numFiscal+'</div>':'')+'<div class="recu-dt">'+r.date+' '+r.h+'</div></div>'+r.lignes.map(function(l){return '<div class="recu-rw"><span>'+l.nm+'</span><span>'+fmt(l.px)+'</span></div>';}).join('')+'<div class="recu-tt"><span>TOTAL</span><span>'+fmt(r.total)+'</span></div>'+(r.paiement?'<div class="recu-rw" style="font-size:11px;opacity:.75"><span>'+(lang==='fr'?'Paiement':'Payment')+'</span><span>'+pmntLabel(r.paiement)+'</span></div>':'')+'<div class="recu-tk">'+t('merci')+'</div></div>';
   document.getElementById('ov-recu').classList.add('show');
 }
 function imprimerRecu(){
