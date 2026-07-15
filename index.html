@@ -18,6 +18,22 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "MyBoutiQ",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Android, iOS, Web",
+  "description": "Application de gestion de boutique, bar et petit commerce : ventes, stock, clients, rapports. Fonctionne hors-ligne, faite pour les commerçants africains.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "XAF"
+  },
+  "inLanguage": "fr"
+}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -584,6 +600,45 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
   <div class="splash-title">My<span>BoutiQ</span></div>
   <div class="splash-sub" id="spl-sub">Ma boutique dans ma poche</div>
   <div class="splash-bar"><div class="splash-fill"></div></div>
+</div>
+
+<!-- VITRINE / PAGE DE PRESENTATION -->
+<div id="s-landing" class="scr" style="background:#F0F2F5;align-items:flex-start;padding:0">
+  <div style="width:100%;background:linear-gradient(135deg,#E8853D 0%,#F7B538 55%,#FFE1A0 100%);padding:50px 24px 40px;text-align:center;border-radius:0 0 32px 32px">
+    <div style="font-size:64px;margin-bottom:6px">🏪</div>
+    <div style="font-size:30px;font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.15)">MyBoutiQ</div>
+    <div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.9);margin-top:4px">Gérez votre boutique ou bar simplement</div>
+  </div>
+  <div style="padding:26px 22px 22px;width:100%">
+    <h1 style="font-size:19px;font-weight:800;color:#1A1A2E;margin-bottom:6px">L'application pensée pour les commerçants africains</h1>
+    <p style="font-size:14px;color:#666;line-height:1.6;margin-bottom:22px">Ventes, stock, clients et rapports — sans complications, même sans connexion internet.</p>
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+      <div style="display:flex;gap:12px;align-items:flex-start;background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+        <div style="font-size:26px">🛒</div>
+        <div><div style="font-weight:800;font-size:14px;color:#1A1A2E">Ventes rapides</div><div style="font-size:12.5px;color:#888">Encaisse en quelques secondes, espèces ou mobile money</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+        <div style="font-size:26px">📴</div>
+        <div><div style="font-weight:800;font-size:14px;color:#1A1A2E">Fonctionne hors-ligne</div><div style="font-size:12.5px;color:#888">Continue de vendre même sans réseau, synchronise après</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+        <div style="font-size:26px">👥</div>
+        <div><div style="font-weight:800;font-size:14px;color:#1A1A2E">Multi-vendeurs</div><div style="font-size:12.5px;color:#888">Chaque vendeur a ses propres accès, contrôlés par toi</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)">
+        <div style="font-size:26px">📊</div>
+        <div><div style="font-weight:800;font-size:14px;color:#1A1A2E">Rapports clairs</div><div style="font-size:12.5px;color:#888">Bénéfices, stock faible, moyens de paiement — en un coup d'œil</div></div>
+      </div>
+    </div>
+
+    <button class="bnxt" onclick="ouvrirDepuisVitrine('new')" style="margin-bottom:10px">Créer ma boutique gratuitement →</button>
+    <button class="bvid" onclick="ouvrirDepuisVitrine('old')">J'ai déjà un compte</button>
+
+    <div style="text-align:center;margin-top:26px;font-size:11.5px;color:#aaa">
+      <a href="./politique-confidentialite.html" style="color:#aaa">Politique de confidentialité</a>
+    </div>
+  </div>
 </div>
 
 <!-- ONBOARDING -->
@@ -2015,15 +2070,17 @@ document.addEventListener('DOMContentLoaded',function(){
       setModeEntree('old');
       goScreen('s-login');
     } else {
-      // Pas de DB locale : montrer la page de connexion en mode "nouvelle inscription"
-      // Le vendeur peut basculer vers "Ancien utilisateur" pour entrer son code boutique
+      // Pas de DB locale : montrer la page vitrine pour un nouveau visiteur
       renderPaysLst('pays-lst','pays-src',PAYS,null);
       renderSecGrid('sec-grid','boutique');
-      setModeEntree('new');
-      goScreen('s-login');
+      goScreen('s-landing');
     }
   },2200);
 });
+function ouvrirDepuisVitrine(mode){
+  setModeEntree(mode);
+  goScreen('s-login');
+}
 
 // ═══════════════════════════════════════════
 // NAVIGATION
