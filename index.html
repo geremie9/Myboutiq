@@ -1507,6 +1507,22 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 </div>
 
 <!-- VARIANTE ADD -->
+<div class="ov" id="ov-crop">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">✂️ Cadrer la photo</div><button class="bcl" onclick="annulerCrop()">✕</button></div>
+    <div style="padding:0 19px 9px">
+      <div id="crop-viewport" style="width:100%;aspect-ratio:1/1;max-width:320px;margin:0 auto;border-radius:16px;overflow:hidden;position:relative;background:#111;touch-action:none">
+        <img id="crop-img" style="position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none;user-select:none" draggable="false">
+      </div>
+      <input type="range" id="crop-zoom" min="100" max="300" value="100" style="width:100%;margin-top:16px" oninput="cropSetZoom(this.value)">
+      <div style="text-align:center;font-size:11px;color:var(--M);font-weight:700;margin-top:2px">🔍 Zoom</div>
+    </div>
+    <div style="padding:0 19px">
+      <button class="bnxt" onclick="validerCrop()">✅ Valider le cadrage</button>
+      <button class="bvid" onclick="annulerCrop()">Annuler</button>
+    </div>
+  </div>
+</div>
 <div class="ov" id="ov-addvar" onclick="closeOv(event,'ov-addvar')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="addvar-t">🔀 Variante</div><button class="bcl" onclick="closeSheet('ov-addvar')">✕</button></div>
@@ -3012,6 +3028,79 @@ function photoVersEmoji(ev){
 }
 
 // ── VRAIE PHOTO — compression + upload Supabase Storage (léger : ~5-15 Ko/image) ──
+var _cropState={img:null,scale:1,baseScale:1,tx:0,ty:0,vpSize:320,natW:0,natH:0,callback:null,dragging:false,lastX:0,lastY:0};
+function ouvrirCrop(file,callback){
+  var url=URL.createObjectURL(file);
+  var img=new Image();
+  img.onload=function(){
+    var vp=document.getElementById('crop-viewport');
+    var vpSize=vp.clientWidth||320;
+    var natW=img.naturalWidth,natH=img.naturalHeight;
+    var baseScale=Math.max(vpSize/natW,vpSize/natH);
+    _cropState={img:img,scale:baseScale,baseScale:baseScale,tx:(vpSize-natW*baseScale)/2,ty:(vpSize-natH*baseScale)/2,vpSize:vpSize,natW:natW,natH:natH,callback:callback,dragging:false,lastX:0,lastY:0};
+    var el=document.getElementById('crop-img');
+    el.src=url;
+    document.getElementById('crop-zoom').value=100;
+    cropRender();
+    document.getElementById('ov-crop').classList.add('show');
+  };
+  img.src=url;
+}
+function cropClamp(){
+  var s=_cropState,w=s.natW*s.scale,h=s.natH*s.scale;
+  s.tx=Math.min(0,Math.max(s.vpSize-w,s.tx));
+  s.ty=Math.min(0,Math.max(s.vpSize-h,s.ty));
+}
+function cropRender(){
+  cropClamp();
+  var el=document.getElementById('crop-img');
+  el.style.width=(_cropState.natW*_cropState.scale)+'px';
+  el.style.height=(_cropState.natH*_cropState.scale)+'px';
+  el.style.transform='translate('+_cropState.tx+'px,'+_cropState.ty+'px)';
+}
+function cropSetZoom(v){
+  var s=_cropState;
+  var cx=s.vpSize/2,cy=s.vpSize/2;
+  var imgX=(cx-s.tx)/s.scale,imgY=(cy-s.ty)/s.scale;
+  s.scale=s.baseScale*(v/100);
+  s.tx=cx-imgX*s.scale;s.ty=cy-imgY*s.scale;
+  cropRender();
+}
+(function(){
+  var vp;
+  document.addEventListener('DOMContentLoaded',function(){
+    vp=document.getElementById('crop-viewport');
+    vp.addEventListener('pointerdown',function(e){
+      _cropState.dragging=true;_cropState.lastX=e.clientX;_cropState.lastY=e.clientY;
+      vp.setPointerCapture(e.pointerId);
+    });
+    vp.addEventListener('pointermove',function(e){
+      if(!_cropState.dragging)return;
+      _cropState.tx+=e.clientX-_cropState.lastX;
+      _cropState.ty+=e.clientY-_cropState.lastY;
+      _cropState.lastX=e.clientX;_cropState.lastY=e.clientY;
+      cropRender();
+    });
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){vp.addEventListener(ev,function(){_cropState.dragging=false;});});
+  });
+})();
+function annulerCrop(){
+  document.getElementById('ov-crop').classList.remove('show');
+  if(_cropState.callback)_cropState.callback(null);
+  _cropState.callback=null;
+}
+function validerCrop(){
+  var s=_cropState,OUT=600;
+  var cv=document.createElement('canvas');cv.width=OUT;cv.height=OUT;
+  var ctx=cv.getContext('2d');
+  var ratio=OUT/s.vpSize;
+  ctx.drawImage(s.img, -s.tx/s.scale, -s.ty/s.scale, s.vpSize/s.scale, s.vpSize/s.scale, 0,0, OUT, OUT);
+  cv.toBlob(function(blob){
+    document.getElementById('ov-crop').classList.remove('show');
+    var cb=s.callback;s.callback=null;
+    if(cb)cb(blob);
+  },'image/jpeg',0.85);
+}
 function compresserImage(file,maxDim,quality){
   return new Promise(function(resolve,reject){
     var img=new Image();
@@ -3044,6 +3133,33 @@ function uploadBlobProduit(blob){
   });
 }
 function uploadPhotoReelle(ev,mode){
+  var file=ev.target.files&&ev.target.files[0];if(!file)return;
+  if(!supa){showToast('⛔ '+(lang==='fr'?'Connexion requise pour uploader une photo':'Connection required to upload a photo'));ev.target.value='';return;}
+  ouvrirCrop(file,function(croppedBlob){
+    ev.target.value='';
+    if(!croppedBlob)return;
+    var btn=mode==='new'?document.getElementById('btn-photo-real'):null;
+    if(btn)btn.classList.add('busy');
+    showToast('🔄 '+(lang==='fr'?'Envoi...':'Uploading...'));
+    uploadBlobProduit(croppedBlob).then(function(publicUrl){
+      var sizeKo=Math.round(croppedBlob.size/1024);
+      if(mode==='new'){
+        selImg=publicUrl;
+        document.getElementById('photo-real-img').src=publicUrl;
+        document.getElementById('photo-real-txt').textContent=(lang==='fr'?'Photo prête':'Photo ready')+' ('+sizeKo+' Ko)';
+        document.getElementById('photo-real-preview').style.display='flex';
+      }else if(mode==='ctx'&&artCtx){
+        artCtx.img=publicUrl;save();renderProd(DB.articles);renderStock(DB.articles);
+      }
+      showToast('✅ '+(lang==='fr'?'Photo ajoutée !':'Photo added!')+' ('+sizeKo+' Ko)');
+    }).catch(function(e){
+      showToast('❌ '+(e&&e.message?e.message:(lang==='fr'?'Échec de l\'envoi':'Upload failed')));
+    }).finally(function(){
+      if(btn)btn.classList.remove('busy');
+    });
+  });
+}
+function uploadPhotoReelleOLD(ev,mode){
   var file=ev.target.files&&ev.target.files[0];if(!file)return;
   if(!supa){showToast('⛔ '+(lang==='fr'?'Connexion requise pour uploader une photo':'Connection required to upload a photo'));ev.target.value='';return;}
   var btn=mode==='new'?document.getElementById('btn-photo-real'):null;
