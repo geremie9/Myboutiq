@@ -1,4 +1,4 @@
-const CACHE_NAME='myboutiq-v3';
+const CACHE_NAME='myboutiq-v4';
 const IMG_CACHE='myboutiq-images-v1';
 const APP_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 const SUPABASE_STORAGE_HOST='bbncilovxzkcvlxvoqtg.supabase.co';
@@ -27,7 +27,7 @@ self.addEventListener('fetch',function(e){
       caches.open(IMG_CACHE).then(function(c){
         return c.match(e.request).then(function(cached){
           var fetchPromise=fetch(e.request).then(function(res){
-            if(res&&res.status===200)c.put(e.request,res.clone());
+            if(res&&(res.status===200||res.type==='opaque'))c.put(e.request,res.clone());
             return res;
           }).catch(function(){return cached;});
           return cached||fetchPromise;
