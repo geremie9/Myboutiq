@@ -2502,8 +2502,10 @@ async function loginP(){
   if(!tel){showToast(t('errTel'));return;}
   if(!pin){showToast(t('errPin'));return;}
   showToast('🔐 '+(lang==='fr'?'Connexion...':'Signing in...'));
-  if(!supa||!supa.auth){
-    if(DB&&normalizePhone(DB.cfg.tel||'')===tel&&pin===DB.cfg.pin){_finishLoginP();return;}
+  var canMigrateOffline=DB&&normalizePhone(DB.cfg.tel||'')===tel&&pin===DB.cfg.pin;
+  if(!supa||!supa.auth||!navigator.onLine){
+    if(canMigrateOffline){_finishLoginP();return;}
+    if(!navigator.onLine){showToast('📴 '+(lang==='fr'?'Pas de réseau. Connecte-toi une première fois avec internet, ensuite ça marchera hors-ligne.':'No network. Connect once with internet first, then it will work offline.'));return;}
     showToast(t('compteIntrouvable'));return;
   }
   var email=authEmailFromPhone(tel);
@@ -2518,10 +2520,13 @@ async function loginP(){
     }
   }
   if(authRes.error){
-    var canMigrate=DB&&normalizePhone(DB.cfg.tel||'')===tel&&pin===DB.cfg.pin;
-    if(canMigrate){
+    if(canMigrateOffline){
       var reg=await signUpOwnerAuth(tel,pin);
-      if(reg.error){showToast(reg.error.message||t('compteIntrouvable'));return;}
+      if(reg.error){
+        // Reseau instable pendant la tentative : on retombe quand meme sur les donnees locales plutot que de bloquer le patron
+        if(!navigator.onLine){_finishLoginP();return;}
+        showToast(reg.error.message||t('compteIntrouvable'));return;
+      }
     }else{
       showToast((authFriendlyError(authRes.error).message)||t('compteIntrouvable'));return;
     }
