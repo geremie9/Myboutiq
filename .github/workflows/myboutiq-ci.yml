@@ -12,5 +12,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check embedded JavaScript syntax
         run: |
-          node -e "const fs=require('fs'); const html=fs.readFileSync('index.html','utf8'); const m=html.match(/<script>([\\s\\S]*)<\\/script>\\s*<\\/body>/); if(!m){console.error('Script block not found in index.html'); process.exit(1);} fs.writeFileSync('tmp-check.js',m[1]);"
-          node --check tmp-check.js
+          node -e "const fs=require('fs');const html=fs.readFileSync('index.html','utf8');const re=/<script>([\\s\\S]*?)<\\/script>/g;let m,i=0;while((m=re.exec(html))!==null){fs.writeFileSync('tmp-check-'+i+'.js',m[1]);i++;}if(i===0){console.error('No inline <script> block found in index.html');process.exit(1);}console.log('Found '+i+' inline script block(s)');"
+          for f in tmp-check-*.js; do echo "checking $f"; node --check "$f"; done
