@@ -2178,7 +2178,31 @@ function toggleParametresAvances(){
   majModeParametres();
   showToast(DB.cfg.paramAvances?(lang==='fr'?'🧰 Mode avancé activé':'🧰 Advanced mode enabled'):(lang==='fr'?'⚡ Mode simple activé':'⚡ Simple mode enabled'));
 }
-function logout(){desactiverVeille();panier={};totalV=0;totalB=0;nbT=0;nomVendeur='';screenHist=['s-login'];setModeEntree('old');goScreen('s-login');}
+// ─── Session boutique : arrêt propre des canaux + invalidation du cache ───
+function _arreterCanauxBoutique(){
+  try{ if(realtimeChan&&supa)supa.removeChannel(realtimeChan); }catch(e){}
+  realtimeChan=null;
+  clearTimeout(syncTimeout);syncTimeout=null;
+  clearTimeout(_pendingRemoteTimer);_pendingRemoteTimer=null;
+  _pendingRemoteDB=null;
+}
+function _resetEtatSession(){
+  panier={};varQtys={};negEnCours=null;
+  clientVente=null;remisePoints=0;
+  artCours=null;artCtx=null;artStkCours=null;varArtCours=null;cliCours=null;
+  dernierRecu=null;totalV=0;totalB=0;nbT=0;nomVendeur='';
+}
+// effacerCache=true -> on jette AUSSI les données locales (changement de boutique)
+function purgerSessionBoutique(effacerCache){
+  _arreterCanauxBoutique();_resetEtatSession();
+  if(effacerCache){DB=null;try{localStorage.removeItem('myboutiq_v6');}catch(e){}}
+}
+// Si le cache local est une AUTRE boutique que celle demandée -> purge (force le re-fetch)
+function assurerBoutiqueLocale(codeDemande){
+  var d=normalizeShopCode(codeDemande),c=(DB&&DB.cfg)?normalizeShopCode(DB.cfg.code):'';
+  if(d&&c&&c!==d)purgerSessionBoutique(true);
+}
+function logout(){desactiverVeille();purgerSessionBoutique(false);screenHist=['s-login'];setModeEntree('old');goScreen('s-login');}
 
 // ═══════════════════════════════════════════
 // ONBOARDING
@@ -2570,13 +2594,17 @@ async function loginV(){
   // Vérifier le PIN vendeur si renseigné
   var pin=(document.getElementById('v-pin').value||'').trim();
   if(pin&&pin.length>0&&pin.length<4){showToast(lang==='fr'?'⚠️ PIN minimum 4 chiffres':'⚠️ PIN minimum 4 digits');return;}
-  // Code correspond à la DB locale
-  if(DB&&normalizeShopCode(code)===normalizeShopCode(DB.cfg.code)){_finishLoginV(nm,DB.cfg.code);return;}
+  // Autre boutique demandée ? -> purge du cache local (évite d'afficher l'ancienne)
+  assurerBoutiqueLocale(code);
+  // Même boutique déjà en cache -> connexion hors-ligne possible
+  if(DB&&DB.cfg&&normalizeShopCode(code)===normalizeShopCode(DB.cfg.code)){_finishLoginV(nm,DB.cfg.code);return;}
   // Essayer Supabase
   if(!supa){showToast(lang==='fr'?'❌ Connexion réseau requise':'❌ Internet connection required');return;}
   showToast('🔄 '+(lang==='fr'?'Recherche boutique...':'Looking up store...'));
   var remoteDB=await loadFromSupa(code);
   if(!remoteDB){
+    // Ne jamais retomber sur les données de la boutique précédente
+    purgerSessionBoutique(true);
     if(!navigator.onLine){showToast('📴 '+(lang==='fr'?'Pas de réseau. Connecte-toi une première fois avec internet, ensuite ça marchera hors-ligne.':'No network. Connect once with internet first, then it will work offline.'));return;}
     showToast(lang==='fr'?'❌ Code boutique introuvable. Vérifie le code avec ton patron.':'❌ Store not found. Check the code with your manager.');return;
   }
@@ -3976,11 +4004,13 @@ async function ajouterBoutiqueParCode(){
   showToast('✅ '+(lang==='fr'?'Boutique ajoutée ! Clique 🔀 pour y basculer':'Store added! Tap 🔀 to switch'));
 }
 async function switchBoutiqueParCode(code){
-  if(!code||(DB&&DB.cfg&&DB.cfg.code===code))return;
+  if(!code)return;
+  if(DB&&DB.cfg&&normalizeShopCode(DB.cfg.code)===normalizeShopCode(code))return;
   showToast('🔄 '+(lang==='fr'?'Changement de boutique...':'Switching store...'));
   var remoteDB=await loadFromSupa(code);
   if(!remoteDB){showToast(t('errCode'));return;}
-  DB=remoteDB;
+  purgerSessionBoutique(true);
+  DB=migrateDBData(remoteDB);
   _suppressSync=true;save();_suppressSync=false;
   enregistrerBoutiqueActuelle();
   closeSheet('ov-boutiques');
@@ -4351,6 +4381,9 @@ subscribeRealtime=function(code){
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'boutiques'},function(payload){
       if(!payload.new||!payload.new.data)return;
       if(formatShopCode(payload.new.code)!==code)return;
+      // Garde-fou : ignorer tout payload qui n'est pas la boutique ACTUELLEMENT chargée
+      // (protège d'un canal resté ouvert sur une boutique précédente)
+      if(!DB||!DB.cfg||normalizeShopCode(payload.new.code)!==normalizeShopCode(DB.cfg.code))return;
       var incoming=payload.new.data;
       // Écho de notre propre écriture (même appareil) : déjà appliqué localement, on ignore silencieusement
       if(incoming.cfg&&incoming.cfg._dev&&incoming.cfg._dev===_deviceId)return;
