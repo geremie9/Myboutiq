@@ -2223,7 +2223,7 @@ function renderPaysLst(lstId,srcId,data,selPays){
 function filtrPays(q,lstId,srcId){renderPaysLst(lstId,srcId,PAYS,null);}
 function renderSecGrid(gridId,selId){
   var g=document.getElementById(gridId);if(!g)return;g.innerHTML='';
-  SECTEURS.forEach(function(s){
+  SECTEURS.filter(function(s){return s.ok;}).forEach(function(s){
     var d=document.createElement('div');
     d.className='sec-btn'+(s.id===selId?' on':'')+(s.ok?'':' soon');
     var nm=obLang==='fr'?s.n:s.ne;
@@ -2488,13 +2488,26 @@ function _finishLoginP(){
 }
 function altPhoneDigits(tel){
   var digits=String(tel||'').replace(/\D/g,'');
+  if(!digits)return [];
   var country=(DB&&DB.cfg&&DB.cfg.pays)||((typeof obPays!=='undefined')?obPays:null);
   var cc=country&&country.cc;
   var out=[];
+  // Variantes liees au pays courant (comportement d'origine)
   if(cc&&digits.indexOf(cc)===0&&digits.length>cc.length)out.push(digits.slice(cc.length));
   if(cc&&digits.indexOf(cc)!==0)out.push(cc+digits);
   if(digits[0]==='0')out.push(digits.slice(1));
-  return out.filter(function(d,i,arr){return d&&arr.indexOf(d)===i;});
+  // Robustesse : essayer tout indicatif connu, meme si le pays n'est pas connu a la connexion
+  // (ex: compte cree en "677..." puis connexion en "+237677...", ou l'inverse)
+  try{
+    (PAYS||[]).forEach(function(p){
+      if(p&&p.cc&&digits.indexOf(p.cc)===0&&digits.length>p.cc.length){
+        var local=digits.slice(p.cc.length);
+        out.push(local);                          // sans indicatif
+        if(local[0]!=='0')out.push('0'+local);    // avec 0 local
+      }
+    });
+  }catch(e){}
+  return out.filter(function(d,i,arr){return d&&d!==digits&&arr.indexOf(d)===i;});
 }
 async function loginP(){
   var tel=normalizePhone(document.getElementById('p-tel').value||'');
