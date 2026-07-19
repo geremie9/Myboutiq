@@ -587,6 +587,16 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .notif-item{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--BG)}.notif-item:last-child{border-bottom:none}.notif-time{font-size:10px;color:var(--M);font-weight:700}.notif-msg{font-size:12px;color:var(--T);font-weight:800;line-height:1.4}
 .cmd-tabs{display:flex;gap:8px;margin-bottom:11px}.cmd-tab{flex:1;background:var(--BG);border:2px solid transparent;border-radius:12px;padding:10px;font-size:12px;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer}.cmd-tab.on{border-color:var(--B);background:#EEF4FF;color:var(--B)}.cmd-card{padding:11px 12px;margin-bottom:10px}.cmd-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.cmd-f{font-size:13px;font-weight:900;color:var(--T)}.cmd-sub{font-size:10px;color:var(--M);font-weight:700;margin-top:3px;line-height:1.4}.cmd-status{font-size:10px;font-weight:900;border-radius:999px;padding:4px 8px}.cmd-status.wait{background:#FFF8E1;color:#9A6A00}.cmd-status.ok{background:#E8F5E9;color:var(--G)}.cmd-lines{font-size:11px;color:var(--T);font-weight:700;line-height:1.5;margin-top:9px}.cmd-form{background:var(--BG);border-radius:16px;padding:12px;margin-top:10px}.cmd-line{display:grid;grid-template-columns:1.4fr .7fr .9fr auto;gap:7px;align-items:end;margin-bottom:8px}.cmd-line .pi,.cmd-line .sinp,.cmd-line select{margin-bottom:0}.cmd-note{margin-top:4px}.dash-empty,.hist-empty{text-align:center;padding:22px 12px;color:var(--M);font-size:12px;font-weight:700}
 
+/* ── Saisie du téléphone : l'indicatif est une pastille, jamais tapé à la main ── */
+.tel-row{display:flex;gap:8px;align-items:stretch}
+.tel-cc{display:flex;align-items:center;gap:5px;flex:0 0 auto;min-height:44px;padding:0 11px;border-radius:12px;
+  border:2px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);color:#fff;
+  font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap}
+.tel-cc:active{background:rgba(255,255,255,.18)}
+.tel-cc-ar{opacity:.6;font-size:11px}
+.tel-inp{flex:1 1 auto;min-width:0}
+.pays-it{min-height:44px}
+
 /* ═══════════ ADAPTATIF — doit rester EN DERNIER pour ne pas être écrasé ═══════════ */
 /* Pas de paliers figés : l'app occupe l'espace disponible de façon CONTINUE.
    Téléphone, pliable, tablette portrait/paysage, PC : tout se calcule à partir
@@ -816,7 +826,12 @@ body{max-width:min(100%,1200px)}
       <button class="ltab" id="lt-v" onclick="swTab(this,'fv')">👦 <span id="lt-vendeur">Vendeur</span></button>
     </div>
     <div id="fp" style="width:100%">
-      <div class="fg"><label class="fl" id="lbl-patron-tel">📱 Téléphone patron</label><input class="fi" type="tel" id="p-tel" placeholder="+237 6XXXXXXXX"></div>
+      <div class="fg"><label class="fl" id="lbl-patron-tel">📱 Téléphone patron</label>
+        <div class="tel-row">
+          <button type="button" class="tel-cc" id="p-cc" onclick="ouvrirPaysLogin()"><span id="p-cc-flag">🇨🇲</span><span id="p-cc-num">+237</span><span class="tel-cc-ar">▾</span></button>
+          <input class="fi tel-inp" type="tel" id="p-tel" inputmode="numeric" placeholder="6 XX XX XX XX">
+        </div>
+      </div>
       <div class="fg"><label class="fl">🔐 PIN</label><input class="fi" type="password" placeholder="••••••" maxlength="6" id="p-pin" inputmode="numeric"></div>
       <button class="btn-login" id="btn-lp" onclick="loginP()">Connexion 👑</button>
       <button class="btn-login" id="btn-forgot-pin" onclick="ouvrirResetPin()" style="margin-top:8px;background:rgba(255,255,255,.12);color:#fff">🔁 PIN oublié ?</button>
@@ -1221,6 +1236,18 @@ body{max-width:min(100%,1200px)}
 </div>
 
 <!-- REÇU -->
+<!-- Choix du pays sur l'écran de connexion (l'indicatif n'est jamais tapé à la main) -->
+<div class="ov" id="ov-pays-login" onclick="closeOv(event,'ov-pays-login')">
+  <div class="bsht">
+    <div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🌍 <span id="ttl-pays-login">Ton pays</span></div><button class="bcl" onclick="closeSheet('ov-pays-login')">✕</button></div>
+    <div style="padding:12px 19px 4px">
+      <input class="sinp" id="pays-src-login" placeholder="🔍 Rechercher..." oninput="renderPaysLogin()" style="width:100%;margin-bottom:10px">
+      <div id="pays-lst-login" style="max-height:52vh;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="ov-recu" onclick="closeOv(event,'ov-recu')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="ov-recu-t">🧾 Reçu</div><button class="bcl" onclick="closeSheet('ov-recu')">✕</button></div>
@@ -2121,8 +2148,11 @@ function fmt(n){var s=DB&&DB.cfg?DB.cfg.s:'F';return s+' '+(Math.round(n)||0).to
 // ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',function(){
   initSupa();
+  try{initPaysLogin();}catch(e){}
   setTimeout(function(){
     DB=loadDB();
+    // Le pays de la boutique chargée est prioritaire sur la détection automatique
+    if(DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.cc){obPays=DB.cfg.pays;try{majChipPays();}catch(e){}}
     if(DB){
       if(DB.cfg.veille===undefined)DB.cfg.veille=false;
       if(DB.cfg.paramAvances===undefined)DB.cfg.paramAvances=false;
@@ -2294,6 +2324,58 @@ function renderPaysLst(lstId,srcId,data,selPays){
   });
 }
 function filtrPays(q,lstId,srcId){renderPaysLst(lstId,srcId,PAYS,null);}
+// ─── Indicatif pays sur l'écran de connexion ───────────────────────────────
+// L'utilisateur ne tape JAMAIS l'indicatif : il est choisi ici et préfixé
+// automatiquement, ce qui rend l'identifiant du compte toujours canonique.
+var TZ_VERS_CC={'Africa/Douala':'237','Africa/Abidjan':'225','Africa/Dakar':'221','Africa/Bamako':'223',
+  'Africa/Ouagadougou':'226','Africa/Lome':'228','Africa/Porto-Novo':'229','Africa/Niamey':'227',
+  'Africa/Libreville':'241','Africa/Brazzaville':'242','Africa/Conakry':'224','Africa/Kinshasa':'243',
+  'Africa/Lubumbashi':'243','Africa/Casablanca':'212','Africa/Algiers':'213'};
+function detecterPays(){
+  // 1) pays de la boutique déjà connue
+  if(DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.cc)return DB.cfg.pays;
+  // 2) dernier choix mémorisé
+  try{var s=localStorage.getItem('mb_pays_cc');if(s){var f=PAYS.find(function(p){return p.cc===s;});if(f)return f;}}catch(e){}
+  // 3) fuseau horaire du téléphone
+  try{var cc=TZ_VERS_CC[Intl.DateTimeFormat().resolvedOptions().timeZone];
+      if(cc){var t=PAYS.find(function(p){return p.cc===cc;});if(t)return t;}}catch(e){}
+  return PAYS[0];
+}
+function majChipPays(){
+  var p=obPays||PAYS[0];
+  var f=document.getElementById('p-cc-flag'),n=document.getElementById('p-cc-num');
+  if(f)f.textContent=p.f; if(n)n.textContent='+'+p.cc;
+}
+function initPaysLogin(){ if(!obPays||!obPays.cc)obPays=detecterPays(); majChipPays(); }
+function ouvrirPaysLogin(){
+  var s=document.getElementById('pays-src-login'); if(s)s.value='';
+  renderPaysLogin();
+  document.getElementById('ov-pays-login').classList.add('show');
+}
+function renderPaysLogin(){
+  var g=document.getElementById('pays-lst-login'); if(!g)return;
+  var q=((document.getElementById('pays-src-login')||{}).value||'').toLowerCase().trim();
+  var qd=q.replace(/\D/g,'');
+  g.innerHTML='';
+  PAYS.filter(function(p){
+    var nm=(lang==='fr'?p.n:p.ne).toLowerCase();
+    return !q||nm.indexOf(q)!==-1||(qd&&p.cc.indexOf(qd)===0);
+  }).forEach(function(p){
+    var nm=lang==='fr'?p.n:p.ne, sel=obPays&&obPays.cc===p.cc;
+    var d=document.createElement('div');
+    d.className='pays-it'+(sel?' on':'');
+    d.style.cssText='display:flex;align-items:center;gap:11px;padding:11px 4px;border-bottom:1px solid var(--BG);cursor:pointer';
+    d.innerHTML='<span style="font-size:22px">'+p.f+'</span><div style="flex:1"><div style="font-size:13px;font-weight:800;color:var(--T)">'+nm+'</div><div style="font-size:11px;font-weight:700;color:var(--M)">+'+p.cc+'</div></div>'+(sel?'<span>✅</span>':'');
+    d.onclick=function(){choisirPaysLogin(p);};
+    g.appendChild(d);
+  });
+  if(!g.children.length)g.innerHTML='<div style="padding:18px;text-align:center;color:var(--M);font-weight:700;font-size:12px">Aucun pays trouvé</div>';
+}
+function choisirPaysLogin(p){
+  obPays=p; if(DB&&DB.cfg)DB.cfg.pays=p;
+  try{localStorage.setItem('mb_pays_cc',p.cc);}catch(e){}
+  majChipPays(); closeSheet('ov-pays-login');
+}
 function renderSecGrid(gridId,selId){
   var g=document.getElementById(gridId);if(!g)return;g.innerHTML='';
   SECTEURS.filter(function(s){return s.ok;}).forEach(function(s){
