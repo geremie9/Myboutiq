@@ -587,6 +587,28 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .notif-item{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--BG)}.notif-item:last-child{border-bottom:none}.notif-time{font-size:10px;color:var(--M);font-weight:700}.notif-msg{font-size:12px;color:var(--T);font-weight:800;line-height:1.4}
 .cmd-tabs{display:flex;gap:8px;margin-bottom:11px}.cmd-tab{flex:1;background:var(--BG);border:2px solid transparent;border-radius:12px;padding:10px;font-size:12px;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer}.cmd-tab.on{border-color:var(--B);background:#EEF4FF;color:var(--B)}.cmd-card{padding:11px 12px;margin-bottom:10px}.cmd-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.cmd-f{font-size:13px;font-weight:900;color:var(--T)}.cmd-sub{font-size:10px;color:var(--M);font-weight:700;margin-top:3px;line-height:1.4}.cmd-status{font-size:10px;font-weight:900;border-radius:999px;padding:4px 8px}.cmd-status.wait{background:#FFF8E1;color:#9A6A00}.cmd-status.ok{background:#E8F5E9;color:var(--G)}.cmd-lines{font-size:11px;color:var(--T);font-weight:700;line-height:1.5;margin-top:9px}.cmd-form{background:var(--BG);border-radius:16px;padding:12px;margin-top:10px}.cmd-line{display:grid;grid-template-columns:1.4fr .7fr .9fr auto;gap:7px;align-items:end;margin-bottom:8px}.cmd-line .pi,.cmd-line .sinp,.cmd-line select{margin-bottom:0}.cmd-note{margin-top:4px}.dash-empty,.hist-empty{text-align:center;padding:22px 12px;color:var(--M);font-size:12px;font-weight:700}
 
+/* ── Paramètres : 5 onglets au lieu d'une longue liste ── */
+.set-tabs{display:flex;gap:4px;padding:10px clamp(8px,2.5vw,18px);overflow-x:auto;scrollbar-width:none;
+  background:var(--BG);position:sticky;top:0;z-index:20;border-bottom:1px solid var(--BD)}
+.set-tabs::-webkit-scrollbar{display:none}
+/* Sur téléphone : seul l'onglet ACTIF affiche son nom, les autres restent en
+   icône. Les 5 tiennent ainsi sans scroll ET sans libellé tronqué. */
+.set-tab{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:5px;
+  min-height:44px;min-width:44px;padding:0 11px;border-radius:12px;
+  border:2px solid var(--BD);background:var(--C);color:var(--M);font-family:'Outfit',sans-serif;
+  font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;transition:all .18s}
+.set-tab>span{display:none}
+.set-tab.on{flex:1 1 auto}
+.set-tab.on>span{display:inline}
+/* Dès qu'il y a la place, tous les libellés s'affichent */
+@media (min-width:560px){
+  .set-tab{flex:1 1 auto}
+  .set-tab>span{display:inline}
+}
+.set-tab.on{background:var(--P);border-color:var(--P);color:var(--A)}
+.set-pane{display:none}
+.set-pane.on{display:block}
+
 /* ── Saisie du téléphone : l'indicatif est une pastille, jamais tapé à la main ── */
 .tel-row{display:flex;gap:8px;align-items:stretch}
 .tel-cc{display:flex;align-items:center;gap:5px;flex:0 0 auto;min-height:44px;padding:0 11px;border-radius:12px;
@@ -996,7 +1018,21 @@ body{max-width:min(100%,1200px)}
       </div>
     </div>
   </div>
-  <div style="overflow-y:auto;padding-bottom:30px">
+  <div class="set-tabs" id="set-tabs">
+    <button class="set-tab on" onclick="setParamTab('boutique',this)">🏪 <span id="tb-boutique">Boutique</span></button>
+    <button class="set-tab" onclick="setParamTab('users',this)">👥 <span id="tb-users">Équipe</span></button>
+    <button class="set-tab" onclick="setParamTab('stock',this)">📦 <span id="tb-stock">Produits</span></button>
+    <button class="set-tab" onclick="setParamTab('vente',this)">🧾 <span id="tb-vente">Ventes</span></button>
+    <button class="set-tab" onclick="setParamTab('secu',this)">🔔 <span id="tb-secu">Sécurité</span></button>
+  </div>
+  <div id="set-panes" style="overflow-y:auto;padding-bottom:30px">
+    <div class="set-pane on" id="pane-boutique"></div>
+    <div class="set-pane" id="pane-users"></div>
+    <div class="set-pane" id="pane-stock"></div>
+    <div class="set-pane" id="pane-vente"></div>
+    <div class="set-pane" id="pane-secu"></div>
+  </div>
+  <div id="set-scroll" style="overflow-y:auto;padding-bottom:30px">
     <div class="stsc">
       <div class="stcd">
         <div class="stit2" onclick="toggleParametresAvances()">
@@ -2203,7 +2239,7 @@ function navTo(tab,btn){
   if(tab==='clients')renderClients();
   if(tab==='stock')renderStock(DB.articles);
 }
-function goSt(){if(role!=='patron'){showToast('⛔ Réservé au patron');return;}screenHist.push('s-settings');majModeParametres();goScreen('s-settings');}
+function goSt(){if(role!=='patron'){showToast('⛔ Réservé au patron');return;}screenHist.push('s-settings');construireOngletsParams();majModeParametres();goScreen('s-settings');}
 function setModeEntree(mode){
   var isNew=mode==='new';
   var bo=document.getElementById('btn-old-user'),bn=document.getElementById('btn-new-user');
@@ -2212,7 +2248,7 @@ function setModeEntree(mode){
   var auth=document.getElementById('auth-wrap'),nw=document.getElementById('new-user-wrap'),hint=document.getElementById('login-hint');
   if(auth)auth.style.display=isNew?'none':'block';
   if(nw)nw.style.display=isNew?'block':'none';
-  if(hint)hint.style.display=isNew?'none':'block';
+  if(hint)hint.style.display='none'; // mention "démo" retirée de la production
   if(!isNew){
     var tp=document.getElementById('lt-p');
     if(tp)swTab(tp,'fp');
@@ -2229,8 +2265,9 @@ function ouvrirInscriptionDepuisLogin(){
 function majModeParametres(){
   if(!DB||!DB.cfg)return;
   var adv=!!DB.cfg.paramAvances;
-  var ids=['sec-patron','sec-langdev','sec-abo','sec-assist'];
+  var ids=['sec-langdev','sec-abo','sec-assist'];
   ids.forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=adv?'block':'none';});
+  showSecPatron(adv);
   var sc=document.getElementById('sec-commandes');
   if(sc)sc.style.display=(adv&&role==='patron')?'block':'none';
   var bioRow=document.getElementById('st-bio-row');
@@ -2247,6 +2284,81 @@ function majModeParametres(){
   if(t)t.textContent=adv?(lang==='fr'?'Mode expert activé':'Expert mode enabled'):(lang==='fr'?'Activer le mode expert':'Enable expert mode');
   if(s)s.textContent=adv?(lang==='fr'?'Fonctions avancées visibles':'Advanced features visible'):(lang==='fr'?'Vue essentielle recommandée pour la boutique':'Essential view recommended for shopkeepers');
   if(a)a.textContent=adv?'˅':'›';
+}
+// ─── Paramètres en 5 onglets ────────────────────────────────────────────────
+// On ne réécrit pas le contenu : on DÉPLACE les sections existantes dans les
+// panneaux, donc tous les id/onclick d'origine restent valides.
+function setParamTab(nom,btn){
+  document.querySelectorAll('.set-tab').forEach(function(b){b.classList.toggle('on',b===btn);});
+  document.querySelectorAll('.set-pane').forEach(function(p){p.classList.toggle('on',p.id==='pane-'+nom);});
+  var w=document.getElementById('set-panes'); if(w)w.scrollTop=0;
+}
+// #sec-patron est affiché/masqué par le rôle ET le mode expert. Comme il est
+// désormais découpé en plusieurs morceaux, on cible la classe.
+function showSecPatron(v){
+  document.querySelectorAll('.sec-patron-part').forEach(function(e){e.style.display=v?'block':'none';});
+}
+var _paramsOngletsFaits=false;
+function construireOngletsParams(){
+  if(_paramsOngletsFaits)return;
+  var src=document.getElementById('set-scroll'); if(!src)return;
+  var P={boutique:document.getElementById('pane-boutique'),users:document.getElementById('pane-users'),
+         stock:document.getElementById('pane-stock'),vente:document.getElementById('pane-vente'),
+         secu:document.getElementById('pane-secu')};
+  if(!P.boutique)return;
+  // 1) Découper #sec-patron (Analyses / Catalogue / Gestion / Facturation / Multi-boutiques)
+  var sp=document.getElementById('sec-patron');
+  if(sp){
+    var groupes=[],cur=null;
+    Array.prototype.slice.call(sp.children).forEach(function(el){
+      if(el.classList.contains('sttit')){cur={t:el.textContent,els:[el]};groupes.push(cur);}
+      else if(cur)cur.els.push(el);
+    });
+    var vers={'Analyses':'vente','Catalogue':'stock','Gestion boutique':'boutique',
+              'Facturation':'vente','Multi-boutiques':'boutique'};
+    groupes.forEach(function(g,i){
+      var dest='boutique';
+      Object.keys(vers).forEach(function(k){if(g.t.indexOf(k)!==-1)dest=vers[k];});
+      var box=document.createElement('div');
+      box.className='stsc sec-patron-part';
+      if(i===0)box.id='sec-patron';           // garde l'id pour le code existant
+      g.els.forEach(function(e){box.appendChild(e);});
+      P[dest].appendChild(box);
+    });
+    if(sp.parentNode)sp.parentNode.removeChild(sp);
+  }
+  // 1b) Affinage : quelques entrées sont mieux placées que dans leur groupe d'origine
+  [['st-dep','vente'],['st-clot','vente'],['st-fourn','stock']].forEach(function(pr){
+    var lbl=document.getElementById(pr[0]); if(!lbl)return;
+    var row=lbl.closest('.stit2'), pane=P[pr[1]];
+    if(!row||!pane)return;
+    var card=pane.querySelector('.stsc.extra > .stcd');
+    if(!card){
+      var box=document.createElement('div'); box.className='stsc extra sec-patron-part';
+      card=document.createElement('div'); card.className='stcd';
+      box.appendChild(card); pane.appendChild(box);
+    }
+    card.appendChild(row);
+  });
+  // 2) Déplacer les sections entières
+  function bouger(sel,dest){
+    var el=typeof sel==='string'?document.getElementById(sel):sel;
+    var sec=el?(el.classList&&el.classList.contains('stsc')?el:el.closest('.stsc')):null;
+    if(sec&&P[dest])P[dest].appendChild(sec);
+  }
+  bouger(src.querySelector('.stsc'),'boutique');        // bloc "mode expert" (1er)
+  bouger('equipe-lst','users');
+  bouger('sec-commandes','stock');
+  bouger('sec-langdev','boutique');
+  bouger('sec-abo','boutique');
+  bouger('sec-assist','boutique');
+  bouger('tog-veille','secu');
+  bouger('sec-patron-backup','secu');
+  bouger('st-logout','secu');
+  // 3) Tout ce qui resterait part dans Boutique (sécurité : ne rien perdre)
+  Array.prototype.slice.call(src.querySelectorAll('.stsc')).forEach(function(s){P.boutique.appendChild(s);});
+  src.style.display='none';
+  _paramsOngletsFaits=true;
 }
 function toggleParametresAvances(){
   if(!DB||!DB.cfg)return;
@@ -2493,8 +2605,12 @@ function appliquerLang(){
   var s=DB.cfg.s||'F';
   // Login
   document.getElementById('login-sub').textContent=t('tagline');
-  ['lt-patron','btn-lp'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=t('patron')+' 👑';});
-  ['lt-vendeur','btn-lv'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=t('vendeur')+' 👦';});
+  // Onglets : le libellé seul (l'emoji est déjà dans le HTML, hors du <span>)
+  var ltp=document.getElementById('lt-patron');if(ltp)ltp.textContent=t('patron');
+  var ltv=document.getElementById('lt-vendeur');if(ltv)ltv.textContent=t('vendeur');
+  // Boutons : action "Connexion", pas le nom du rôle
+  var blp=document.getElementById('btn-lp');if(blp)blp.textContent=(lang==='fr'?'Connexion':'Sign in')+' 👑';
+  var blv=document.getElementById('btn-lv');if(blv)blv.textContent=(lang==='fr'?'Connexion':'Sign in')+' 👦';
   var lou=document.getElementById('lbl-old-user'),lnu=document.getElementById('lbl-new-user'),nuno=document.getElementById('new-user-note'),bsi=document.getElementById('btn-start-insc');
   if(lou)lou.textContent=lang==='fr'?'Ancien utilisateur':'Existing user';
   if(lnu)lnu.textContent=lang==='fr'?'Nouvelle inscription':'New registration';
@@ -2634,7 +2750,7 @@ function _finishLoginP(){
   ['btn-st','btn-add-stk','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
   document.getElementById('btn-add').style.display='block';
   document.getElementById('btn-exp-stk').style.display='block';
-  document.getElementById('sec-patron').style.display='block';document.getElementById('sec-patron-backup').style.display='block';
+  showSecPatron(true);var _spb=document.getElementById('sec-patron-backup');if(_spb)_spb.style.display='block';
   subscribeRealtime(DB.cfg.code);
   syncToSupa(); // S'assurer que les données sont bien dans Supabase
   enregistrerBoutiqueActuelle();
@@ -2748,7 +2864,7 @@ function _finishLoginV(nm,code){
   document.getElementById('u-role').className='rbdg rb-v';
   ['btn-st','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
   var bes=document.getElementById('btn-exp-stk');if(bes)bes.style.display='none';
-  document.getElementById('sec-patron').style.display='none';var spb=document.getElementById('sec-patron-backup');if(spb)spb.style.display='none';
+  showSecPatron(false);var spb=document.getElementById('sec-patron-backup');if(spb)spb.style.display='none';
   registerVendeurEquipe(nm);
   save();
   subscribeRealtime(DB.cfg.code||code);
@@ -4150,7 +4266,7 @@ async function switchBoutiqueParCode(code){
   ['btn-st','btn-add-stk','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
   document.getElementById('btn-add').style.display='block';
   document.getElementById('btn-exp-stk').style.display='block';
-  document.getElementById('sec-patron').style.display='block';document.getElementById('sec-patron-backup').style.display='block';
+  showSecPatron(true);var _spb=document.getElementById('sec-patron-backup');if(_spb)_spb.style.display='block';
   subscribeRealtime(DB.cfg.code);
   lancerApp();
   showToast('✅ '+(lang==='fr'?'Boutique changée : ':'Switched to: ')+DB.cfg.nom);
