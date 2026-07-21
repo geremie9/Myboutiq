@@ -2174,6 +2174,7 @@ var pxAU=0,pxAUA=0,ruptSel=true,artCours=null,artCtx=null,artStkCours=null,varAr
 var panier={},varQtys={},negEnCours=null;
 var totalV=0,totalB=0,nbT=0;
 var pinBuf='',dernierRecu=null,screenHist=['s-caisse'];
+var _invitationCode=null; // code reçu via un lien /join/xxxxx
 var planSel='pro',durSel='m',pmntSel='wave',planSelAbo=null;
 
 function t(k){return (TR[lang]&&TR[lang][k])||TR.fr[k]||k;}
@@ -2185,6 +2186,18 @@ function fmt(n){var s=DB&&DB.cfg?DB.cfg.s:'F';return s+' '+(Math.round(n)||0).to
 document.addEventListener('DOMContentLoaded',function(){
   initSupa();
   try{initPaysLogin();}catch(e){}
+  // Arrivée depuis un lien d'invitation (/join/12345) : on pré-remplit le code vendeur
+  try{
+    var _c=new URLSearchParams(location.search).get('code');
+    if(_c){
+      var _d=normalizeShopCode(_c);
+      if(_d){
+        var _f=document.getElementById('v-code'); if(_f)_f.value=formatShopCode(_d);
+        _invitationCode=_d;
+      }
+      history.replaceState(null,'',location.pathname); // URL propre
+    }
+  }catch(e){}
   setTimeout(function(){
     DB=loadDB();
     // Le pays de la boutique chargée est prioritaire sur la détection automatique
@@ -2201,6 +2214,12 @@ document.addEventListener('DOMContentLoaded',function(){
       appliquerLang();
       setModeEntree('old');
       goScreen('s-login');
+      if(_invitationCode)ouvrirInvitationVendeur();
+    } else if(_invitationCode){
+      // Arrivée par un lien d'invitation : droit à la connexion vendeur
+      setModeEntree('old');
+      goScreen('s-login');
+      ouvrirInvitationVendeur();
     } else {
       // Pas de DB locale : montrer la page vitrine pour un nouveau visiteur
       renderPaysLst('pays-lst','pays-src',PAYS,null);
@@ -2209,6 +2228,13 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   },2200);
 });
+// Invitation reçue : onglet Vendeur, code pré-rempli, curseur sur le prénom
+function ouvrirInvitationVendeur(){
+  var tv=document.getElementById('lt-v'); if(tv)swTab(tv,'fv');
+  var f=document.getElementById('v-code'); if(f&&_invitationCode)f.value=formatShopCode(_invitationCode);
+  var n=document.getElementById('v-nom'); if(n)setTimeout(function(){try{n.focus();}catch(e){}},250);
+  showToast('👋 '+(lang==='fr'?'Entre ton prénom pour rejoindre la boutique':'Enter your first name to join the store'));
+}
 function ouvrirDepuisVitrine(mode){
   setModeEntree(mode);
   goScreen('s-login');
@@ -4461,7 +4487,26 @@ function copierCode(){var code=formatShopCode(DB&&DB.cfg&&DB.cfg.code||'');if(!c
 
 // Code boutique : 6 chiffres (100000-999999)
 function genCode(){var n=String(Math.floor(Math.random()*9000000000+1000000000));return n.slice(0,5)+" "+n.slice(5);}
-function partagerCode(){var msg='🏪 *MyBoutiQ*\n\n'+(lang==='fr'?'Rejoins ma boutique :':'Join my store:')+' '+DB.cfg.nom+'\n\n'+(lang==='fr'?'Code boutique :':'Store code:')+' *'+DB.cfg.code+'*\n\n'+(lang==='fr'?'Télécharge MyBoutiQ et entre ce code pour te connecter comme vendeur.':'Download MyBoutiQ and enter this code to connect as a seller.');window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');}
+// Lien d'invitation : basé sur l'origine courante, donc il suit automatiquement
+// le domaine utilisé (vercel.app aujourd'hui, myboutiq.online une fois branché).
+function lienInvitation(){
+  var d=normalizeShopCode(DB&&DB.cfg&&DB.cfg.code||'');
+  return d?(location.origin+'/join/'+d):location.origin;
+}
+function partagerCode(){
+  var fr=lang==='fr';
+  var msg='🏪 *MyBoutiQ*\n\n'+(fr?'Rejoins ma boutique :':'Join my store:')+' '+DB.cfg.nom+'\n\n'
+    +(fr?'Code boutique :':'Store code:')+' *'+formatShopCode(DB.cfg.code)+'*\n\n'
+    +(fr?'👉 Ouvre ce lien, tout est pré-rempli :':'👉 Open this link, everything is pre-filled:')+'\n'+lienInvitation();
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+// Partage natif (Android/iOS) si dispo, sinon copie du lien
+function partagerLienInvitation(){
+  var url=lienInvitation(),fr=lang==='fr';
+  var txt=(fr?'Rejoins ma boutique ':'Join my store ')+(DB&&DB.cfg?DB.cfg.nom:'')+' sur MyBoutiQ';
+  if(navigator.share){navigator.share({title:'MyBoutiQ',text:txt,url:url}).catch(function(){});return;}
+  if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){showToast('🔗 '+(fr?'Lien copié !':'Link copied!'));});
+}
 function voiceSearch(){if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}var SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();r.lang=lang==='fr'?'fr-FR':'en-US';r.onresult=function(e){var q=e.results[0][0].transcript;document.getElementById('src-c').value=q;filtrC(q);};r.onerror=function(){showToast('🎤');};r.start();showToast(t('microParle'));}
 var ecouteContinue=false,recogContinue=null;
 function toggleEcouteContinue(){
