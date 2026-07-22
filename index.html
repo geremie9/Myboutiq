@@ -533,6 +533,20 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 /* ── EMPTY ── */
 .empty{text-align:center;padding:36px 20px;color:var(--M)}
 .empty-e{font-size:44px;margin-bottom:9px}.empty-t{font-size:14px;font-weight:700}.empty-s{font-size:12px;margin-top:4px;font-weight:600}
+/* Rangée "Ventes rapides" : top articles vendus, accessibles en 1 tap */
+#topventes{padding:2px clamp(12px,3vw,18px) 2px}
+.tv-lbl{font-size:11px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.5px;margin:2px 0 7px}
+.tv-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:3px}
+.tv-row::-webkit-scrollbar{display:none}
+.tv-chip{flex:0 0 auto;width:78px;background:var(--C);border:1px solid var(--BD);border-radius:14px;padding:9px 6px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-family:'Outfit',sans-serif;
+  box-shadow:0 1px 3px rgba(16,24,40,.05);transition:transform .1s}
+.tv-chip:active{transform:scale(.94)}
+.tv-chip img,.tv-chip .tv-e,.tv-chip .tv-mono{width:40px;height:40px;border-radius:11px;object-fit:cover;
+  display:flex;align-items:center;justify-content:center;font-size:25px;line-height:1}
+.tv-chip .tv-mono{font-weight:900;font-size:18px;font-family:'Nunito',sans-serif}
+.tv-nm{font-size:9.5px;font-weight:700;color:var(--T);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tv-px{font-size:10px;font-weight:800;color:var(--B)}
 /* État vide qui GUIDE (première utilisation) */
 .empty-guide{text-align:center;padding:34px 22px 24px}
 .eg-ico{font-size:52px;margin-bottom:12px;line-height:1}
@@ -941,10 +955,8 @@ body{max-width:min(100%,1200px)}
         <button class="bmic" id="btn-mic-continu" onclick="toggleEcouteContinue()" title="Écoute continue">🎙️</button>
       </div>
       <div class="tscr" id="tabs-c"></div>
-      <div class="loyalty-box">
-        <button class="loyalty-btn" id="loyalty-btn" onclick="ouvrirClientVente()">👤 <span class="loyalty-sel" id="client-vente-info">Client fidèle (optionnel)</span></button>
-      </div>
     </div>
+    <div id="topventes" style="display:none"></div>
     <div class="shdr"><span class="stit" id="sec-lbl">⭐</span><button class="sact" id="btn-add" onclick="ouvrirAjout()" style="display:none">+ Ajouter</button></div>
     <div class="cash-guide" id="cash-guide">🟢 Taper = +1 · 💰 Prix · 🔴 ✕ = -1</div>
     <div class="pgrid" id="pgrid"></div>
@@ -1244,6 +1256,9 @@ body{max-width:min(100%,1200px)}
     <div class="shhdr"><div class="shtit" id="ov-pan-t">🛒 Mon Panier</div><button class="bcl" onclick="closeSheet('ov-pan')">✕</button></div>
     <div class="plst" id="pan-lst"></div>
     <div class="pftr">
+      <div class="loyalty-box" style="margin:0 0 11px">
+        <button class="loyalty-btn" id="loyalty-btn" onclick="ouvrirClientVente()">👤 <span class="loyalty-sel" id="client-vente-info">Client fidèle (optionnel)</span></button>
+      </div>
       <div class="trow"><span class="tlbl" id="lbl-total">TOTAL</span><span class="tamt" id="pan-tot">0</span></div>
       <button class="bpay" id="btn-pay" onclick="procederPmt()">✅ <span id="lbl-payer">PAYER</span></button>
       <button class="bvid" id="btn-vid" onclick="viderPanier()">🗑️ <span id="lbl-vider">Vider</span></button>
@@ -3039,6 +3054,7 @@ function mettreEnAvant(pid){
   if(ordrePrio.length>8)ordrePrio.length=8;
 }
 function renderProd(lst){
+  try{renderTopVentes();}catch(e){}
   lst=appliquerOrdrePrio(lst);
   var g=document.getElementById('pgrid');g.innerHTML='';
   if(!lst.length){
@@ -3104,6 +3120,29 @@ function renderProd(lst){
       (isNeg?'<div class="sneg">📦 -'+Math.abs(ts)+'</div>':'');
     g.appendChild(d);
   });
+}
+// Rangée "Ventes rapides" : les 5-6 articles les plus vendus, en 1 tap
+function renderTopVentes(){
+  var box=document.getElementById('topventes');if(!box||!DB)return;
+  var q=((document.getElementById('src-c')||{}).value||'').trim();
+  var top=Array.from(DB.articles).filter(function(p){return (p.vd||0)>0;}).sort(function(a,b){return (b.vd||0)-(a.vd||0);}).slice(0,6);
+  if(q||top.length<2||DB.articles.length<=4){box.style.display='none';box.innerHTML='';return;}
+  var s=DB.cfg.s;
+  box.style.display='block';
+  box.innerHTML='<div class="tv-lbl">⚡ '+(lang==='fr'?'Ventes rapides':'Quick sell')+'</div><div class="tv-row">'+top.map(function(p){
+    var media=p.img?'<img src="'+p.img+'" loading="lazy">':
+      (DB.cfg&&DB.cfg.noEmoji?'<span class="tv-mono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':'<span class="tv-e">'+p.e+'</span>');
+    return '<button class="tv-chip" onclick="venteRapide('+p.id+')">'+media+'<span class="tv-nm">'+p.nm+'</span><span class="tv-px">'+fmt(p.px).replace(s+' ','')+s+'</span></button>';
+  }).join('')+'</div>';
+}
+function venteRapide(pid){
+  var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
+  var ts=getStk(p);
+  if(ts<=0&&!p.rt){showToast('⚠️ '+(lang==='fr'?'Stock épuisé !':'Out of stock!'));return;}
+  if(p.vr.length){ouvrirVar(p);return;}
+  var livePq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
+  if(ts<=0&&p.rt&&livePq===0){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
+  addPanier(p,null);
 }
 function retirerUn(e,pid){
   e.stopPropagation();
@@ -4083,7 +4122,7 @@ function saveVar(){var nm=document.getElementById('var-nm').value.trim(),pa=pars
 // STOCK
 // ═══════════════════════════════════════════
 function depCount(p){var s=(p.dep0||0);(DB.ventes||[]).forEach(function(v){if(v.annulee)return;(v.lignes||[]).forEach(function(l){if(l.pid==p.id)s+=(l.dep||0);});});return s;}
-function renderStock(lst){var c=document.getElementById('stk-lst');if(!c)return;c.innerHTML='';var bc={};lst.forEach(function(p){if(!bc[p.cat])bc[p.cat]=[];bc[p.cat].push(p);});Object.entries(bc).forEach(function(e){var cat=e[0],items=e[1];var ti=document.createElement('div');ti.style.cssText='font-size:10px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.8px;margin:11px 0 7px;padding:0 1px';ti.textContent=(CE[cat]||'📦')+' '+cat;c.appendChild(ti);var card=document.createElement('div');card.className='scd';items.forEach(function(p){var ts=getStk(p),dc=(role==='patron')?depCount(p):0,pct=Math.min(100,ts<=0?0:ts/Math.max(ts+10,20)*100),cls=ts<=0?'out':ts<=p.al?'low':'ok';var d=document.createElement('div');d.className='sit';d.onclick=function(){if(role==='patron'){selArtStk(p);document.getElementById('ov-stk').classList.add('show');}};d.innerHTML=(p.img?'<img class="siemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'siemo\',textContent:\''+p.e+'\'}))">':'<div class="siemo-wrap">'+(DB.cfg&&DB.cfg.noEmoji?'<span class="siemo simono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':'<span class="siemo">'+p.e+'</span>')+((role==='patron'||hasPerm('produits'))?'<button class="siphoto" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">📷</button>':'')+'</div>')+'<div class="siinf"><div class="sinm">'+p.nm+(p.vr.length?' <span style="font-size:9px;color:var(--B);font-weight:700">('+p.vr.length+')</span>':'')+'</div><div class="sidet">'+fmt(p.px)+' · '+(lang==='fr'?'Vendu':'Sold')+': '+p.vd+'</div><div class="sbb"><div class="sbf" style="width:'+pct+'%;background:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'"></div></div></div><div class="sistock"><div class="siqty '+cls+'">'+Math.max(0,ts)+'</div><div class="siu">'+(lang==='fr'?'unités':'units')+'</div>'+(dc>0?'<div style="font-size:9px;color:var(--PU);font-weight:800;margin-top:2px">🔁 '+dc+' '+(lang==='fr'?'dépannage':'stopgap')+'</div>':'')+(role==='patron'?'<div style="font-size:9px;color:var(--B);font-weight:700;margin-top:2px">+ '+(lang==='fr'?'Entrée':'Entry')+'</div>':'')+'</div>';card.appendChild(d);});c.appendChild(card);});}
+function renderStock(lst){var c=document.getElementById('stk-lst');if(!c)return;c.innerHTML='';var _fr=lang==='fr';if(!lst.length){c.innerHTML=(!DB.articles.length&&(role==='patron'||hasPerm('produits')))?('<div class="empty-guide"><div class="eg-ico">📦</div><div class="eg-t">'+(_fr?'Ton stock est vide':'Your stock is empty')+'</div><div class="eg-s">'+(_fr?'Ajoute tes articles pour suivre les quantités et être alerté quand ça baisse.':'Add your items to track quantities and get low-stock alerts.')+'</div><button class="eg-btn" onclick="ouvrirAjout()">➕ '+(_fr?'Ajouter un article':'Add an item')+'</button></div>'):('<div class="empty"><div class="empty-e">🔍</div><div class="empty-t">'+(_fr?'Aucun résultat':'No result')+'</div></div>');return;}var bc={};lst.forEach(function(p){if(!bc[p.cat])bc[p.cat]=[];bc[p.cat].push(p);});Object.entries(bc).forEach(function(e){var cat=e[0],items=e[1];var ti=document.createElement('div');ti.style.cssText='font-size:10px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.8px;margin:11px 0 7px;padding:0 1px';ti.textContent=(CE[cat]||'📦')+' '+cat;c.appendChild(ti);var card=document.createElement('div');card.className='scd';items.forEach(function(p){var ts=getStk(p),dc=(role==='patron')?depCount(p):0,pct=Math.min(100,ts<=0?0:ts/Math.max(ts+10,20)*100),cls=ts<=0?'out':ts<=p.al?'low':'ok';var d=document.createElement('div');d.className='sit';d.onclick=function(){if(role==='patron'){selArtStk(p);document.getElementById('ov-stk').classList.add('show');}};d.innerHTML=(p.img?'<img class="siemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'siemo\',textContent:\''+p.e+'\'}))">':'<div class="siemo-wrap">'+(DB.cfg&&DB.cfg.noEmoji?'<span class="siemo simono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':'<span class="siemo">'+p.e+'</span>')+((role==='patron'||hasPerm('produits'))?'<button class="siphoto" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">📷</button>':'')+'</div>')+'<div class="siinf"><div class="sinm">'+p.nm+(p.vr.length?' <span style="font-size:9px;color:var(--B);font-weight:700">('+p.vr.length+')</span>':'')+'</div><div class="sidet">'+fmt(p.px)+' · '+(lang==='fr'?'Vendu':'Sold')+': '+p.vd+'</div><div class="sbb"><div class="sbf" style="width:'+pct+'%;background:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'"></div></div></div><div class="sistock"><div class="siqty '+cls+'">'+Math.max(0,ts)+'</div><div class="siu">'+(lang==='fr'?'unités':'units')+'</div>'+(dc>0?'<div style="font-size:9px;color:var(--PU);font-weight:800;margin-top:2px">🔁 '+dc+' '+(lang==='fr'?'dépannage':'stopgap')+'</div>':'')+(role==='patron'?'<div style="font-size:9px;color:var(--B);font-weight:700;margin-top:2px">+ '+(lang==='fr'?'Entrée':'Entry')+'</div>':'')+'</div>';card.appendChild(d);});c.appendChild(card);});}
 function filtrS(q){renderStock(DB.articles.filter(function(p){return p.nm.toLowerCase().includes(q.toLowerCase());}));}
 function ouvrirStk(p){if(!(role==='patron'||hasPerm('stock')))return;document.getElementById('stk-form').style.display='none';renderAgstk();if(p)selArtStk(p);document.getElementById('ov-stk').classList.add('show');}
 function renderAgstk(){var g=document.getElementById('agstk');if(!g)return;g.innerHTML='';DB.articles.forEach(function(p){var ts=getStk(p),d=document.createElement('div');d.className='apcd';d.innerHTML='<span style="font-size:38px;line-height:1;display:block;margin-bottom:4px">'+p.e+'</span><div style="font-size:10px;font-weight:700;color:var(--T);margin-bottom:2px">'+p.nm+'</div><div style="font-size:10px;font-weight:800;color:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'">'+ts+'</div>';d.onclick=function(){selArtStk(p);};g.appendChild(d);});}
@@ -4200,7 +4239,7 @@ function renderClients(){
       var sc=cl.credit<=0?'cs-paid':d<0?'cs-due':d<=3?'cs-warn':'cs-ok';
       var st=cl.credit<=0?(lang==='fr'?'Soldé ✅':'Paid ✅'):d<0?(lang==='fr'?'En retard':'Overdue')+'('+Math.abs(d)+'j)':d===0?(lang==='fr'?"Dû aujourd'hui":"Due today"):d<=3?d+'j':'OK';
       return '<div class="cit" onclick="ouvrirDetCli('+cl.id+')"><div class="cav" style="background:'+cl.bg+';color:'+cl.tc+'">'+cl.nm[0].toUpperCase()+'</div><div class="ciinf"><div class="cinm">'+cl.nm+'</div><div class="cidt">📅 '+(cl.date?new Date(cl.date).toLocaleDateString('fr-FR'):'N/A')+'</div></div><div class="ciamt"><div class="cidebt">'+fmt(cl.credit)+'</div><div class="cist '+sc+'">'+st+'</div></div></div>';
-    }).join('')||'<div class="empty" style="padding:14px"><div class="empty-e">👥</div><div class="empty-t">'+(lang==='fr'?'Aucun client':'No customers')+'</div></div>')+
+    }).join('')||'<div class="empty-guide" style="padding:24px 16px"><div class="eg-ico">🧾</div><div class="eg-t">'+(lang==='fr'?'Aucun client à crédit':'No credit customer')+'</div><div class="eg-s">'+(lang==='fr'?"Enregistre un client pour suivre ce qu'il te doit et être rappelé à l'échéance.":'Add a customer to track what they owe you and get reminded at the due date.')+'</div></div>')+
     '</div>'+
     '<button class="bnxt" style="margin-top:11px" onclick="ouvrirAddCli()">➕ '+(lang==='fr'?'Ajouter un client':'Add customer')+'</button>';
 }
@@ -4880,7 +4919,7 @@ function utiliserPointsClient(){
 renderClients=function(){
   var c=document.getElementById('cli-cont');if(!c)return;
   var today=new Date(),tot=DB.clients.reduce(function(s,x){majNiveauClient(x);return s+x.credit;},0);
-  c.innerHTML='<div class="rcd" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px"><div><div style="font-size:11px;font-weight:700;color:var(--M)">'+(lang==='fr'?'Total crédits':'Total credit')+'</div><div style="font-size:22px;font-weight:900;color:var(--R)">'+fmt(tot)+'</div></div><div style="text-align:right;font-size:11px;font-weight:700;color:var(--M)">'+DB.clients.length+' '+(lang==='fr'?'clients':'customers')+'</div></div><div class="ccd">'+(DB.clients.map(function(cl){var d=cl.date?Math.ceil((new Date(cl.date)-today)/864e5):999;var sc=cl.credit<=0?'cs-paid':d<0?'cs-due':d<=3?'cs-warn':'cs-ok';var st=cl.credit<=0?(lang==='fr'?'Soldé ✅':'Paid ✅'):d<0?(lang==='fr'?'En retard':'Overdue')+' ('+Math.abs(d)+'j)':d===0?(lang==='fr'?"Dû aujourd'hui":"Due today"):d<=3?d+'j':'OK';return '<div class="cit" onclick="ouvrirDetCli('+cl.id+')"><div class="cav" style="background:'+cl.bg+';color:'+cl.tc+'">'+cl.nm[0].toUpperCase()+'</div><div class="ciinf"><div class="cinm">'+cl.nm+'</div><div class="lv-badge">'+cl.niveau+' · '+(cl.points||0)+' pts</div><div class="cidt">📅 '+(cl.date?new Date(cl.date).toLocaleDateString('fr-FR'):'N/A')+'</div></div><div class="ciamt"><div class="cidebt">'+fmt(cl.credit)+'</div><div class="cist '+sc+'">'+st+'</div></div></div>';}).join('')||'<div class="empty" style="padding:14px"><div class="empty-e">👥</div><div class="empty-t">'+(lang==='fr'?'Aucun client':'No customers')+'</div></div>')+'</div><button class="bnxt" style="margin-top:11px" onclick="ouvrirAddCli()">➕ '+(lang==='fr'?'Ajouter un client':'Add customer')+'</button>';
+  c.innerHTML='<div class="rcd" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px"><div><div style="font-size:11px;font-weight:700;color:var(--M)">'+(lang==='fr'?'Total crédits':'Total credit')+'</div><div style="font-size:22px;font-weight:900;color:var(--R)">'+fmt(tot)+'</div></div><div style="text-align:right;font-size:11px;font-weight:700;color:var(--M)">'+DB.clients.length+' '+(lang==='fr'?'clients':'customers')+'</div></div><div class="ccd">'+(DB.clients.map(function(cl){var d=cl.date?Math.ceil((new Date(cl.date)-today)/864e5):999;var sc=cl.credit<=0?'cs-paid':d<0?'cs-due':d<=3?'cs-warn':'cs-ok';var st=cl.credit<=0?(lang==='fr'?'Soldé ✅':'Paid ✅'):d<0?(lang==='fr'?'En retard':'Overdue')+' ('+Math.abs(d)+'j)':d===0?(lang==='fr'?"Dû aujourd'hui":"Due today"):d<=3?d+'j':'OK';return '<div class="cit" onclick="ouvrirDetCli('+cl.id+')"><div class="cav" style="background:'+cl.bg+';color:'+cl.tc+'">'+cl.nm[0].toUpperCase()+'</div><div class="ciinf"><div class="cinm">'+cl.nm+'</div><div class="lv-badge">'+cl.niveau+' · '+(cl.points||0)+' pts</div><div class="cidt">📅 '+(cl.date?new Date(cl.date).toLocaleDateString('fr-FR'):'N/A')+'</div></div><div class="ciamt"><div class="cidebt">'+fmt(cl.credit)+'</div><div class="cist '+sc+'">'+st+'</div></div></div>';}).join('')||'<div class="empty-guide" style="padding:24px 16px"><div class="eg-ico">🧾</div><div class="eg-t">'+(lang==='fr'?'Aucun client à crédit':'No credit customer')+'</div><div class="eg-s">'+(lang==='fr'?"Enregistre un client pour suivre ce qu'il te doit et être rappelé à l'échéance.":'Add a customer to track what they owe you and get reminded at the due date.')+'</div></div>')+'</div><button class="bnxt" style="margin-top:11px" onclick="ouvrirAddCli()">➕ '+(lang==='fr'?'Ajouter un client':'Add customer')+'</button>';
 };
 saveCli=function(){var nm=document.getElementById('cli-nm').value.trim(),tel=document.getElementById('cli-tel').value.trim(),cred=parseFloat(document.getElementById('cli-cred').value)||0,date=document.getElementById('cli-date').value;if(!nm||!cred){showToast(t('errMontant'));return;}var bgs=[['#E3F2FD','#2979FF'],['#FCE4EC','#E91E63'],['#E8F5E9','#00C853'],['#FFF8E1','#F5A623'],['#F3E5F5','#7C4DFF']];var c=bgs[DB.clients.length%bgs.length];DB.clients.push({id:DB.clients.length+1,nm:nm,tel:tel||'N/A',credit:cred,date:date,bg:c[0],tc:c[1],points:0,niveau:'Bronze',hist:[{date:new Date().toLocaleDateString('fr-FR'),type:'credit',amt:cred}]});save();closeSheet('ov-cli');renderClients();showToast(t('clientAjoute'));};
 ouvrirDetCli=function(id){cliCours=DB.clients.find(function(c){return c.id===id;});if(!cliCours)return;majNiveauClient(cliCours);var pg=clientProgressData(cliCours);document.getElementById('cli-det-nm').textContent=cliCours.nm;document.getElementById('cli-d-dette').textContent=fmt(cliCours.credit);document.getElementById('cli-d-date').textContent=cliCours.date?new Date(cliCours.date).toLocaleDateString('fr-FR'):'N/A';document.getElementById('cli-d-tel').textContent=cliCours.tel||'N/A';var info=document.getElementById('lbl-info-cred');if(info)info.textContent='Info crédit & fidélité';var hist=document.getElementById('cli-hist');hist.innerHTML='<div class="lv-badge" style="margin:0 0 8px 0">'+pg.lvl+' · '+pg.cur+'</div><div class="lv-bar"><div class="lv-fill" style="width:'+pg.pct+'%"></div></div><div class="lv-meta"><span>'+pg.cur+'</span><span>'+pg.next+'</span></div><div style="height:10px"></div>'+histClientHTML(cliCours);document.getElementById('cli-pmt').value='';document.getElementById('reste-card').style.display='none';document.getElementById('ov-cli-det').classList.add('show');};
