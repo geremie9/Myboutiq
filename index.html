@@ -233,6 +233,8 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .pedit::after,.qbdg::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%}
 .cash-guide{display:none}
 .slow{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:var(--O);color:#fff;border-radius:7px;padding:2px 5px;font-size:8px;font-weight:800;white-space:nowrap}
+.sinc{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:#FF9800;color:#fff;border-radius:7px;padding:2px 6px;font-size:8px;font-weight:800;white-space:nowrap}
+.pcard.incomplete{border-color:#FFB74D;background:#FFFDF7}
 .sout{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:var(--R);color:#fff;border-radius:7px;padding:2px 5px;font-size:8px;font-weight:800;white-space:nowrap}
 .sneg{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:var(--O);color:#fff;border-radius:7px;padding:2px 5px;font-size:8px;font-weight:800;white-space:nowrap}
 
@@ -1346,6 +1348,30 @@ body{max-width:min(100%,1200px)}
 </div>
 
 <!-- REÇU -->
+<!-- Compléter un article importé (nom obligatoire + mesure) avant de pouvoir le vendre -->
+<div class="ov" id="ov-completer" onclick="closeOv(event,'ov-completer')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">✏️ <span id="cmp-tit">Compléter l'article</span></div><button class="bcl" onclick="closeSheet('ov-completer')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div id="cmp-img" style="text-align:center;margin-bottom:10px"></div>
+      <div style="background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:9px;padding:8px 10px;font-size:11.5px;color:#B45309;font-weight:800;margin-bottom:11px" id="cmp-hint">Donne un nom à cet article pour pouvoir le vendre</div>
+      <div class="pig"><label class="pl" id="cmp-nm-lbl">Nom de l'article (obligatoire)</label><input class="pi sm" id="cmp-nm" type="text" style="font-weight:700"></div>
+      <div class="sth" id="cmp-um-h">⚖️ Se vend comment ?</div>
+      <div class="agrd" style="grid-template-columns:repeat(3,1fr)">
+        <div class="abtn on" id="cum-p" onclick="cmpUm('pc')"><span class="aemo">🔢</span><span class="albl">À la pièce</span></div>
+        <div class="abtn" id="cum-k" onclick="cmpUm('kg')"><span class="aemo">⚖️</span><span class="albl">Au kilo</span></div>
+        <div class="abtn" id="cum-l" onclick="cmpUm('L')"><span class="aemo">🫗</span><span class="albl">Au litre</span></div>
+      </div>
+      <div class="pig" id="cmp-sac-row" style="display:none"><label class="pl" id="cmp-sac-lbl">Taille du sac / bidon</label><input class="pi" type="number" id="cmp-sac" inputmode="decimal" step="0.5" placeholder="ex : 50"></div>
+      <div style="display:flex;gap:8px">
+        <div class="pig" style="flex:1"><label class="pl" id="cmp-pa-lbl">Prix d'achat</label><input class="pi sm" id="cmp-pa" type="number" inputmode="numeric"></div>
+        <div class="pig" style="flex:1"><label class="pl" id="cmp-pv-lbl">Prix de vente (obligatoire)</label><input class="pi sm" id="cmp-pv" type="number" inputmode="numeric"></div>
+      </div>
+      <button class="bnxt" onclick="validerCompleter()">✅ <span id="cmp-ok">Enregistrer — prêt à vendre</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- Quantité pour les articles vendus au poids / à la mesure (kg, litre) -->
 <div class="ov" id="ov-qte" onclick="closeOv(event,'ov-qte')">
   <div class="bsht"><div class="shndl"></div>
@@ -2035,7 +2061,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.07-B'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.07-C'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3128,15 +3154,21 @@ function renderProd(lst){
     return;
   }
   lst.forEach(function(p){
-    var ts=getStk(p),hasV=p.vr.length>0,isOut=ts<=0,isNeg=ts<0,isLow=!isOut&&!isNeg&&ts<=p.al&&p.al>0;
+    var ts=getStk(p),hasV=p.vr.length>0,isOut=ts<=0,isNeg=ts<0,isLow=!isOut&&!isNeg&&ts<=p.al&&p.al>0,inc=articleIncomplet(p);
     var pq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
     var d=document.createElement('div');
-    d.className='pcard'+(p.img?' has-photo':'')+(pq>0?' sel':'')+(hasV?' hasv':'')+(isNeg?' neg':'')+(isOut&&p.rt?' out-ok':'');
+    d.className='pcard'+(p.img?' has-photo':'')+(inc?' incomplete':'')+(pq>0?' sel':'')+(hasV?' hasv':'')+(isNeg?' neg':'')+(isOut&&p.rt?' out-ok':'');
     d.id='pc-'+p.id;
     var ignoreNextTap=false;
     d.onclick=function(){
       if(ignoreNextTap){ignoreNextTap=false;return;}
       var livePq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
+      // Nom jamais personnalisé -> pas de vente possible : on complète d'abord
+      if(articleIncomplet(p)){
+        if(role==='patron'||hasPerm('produits'))ouvrirCompleterArticle(p);
+        else showToast('⏳ '+(lang==='fr'?'Article en préparation — demande au patron':'Item being prepared — ask the owner'));
+        return;
+      }
       if(isOut&&!p.rt){showToast('⚠️ Stock épuisé !');return;}
       if(estMesure(p)&&!hasV){ouvrirQteMesure(p);return;}
       if(isOut&&p.rt&&livePq===0){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
@@ -3164,7 +3196,8 @@ function renderProd(lst){
         '<div class="ppr">'+prixTxt+'</div>'+
         (hasV?'<div class="pvbdg">'+p.vr.length+' var.</div>':'')
       )+
-      (isLow?'<div class="slow">⚠️ '+(lang==='fr'?'Bas':'Low')+'</div>':'')+
+      (inc?'<div class="sinc">✏️ '+(lang==='fr'?'À compléter':'To complete')+'</div>':'')+
+      (isLow&&!inc?'<div class="slow">⚠️ '+(lang==='fr'?'Bas':'Low')+'</div>':'')+
       (isOut&&!isNeg?'<div class="sout">⛔ '+(lang==='fr'?'Épuisé':'Out')+'</div>':'')+
       (isNeg?'<div class="sneg">📦 -'+Math.abs(ts)+'</div>':'');
     g.appendChild(d);
@@ -3187,12 +3220,58 @@ function renderTopVentes(){
 function venteRapide(pid){
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
   var ts=getStk(p);
+  if(articleIncomplet(p)){if(role==='patron'||hasPerm('produits'))ouvrirCompleterArticle(p);return;}
   if(ts<=0&&!p.rt){showToast('⚠️ '+(lang==='fr'?'Stock épuisé !':'Out of stock!'));return;}
   if(p.vr.length){ouvrirVar(p);return;}
   if(estMesure(p)){ouvrirQteMesure(p);return;}
   var livePq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
   if(ts<=0&&p.rt&&livePq===0){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
   addPanier(p,null);
+}
+// ── Article incomplet : nom jamais personnalisé -> INTERDIT de vente, la caisse
+//    propose de le compléter (nom + mesure + prix) en une seule fiche ──
+var _cmpArt=null,_cmpUmVal='pc';
+function articleIncomplet(p){return !!(p&&p._autoNm&&txtNorm(p.nm)===txtNorm(p._autoNm));}
+function ouvrirCompleterArticle(p){
+  _cmpArt=p;
+  document.getElementById('cmp-img').innerHTML=p.img
+    ?'<img src="'+p.img+'" style="width:92px;height:92px;object-fit:cover;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.15)">'
+    :'<span style="font-size:52px">'+p.e+'</span>';
+  var nm=document.getElementById('cmp-nm');nm.value=p.nm||'';nm.style.borderColor='';
+  cmpUm((p.um==='kg'||p.um==='L')?p.um:'pc');
+  document.getElementById('cmp-sac').value=p.umSac||'';
+  document.getElementById('cmp-pa').value=p.pa||'';
+  document.getElementById('cmp-pv').value=p.px||'';
+  document.getElementById('ov-completer').classList.add('show');
+  setTimeout(function(){try{nm.focus();if(nm.select)nm.select();}catch(e){}},250);
+}
+function cmpUm(u){
+  _cmpUmVal=u;
+  var ids={pc:'cum-p',kg:'cum-k',L:'cum-l'};
+  Object.keys(ids).forEach(function(k){var el=document.getElementById(ids[k]);if(el)el.classList.toggle('on',k===u);});
+  var r=document.getElementById('cmp-sac-row');if(r)r.style.display=u==='pc'?'none':'block';
+  var l=document.getElementById('cmp-sac-lbl');if(l)l.textContent=(lang==='fr'?'Taille du sac / bidon':'Bag / can size')+' ('+(u==='kg'?'kg':'L')+')';
+}
+function validerCompleter(){
+  var p=_cmpArt;if(!p)return;
+  var nmEl=document.getElementById('cmp-nm');
+  var nm=(nmEl.value||'').trim();
+  if(!nm||(p._autoNm&&txtNorm(nm)===txtNorm(p._autoNm))){
+    showToast('✏️ '+(lang==='fr'?'Écris TON nom d\'article':'Type YOUR item name'));
+    nmEl.style.borderColor='var(--R)';nmEl.focus();if(nmEl.select)nmEl.select();return;
+  }
+  var pv=parseFloat(document.getElementById('cmp-pv').value)||0;
+  if(!pv){showToast('💰 '+(lang==='fr'?'Entre le prix de vente':'Enter the sell price'));return;}
+  p.nm=nm;p.px=pv;
+  p.pa=parseFloat(document.getElementById('cmp-pa').value)||p.pa||0;
+  p.um=_cmpUmVal==='pc'?null:_cmpUmVal;
+  var sac=Math.round((parseFloat(String(document.getElementById('cmp-sac').value||'').replace(',','.'))||0)*100)/100;
+  p.umSac=(_cmpUmVal!=='pc'&&sac>0)?sac:null;
+  delete p._autoNm;delete p._srcName;
+  save();if(typeof initTabs==='function')initTabs();
+  renderProd(DB.articles);renderStock(DB.articles);
+  closeSheet('ov-completer');
+  showToast('✅ '+p.nm+' — '+(lang==='fr'?'prêt à vendre !':'ready to sell!'));
 }
 // ── Vente au poids / à la mesure : sélecteur ½ · 1 · 2 · 5 ou quantité libre ──
 var _qteArt=null;
@@ -4051,13 +4130,13 @@ function brSaveCurrent(){
     });
     delete a._pendingVariantSetup;
     a.vr.forEach(function(v){delete v._img;if(!v.nm)v.nm=a.nm;});
-    delete a._srcName;
+    delete a._srcName;if(a._autoNm&&txtNorm(a.nm)!==txtNorm(a._autoNm))delete a._autoNm;
     return;
   }
   a.pa=parseFloat(document.getElementById('br-pa').value)||0;
   a.px=parseFloat(document.getElementById('br-pv').value)||0;
   definirStock(a,null,Math.round((parseFloat(String(document.getElementById('br-stk').value||'').replace(',','.'))||0)*100)/100);
-  delete a._srcName;
+  delete a._srcName;if(a._autoNm&&txtNorm(a.nm)!==txtNorm(a._autoNm))delete a._autoNm;
   if(a.pa)_brLastPa=a.pa;
   if(a.px)_brLastPv=a.px;
 }
