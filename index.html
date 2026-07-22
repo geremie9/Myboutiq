@@ -556,6 +556,10 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
   background:var(--A);color:var(--P);font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;cursor:pointer;
   box-shadow:0 6px 16px rgba(245,166,35,.35);transition:transform .1s}
 .eg-btn:active{transform:scale(.97)}
+.eg-btn2{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;margin-top:10px;
+  border:1.5px solid var(--BD);border-radius:12px;background:var(--C);color:var(--M);
+  font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
+.eg-btn2:active{transform:scale(.97)}
 .eg-step{display:flex;align-items:center;gap:9px;text-align:left;max-width:270px;margin:9px auto 0;
   font-size:12.5px;font-weight:600;color:var(--M)}
 .eg-step b{color:var(--T)}
@@ -1473,7 +1477,7 @@ body{max-width:min(100%,1200px)}
         <button type="button" id="btn-photo-bulk" class="photo-upl-btn" onclick="document.getElementById('inp-photo-bulk').click()" style="width:100%;background:#E8F5E9;color:#1B5E20;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:6px">📚 <span id="lbl-photo-bulk">Importer en masse (50 / 100 photos)</span></button>
         <input type="file" id="inp-photo-bulk" accept="image/*" multiple style="display:none" onchange="importerPhotosMasse(event)">
         <button type="button" id="btn-photo-catalog" onclick="ouvrirCatalogueRegional()" style="width:100%;background:#FFF3E0;color:#B45309;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:6px">🗺️ <span id="lbl-photo-catalog">Modèles des boutiques de ma région</span></button>
-        <button type="button" id="btn-photo-emoji" onclick="document.getElementById('inp-photo-emoji').click()" style="width:100%;background:#F0F4FF;color:var(--B);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:6px">📷 <span id="lbl-photo-emoji">Photo → emoji automatique</span></button>
+        <button type="button" id="btn-photo-emoji" onclick="document.getElementById('inp-photo-emoji').click()" style="display:none;width:100%;background:#F0F4FF;color:var(--B);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;align-items:center;justify-content:center;gap:6px">📷 <span id="lbl-photo-emoji">Photo → emoji automatique</span></button>
         <input type="file" id="inp-photo-emoji" accept="image/*" style="display:none" onchange="photoVersEmoji(event)">
         <div class="egrd" id="egrd"></div>
         <div class="sth" id="as0-cat-h">📂 Catégorie</div>
@@ -2387,7 +2391,7 @@ function majModeParametres(){
     btn.style.display=adv?'block':'none';
   });
   var emojiBtn=document.getElementById('btn-photo-emoji');
-  if(emojiBtn)emojiBtn.style.display=adv?'flex':'none';
+  if(emojiBtn)emojiBtn.style.display='none'; // fonctionnalité annulée (direction photos)
   if(!adv&&document.getElementById('s-dashboard')&&document.getElementById('s-dashboard').classList.contains('on')){
     goScreen('s-caisse');
   }
@@ -2678,16 +2682,11 @@ async function finaliserOb(){
   var reg=document.getElementById('ob-region')?.value.trim()||'';
   // Générer code boutique scalable (1 milliard de combinaisons)
   var code=genCode();
-  var arts=JSON.parse(JSON.stringify(ART_SECTEUR[obSecteur]||ART_SECTEUR.boutique));
-  try{
-    var modRes=await supa.rpc('obtenir_modele_articles',{p_secteur:obSecteur});
-    if(!modRes.error&&modRes.data&&Array.isArray(modRes.data)&&modRes.data.length){
-      arts=JSON.parse(JSON.stringify(modRes.data)).map(function(a,i){a.id=i+1;a.vd=0;if(!Array.isArray(a.vr))a.vr=[];return a;});
-    }
-  }catch(e){/* silencieux : on garde le modele statique en secours si le direct echoue */}
+  // La boutique démarre VIDE : le patron ajoute SES articles.
+  // (Le modèle d'articles reste disponible en OPTION, depuis le guide de la caisse vide.)
   DB={
     cfg:{lang:obLang,pays:p,secteur:obSecteur,nom:nm,tel,pin,s:p.s,d:p.d,code,region:reg,veille:false,idFiscal:'',plan:'gratuit',biometrie:false,paramAvances:false,ownerEmail:authEmailFromPhone(tel),ownerId:authUser?authUser.id:null},
-    articles:arts,
+    articles:[],
     boutiques:[{id:1,nm,code,secteur:obSecteur,actif:true,ventes:0}],
     boutiqueCourante:0,
     clients:[],
@@ -3066,6 +3065,7 @@ function renderProd(lst){
         '<div class="eg-t">'+(fr?'Ta caisse est prête !':'Your register is ready!')+'</div>'+
         '<div class="eg-s">'+(fr?'Ajoute ton premier article pour commencer à vendre.':'Add your first item to start selling.')+'</div>'+
         '<button class="eg-btn" onclick="ouvrirAjout()">➕ '+(fr?'Ajouter mon 1ᵉʳ article':'Add my 1st item')+'</button>'+
+        '<div><button class="eg-btn2" onclick="importerModeleArticles()">📦 '+(fr?'Ou partir d\'un modèle d\'articles':'Or start from a template')+'</button></div>'+
         '<div class="eg-step"><span class="eg-num">1</span><span>'+(fr?'<b>Ajoute</b> tes articles (nom + prix)':'<b>Add</b> your items (name + price)')+'</span></div>'+
         '<div class="eg-step"><span class="eg-num">2</span><span>'+(fr?'<b>Touche</b> un article pour le vendre':'<b>Tap</b> an item to sell it')+'</span></div>'+
         '<div class="eg-step"><span class="eg-num">3</span><span>'+(fr?'<b>Encaisse</b> et envoie le reçu':'<b>Cash in</b> and send the receipt')+'</span></div>'+
@@ -3143,6 +3143,33 @@ function venteRapide(pid){
   var livePq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
   if(ts<=0&&p.rt&&livePq===0){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
   addPanier(p,null);
+}
+// Modèle d'articles en OPTION (la boutique démarre vide) : chargé à la demande
+var _modeleEnCours=false;
+async function importerModeleArticles(){
+  if(!(role==='patron'||hasPerm('produits')))return;
+  if(_modeleEnCours)return;
+  _modeleEnCours=true;
+  showToast('🔄 '+(lang==='fr'?'Chargement du modèle...':'Loading template...'));
+  var sect=(DB.cfg&&DB.cfg.secteur)||'boutique';
+  var arts=JSON.parse(JSON.stringify(ART_SECTEUR[sect]||ART_SECTEUR.boutique));
+  try{
+    if(supa&&navigator.onLine){
+      var modRes=await supa.rpc('obtenir_modele_articles',{p_secteur:sect});
+      if(!modRes.error&&modRes.data&&Array.isArray(modRes.data)&&modRes.data.length)arts=JSON.parse(JSON.stringify(modRes.data));
+    }
+  }catch(e){}
+  var base=DB.articles.reduce(function(m,x){return Math.max(m,+x.id||0);},0);
+  arts.forEach(function(a,i){
+    a.id=base+i+1;a.vd=0;if(!Array.isArray(a.vr))a.vr=[];
+    delete a.stk0;a.vr.forEach(function(v){delete v.stk0;});
+    DB.articles.push(a);
+  });
+  if(!DB.nextId||DB.nextId<=base+arts.length)DB.nextId=base+arts.length+1;
+  save();if(typeof initTabs==='function')initTabs();
+  renderProd(DB.articles);renderStock(DB.articles);
+  _modeleEnCours=false;
+  showToast('✅ '+arts.length+' '+(lang==='fr'?'articles modèles ajoutés — adapte les noms et les prix !':'template items added — adjust names and prices!'));
 }
 function retirerUn(e,pid){
   e.stopPropagation();
@@ -3682,11 +3709,8 @@ function importerPhotosMasse(ev){
   if(!supa){showToast('⛔ '+(lang==='fr'?'Connexion requise pour importer des photos':'Connection required to import photos'));ev.target.value='';return;}
   if(_bulkImportRunning){showToast('⏳ '+(lang==='fr'?'Import déjà en cours':'Import already running'));ev.target.value='';return;}
   if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));ev.target.value='';return;}
-  var maxBatch=100;
-  if(files.length>maxBatch){
-    files=files.slice(0,maxBatch);
-    showToast('ℹ️ '+(lang==='fr'?'Import limité à 100 photos par lot':'Import limited to 100 photos per batch'));
-  }
+  // Pas de limite d'import : le patron importe tout son catalogue d'un coup.
+  if(files.length>150)showToast('⏳ '+(lang==='fr'?files.length+' photos — ça peut prendre quelques minutes, laisse l\'écran ouvert':files.length+' photos — this may take a few minutes, keep the screen open'));
   _bulkImportRunning=true;
   var btn=document.getElementById('btn-photo-bulk');if(btn)btn.classList.add('busy');
   var total=files.length,idx=0,ok=0,ko=0,importedIds=[];
@@ -3708,7 +3732,7 @@ function importerPhotosMasse(ev){
     compresserImage(file,300,0.6).then(function(blob){
       return uploadBlobProduit(blob).then(function(publicUrl){
         var newId=DB.nextId++;
-        DB.articles.push({id:newId,nm:nm,e:emoji,img:publicUrl,cat:cat,px:0,pa:0,stk:0,al:5,vd:0,vr:[],rt:true,_srcName:file.name});
+        DB.articles.push({id:newId,nm:nm,e:emoji,img:publicUrl,cat:cat,px:0,pa:0,stk:0,al:5,vd:0,vr:[],rt:true,_srcName:file.name,_autoNm:nm});
         importedIds.push(newId);
         ok++;
       });
@@ -3952,6 +3976,25 @@ function brSaveCurrent(){
   if(a.px)_brLastPv=a.px;
 }
 function brNav(dir){
+  // Interdit d'enregistrer un article dont le nom n'a pas été personnalisé :
+  // le patron doit mettre SON nom (pas celui généré depuis le fichier photo).
+  if(dir>0){
+    var _id=_bulkReviewIds[_bulkReviewIdx];
+    var _a=DB.articles.find(function(x){return x.id===_id;});
+    var _nmEl=document.getElementById('br-nm');
+    var _nm=_nmEl?_nmEl.value.trim():'';
+    if(_a){
+      if(!_nm||(_a._autoNm&&txtNorm(_nm)===txtNorm(_a._autoNm))){
+        showToast('✏️ '+(lang==='fr'?'Écris TON nom d\'article avant de continuer':'Type YOUR item name before continuing'));
+        if(_nmEl){_nmEl.focus();if(_nmEl.select)_nmEl.select();}
+        return;
+      }
+      if(_a._pendingVariantSetup&&_a._pendingVariantSetup.length){
+        var _vides=Array.prototype.filter.call(document.querySelectorAll('#bulk-review-single [data-vf="nm"]'),function(i2){return !i2.value.trim();});
+        if(_vides.length){showToast('✏️ '+(lang==='fr'?'Nomme chaque variante':'Name each variant'));_vides[0].focus();return;}
+      }
+    }
+  }
   brSaveCurrent();
   if(dir>0&&_bulkReviewIdx===_bulkReviewIds.length-1){finirRevueImport();return;}
   _bulkReviewIdx+=dir;
@@ -4034,7 +4077,7 @@ function importerSelectionCatalogue(){
 }
 
 function initCatGrid(){var g=document.getElementById('cgrd');g.innerHTML='';var cats=lang==='fr'?CATS_FR:CATS_EN;cats.forEach(function(c){var b=document.createElement('button');b.className='cbtn'+(c===selCat?' on':'');b.textContent=(CE[c]||'📦')+' '+c;b.onclick=function(){selCat=c;document.querySelectorAll('.cgrd .cbtn').forEach(function(x){x.classList.remove('on');});b.classList.add('on');};g.appendChild(b);});}
-function ouvrirAjout(){if(!(role==='patron'||hasPerm('produits')))return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;_lastAutoStk=null;document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp','ainp-mult','ainp-parcont'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display=(DB&&DB.cfg&&DB.cfg.paramAvances)?'flex':'none';initEmoGrid();initCatGrid();goAS(0);document.getElementById('ov-art').classList.add('show');}
+function ouvrirAjout(){if(!(role==='patron'||hasPerm('produits')))return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;_lastAutoStk=null;document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp','ainp-mult','ainp-parcont'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display='none';initEmoGrid();initCatGrid();goAS(0);document.getElementById('ov-art').classList.add('show');}
 function goAS(n){document.querySelectorAll('#ov-art .pst').forEach(function(s){s.classList.remove('on');});document.getElementById('as'+n).classList.add('on');if(n===1){var nm=document.getElementById('art-nm').value||'Article';document.getElementById('ae-as').textContent=selEmo;document.getElementById('an-as').textContent=nm;document.getElementById('ae-as2').textContent=selEmo;document.getElementById('an-as2').textContent=nm;selTypeA('carton');}}
 function selTypeA(tp){achatTypeA=tp;['carton','palette','lot','unite'].forEach(function(x){var el=document.getElementById('at-'+x[0]);if(el)el.classList.toggle('on',x===tp);});var qs=document.getElementById('aqsec'),qm=document.getElementById('aqmult');if(tp==='unite'){qs.style.display='none';qm.style.display='none';}else{qs.style.display='block';qm.style.display='flex';}document.getElementById('albl-mult').textContent=tp==='palette'?'Nb. de palettes':(lang==='fr'?'Nb. de casiers/cartons':'Nb of crates/boxes');document.getElementById('albl-parcont').textContent=tp==='palette'?'Unités par palette':'Unités par casier';calcAutoA();}
 var _lastAutoStk=null;
