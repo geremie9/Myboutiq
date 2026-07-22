@@ -533,6 +533,20 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 /* ── EMPTY ── */
 .empty{text-align:center;padding:36px 20px;color:var(--M)}
 .empty-e{font-size:44px;margin-bottom:9px}.empty-t{font-size:14px;font-weight:700}.empty-s{font-size:12px;margin-top:4px;font-weight:600}
+/* État vide qui GUIDE (première utilisation) */
+.empty-guide{text-align:center;padding:34px 22px 24px}
+.eg-ico{font-size:52px;margin-bottom:12px;line-height:1}
+.eg-t{font-size:17px;font-weight:900;color:var(--T);margin-bottom:6px}
+.eg-s{font-size:13px;font-weight:600;color:var(--M);line-height:1.5;margin-bottom:18px;max-width:280px;margin-left:auto;margin-right:auto}
+.eg-btn{display:inline-flex;align-items:center;gap:7px;min-height:50px;padding:0 22px;border:none;border-radius:14px;
+  background:var(--A);color:var(--P);font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;cursor:pointer;
+  box-shadow:0 6px 16px rgba(245,166,35,.35);transition:transform .1s}
+.eg-btn:active{transform:scale(.97)}
+.eg-step{display:flex;align-items:center;gap:9px;text-align:left;max-width:270px;margin:9px auto 0;
+  font-size:12.5px;font-weight:600;color:var(--M)}
+.eg-step b{color:var(--T)}
+.eg-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--BG);color:var(--P);
+  font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center}
 
 /* ── CONTEXT MENU ── */
 .ctxm{position:fixed;z-index:150;background:var(--C);border-radius:15px;padding:7px;box-shadow:0 8px 30px rgba(0,0,0,.2);min-width:185px;display:none}
@@ -3027,7 +3041,28 @@ function mettreEnAvant(pid){
 function renderProd(lst){
   lst=appliquerOrdrePrio(lst);
   var g=document.getElementById('pgrid');g.innerHTML='';
-  if(!lst.length){g.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-e">🔍</div><div class="empty-t">'+t('tousArticles')+'</div></div>';return;}
+  if(!lst.length){
+    var fr=lang==='fr';
+    if(!DB.articles.length&&(role==='patron'||hasPerm('produits'))){
+      // Nouvelle boutique vide -> on GUIDE vers la 1re action
+      g.innerHTML='<div class="empty-guide" style="grid-column:1/-1">'+
+        '<div class="eg-ico">🛍️</div>'+
+        '<div class="eg-t">'+(fr?'Ta caisse est prête !':'Your register is ready!')+'</div>'+
+        '<div class="eg-s">'+(fr?'Ajoute ton premier article pour commencer à vendre.':'Add your first item to start selling.')+'</div>'+
+        '<button class="eg-btn" onclick="ouvrirAjout()">➕ '+(fr?'Ajouter mon 1ᵉʳ article':'Add my 1st item')+'</button>'+
+        '<div class="eg-step"><span class="eg-num">1</span><span>'+(fr?'<b>Ajoute</b> tes articles (nom + prix)':'<b>Add</b> your items (name + price)')+'</span></div>'+
+        '<div class="eg-step"><span class="eg-num">2</span><span>'+(fr?'<b>Touche</b> un article pour le vendre':'<b>Tap</b> an item to sell it')+'</span></div>'+
+        '<div class="eg-step"><span class="eg-num">3</span><span>'+(fr?'<b>Encaisse</b> et envoie le reçu':'<b>Cash in</b> and send the receipt')+'</span></div>'+
+      '</div>';
+    }else if(!DB.articles.length){
+      // Vendeur sur une boutique sans article
+      g.innerHTML='<div class="empty-guide" style="grid-column:1/-1"><div class="eg-ico">📦</div><div class="eg-t">'+(fr?'Aucun article':'No items')+'</div><div class="eg-s">'+(fr?'Demande au patron d\'ajouter des articles.':'Ask the owner to add items.')+'</div></div>';
+    }else{
+      // Recherche/filtre sans résultat
+      g.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-e">🔍</div><div class="empty-t">'+(fr?'Aucun résultat':'No result')+'</div></div>';
+    }
+    return;
+  }
   lst.forEach(function(p){
     var ts=getStk(p),hasV=p.vr.length>0,isOut=ts<=0,isNeg=ts<0,isLow=!isOut&&!isNeg&&ts<=p.al&&p.al>0;
     var pq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
