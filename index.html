@@ -235,6 +235,11 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .slow{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:var(--O);color:#fff;border-radius:7px;padding:2px 5px;font-size:8px;font-weight:800;white-space:nowrap}
 .sinc{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:#FF9800;color:#fff;border-radius:7px;padding:2px 6px;font-size:8px;font-weight:800;white-space:nowrap}
 .pcard.incomplete{border-color:#FFB74D;background:#FFFDF7}
+.stkvchip{display:flex;align-items:center;gap:6px;background:var(--BG);border:2px solid transparent;border-radius:10px;padding:6px 9px;cursor:pointer;font-family:Outfit,sans-serif}
+.stkvchip img{width:26px;height:26px;border-radius:7px;object-fit:cover}
+.stkvchip .stkv-nm{font-size:11.5px;font-weight:800;color:var(--T)}
+.stkvchip .stkv-s{font-size:10px;font-weight:700;color:var(--M)}
+.stkvchip.on{border-color:var(--B);background:#EEF4FF}
 .sout{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:var(--R);color:#fff;border-radius:7px;padding:2px 5px;font-size:8px;font-weight:800;white-space:nowrap}
 .sneg{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:var(--O);color:#fff;border-radius:7px;padding:2px 5px;font-size:8px;font-weight:800;white-space:nowrap}
 
@@ -1357,6 +1362,8 @@ body{max-width:min(100%,1200px)}
       <div id="cmp-img" style="text-align:center;margin-bottom:10px"></div>
       <div style="background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:9px;padding:8px 10px;font-size:11.5px;color:#B45309;font-weight:800;margin-bottom:11px" id="cmp-hint">Donne un nom à cet article pour pouvoir le vendre</div>
       <div class="pig"><label class="pl" id="cmp-nm-lbl">Nom de l'article (obligatoire)</label><input class="pi sm" id="cmp-nm" type="text" style="font-weight:700"></div>
+      <div id="cmp-vars" style="display:none"></div>
+      <div id="cmp-um-sec">
       <div class="sth2" id="cmp-um-h">Se vend comment ?</div>
       <div class="agrd" style="grid-template-columns:repeat(3,1fr)">
         <div class="abtn on" id="cum-p" onclick="cmpUm('pc')"><span class="aemo">🔢</span><span class="albl">À la pièce</span></div>
@@ -1364,7 +1371,8 @@ body{max-width:min(100%,1200px)}
         <div class="abtn" id="cum-l" onclick="cmpUm('L')"><span class="aemo">🫗</span><span class="albl">Au litre</span></div>
       </div>
       <div class="pig" id="cmp-sac-row" style="display:none"><label class="pl" id="cmp-sac-lbl">Taille du sac / bidon</label><input class="pi" type="number" id="cmp-sac" inputmode="decimal" step="0.5" placeholder="ex : 50"></div>
-      <div style="display:flex;gap:8px">
+      </div>
+      <div style="display:flex;gap:8px" id="cmp-prix-row">
         <div class="pig" style="flex:1"><label class="pl" id="cmp-pa-lbl">Prix d'achat</label><input class="pi sm" id="cmp-pa" type="number" inputmode="numeric"></div>
         <div class="pig" style="flex:1"><label class="pl" id="cmp-pv-lbl">Prix de vente (obligatoire)</label><input class="pi sm" id="cmp-pv" type="number" inputmode="numeric"></div>
       </div>
@@ -1597,6 +1605,7 @@ body{max-width:min(100%,1200px)}
       <div class="agpx" id="agstk" style="max-height:38vh;margin-bottom:13px"></div>
       <div id="stk-form" style="display:none">
         <div class="arcp"><span id="stk-e" style="font-size:36px">📦</span><div><div id="stk-n" style="font-size:14px;font-weight:800;color:var(--T)">Article</div><div style="font-size:11px;font-weight:600;color:var(--M)">Stock: <span id="stk-cur">0</span></div></div></div>
+        <div id="stk-var-row" style="display:none;flex-wrap:wrap;gap:7px;margin-bottom:11px"></div>
         <div class="pig"><label class="pl" id="lbl-qte-recu">Quantité reçue</label><input class="pi" type="number" id="inp-sqte" inputmode="decimal" step="0.25"><div class="shcts" id="stk-shcts"><button class="shct" onclick="setSQ(6)">6</button><button class="shct" onclick="setSQ(12)">12</button><button class="shct" onclick="setSQ(24)">24</button><button class="shct" onclick="setSQ(48)">48</button></div></div>
         <div class="pig"><label class="pl" id="lbl-fourn">Fournisseur</label><input class="pi sm" type="text" id="inp-fourn" placeholder="Optionnel"></div>
         <button class="bnxt" onclick="saveStk()" id="btn-save-stk">✅ <span id="lbl-enreg-stk">Enregistrer</span></button>
@@ -2069,7 +2078,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.07-E'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.07-F'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3123,6 +3132,16 @@ function stockVarDispo(p,v){
   return v.stk||0;
 }
 function getStk(p){return p.vr.length?(utiliseStockBase(p)?(p.stk||0):p.vr.reduce(function(s,v){return s+v.stk;},0)):p.stk;}
+// Prix affiché sur une carte : article simple = son prix ; famille = "dès <moins cher>"
+function prixCarte(p){
+  var s=DB.cfg.s;
+  if(p.vr&&p.vr.length){
+    var pxs=p.vr.map(function(v){return v.px;}).filter(function(x){return x>0;});
+    if(!pxs.length)return '—';
+    return (lang==='fr'?'dès ':'from ')+fmt(Math.min.apply(null,pxs)).replace(s+' ','')+s;
+  }
+  return fmt(p.px).replace(s+' ','')+s;
+}
 var ordrePrio=[];
 function appliquerOrdrePrio(lst){
   if(!ordrePrio.length)return lst;
@@ -3178,9 +3197,10 @@ function renderProd(lst){
         return;
       }
       if(isOut&&!p.rt){showToast('⚠️ Stock épuisé !');return;}
-      if(estMesure(p)&&!hasV){ouvrirQteMesure(p);return;}
+      if(hasV){ouvrirVar(p);return;} // famille -> toujours le sélecteur (dépannage géré PAR variante)
+      if(estMesure(p)){ouvrirQteMesure(p);return;}
       if(isOut&&p.rt&&livePq===0){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
-      if(hasV)ouvrirVar(p);else addPanier(p,null);
+      addPanier(p,null);
     };
     if(role==='patron'||hasPerm('produits')){
       d.oncontextmenu=function(e){e.preventDefault();showCtx(e,p);};
@@ -3188,7 +3208,7 @@ function renderProd(lst){
       d.addEventListener('touchstart',function(e){lt=setTimeout(function(){ignoreNextTap=true;showCtx({clientX:e.touches[0].clientX,clientY:e.touches[0].clientY},p);},600);});
       d.addEventListener('touchend',function(){if(lt){clearTimeout(lt);lt=null;}});
     }
-    var prixTxt=(hasV?fmt(p.vr[0].px).replace(DB.cfg.s+' ','')+'+ ':fmt(p.px).replace(DB.cfg.s+' ',''))+DB.cfg.s;
+    var prixTxt=prixCarte(p);
     d.innerHTML=
       ((role==='patron'||hasPerm('produits'))?'<button class="pedit" onclick="quickEditPrix(event,'+p.id+')" title="'+(lang==='fr'?'Modifier prix':'Edit price')+'">✎</button>':'')+
       '<div class="qbdg '+(pq>0?'show':'')+'" id="qb-'+p.id+'" onclick="retirerUn(event,'+p.id+')">'+'<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">✕</span></div>'+
@@ -3222,7 +3242,7 @@ function renderTopVentes(){
   box.innerHTML='<div class="tv-lbl">⚡ '+(lang==='fr'?'Ventes rapides':'Quick sell')+'</div><div class="tv-row">'+top.map(function(p){
     var media=p.img?'<img src="'+p.img+'" loading="lazy">':
       (DB.cfg&&DB.cfg.noEmoji?'<span class="tv-mono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':'<span class="tv-e">'+p.e+'</span>');
-    return '<button class="tv-chip" onclick="venteRapide('+p.id+')">'+media+'<span class="tv-nm">'+p.nm+'</span><span class="tv-px">'+fmt(p.px).replace(s+' ','')+s+'</span></button>';
+    return '<button class="tv-chip" onclick="venteRapide('+p.id+')">'+media+'<span class="tv-nm">'+p.nm+'</span><span class="tv-px">'+prixCarte(p)+'</span></button>';
   }).join('')+'</div>';
 }
 function venteRapide(pid){
@@ -3239,19 +3259,49 @@ function venteRapide(pid){
 // ── Article incomplet : nom jamais personnalisé -> INTERDIT de vente, la caisse
 //    propose de le compléter (nom + mesure + prix) en une seule fiche ──
 var _cmpArt=null,_cmpUmVal='pc';
-function articleIncomplet(p){return !!(p&&p._autoNm&&txtNorm(p.nm)===txtNorm(p._autoNm));}
+function articleIncomplet(p){
+  if(!p)return false;
+  if(p._autoNm&&txtNorm(p.nm)===txtNorm(p._autoNm))return true;               // nom jamais personnalisé
+  if(p.vr&&p.vr.length&&!p.vr.some(function(v){return v.px>0;}))return true;  // famille sans AUCUN prix
+  return false;
+}
 function ouvrirCompleterArticle(p){
   _cmpArt=p;
+  var fr=lang==='fr',fam=!!(p.vr&&p.vr.length);
+  var nomAuto=!!(p._autoNm&&txtNorm(p.nm)===txtNorm(p._autoNm));
+  document.getElementById('cmp-tit').textContent=fam?(nomAuto?(fr?'Compléter la famille':'Complete the family'):(fr?'Modifier la famille':'Edit the family')):(fr?'Compléter l\'article':'Complete the item');
+  document.getElementById('cmp-hint').textContent=fam?(fr?'Donne un nom à la famille, puis le prix de chaque variante':'Name the family, then price each variant'):(fr?'Donne un nom à cet article pour pouvoir le vendre':'Name this item to be able to sell it');
   document.getElementById('cmp-img').innerHTML=p.img
     ?'<img src="'+p.img+'" style="width:92px;height:92px;object-fit:cover;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.15)">'
     :'<span style="font-size:52px">'+p.e+'</span>';
   var nm=document.getElementById('cmp-nm');nm.value=p.nm||'';nm.style.borderColor='';
-  cmpUm((p.um==='kg'||p.um==='L')?p.um:'pc');
-  document.getElementById('cmp-sac').value=p.umSac||'';
-  document.getElementById('cmp-pa').value=p.pa||'';
-  document.getElementById('cmp-pv').value=p.px||'';
+  document.getElementById('cmp-nm-lbl').textContent=fam?(fr?'Nom de la famille (ex : Savon Azur)':'Family name (ex: Azur soap)'):(fr?'Nom de l\'article (obligatoire)':'Item name (required)');
+  // Famille : liste des variantes (photo + nom + prix) · Article simple : mesure + prix
+  document.getElementById('cmp-um-sec').style.display=fam?'none':'block';
+  document.getElementById('cmp-prix-row').style.display=fam?'none':'flex';
+  var vbox=document.getElementById('cmp-vars');
+  vbox.style.display=fam?'block':'none';vbox.innerHTML='';
+  if(fam){
+    p.vr.forEach(function(v){
+      var row=document.createElement('div');
+      row.style.cssText='background:var(--BG);border-radius:12px;padding:9px;display:flex;gap:8px;align-items:center;margin-bottom:8px';
+      row.innerHTML=((v.img||v._img)?'<img src="'+(v.img||v._img)+'" style="width:40px;height:40px;object-fit:cover;border-radius:9px;flex-shrink:0">':'<span style="font-size:26px;flex-shrink:0">'+p.e+'</span>')+
+        '<div style="flex:1;min-width:0">'+
+        '<input class="pi sm" style="margin-bottom:5px;font-weight:700" type="text" placeholder="'+(fr?'Nom (ex : 200g, 1L, Rouge...)':'Name (ex: 200g, 1L, Red...)')+'" data-cvid="'+v.id+'" data-cvf="nm" value="'+(v.nm||'').replace(/"/g,'&quot;')+'">'+
+        '<div style="display:flex;gap:6px">'+
+        '<input class="pi sm" style="flex:1" type="number" inputmode="numeric" placeholder="'+(fr?'Achat':'Cost')+'" data-cvid="'+v.id+'" data-cvf="pa" value="'+(v.pa||'')+'">'+
+        '<input class="pi sm" style="flex:1" type="number" inputmode="numeric" placeholder="'+(fr?'Vente':'Sell')+'" data-cvid="'+v.id+'" data-cvf="px" value="'+(v.px||'')+'">'+
+        '</div></div>';
+      vbox.appendChild(row);
+    });
+  }else{
+    cmpUm((p.um==='kg'||p.um==='L')?p.um:'pc');
+    document.getElementById('cmp-sac').value=p.umSac||'';
+    document.getElementById('cmp-pa').value=p.pa||'';
+    document.getElementById('cmp-pv').value=p.px||'';
+  }
   document.getElementById('ov-completer').classList.add('show');
-  setTimeout(function(){try{nm.focus();if(nm.select)nm.select();}catch(e){}},250);
+  if(nomAuto)setTimeout(function(){try{nm.focus();if(nm.select)nm.select();}catch(e){}},250);
 }
 function cmpUm(u){
   _cmpUmVal=u;
@@ -3262,24 +3312,51 @@ function cmpUm(u){
 }
 function validerCompleter(){
   var p=_cmpArt;if(!p)return;
+  var fr=lang==='fr',fam=!!(p.vr&&p.vr.length);
   var nmEl=document.getElementById('cmp-nm');
   var nm=(nmEl.value||'').trim();
   if(!nm||(p._autoNm&&txtNorm(nm)===txtNorm(p._autoNm))){
-    showToast('✏️ '+(lang==='fr'?'Écris TON nom d\'article':'Type YOUR item name'));
+    showToast('✏️ '+(fr?(fam?'Écris TON nom de famille de produit':'Écris TON nom d\'article'):'Type YOUR item name'));
     nmEl.style.borderColor='var(--R)';nmEl.focus();if(nmEl.select)nmEl.select();return;
   }
-  var pv=parseFloat(document.getElementById('cmp-pv').value)||0;
-  if(!pv){showToast('💰 '+(lang==='fr'?'Entre le prix de vente':'Enter the sell price'));return;}
-  p.nm=nm;p.px=pv;
-  p.pa=parseFloat(document.getElementById('cmp-pa').value)||p.pa||0;
-  p.um=_cmpUmVal==='pc'?null:_cmpUmVal;
-  var sac=Math.round((parseFloat(String(document.getElementById('cmp-sac').value||'').replace(',','.'))||0)*100)/100;
-  p.umSac=(_cmpUmVal!=='pc'&&sac>0)?sac:null;
-  delete p._autoNm;delete p._srcName;
+  if(fam){
+    // Chaque variante : nom (sinon auto "Famille 1,2...") ; au moins UN prix de vente > 0.
+    var rows=document.querySelectorAll('#cmp-vars [data-cvid]');
+    var vals={};
+    rows.forEach(function(inp){var vid=inp.dataset.cvid;vals[vid]=vals[vid]||{};vals[vid][inp.dataset.cvf]=inp;});
+    var unPrix=false;
+    p.vr.forEach(function(v){var e=vals[v.id];if(e&&e.px&&(parseFloat(e.px.value)||0)>0)unPrix=true;});
+    if(!unPrix){
+      showToast('💰 '+(fr?'Mets le prix de vente d\'au moins une variante':'Set the sell price of at least one variant'));
+      var f=document.querySelector('#cmp-vars [data-cvf="px"]');if(f){f.style.borderColor='var(--R)';f.focus();}
+      return;
+    }
+    p.nm=nm;
+    var i=1;
+    p.vr.forEach(function(v){
+      var e=vals[v.id];if(!e)return;
+      var vnm=(e.nm&&e.nm.value.trim())||'';
+      v.nm=vnm||(nm+' '+i);
+      if(e.pa)v.pa=parseFloat(e.pa.value)||0;
+      if(e.px)v.px=parseFloat(e.px.value)||0;
+      if(v._img){v.img=v._img;delete v._img;}
+      i++;
+    });
+    delete p._autoNm;delete p._srcName;delete p._pendingVariantSetup;
+  }else{
+    var pv=parseFloat(document.getElementById('cmp-pv').value)||0;
+    if(!pv){showToast('💰 '+(fr?'Entre le prix de vente':'Enter the sell price'));return;}
+    p.nm=nm;p.px=pv;
+    p.pa=parseFloat(document.getElementById('cmp-pa').value)||p.pa||0;
+    p.um=_cmpUmVal==='pc'?null:_cmpUmVal;
+    var sac=Math.round((parseFloat(String(document.getElementById('cmp-sac').value||'').replace(',','.'))||0)*100)/100;
+    p.umSac=(_cmpUmVal!=='pc'&&sac>0)?sac:null;
+    delete p._autoNm;delete p._srcName;
+  }
   save();if(typeof initTabs==='function')initTabs();
   renderProd(DB.articles);renderStock(DB.articles);
   closeSheet('ov-completer');
-  showToast('✅ '+p.nm+' — '+(lang==='fr'?'prêt à vendre !':'ready to sell!'));
+  showToast('✅ '+p.nm+' — '+(fr?'prêt à vendre !':'ready to sell!'));
 }
 // ── Vente au poids / à la mesure : sélecteur ½ · 1 · 2 · 5 ou quantité libre ──
 var _qteArt=null;
@@ -3364,6 +3441,7 @@ function quickEditPrix(e,pid){
   if(!p)return;
   document.getElementById('ctxm').classList.remove('show');
   artCours=p;
+  if(p.vr&&p.vr.length){ouvrirCompleterArticle(p);return;} // famille -> fiche variantes (le prix est PAR variante)
   ouvrirModifR(p);
 }
 function showCtx(e,p){
@@ -3414,7 +3492,7 @@ function renderVarLst(p){
     var dispo=stockVarDispo(p,v),qBase=getQBase(v),isOut=dispo<=0&&!v.rt&&!p.rt;
     var d=document.createElement('div');d.className='vit'+(varQtys[v.id]>0?' hq':'');d.style.opacity=isOut?.5:1;
     var detBase=utiliseStockBase(p)?' · '+(lang==='fr'?'conso: ':'cons: ')+qBase:'';
-    d.innerHTML='<span class="vemo">'+p.e+'</span><div class="vinf"><div class="vnm">'+v.nm+'</div><div class="vpr">'+fmt(v.px)+'</div><div class="vstk" style="color:'+(dispo<=0?'var(--R)':dispo<=3?'var(--O)':'var(--G)')+'">'+( dispo<=0?(lang==='fr'?'Épuisé':'Out'):dispo+' '+(lang==='fr'?'disponibles':'available'))+detBase+'</div></div><div class="vqctl"><button class="vqb m" onclick="chgVQ('+v.id+','+p.id+',-1,'+!!p.rt+')">−</button><span class="vqn" id="vqn-'+v.id+'">'+(varQtys[v.id]||0)+'</span><button class="vqb p" onclick="chgVQ('+v.id+','+p.id+',1,'+!!p.rt+')">+</button></div>';
+    d.innerHTML=(v.img?'<img src="'+v.img+'" style="width:42px;height:42px;object-fit:cover;border-radius:10px;flex-shrink:0" loading="lazy">':'<span class="vemo">'+p.e+'</span>')+'<div class="vinf"><div class="vnm">'+v.nm+'</div><div class="vpr">'+(v.px>0?fmt(v.px):(lang==='fr'?'💰 prix à définir':'💰 set price'))+'</div><div class="vstk" style="color:'+(dispo<=0?'var(--R)':dispo<=3?'var(--O)':'var(--G)')+'">'+( dispo<=0?(lang==='fr'?'Épuisé':'Out'):dispo+' '+(lang==='fr'?'disponibles':'available'))+detBase+'</div></div><div class="vqctl"><button class="vqb m" onclick="chgVQ('+v.id+','+p.id+',-1,'+!!p.rt+')">−</button><span class="vqn" id="vqn-'+v.id+'">'+(varQtys[v.id]||0)+'</span><button class="vqb p" onclick="chgVQ('+v.id+','+p.id+',1,'+!!p.rt+')">+</button></div>';
     l.appendChild(d);
   });
 }
@@ -3422,6 +3500,7 @@ function chgVQ(vid,pid,delta,rt){
   var p=DB.articles.find(function(x){return x.id==pid;});var v=p&&p.vr.find(function(x){return x.id==vid;});if(!v)return;
   var cur=varQtys[vid]||0;
   if(delta>0){
+    if(v.px<=0){showToast('💰 '+(lang==='fr'?'Prix manquant — complète cette variante d\'abord (✎ sur la carte)':'Missing price — complete this variant first'));return;}
     if(utiliseStockBase(p)){
       var used=0;p.vr.forEach(function(it){used+=(varQtys[it.id]||0)*getQBase(it);});
       if((p.stk-used)<getQBase(v)&&!rt){showToast(t('stockInsuf'));return;}
@@ -3628,7 +3707,7 @@ function ouvrirPrix(p){if(role!=='patron')return;artCours=p;renderAgpx();goPS(0)
 function ouvrirModifR(p){artCours=p;pxAU=p.pa;document.getElementById('ae-0b').textContent=p.e;document.getElementById('an-0b').textContent=p.nm;document.getElementById('lbl-pa-cur').textContent=lang==='fr'?'Prix achat actuel':'Current buy price';document.getElementById('lbl-pv-cur').textContent=lang==='fr'?'Prix vente actuel':'Current sell price';document.getElementById('cur-pa').textContent=fmt(p.pa);document.getElementById('cur-pv').textContent=fmt(p.px);document.getElementById('inp-npv').value=p.px;document.getElementById('bc-r').style.display='none';calcBenR();goPS('0b');document.getElementById('ov-prix').classList.add('show');}
 function renderAgpx(){var g=document.getElementById('agpx');g.innerHTML='';DB.articles.forEach(function(p){var d=document.createElement('div');d.className='apcd';d.innerHTML='<span style="font-size:40px;line-height:1;display:block;margin-bottom:4px">'+p.e+'</span><div style="font-size:11px;font-weight:700;color:var(--T);margin-bottom:2px">'+p.nm+'</div><div style="font-size:11px;font-weight:800;color:var(--B)">'+fmt(p.px)+'</div>';d.onclick=function(){selArt(p,true);};g.appendChild(d);});}
 function filtrAP(q){Array.from(document.getElementById('agpx').children).forEach(function(c){c.style.display=c.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});}
-function selArt(p,rapide){artCours=p;if(rapide&&p.pa>0){ouvrirModifR(p);return;}document.getElementById('ae-1').textContent=p.e;document.getElementById('an-1').textContent=p.nm;if(p.pa>0){document.getElementById('inp-pa').value=p.pa;pxAU=p.pa;}if(p.px>0)document.getElementById('inp-pv').value=p.px;achatType='carton';selType('carton');goPS(1);calcAuto();}
+function selArt(p,rapide){artCours=p;if(p.vr&&p.vr.length){closeSheet('ov-prix');ouvrirCompleterArticle(p);return;}if(rapide&&p.pa>0){ouvrirModifR(p);return;}document.getElementById('ae-1').textContent=p.e;document.getElementById('an-1').textContent=p.nm;if(p.pa>0){document.getElementById('inp-pa').value=p.pa;pxAU=p.pa;}if(p.px>0)document.getElementById('inp-pv').value=p.px;achatType='carton';selType('carton');goPS(1);calcAuto();}
 function goPS(n){document.querySelectorAll('.pst').forEach(function(s){s.classList.remove('on');});var el=document.getElementById('ps'+n);if(el)el.classList.add('on');if(n===0){var src=document.getElementById('src-ap');if(src)src.value='';renderAgpx();}if(n===3)buildRecap();}
 function selType(tp){achatType=tp;['carton','lot','unite'].forEach(function(x){document.getElementById('t-'+x[0]).classList.toggle('on',x===tp);});var qs=document.getElementById('qsec');if(tp==='unite'){qs.style.display='none';}else{qs.style.display='block';document.getElementById('lbl-nb-u').textContent=tp==='carton'?(lang==='fr'?'Unités dans 1 carton':'Units per box'):(lang==='fr'?'Pièces dans 1 lot':'Pieces per batch');}calcAuto();}
 function setQ(n){document.getElementById('inp-qte').value=n;calcAuto();}
@@ -4052,10 +4131,14 @@ function continuerApresGroupement(){
     if(!parent)return;
     parent.px=0;parent.pa=0;parent.stk=0;
     parent._pendingVariantSetup=[];
+    // La 1re photo du groupe devient AUSSI une variante : chaque photo reste vendable.
+    var vid0=(parent.vr.length?Math.max.apply(null,parent.vr.map(function(v){return v.id;})):0)+1;
+    parent.vr.push({id:vid0,nm:'',px:0,pa:0,stk:0,rt:true,qBase:1,_img:parent.img});
+    parent._pendingVariantSetup.push(vid0);
     grp.slice(1).forEach(function(childId){
       var child=DB.articles.find(function(x){return x.id===childId;});
       if(!child)return;
-      var vid=(parent.vr.length?Math.max.apply(null,parent.vr.map(function(v){return v.id;})):0)+1+parent._pendingVariantSetup.length;
+      var vid=(parent.vr.length?Math.max.apply(null,parent.vr.map(function(v){return v.id;})):0)+1;
       parent.vr.push({id:vid,nm:'',px:0,pa:0,stk:0,rt:true,qBase:1,_img:child.img});
       parent._pendingVariantSetup.push(vid);
       DB.articles=DB.articles.filter(function(x){return x.id!==childId;});
@@ -4087,18 +4170,18 @@ function renderBulkReviewStep(){
   var pending=a._pendingVariantSetup&&a._pendingVariantSetup.length?a._pendingVariantSetup:null;
   document.getElementById('bulk-review-cnt').textContent=(lang==='fr'?'Article ':'Item ')+(_bulkReviewIdx+1)+' / '+_bulkReviewIds.length;
   if(pending){
-    var thumbs=a.vr.filter(function(v){return pending.indexOf(v.id)!==-1;}).map(function(v){return v._img;}).filter(Boolean);
+    var thumbs=a.vr.filter(function(v){return pending.indexOf(v.id)!==-1;}).map(function(v){return v._img||v.img;}).filter(Boolean);
     host.innerHTML=
       '<div style="text-align:center;margin-bottom:11px;display:flex;justify-content:center;gap:6px">'+
       thumbs.map(function(im){return '<img src="'+im+'" style="width:56px;height:56px;object-fit:cover;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,.15)">';}).join('')+
       '</div>'+
-      '<div style="background:#EAF1FF;border-radius:8px;padding:7px 9px;font-size:11px;color:var(--B);font-weight:700;margin-bottom:9px">🔗 '+(pending.length+1)+' '+(lang==='fr'?'variantes regroupées — donne un nom au produit, puis à chaque variante':'variants grouped — name the product, then each variant')+'</div>'+
+      '<div style="background:#EAF1FF;border-radius:8px;padding:7px 9px;font-size:11px;color:var(--B);font-weight:700;margin-bottom:9px">🔗 '+a.vr.length+' '+(lang==='fr'?'variantes regroupées — donne un nom à la famille, puis à chaque variante':'variants grouped — name the family, then each variant')+'</div>'+
       '<div class="pig"><label class="pl">'+(lang==='fr'?'Nom du produit':'Product name')+'</label><input class="pi sm" id="br-nm" type="text" value="'+a.nm.replace(/"/g,'&quot;')+'" style="font-weight:700"></div>'+
       '<div class="pig"><label class="pl">'+(lang==='fr'?'Catégorie':'Category')+'</label><select class="pi sm" id="br-cat">'+cats.map(function(cc){return '<option value="'+cc+'"'+(cc===a.cat?' selected':'')+'>'+(CE[cc]||'📦')+' '+cc+'</option>';}).join('')+'</select></div>'+
       '<div style="height:6px"></div>'+
       a.vr.map(function(v,vidx){
         return '<div style="background:var(--BG);border-radius:12px;padding:9px;display:flex;gap:8px;align-items:center;margin-bottom:8px">'+
-        (v._img?'<img src="'+v._img+'" style="width:38px;height:38px;object-fit:cover;border-radius:8px;flex-shrink:0">':'')+
+        ((v._img||v.img)?'<img src="'+(v._img||v.img)+'" style="width:38px;height:38px;object-fit:cover;border-radius:8px;flex-shrink:0">':'')+
         '<div style="flex:1;min-width:0">'+
         '<input class="pi sm" style="margin-bottom:5px;font-weight:700" type="text" placeholder="'+(lang==='fr'?'Nom variante (ex: Savon A)':'Variant name (ex: Soap A)')+'" data-vid="'+v.id+'" data-vf="nm" value="'+(v.nm||'').replace(/"/g,'&quot;')+'">'+
         '<div style="display:flex;gap:6px">'+
@@ -4181,7 +4264,7 @@ function brSaveCurrent(){
       else if(inp.dataset.vf==='stk')definirStock(a,v,parseInt(inp.value,10)||0);
     });
     delete a._pendingVariantSetup;
-    a.vr.forEach(function(v){delete v._img;if(!v.nm)v.nm=a.nm;});
+    a.vr.forEach(function(v){if(v._img){v.img=v._img;delete v._img;}if(!v.nm)v.nm=a.nm;});
     delete a._srcName;if(a._autoNm&&txtNorm(a.nm)!==txtNorm(a._autoNm))delete a._autoNm;
     return;
   }
@@ -4387,11 +4470,27 @@ function renderStock(lst){var c=document.getElementById('stk-lst');if(!c)return;
 function filtrS(q){renderStock(DB.articles.filter(function(p){return p.nm.toLowerCase().includes(q.toLowerCase());}));}
 function ouvrirStk(p){if(!(role==='patron'||hasPerm('stock')))return;document.getElementById('stk-form').style.display='none';renderAgstk();if(p)selArtStk(p);document.getElementById('ov-stk').classList.add('show');}
 function renderAgstk(){var g=document.getElementById('agstk');if(!g)return;g.innerHTML='';DB.articles.forEach(function(p){var ts=getStk(p),d=document.createElement('div');d.className='apcd';d.innerHTML='<span style="font-size:38px;line-height:1;display:block;margin-bottom:4px">'+p.e+'</span><div style="font-size:10px;font-weight:700;color:var(--T);margin-bottom:2px">'+p.nm+'</div><div style="font-size:10px;font-weight:800;color:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'">'+ts+'</div>';d.onclick=function(){selArtStk(p);};g.appendChild(d);});}
+var artStkVarCours=null;
 function selArtStk(p){
   artStkCours=p;var ts=getStk(p);
   document.getElementById('stk-e').textContent=p.e;
   document.getElementById('stk-n').textContent=p.nm;
   document.getElementById('stk-cur').textContent=fmtQ(ts)+' '+uniteArt(p);
+  // Famille de variantes : on choisit LAQUELLE on a reçue (pas de division automatique)
+  artStkVarCours=null;
+  var vrow=document.getElementById('stk-var-row');
+  if(vrow){
+    vrow.innerHTML='';vrow.style.display='none';
+    if(p.vr.length&&!utiliseStockBase(p)){
+      vrow.style.display='flex';
+      p.vr.forEach(function(v){
+        var b=document.createElement('button');b.type='button';b.className='stkvchip';
+        b.innerHTML=(v.img?'<img src="'+v.img+'">':'<span style="font-size:19px">'+p.e+'</span>')+'<span class="stkv-nm">'+(v.nm||'?')+'</span><span class="stkv-s">'+fmtQ(v.stk)+'</span>';
+        b.onclick=function(){artStkVarCours=v;vrow.querySelectorAll('.stkvchip').forEach(function(x){x.classList.remove('on');});b.classList.add('on');document.getElementById('stk-cur').textContent=fmtQ(v.stk);};
+        vrow.appendChild(b);
+      });
+    }
+  }
   // Libellé + raccourcis contextuels : au poids -> "en kg", avec sacs si la taille est connue
   var lbl=document.getElementById('lbl-qte-recu');
   if(lbl)lbl.textContent=(lang==='fr'?'Quantité reçue':'Quantity received')+(estMesure(p)?' ('+uniteArt(p)+')':'');
@@ -4411,7 +4510,7 @@ function selArtStk(p){
   document.getElementById('inp-fourn').value='';
 }
 function setSQ(n){document.getElementById('inp-sqte').value=n;}
-function saveStk(){var q=Math.round((parseFloat(String(document.getElementById('inp-sqte').value||'').replace(',','.'))||0)*100)/100;if(!q||!artStkCours){showToast(t('errQte'));return;}var a=artStkCours;if(a.vr.length&&!utiliseStockBase(a)){var per=Math.floor(q/a.vr.length);a.vr.forEach(function(v){ajouterAppro(a.id,v.id,per);});}else{ajouterAppro(a.id,null,q);}save();renderStock(DB.articles);renderProd(DB.articles);renderAgstk();closeSheet('ov-stk');showToast(t('stockAjoute'));updateNotifBadge();}
+function saveStk(){var q=Math.round((parseFloat(String(document.getElementById('inp-sqte').value||'').replace(',','.'))||0)*100)/100;if(!q||!artStkCours){showToast(t('errQte'));return;}var a=artStkCours;if(a.vr.length&&!utiliseStockBase(a)){if(!artStkVarCours){showToast('👇 '+(lang==='fr'?'Choisis la variante reçue':'Pick the received variant'));return;}ajouterAppro(a.id,artStkVarCours.id,q);}else{ajouterAppro(a.id,null,q);}save();renderStock(DB.articles);renderProd(DB.articles);renderAgstk();closeSheet('ov-stk');showToast(t('stockAjoute'));updateNotifBadge();}
 
 // ═══════════════════════════════════════════
 // RAPPORTS
