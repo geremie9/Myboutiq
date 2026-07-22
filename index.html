@@ -191,6 +191,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 /* Pastille média : cadre neutre qui accueille la photo ou l'emoji (aspect "icône d'app") */
 .pmedia{width:62px;height:62px;margin:2px auto 9px;border-radius:14px;background:var(--BG);
   display:flex;align-items:center;justify-content:center;font-size:33px;line-height:1;position:relative}
+.pmedia.pmono{font-weight:900;font-size:30px;font-family:'Nunito',sans-serif}
 .pmedia .padd{position:absolute;right:-3px;bottom:-3px;width:20px;height:20px;border-radius:50%;
   background:var(--P);color:var(--A);border:2px solid var(--C);font-size:11px;display:flex;
   align-items:center;justify-content:center;font-weight:900}
@@ -250,7 +251,9 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--C);border-top:1px solid var(--BD);display:flex;z-index:55;box-shadow:0 -4px 20px rgba(0,0,0,.06)}
 .ni{flex:1;padding:9px 4px 7px;text-align:center;cursor:pointer;border:none;background:none;font-family:'Outfit',sans-serif;position:relative}
 .ni.on::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:26px;height:3px;background:var(--P);border-radius:0 0 4px 4px}
-.ne{font-size:22px;display:block;margin-bottom:2px}
+.ne{font-size:22px;display:block;margin-bottom:3px;color:var(--M);line-height:0}
+.ne svg{width:23px;height:23px;display:inline-block;vertical-align:middle}
+.ni.on .ne{color:var(--P)}
 .nl{font-size:9px;font-weight:700;color:var(--M)}.ni.on .nl{color:var(--P)}
 
 /* ── OVERLAY ── */
@@ -1071,6 +1074,11 @@ body{max-width:min(100%,1200px)}
           <div class="stico" style="background:#FFF3E0">🔆</div>
           <div class="stii"><div class="stitl" id="st-veille">Garder l'écran allumé</div><div class="stisub" id="st-veille-s">Évite le verrouillage pendant les ventes</div></div>
           <button class="tog off" id="tog-veille" onclick="toggleVeille()"></button>
+        </div>
+        <div class="stit2" style="cursor:default">
+          <div class="stico" style="background:#EDE7F6">🅰️</div>
+          <div class="stii"><div class="stitl" id="st-noemoji">Masquer les emojis</div><div class="stisub" id="st-noemoji-s">Remplace les emojis par une pastille sobre (initiale)</div></div>
+          <button class="tog off" id="tog-noemoji" onclick="toggleNoEmoji()"></button>
         </div>
         <div class="stit2" style="cursor:default" id="st-bio-row">
           <div class="stico" style="background:#E3F2FD">🔐</div>
@@ -2203,6 +2211,25 @@ var planSel='pro',durSel='m',pmntSel='wave',planSelAbo=null;
 
 function t(k){return (TR[lang]&&TR[lang][k])||TR.fr[k]||k;}
 function fmt(n){var s=DB&&DB.cfg?DB.cfg.s:'F';return s+' '+(Math.round(n)||0).toLocaleString('fr-FR');}
+// Couleur douce et stable dérivée d'un texte (pour la pastille "sans emoji")
+function couleurMono(s){var h=0;s=String(s||'?');for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;return h;}
+function initialeArticle(nm){return (String(nm||'?').trim().charAt(0)||'?').toUpperCase();}
+// Jeu d'icônes cohérent pour la barre de navigation (remplace les emojis disparates)
+function installerIconesNav(){
+  var A='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
+  var IC={
+    caisse:A+'<path d="M4 9h16l-1.2-4.2A1 1 0 0 0 17.8 4H6.2a1 1 0 0 0-1 .8L4 9z"/><path d="M5 9v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><rect x="10" y="13" width="4" height="6" rx="1"/></svg>',
+    stock:A+'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M4 7.5l8 4.5 8-4.5"/><path d="M12 12v9"/></svg>',
+    rapports:A+'<line x1="6" y1="20" x2="6" y2="11"/><line x1="12" y1="20" x2="12" y2="5"/><line x1="18" y1="20" x2="18" y2="14"/><line x1="3" y1="20" x2="21" y2="20"/></svg>',
+    clients:A+'<circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3 2.5-5.4 5.5-5.4S14.5 17 14.5 20"/><path d="M16.5 5.4a3 3 0 0 1 0 5.2"/><path d="M15.6 14.4c2.1.6 3.7 2.5 3.7 5.6"/></svg>',
+    dash:A+'<rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.5"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.5"/></svg>'
+  };
+  document.querySelectorAll('.bnav .ni').forEach(function(b){
+    var m=(b.getAttribute('onclick')||'').match(/navTo\('([^']+)'/);
+    if(!m)return;var ne=b.querySelector('.ne');
+    if(ne&&IC[m[1]])ne.innerHTML=IC[m[1]];
+  });
+}
 
 // ═══════════════════════════════════════════
 // INIT & SPLASH
@@ -2210,6 +2237,7 @@ function fmt(n){var s=DB&&DB.cfg?DB.cfg.s:'F';return s+' '+(Math.round(n)||0).to
 document.addEventListener('DOMContentLoaded',function(){
   initSupa();
   try{initPaysLogin();}catch(e){}
+  try{installerIconesNav();}catch(e){}
   // Arrivée depuis un lien d'invitation (/join/12345) : on pré-remplit le code vendeur
   try{
     var _c=new URLSearchParams(location.search).get('code');
@@ -2228,6 +2256,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.cc){obPays=DB.cfg.pays;try{majChipPays();}catch(e){}}
     if(DB){
       if(DB.cfg.veille===undefined)DB.cfg.veille=false;
+      if(DB.cfg.noEmoji===undefined)DB.cfg.noEmoji=false;
       if(DB.cfg.paramAvances===undefined)DB.cfg.paramAvances=false;
       if(DB.cfg.idFiscal===undefined)DB.cfg.idFiscal='';
       if(DB.cfg.plan===undefined)DB.cfg.plan='gratuit';
@@ -2685,6 +2714,9 @@ function appliquerLang(){
   document.getElementById('st-veille').textContent=lang==='fr'?"Garder l'écran allumé":'Keep screen on';
   document.getElementById('st-veille-s').textContent=lang==='fr'?'Évite le verrouillage pendant les ventes':'Avoids lock screen during sales';
   document.getElementById('tog-veille').className='tog '+(DB.cfg.veille?'on':'off');
+  var _tne2=document.getElementById('tog-noemoji');if(_tne2)_tne2.className='tog '+(DB.cfg.noEmoji?'on':'off');
+  var _sne=document.getElementById('st-noemoji');if(_sne)_sne.textContent=lang==='fr'?'Masquer les emojis':'Hide emojis';
+  var _sne2=document.getElementById('st-noemoji-s');if(_sne2)_sne2.textContent=lang==='fr'?'Remplace les emojis par une pastille sobre (initiale)':'Replace emojis with a plain tile (initial)';
   // Biométrie — bouton visible si activée, toggle synchronisé
   var bioBtn=document.getElementById('btn-bio-login');
   if(bioBtn)bioBtn.style.display=(DB.cfg.bioEnabled?'flex':'none');
@@ -3021,7 +3053,10 @@ function renderProd(lst){
         '<img class="pcard-img" src="'+p.img+'" loading="lazy" onerror="this.parentElement.classList.remove(\'has-photo\');this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pemoji\',textContent:\''+p.e+'\'}))">'+
         '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+prixTxt+'</div>'+(hasV?'<div class="pvbdg">'+p.vr.length+' var.</div>':'')+'</div>'
         :
-        '<div class="pmedia">'+p.e+((role==='patron'||hasPerm('produits'))?'<span class="padd" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">+</span>':'')+'</div>'+
+        (DB.cfg&&DB.cfg.noEmoji
+          ?'<div class="pmedia pmono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)
+          :'<div class="pmedia">'+p.e
+        )+((role==='patron'||hasPerm('produits'))?'<span class="padd" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">+</span>':'')+'</div>'+
         '<div class="pnm">'+p.nm+'</div>'+
         '<div class="ppr">'+prixTxt+'</div>'+
         (hasV?'<div class="pvbdg">'+p.vr.length+' var.</div>':'')
@@ -3986,9 +4021,18 @@ function toggleVeille(){
   if(!DB)return;
   DB.cfg.veille=!DB.cfg.veille;
   document.getElementById('tog-veille').className='tog '+(DB.cfg.veille?'on':'off');
+  var _tne=document.getElementById('tog-noemoji');if(_tne)_tne.className='tog '+(DB.cfg&&DB.cfg.noEmoji?'on':'off');
   save();
   if(DB.cfg.veille){activerVeille();showToast(lang==='fr'?'🔆 Écran maintenu allumé':'🔆 Screen kept on');}
   else{desactiverVeille();showToast(lang==='fr'?'🌙 Veille normale rétablie':'🌙 Normal sleep restored');}
+}
+function toggleNoEmoji(){
+  if(!DB||!DB.cfg)return;
+  DB.cfg.noEmoji=!DB.cfg.noEmoji;
+  var b=document.getElementById('tog-noemoji');if(b)b.className='tog '+(DB.cfg.noEmoji?'on':'off');
+  save();
+  renderProd(DB.articles);if(typeof renderStock==='function')renderStock(DB.articles);
+  showToast(DB.cfg.noEmoji?(lang==='fr'?'Emojis masqués — pastilles sobres':'Emojis hidden — plain tiles'):(lang==='fr'?'Emojis réaffichés':'Emojis shown again'));
 }
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='visible'&&DB&&DB.cfg&&DB.cfg.veille)activerVeille();
