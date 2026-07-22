@@ -188,6 +188,12 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .pcard.neg{border-color:rgba(255,109,0,.25);background:#FFF8F0}
 .pcard.out-ok{border-color:rgba(255,61,0,.2)}
 .pemoji{font-size:44px;line-height:1;margin-bottom:8px;display:block;filter:none;opacity:.95;transition:transform .15s}
+/* Pastille média : cadre neutre qui accueille la photo ou l'emoji (aspect "icône d'app") */
+.pmedia{width:62px;height:62px;margin:2px auto 9px;border-radius:14px;background:var(--BG);
+  display:flex;align-items:center;justify-content:center;font-size:33px;line-height:1;position:relative}
+.pmedia .padd{position:absolute;right:-3px;bottom:-3px;width:20px;height:20px;border-radius:50%;
+  background:var(--P);color:var(--A);border:2px solid var(--C);font-size:11px;display:flex;
+  align-items:center;justify-content:center;font-weight:900}
 .pcard:active .pemoji{transform:scale(.88)}
 .pcard-img{width:52px;height:52px;object-fit:cover;border-radius:12px;margin:0 auto 6px;display:block;box-shadow:0 3px 6px rgba(0,0,0,.11)}
 .pcard.has-photo{padding:0;aspect-ratio:1/1.18;overflow:hidden;display:flex;align-items:flex-end}
@@ -3015,7 +3021,7 @@ function renderProd(lst){
         '<img class="pcard-img" src="'+p.img+'" loading="lazy" onerror="this.parentElement.classList.remove(\'has-photo\');this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pemoji\',textContent:\''+p.e+'\'}))">'+
         '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+prixTxt+'</div>'+(hasV?'<div class="pvbdg">'+p.vr.length+' var.</div>':'')+'</div>'
         :
-        '<span class="pemoji">'+p.e+'</span>'+
+        '<div class="pmedia">'+p.e+((role==='patron'||hasPerm('produits'))?'<span class="padd" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">+</span>':'')+'</div>'+
         '<div class="pnm">'+p.nm+'</div>'+
         '<div class="ppr">'+prixTxt+'</div>'+
         (hasV?'<div class="pvbdg">'+p.vr.length+' var.</div>':'')
@@ -3067,6 +3073,13 @@ function showCtx(e,p){
 function ctxPV(){if(!artCtx||!peutModifierPrix())return;document.getElementById('ctxm').classList.remove('show');artCours=artCtx;ouvrirModifR(artCtx);}
 function ctxRC(){if(!artCtx||!peutModifierPrix())return;document.getElementById('ctxm').classList.remove('show');artCours=artCtx;selArt(artCtx,false);document.getElementById('ov-prix').classList.add('show');}
 function ctxPhoto(){if(!artCtx)return;document.getElementById('inp-photo-real-ctx').click();}
+// Ajouter une vraie photo directement depuis la carte article (pousse vers les photos)
+function ajouterPhotoArticle(e,pid){
+  e.stopPropagation();
+  if(role!=='patron'&&!hasPerm('produits')){return;}
+  var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
+  artCtx=p;var inp=document.getElementById('inp-photo-real-ctx');if(inp)inp.click();
+}
 function ctxToggleRupt(){
   if(!artCtx)return;
   artCtx.rt=!artCtx.rt;
