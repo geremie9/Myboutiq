@@ -1219,6 +1219,7 @@ body{max-width:min(100%,1200px)}
         <input type="file" id="inp-restore-backup" accept="application/json" style="display:none" onchange="restaurerSauvegarde(this.files[0])">
         <div class="stit2" id="row-savestate" onclick="montrerEtatSauvegarde()"><div class="stico" id="savestate-ico" style="background:#E8F5E9">☁️</div><div class="stii"><div class="stitl" id="savestate-tit">Sauvegarde en ligne</div><div class="stisub" id="savestate-sub">—</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirJournal()"><div class="stico" style="background:#F3E5F5">📋</div><div class="stii"><div class="stitl">Journal des modifications</div><div class="stisub">Prix, stock, suppressions — qui &amp; quand</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirArchivage()"><div class="stico" style="background:#E1F5FE">🧹</div><div class="stii"><div class="stitl">Alléger l'application</div><div class="stisub" id="st-archive-s">Garde l'app rapide pour des années</div></div><span class="starr">›</span></div>
       </div>
     </div>
     <div class="stsc"><div class="stcd"><div class="stit2" onclick="logout()"><div class="stico" style="background:#FFEBEE">🚪</div><div class="stii"><div class="stitl" id="st-logout" style="color:var(--R)">Se déconnecter</div></div><span class="starr">›</span></div></div></div>
@@ -1817,6 +1818,25 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>
 </div>
+<div class="ov" id="ov-archive" onclick="closeOv(event,'ov-archive')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🧹 <span id="arch-tit">Alléger l'application</span></div><button class="bcl" onclick="closeSheet('ov-archive')">✕</button></div>
+    <div style="padding:4px 19px 24px">
+      <div id="arch-stat" style="background:var(--BG);border-radius:12px;padding:12px;margin-bottom:13px;text-align:center"></div>
+      <div style="font-size:12px;color:var(--M);font-weight:600;line-height:1.5;margin-bottom:13px" id="arch-expl">Les vieilles ventes sont <b>rangées</b> (résumées par mois) pour garder l'application rapide et légère. <b>Rien n'est perdu</b> : ton stock, tes bénéfices et les dettes clients restent exacts, et le résumé mensuel reste consultable.</div>
+      <div class="sth2" id="arch-choix-h">Garder le détail des</div>
+      <div style="display:flex;gap:7px;margin-bottom:13px">
+        <div class="abtn" id="arch-3" onclick="archChoix(3)" style="flex:1;padding:9px"><span class="albl">3 mois</span></div>
+        <div class="abtn on" id="arch-6" onclick="archChoix(6)" style="flex:1;padding:9px"><span class="albl">6 mois</span></div>
+        <div class="abtn" id="arch-12" onclick="archChoix(12)" style="flex:1;padding:9px"><span class="albl">12 mois</span></div>
+      </div>
+      <div id="arch-apercu" style="font-size:12px;font-weight:700;color:var(--B);margin-bottom:13px;text-align:center"></div>
+      <button class="bnxt" onclick="lancerArchivage()" id="arch-btn">🧹 <span id="arch-btn-l">Ranger les vieilles ventes</span></button>
+      <div id="arch-resume-box" style="margin-top:15px"></div>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="ov-journal" onclick="closeOv(event,'ov-journal')">
   <div class="bsht" style="max-height:88vh"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">📋 <span id="journal-tit">Journal des modifications</span></div><button class="bcl" onclick="closeSheet('ov-journal')">✕</button></div>
@@ -2142,7 +2162,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.09'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.10'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5615,25 +5635,138 @@ function recomputeStock(d){
   (d.ventes||[]).forEach(function(v){if(!v||v.annulee)return;(v.lignes||[]).forEach(function(l){if(!l||l.pid==null)return;var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;vendu[l.pid]=(vendu[l.pid]||0)+qt;var p=d.articles.find(function(x){return x.id==l.pid;});if(!p)return;if(l.vid){if(utiliseStockBase(p))soldBase[l.pid]=(soldBase[l.pid]||0)+norm*(Number(l.qBase)||1);else{var k=l.pid+'|'+l.vid;soldVar[k]=(soldVar[k]||0)+norm;}}else soldBase[l.pid]=(soldBase[l.pid]||0)+norm;});});
   d.articles.forEach(function(p){
     p.stk=(Number(p.stk0)||0)+(approBase[p.id]||0)-(soldBase[p.id]||0);
-    p.vd=vendu[p.id]||0;
+    p.vd=(Number(p.vd0)||0)+(vendu[p.id]||0); // vd0 = ventes déjà archivées (compteur "vendu" à vie préservé)
     (p.vr||[]).forEach(function(v){var k=p.id+'|'+v.id;v.stk=(Number(v.stk0)||0)+(approVar[k]||0)-(soldVar[k]||0);});
   });
   return d;
+}
+// Horodatage fiable d'un évènement (vente/appro) : l'id = "device_<ms>_rand"
+function _epochEvt(o){
+  if(!o)return null;
+  var id=o.id||'';var m=String(id).split('_');
+  if(m.length>=2){var e=parseInt(m[1],10);if(e>1000000000000&&e<4000000000000)return e;}
+  if(o.date){var d=new Date(o.date);if(!isNaN(d))return d.getTime();var f=(typeof parseDateFR==='function')&&parseDateFR(o.date);if(f&&!isNaN(f))return f.getTime();}
+  return null; // inconnu -> on ne l'archivera jamais (prudence : ne rien perdre)
+}
+// S3 : replier les ventes/appros plus vieux que "cutoff" (ms) dans stk0/vd0.
+// Invariant : le stock et le "vendu" affichés restent IDENTIQUES après archivage.
+function archiverAnciennesVentes(cutoff){
+  if(!DB||!cutoff)return 0;
+  var artById={};(DB.articles||[]).forEach(function(p){if(p&&p.id!=null)artById[p.id]=p;});
+  var approBase={},approVar={},soldBase={},soldVar={},vendu={},resume={},nb=0;
+  (DB.appros||[]).forEach(function(a){var e=_epochEvt(a);if(e==null||e>=cutoff||a.pid==null)return;var qy=Number(a.qty)||0;if(a.vid==null)approBase[a.pid]=(approBase[a.pid]||0)+qy;else approVar[a.pid+'|'+a.vid]=(approVar[a.pid+'|'+a.vid]||0)+qy;});
+  (DB.ventes||[]).forEach(function(v){
+    var e=_epochEvt(v);if(e==null||e>=cutoff)return;
+    nb++;
+    if(!v.annulee){
+      // résumé mensuel (pour les rapports au-delà de l'archive)
+      var mo=new Date(e).toISOString().slice(0,7);
+      var r=resume[mo]||(resume[mo]={mois:mo,nb:0,ca:0,ben:0,especes:0,orange:0,mtn:0,moov:0,credit:0,remises:0});
+      r.nb++;r.ca+=Number(v.total||0);r.ben+=getSaleBenef(v);r.remises+=Number(v.remise||0);
+      var pm=v.paiement;
+      if(!pm||pm.mode==='especes')r.especes+=Number(v.total||0);
+      else if(pm.mode==='mixte'){r.especes+=Number(pm.especes||0);r[pm.moyenMobile]=(r[pm.moyenMobile]||0)+Number(pm.mobile||0);}
+      else if(pm.mode==='credit'){r.especes+=Number(pm.avance||0);r.credit+=Number(pm.du||0);}
+      else r[pm.mode]=(r[pm.mode]||0)+Number(v.total||0);
+      (v.lignes||[]).forEach(function(l){
+        if(!l||l.pid==null)return;
+        var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;
+        vendu[l.pid]=(vendu[l.pid]||0)+qt;
+        var p=artById[l.pid];if(!p)return;
+        if(l.vid){if(utiliseStockBase(p))soldBase[l.pid]=(soldBase[l.pid]||0)+norm*(Number(l.qBase)||1);else soldVar[l.pid+'|'+l.vid]=(soldVar[l.pid+'|'+l.vid]||0)+norm;}
+        else soldBase[l.pid]=(soldBase[l.pid]||0)+norm;
+      });
+    }
+  });
+  if(!nb)return 0;
+  // Rebasage : on injecte le net des vieux évènements dans stk0/vd0
+  DB.articles.forEach(function(p){
+    p.stk0=(Number(p.stk0)||0)+(approBase[p.id]||0)-(soldBase[p.id]||0);
+    p.vd0=(Number(p.vd0)||0)+(vendu[p.id]||0);
+    (p.vr||[]).forEach(function(v){var k=p.id+'|'+v.id;v.stk0=(Number(v.stk0)||0)+(approVar[k]||0)-(soldVar[k]||0);});
+  });
+  // Fusion du résumé mensuel
+  var resById={};(DB.arch.resume||[]).forEach(function(r){if(r&&r.mois)resById[r.mois]=r;});
+  Object.keys(resume).forEach(function(mo){
+    if(resById[mo]){var a=resById[mo],b=resume[mo];['nb','ca','ben','especes','orange','mtn','moov','credit','remises'].forEach(function(k){a[k]=(a[k]||0)+(b[k]||0);});}
+    else resById[mo]=resume[mo];
+  });
+  DB.arch.resume=Object.keys(resById).map(function(k){return resById[k];}).sort(function(a,b){return (b.mois||'').localeCompare(a.mois||'');});
+  DB.arch.upTo=Math.max(DB.arch.upTo||0,cutoff);
+  // Retrait des évènements repliés
+  DB.ventes=(DB.ventes||[]).filter(function(v){var e=_epochEvt(v);return e==null||e>=cutoff;});
+  DB.appros=(DB.appros||[]).filter(function(a){var e=_epochEvt(a);return e==null||e>=cutoff;});
+  return nb;
+}
+function tailleDonnees(){try{return Math.round((JSON.stringify(DB).length/1024)*10)/10;}catch(e){return 0;}}
+var _archMois=6;
+function _cutoffMois(mois){var d=new Date();d.setMonth(d.getMonth()-mois);d.setHours(0,0,0,0);return d.getTime();}
+function _nbAArchiver(mois){var c=_cutoffMois(mois);return (DB.ventes||[]).filter(function(v){var e=_epochEvt(v);return e!=null&&e<c;}).length;}
+function ouvrirArchivage(){
+  if(!(role==='patron'||hasPerm('produits'))){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  _archMois=6;archChoix(6);
+  var fr=lang==='fr',ko=tailleDonnees(),nv=(DB.ventes||[]).length;
+  document.getElementById('arch-stat').innerHTML=
+    '<div style="font-size:26px;font-weight:900;color:var(--T)">'+nv+' <span style="font-size:13px;font-weight:700;color:var(--M)">'+(fr?'ventes en mémoire':'sales in memory')+'</span></div>'+
+    '<div style="font-size:11.5px;font-weight:700;color:'+(ko>3500?'var(--R)':ko>1500?'var(--O)':'var(--G)')+';margin-top:3px">'+(fr?'Taille des données : ':'Data size: ')+ko+' Ko'+(ko>3500?(fr?' — allège maintenant':' — lighten now'):'')+'</div>';
+  renderResumeArchive();
+  document.getElementById('ov-archive').classList.add('show');
+}
+function archChoix(mois){
+  _archMois=mois;
+  [3,6,12].forEach(function(m){var el=document.getElementById('arch-'+m);if(el)el.classList.toggle('on',m===mois);});
+  var n=_nbAArchiver(mois),fr=lang==='fr';
+  var ap=document.getElementById('arch-apercu');
+  if(ap)ap.textContent=n>0?('🧹 '+n+' '+(fr?'vente(s) de plus de '+mois+' mois seront rangées':'sale(s) older than '+mois+' months will be filed')):(fr?'✅ Rien à ranger pour l\'instant — tout est récent':'✅ Nothing to file yet');
+  var btn=document.getElementById('arch-btn');if(btn)btn.disabled=n<=0;
+  var btnl=document.getElementById('arch-btn-l');if(btnl)btnl.textContent=n>0?(fr?'Ranger '+n+' vente(s)':'File '+n+' sale(s)'):(fr?'Rien à ranger':'Nothing to file');
+}
+async function lancerArchivage(){
+  var mois=_archMois,fr=lang==='fr',n=_nbAArchiver(mois);
+  if(n<=0){showToast(fr?'✅ Rien à ranger':'✅ Nothing to file');return;}
+  if(!confirm((fr?'Ranger '+n+' vente(s) de plus de '+mois+' mois ?\n\nTon stock, tes bénéfices et les dettes restent exacts. Le détail ligne par ligne de ces vieilles ventes ne sera plus consultable (le résumé mensuel, oui).':'File '+n+' sale(s) older than '+mois+' months?')))return;
+  // Sécurité multi-téléphones : on synchronise d'abord pour tout rassembler
+  if(supa&&navigator.onLine){showToast('🔄 '+(fr?'Synchronisation avant rangement...':'Syncing first...'));try{await syncToSupa();}catch(e){}}
+  var fait=archiverAnciennesVentes(_cutoffMois(mois));
+  save();
+  renderProd(DB.articles);renderStock(DB.articles);renderRpt();recalcTotaux();
+  ouvrirArchivage(); // rafraîchir l'écran
+  showToast('✅ '+fait+' '+(fr?'vente(s) rangée(s) — app allégée !':'sale(s) filed — app lighter!'));
+}
+function renderResumeArchive(){
+  var box=document.getElementById('arch-resume-box');if(!box)return;var fr=lang==='fr';
+  var R=(DB.arch&&DB.arch.resume)||[];
+  if(!R.length){box.innerHTML='';return;}
+  var moisNom=fr?['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.']:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  box.innerHTML='<div class="sth2" style="margin-bottom:9px">📚 '+(fr?'Résumé des mois archivés':'Archived months')+'</div>'+
+    R.slice(0,24).map(function(r){
+      var p=r.mois.split('-'),lbl=(moisNom[parseInt(p[1],10)-1]||p[1])+' '+p[0];
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--BD)"><div><div style="font-size:12.5px;font-weight:800;color:var(--T)">'+lbl+'</div><div style="font-size:10.5px;color:var(--M);font-weight:600">'+r.nb+' '+(fr?('vente'+(r.nb>1?'s':'')):('sale'+(r.nb>1?'s':'')))+'</div></div><div style="text-align:right"><div style="font-size:13px;font-weight:900;color:var(--A)">'+fmt(r.ca)+'</div><div style="font-size:10.5px;font-weight:700;color:var(--G)">'+(fr?'bén. ':'profit ')+fmt(r.ben)+'</div></div></div>';
+    }).join('');
 }
 function mergeDB(base,other){
   if(!base)return other;
   if(!other)return base;
   if(!base.cfg||!other.cfg||normalizeShopCode(base.cfg.code)!==normalizeShopCode(other.cfg.code))return base;
+  // S3 : archivage. La borne = la plus avancée des deux. L'autorité sur les
+  // articles (stk0/vd0 rebasés) revient au téléphone qui a archivé le plus loin.
+  var baseUp=(base.arch&&base.arch.upTo)||0, otherUp=(other.arch&&other.arch.upTo)||0;
+  var archUp=Math.max(baseUp,otherUp);
+  var artWin=otherUp>baseUp?other:base, artSec=otherUp>baseUp?base:other;
   var vById={};
   (base.ventes||[]).concat(other.ventes||[]).forEach(function(v){if(!v||v.id==null)return;var ex=vById[v.id];if(!ex)vById[v.id]=v;else if(v.annulee&&!ex.annulee)vById[v.id]=v;});
-  base.ventes=Object.keys(vById).map(function(k){return vById[k];});
+  base.ventes=Object.keys(vById).map(function(k){return vById[k];}).filter(function(v){var e=_epochEvt(v);return e==null||e>=archUp;}); // vieux évènements repliés -> retirés
   var aById={};
   (base.appros||[]).concat(other.appros||[]).forEach(function(a){if(a&&a.id!=null&&!aById[a.id])aById[a.id]=a;});
-  base.appros=Object.keys(aById).map(function(k){return aById[k];});
+  base.appros=Object.keys(aById).map(function(k){return aById[k];}).filter(function(a){var e=_epochEvt(a);return e==null||e>=archUp;});
   var artById={};
-  (base.articles||[]).forEach(function(p){if(p&&p.id!=null)artById[p.id]=p;});
-  (other.articles||[]).forEach(function(p){if(p&&p.id!=null&&!artById[p.id])artById[p.id]=p;});
+  (artWin.articles||[]).forEach(function(p){if(p&&p.id!=null)artById[p.id]=p;});       // articles rebasés gagnent
+  (artSec.articles||[]).forEach(function(p){if(p&&p.id!=null&&!artById[p.id])artById[p.id]=p;});
   base.articles=Object.keys(artById).map(function(k){return artById[k];});
+  // Résumé d'archive : union par mois (clé "AAAA-MM")
+  var resById={};
+  (base.arch&&base.arch.resume||[]).concat(other.arch&&other.arch.resume||[]).forEach(function(r){if(r&&r.mois&&!resById[r.mois])resById[r.mois]=r;});
+  base.arch={upTo:archUp,resume:Object.keys(resById).map(function(k){return resById[k];}).sort(function(a,b){return (b.mois||'').localeCompare(a.mois||'');})};
   // Tombstones : un article supprimé (ou devenu variante) ne ressuscite jamais via la fusion
   var supSet={};
   (base.suppr||[]).concat(other.suppr||[]).forEach(function(id){if(id!=null)supSet[id]=true;});
@@ -5670,6 +5803,9 @@ function migrateDBData(d){
   d.cfg=d.cfg||{};
   if(!Array.isArray(d.suppr))d.suppr=[]; // tombstones : articles supprimés (survit à la fusion)
   if(!Array.isArray(d.journal))d.journal=[]; // S4 : journal des gestes sensibles (prix/stock/suppression)
+  if(!d.arch||typeof d.arch!=='object')d.arch={upTo:0,resume:[]}; // S3 : archivage (upTo = ventes<cette date repliées dans stk0/vd0)
+  if(!Array.isArray(d.arch.resume))d.arch.resume=[];
+  if(!(d.arch.upTo>0))d.arch.upTo=0;
   if(d.cfg.notifOk===undefined)d.cfg.notifOk=false;
   if(d.cfg.notifAsked===undefined)d.cfg.notifAsked=false;
   if(d.cfg.thermalEnabled===undefined)d.cfg.thermalEnabled=false;
@@ -5802,7 +5938,17 @@ function renderNotifPanel(){
 showNotifs=function(){renderNotifPanel();document.getElementById('ov-notifs').classList.add('show');};
 var _appliquerLangBase=appliquerLang;appliquerLang=function(){_appliquerLangBase();['dash','dash2','dash3','dash4','dash5'].forEach(function(id){var el=document.getElementById('n-'+id);if(el)el.textContent='Dashboard';});var btnUse=document.getElementById('btn-use-points');if(btnUse)btnUse.textContent=lang==='fr'?'⭐ Utiliser points':'⭐ Use points';var info=document.getElementById('client-vente-info');if(info&&!clientVente)info.textContent=lang==='fr'?'Client fidèle (optionnel)':'Loyal customer (optional)';};
 navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(function(n){var oc=n.getAttribute('onclick')||'';n.classList.toggle('on',oc.indexOf("navTo('"+tab+"'")>-1);});var m={caisse:'s-caisse',stock:'s-stock',rapports:'s-rapports',clients:'s-clients',dash:'s-dashboard'};goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);if(tab==='dash')renderDashboard();};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}};
+// Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
+function suggererArchivage(){
+  if(role!=='patron'||!DB||!DB.cfg)return;
+  var nv=(DB.ventes||[]).length,ko=tailleDonnees();
+  if(nv<3000&&ko<3500)return;
+  var last=DB.cfg.archSuggAt?new Date(DB.cfg.archSuggAt).getTime():0;
+  if(Date.now()-last<7*86400000)return;
+  DB.cfg.archSuggAt=new Date().toISOString();save(true);
+  setTimeout(function(){showToast('🧹 '+(lang==='fr'?'Beaucoup de ventes en mémoire — Réglages › Alléger l\'application pour rester rapide':'Many sales in memory — Settings › Lighten the app'));},2500);
+}
 var _logoutBase=logout;logout=function(){clientVente=null;remisePoints=0;remiseVente=0;_logoutBase();};
 viderPanier=function(){panier={};remisePoints=0;remiseVente=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');};
 function renderClientVenteList(){var c=document.getElementById('client-vente-list');if(!c||!DB)return;c.innerHTML=DB.clients.length?DB.clients.map(function(cl){majNiveauClient(cl);return '<div class="hist-sale" onclick="choisirClientVente('+cl.id+')"><div class="hist-h"><div><div class="hist-d">'+cl.nm+'</div><div class="hist-s">'+cl.niveau+' · '+(cl.points||0)+' pts</div></div><div class="hist-t">'+fmt(cl.credit||0)+'</div></div></div>';}).join(''):'<div class="dash-empty">Aucun client enregistré</div>'; }
