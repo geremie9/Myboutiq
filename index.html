@@ -968,6 +968,11 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>
   <div class="syncb hide" id="syncb">⏳ <span id="sync-msg">En attente réseau...</span></div>
+  <div id="update-banner" style="display:none;position:fixed;left:12px;right:12px;top:12px;max-width:440px;margin:0 auto;background:linear-gradient(135deg,#4A6CF7,#7C4DFF);color:#fff;border-radius:14px;padding:11px 14px;align-items:center;gap:11px;z-index:200;box-shadow:0 6px 22px rgba(0,0,0,.28)">
+    <span style="font-size:20px">🔄</span>
+    <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800" id="upd-t">Nouvelle version disponible</div><div style="font-size:11px;font-weight:600;opacity:.85" id="upd-s">Touche pour charger les dernières améliorations</div></div>
+    <button id="update-reload" style="background:#fff;color:#4A6CF7;border:none;border-radius:9px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;flex-shrink:0">Recharger</button>
+  </div>
   <div class="mcont">
     <div class="ssec">
       <div class="sbar2">
@@ -1212,6 +1217,8 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" onclick="exporterSauvegardeComplete()"><div class="stico" style="background:#E8F5E9">💾</div><div class="stii"><div class="stitl">Exporter une sauvegarde complète</div><div class="stisub">Toutes tes données, en un fichier</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="document.getElementById('inp-restore-backup').click()"><div class="stico" style="background:#FFEBEE">♻️</div><div class="stii"><div class="stitl">Restaurer une sauvegarde</div><div class="stisub">Remplace toutes les données actuelles</div></div><span class="starr">›</span></div>
         <input type="file" id="inp-restore-backup" accept="application/json" style="display:none" onchange="restaurerSauvegarde(this.files[0])">
+        <div class="stit2" id="row-savestate" onclick="montrerEtatSauvegarde()"><div class="stico" id="savestate-ico" style="background:#E8F5E9">☁️</div><div class="stii"><div class="stitl" id="savestate-tit">Sauvegarde en ligne</div><div class="stisub" id="savestate-sub">—</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirJournal()"><div class="stico" style="background:#F3E5F5">📋</div><div class="stii"><div class="stitl">Journal des modifications</div><div class="stisub">Prix, stock, suppressions — qui &amp; quand</div></div><span class="starr">›</span></div>
       </div>
     </div>
     <div class="stsc"><div class="stcd"><div class="stit2" onclick="logout()"><div class="stico" style="background:#FFEBEE">🚪</div><div class="stii"><div class="stitl" id="st-logout" style="color:var(--R)">Se déconnecter</div></div><span class="starr">›</span></div></div></div>
@@ -1810,6 +1817,16 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>
 </div>
+<div class="ov" id="ov-journal" onclick="closeOv(event,'ov-journal')">
+  <div class="bsht" style="max-height:88vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">📋 <span id="journal-tit">Journal des modifications</span></div><button class="bcl" onclick="closeSheet('ov-journal')">✕</button></div>
+    <div style="padding:0 15px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:11px" id="journal-hint">Chaque changement de prix, de stock ou suppression est tracé — pour te protéger, toi et ton équipe.</div>
+      <div id="journal-lst"></div>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="ov-fam" onclick="closeOv(event,'ov-fam')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">🔗 <span id="fam-tit">Mettre dans une famille</span></div><button class="bcl" onclick="closeSheet('ov-fam')">✕</button></div>
@@ -2125,7 +2142,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.08-b'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.09'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2149,6 +2166,58 @@ var _deviceId=(function(){
   }catch(e){return 'd_'+Math.random().toString(36).slice(2);}
 })();
 function genVenteId(){return _deviceId+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);}
+// ═══ S4 : journal des gestes sensibles (qui a changé quoi, quand) ═══
+function _journalQui(){return (typeof role!=='undefined'&&role==='vendeur')?((typeof nomVendeur!=='undefined'&&nomVendeur)||'Vendeur'):((DB&&DB.cfg&&DB.cfg.nom&&String(DB.cfg.nom).split(' ')[0])||'Patron');}
+function journalAjouter(act,art,av,ap){
+  if(!DB)return;if(!Array.isArray(DB.journal))DB.journal=[];
+  DB.journal.unshift({id:genVenteId(),ts:new Date().toISOString(),dev:_deviceId,who:_journalQui(),role:(typeof role!=='undefined'?role:'patron'),act:act,art:String(art||''),av:(av==null?'':String(av)),ap:(ap==null?'':String(ap))});
+  DB.journal=DB.journal.slice(0,300);
+}
+function _journalIco(act){return act==='prix'?'💰':act==='stock'?'📦':act==='famille'?'🔗':act==='suppr'?'🗑️':'✏️';}
+function _tempsEcoule(iso){
+  var d=new Date(iso),diff=Math.max(0,Date.now()-d.getTime()),fr=lang==='fr';
+  var mn=Math.floor(diff/60000);
+  if(mn<1)return fr?'à l\'instant':'just now';
+  if(mn<60)return (fr?'il y a ':'')+mn+' min'+(fr?'':' ago');
+  var h=Math.floor(mn/60);if(h<24)return (fr?'il y a ':'')+h+' h'+(fr?'':' ago');
+  var j=Math.floor(h/24);if(j<30)return (fr?'il y a ':'')+j+' j'+(fr?'':'d ago');
+  return d.toLocaleDateString(fr?'fr-FR':'en-GB');
+}
+function ouvrirJournal(){renderJournal();document.getElementById('ov-journal').classList.add('show');}
+function renderJournal(){
+  var g=document.getElementById('journal-lst');if(!g)return;var fr=lang==='fr';
+  var J=(DB&&DB.journal)||[];
+  if(!J.length){g.innerHTML='<div class="empty" style="padding:26px 12px"><div class="empty-e">📋</div><div class="empty-t">'+(fr?'Aucune modification pour l\'instant':'No change yet')+'</div><div style="font-size:11.5px;color:var(--M);font-weight:600;margin-top:5px">'+(fr?'Les prix modifiés, corrections de stock et suppressions apparaîtront ici.':'Price edits, stock fixes and deletions will show here.')+'</div></div>';return;}
+  var actLbl={prix:fr?'Prix':'Price',stock:fr?'Stock':'Stock',suppr:fr?'Supprimé':'Deleted',famille:fr?'Famille':'Family'};
+  g.innerHTML=J.map(function(e){
+    var fleche=(e.av&&e.ap)?(e.av+' → <b>'+e.ap+'</b>'):(e.ap?('<b>'+e.ap+'</b>'):(e.av||''));
+    var badge=e.role==='vendeur'?'<span style="background:#FFF3E0;color:#B45309;border-radius:6px;padding:1px 6px;font-size:9.5px;font-weight:800;margin-left:5px">'+e.who+'</span>':'<span style="background:#EAF1FF;color:var(--B);border-radius:6px;padding:1px 6px;font-size:9.5px;font-weight:800;margin-left:5px">'+e.who+'</span>';
+    return '<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 4px;border-bottom:1px solid var(--BD)">'+
+      '<span style="font-size:19px;flex-shrink:0">'+_journalIco(e.act)+'</span>'+
+      '<div style="flex:1;min-width:0">'+
+      '<div style="font-size:12.5px;font-weight:800;color:var(--T)">'+(actLbl[e.act]||e.act)+' · '+e.art+'</div>'+
+      '<div style="font-size:11.5px;color:var(--M);font-weight:600;margin-top:1px">'+fleche+'</div>'+
+      '<div style="font-size:10px;color:var(--M);font-weight:600;margin-top:2px">'+_tempsEcoule(e.ts)+badge+'</div>'+
+      '</div></div>';
+  }).join('');
+}
+// ═══ S2 : état de la sauvegarde en ligne (visible + alerte 24 h) ═══
+function majEtatSauvegarde(){
+  var ico=document.getElementById('savestate-ico'),sub=document.getElementById('savestate-sub'),tit=document.getElementById('savestate-tit');
+  if(!sub)return;var fr=lang==='fr';
+  var last=DB&&DB.cfg&&DB.cfg.lastSyncOk;
+  if(!last){ico.style.background='#EEE';ico.textContent='☁️';sub.textContent=fr?'Pas encore sauvegardée en ligne':'Not backed up online yet';sub.style.color='var(--M)';return;}
+  var diffH=(Date.now()-new Date(last).getTime())/3600000;
+  if(diffH>=24){ico.style.background='#FFEBEE';ico.textContent='⚠️';if(tit)tit.textContent=fr?'Sauvegarde en retard':'Backup overdue';sub.textContent=(fr?'Dernière : ':'Last: ')+_tempsEcoule(last)+(fr?' — connecte-toi à Internet':' — go online');sub.style.color='var(--R)';}
+  else{ico.style.background='#E8F5E9';ico.textContent='✅';if(tit)tit.textContent=fr?'Sauvegarde en ligne':'Online backup';sub.textContent=(fr?'À jour · ':'Up to date · ')+_tempsEcoule(last);sub.style.color='#1B5E20';}
+}
+function montrerEtatSauvegarde(){
+  var fr=lang==='fr',last=DB&&DB.cfg&&DB.cfg.lastSyncOk;
+  if(!last){showToast(fr?'☁️ Pas encore sauvegardée — connecte-toi à Internet une fois':'☁️ Not backed up yet — go online once');return;}
+  var diffH=(Date.now()-new Date(last).getTime())/3600000;
+  if(diffH>=24)showToast('⚠️ '+(fr?'Dernière sauvegarde ':'Last backup ')+_tempsEcoule(last)+(fr?'. Ouvre l\'app avec Internet pour sauvegarder.':'. Open with Internet to back up.'));
+  else showToast('✅ '+(fr?'Sauvegardé ':'Backed up ')+_tempsEcoule(last));
+}
 var _pendingRemoteDB=null,_pendingRemoteTimer=null;
 function _venteEnCours(){
   var succ=document.getElementById('succ');
@@ -2555,6 +2624,7 @@ function setParamTab(nom,btn){
   document.querySelectorAll('.set-pane').forEach(function(p){p.classList.toggle('on',p.id==='pane-'+nom);});
   var w=document.getElementById('set-panes'); if(w)w.scrollTop=0;
   if(typeof masquerCodeEquipe==='function')masquerCodeEquipe(); // le PIN équipe repart toujours masqué
+  if(typeof majEtatSauvegarde==='function')majEtatSauvegarde();
 }
 // #sec-patron est affiché/masqué par le rôle ET le mode expert. Comme il est
 // désormais découpé en plusieurs morceaux, on cible la classe.
@@ -3415,6 +3485,7 @@ function cmpDelVar(vid){
   var p=_cmpArt;if(!p)return;
   var v=p.vr.find(function(x){return x.id==vid;});if(!v)return;
   if(!confirm((lang==='fr'?'Supprimer la variante "':'Delete variant "')+(v.nm||'?')+'" ?'))return;
+  journalAjouter('suppr',p.nm+' — '+(v.nm||'?'),(lang==='fr'?'variante':'variant'),'');
   p.vr=p.vr.filter(function(x){return x.id!=vid;});
   if(p._pendingVariantSetup)p._pendingVariantSetup=p._pendingVariantSetup.filter(function(id){return id!=vid;});
   save();cmpRenderFamRows();renderProd(DB.articles);renderStock(DB.articles);
@@ -3726,6 +3797,7 @@ function mettreDansFamille(artId,cibleId){
     t.px=0;t.pa=0;t.stk=0;t.stk0=0;
   }
   _artVersVariante(t,a);
+  journalAjouter('famille',a.nm,(lang==='fr'?'article seul':'own item'),(lang==='fr'?'variante de ':'variant of ')+t.nm);
   // L'ancien article disparaît PARTOUT (tombstone pour que la fusion multi-téléphones ne le ressuscite pas)
   if(!Array.isArray(DB.suppr))DB.suppr=[];
   DB.suppr.push(a.id);
@@ -3735,7 +3807,7 @@ function mettreDansFamille(artId,cibleId){
   showToast('🔗 '+a.nm+' → '+t.nm+' ('+t.vr.length+' '+(fr?'variantes':'variants')+')');
 }
 function ctxST(){if(!artCtx)return;selArtStk(artCtx);document.getElementById('ov-stk').classList.add('show');}
-function ctxDL(){if(!artCtx)return;if(confirm((lang==='fr'?'Supprimer ':'Delete ')+'"'+artCtx.nm+'" ?')){if(!Array.isArray(DB.suppr))DB.suppr=[];DB.suppr.push(artCtx.id);DB.articles=DB.articles.filter(function(a){return a.id!==artCtx.id;});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();showToast('🗑️ '+artCtx.nm);}}
+function ctxDL(){if(!artCtx)return;if(confirm((lang==='fr'?'Supprimer ':'Delete ')+'"'+artCtx.nm+'" ?')){if(!Array.isArray(DB.suppr))DB.suppr=[];DB.suppr.push(artCtx.id);journalAjouter('suppr',artCtx.nm,(lang==='fr'?'stock '+fmtQ(getStk(artCtx)):'stock '+fmtQ(getStk(artCtx))),'');DB.articles=DB.articles.filter(function(a){return a.id!==artCtx.id;});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();showToast('🗑️ '+artCtx.nm);}}
 function ouvrirNeg(p,v){negEnCours={p,v};document.getElementById('neg-emo').textContent=p.e;document.getElementById('neg-nm').textContent=p.nm+(v?' — '+v.nm:'');document.getElementById('neg-msg').textContent=lang==='fr'?'Stock épuisé. Tu peux quand même vendre et te ravitailler après.':'Out of stock. You can still sell and restock later.';document.getElementById('ov-neg').classList.add('show');}
 function vendreMalgre(){if(!negEnCours)return;var p=negEnCours.p,v=negEnCours.v;var key=v?p.id+'-'+v.id:p.id+'-0';panier[key]=(panier[key]||0)+1;updatePUI(p.id);closeSheet('ov-neg');if(navigator.vibrate)navigator.vibrate(25);}
 function ouvrirVar(p){
@@ -4041,10 +4113,10 @@ function calcAuto(){
 function setSug(n){if(n===0)document.getElementById('inp-pv').value=pxAU*2;else document.getElementById('inp-pv').value=pxAU+n;calcBen();}
 function calcBen(){var pv=parseFloat(document.getElementById('inp-pv').value)||0,bc=document.getElementById('bc2');if(pv>0&&pxAU>0){bc.style.display='flex';var d=pv-pxAU,m=pv>0?Math.round(d/pv*100):0;bc.className='bcard '+(d>=0?'bon':'bad');document.getElementById('bl2').textContent=d>=0?t('beneficeUnit'):t('venteAPerte');document.getElementById('ba2').textContent=(d>=0?'+':'')+fmt(d);document.getElementById('bs2').textContent=t('marge')+' '+m+'%';}else bc.style.display='none';}
 function buildRecap(){var pv=parseFloat(document.getElementById('inp-pv').value)||0;if(!pv){showToast(t('errPrix'));goPS(2);return;}var q=parseInt(document.getElementById('inp-qte').value)||1,pa=parseFloat(document.getElementById('inp-pa').value)||pxAU,transp=parseFloat(document.getElementById('inp-transport').value)||0,diff=pv-pxAU,marge=pv>0?Math.round(diff/pv*100):0,tl={carton:'1 '+(lang==='fr'?'carton':'box')+' = '+q,lot:'1 '+(lang==='fr'?'lot':'batch')+' = '+q,unite:lang==='fr'?"À l'unité":"Per unit"};document.getElementById('rc-e').textContent=artCours?artCours.e:'📦';document.getElementById('rc-n').textContent=artCours?artCours.nm:'';document.getElementById('rc-type').textContent=tl[achatType];document.getElementById('rc-cout').textContent=fmt(pa);document.getElementById('rc-transp').textContent='+ '+fmt(transp);document.getElementById('rc-unit').textContent=fmt(pxAU);document.getElementById('rc-vente').textContent=fmt(pv);document.getElementById('rc-ba').textContent=(diff>=0?'+':'')+fmt(diff);document.getElementById('rc-m').textContent=t('marge')+' '+marge+'%';document.getElementById('rc-bl').textContent=diff>=0?t('beneficeUnit'):t('venteAPerte');document.getElementById('rc-bc').className='bcard '+(diff>=0?'bon':'bad');}
-function savePrix(){var pv=parseFloat(document.getElementById('inp-pv').value)||0;if(artCours&&pv>0){artCours.px=pv;artCours.pa=pxAU;save();renderProd(DB.articles);renderAgpx();}closeSheet('ov-prix');showToast(t('prixEnreg'));}
+function savePrix(){var pv=parseFloat(document.getElementById('inp-pv').value)||0;if(artCours&&pv>0){if(Number(artCours.px)!==pv)journalAjouter('prix',artCours.nm,fmt(artCours.px),fmt(pv));artCours.px=pv;artCours.pa=pxAU;save();renderProd(DB.articles);renderAgpx();}closeSheet('ov-prix');showToast(t('prixEnreg'));}
 function setNPV(n){var pa=artCours?artCours.pa:0;if(n===0)document.getElementById('inp-npv').value=pa*2;else document.getElementById('inp-npv').value=pa+n;calcBenR();}
 function calcBenR(){var pv=parseFloat(document.getElementById('inp-npv').value)||0,bc=document.getElementById('bc-r');if(pv>0&&pxAU>0){bc.style.display='flex';var d=pv-pxAU,m=pv>0?Math.round(d/pv*100):0;bc.className='bcard '+(d>=0?'bon':'bad');document.getElementById('bl-r').textContent=d>=0?t('beneficeUnit'):t('venteAPerte');document.getElementById('ba-r').textContent=(d>=0?'+':'')+fmt(d);document.getElementById('bs-r').textContent=t('marge')+' '+m+'%';}else bc.style.display='none';}
-function saveR(){var pv=parseFloat(document.getElementById('inp-npv').value)||0;if(!pv){showToast(t('errPrix'));return;}if(artCours){artCours.px=pv;save();renderProd(DB.articles);renderAgpx();}closeSheet('ov-prix');showToast(t('prixMaj'));}
+function saveR(){var pv=parseFloat(document.getElementById('inp-npv').value)||0;if(!pv){showToast(t('errPrix'));return;}if(artCours){if(Number(artCours.px)!==pv)journalAjouter('prix',artCours.nm,fmt(artCours.px),fmt(pv));artCours.px=pv;save();renderProd(DB.articles);renderAgpx();}closeSheet('ov-prix');showToast(t('prixMaj'));}
 function showSync(){document.getElementById('syncb').classList.remove('hide');setTimeout(function(){document.getElementById('syncb').classList.add('hide');},1600);}
 
 // ═══════════════════════════════════════════
@@ -5571,6 +5643,10 @@ function mergeDB(base,other){
   (base.clients||[]).forEach(function(c){if(c&&c.id!=null)cById[c.id]=c;});
   (other.clients||[]).forEach(function(c){if(c&&c.id!=null&&!cById[c.id])cById[c.id]=c;});
   base.clients=Object.keys(cById).map(function(k){return cById[k];});
+  // Journal (S4) : union par id, tri antéchronologique, borné
+  var jById={};
+  (base.journal||[]).concat(other.journal||[]).forEach(function(j){if(j&&j.id!=null&&!jById[j.id])jById[j.id]=j;});
+  base.journal=Object.keys(jById).map(function(k){return jById[k];}).sort(function(a,b){return (b.ts||'').localeCompare(a.ts||'');}).slice(0,300);
   return base;
 }
 function ajouterAppro(pid,vid,qty){
@@ -5583,13 +5659,17 @@ function definirStock(a,v,desired){
   var tgt=v||a,want=Number(desired)||0;
   if(tgt.stk0===undefined){tgt.stk0=want;tgt.stk=want;return;}
   var cur=Number(tgt.stk)||0,delta=want-cur;
-  if(delta!==0)DB.appros.push({id:genVenteId(),pid:a.id,vid:v?tgt.id:null,qty:delta,dev:_deviceId,date:new Date().toISOString(),adj:true});
+  if(delta!==0){
+    DB.appros.push({id:genVenteId(),pid:a.id,vid:v?tgt.id:null,qty:delta,dev:_deviceId,date:new Date().toISOString(),adj:true});
+    journalAjouter('stock',a.nm+(v?' — '+(v.nm||''):''),fmtQ(cur)+(estMesure(a)?' '+uniteArt(a):''),fmtQ(want)+(estMesure(a)?' '+uniteArt(a):''));
+  }
   tgt.stk=want;
 }
 function migrateDBData(d){
   if(!d)return d;
   d.cfg=d.cfg||{};
   if(!Array.isArray(d.suppr))d.suppr=[]; // tombstones : articles supprimés (survit à la fusion)
+  if(!Array.isArray(d.journal))d.journal=[]; // S4 : journal des gestes sensibles (prix/stock/suppression)
   if(d.cfg.notifOk===undefined)d.cfg.notifOk=false;
   if(d.cfg.notifAsked===undefined)d.cfg.notifAsked=false;
   if(d.cfg.thermalEnabled===undefined)d.cfg.thermalEnabled=false;
@@ -5630,6 +5710,17 @@ loadDB=function(){var d=localStorage.getItem('myboutiq_v6');return d?migrateDBDa
 var _loadFromSupaBase=loadFromSupa;loadFromSupa=async function(code,pin){var data=await _loadFromSupaBase(code,pin);return data?migrateDBData(data):null;};
 function persistDB(){localStorage.setItem('myboutiq_v6',JSON.stringify(DB));if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){clearTimeout(syncTimeout);syncTimeout=setTimeout(syncToSupa,800);}}
 save=function(skipNotif){DB=migrateDBData(DB);persistDB();if(!skipNotif)checkNotifications(true);if(typeof updateNotifBadge==='function')updateNotifBadge();};
+// S2 : marquer l'heure de la dernière sauvegarde RÉUSSIE (sans relancer de sync)
+var _syncToSupaBase=syncToSupa;
+syncToSupa=async function(){
+  var r=await _syncToSupaBase.apply(this,arguments);
+  if(r===true&&DB&&DB.cfg){
+    DB.cfg.lastSyncOk=new Date().toISOString();
+    try{localStorage.setItem('myboutiq_v6',JSON.stringify(DB));}catch(e){}
+    try{majEtatSauvegarde();}catch(e){}
+  }
+  return r;
+};
 // S1 : le realtime ne transporte plus AUCUNE donnée — seulement un signal
 // "la boutique X a changé à telle heure". On re-télécharge alors les données
 // via boutique_lire (code + PIN de session). Personne d'autre ne peut écouter utile.
@@ -5868,9 +5959,28 @@ renderFourn=function(){var c=document.getElementById('fourn-lst');if(!c)return;c
 
 </script>
 <script>
+function montrerBandeauMaj(worker){
+  var b=document.getElementById('update-banner');if(!b)return;
+  b.style.display='flex';
+  var btn=document.getElementById('update-reload');
+  if(btn)btn.onclick=function(){btn.textContent=(lang==='fr'?'Chargement…':'Loading…');btn.disabled=true;if(worker){worker.postMessage({type:'SKIP_WAITING'});}else{location.reload();}};
+}
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
-    navigator.serviceWorker.register('sw.js').catch(function(e){console.warn('SW:',e);});
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      if(reg.waiting&&navigator.serviceWorker.controller)montrerBandeauMaj(reg.waiting);
+      reg.addEventListener('updatefound',function(){
+        var nw=reg.installing;if(!nw)return;
+        nw.addEventListener('statechange',function(){
+          if(nw.state==='installed'&&navigator.serviceWorker.controller)montrerBandeauMaj(nw);
+        });
+      });
+      setInterval(function(){reg.update().catch(function(){});},60*60*1000); // vérifie 1×/h
+    }).catch(function(e){console.warn('SW:',e);});
+    var _swReloaded=false;
+    navigator.serviceWorker.addEventListener('controllerchange',function(){
+      if(_swReloaded)return;_swReloaded=true;location.reload();
+    });
   });
 }
 </script>

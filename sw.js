@@ -1,11 +1,15 @@
-const CACHE_NAME='myboutiq-v7';
+const CACHE_NAME='myboutiq-v8';
 const IMG_CACHE='myboutiq-images-v1';
 const APP_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 const SUPABASE_STORAGE_HOST='bbncilovxzkcvlxvoqtg.supabase.co';
 
 self.addEventListener('install',function(e){
-  self.skipWaiting();
+  // Pas de skipWaiting auto : la nouvelle version ATTEND que l'utilisateur touche
+  // "Recharger" (bandeau), pour ne jamais casser un écran en pleine vente.
   e.waitUntil(caches.open(CACHE_NAME).then(function(c){return c.addAll(APP_SHELL);}));
+});
+self.addEventListener('message',function(e){
+  if(e.data&&e.data.type==='SKIP_WAITING')self.skipWaiting();
 });
 self.addEventListener('activate',function(e){
   e.waitUntil(caches.keys().then(function(keys){
