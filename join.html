@@ -105,21 +105,23 @@ body::before{content:'';position:absolute;width:340px;height:340px;border-radius
   }
   majWa('');
 
-  // Nom de la boutique : on ne lit QUE la colonne "nom" (le reste est refusé côté serveur)
+  // Nom de la boutique UNIQUEMENT (fonction serveur dédiée : aucune donnée sensible).
+  // Le code seul ne donne plus accès aux données — il faut le PIN équipe dans l'app.
   function chercher(valeur){
-    return fetch(SUPA+'/rest/v1/boutiques?select=nom&limit=1&code=eq.'+encodeURIComponent(valeur),
-      {headers:{apikey:KEY,Authorization:'Bearer '+KEY}}).then(function(r){return r.ok?r.json():[];});
+    return fetch(SUPA+'/rest/v1/rpc/boutique_nom',
+      {method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'},
+       body:JSON.stringify({p_code:valeur})}).then(function(r){return r.ok?r.json():null;});
   }
   var el=document.getElementById('shop');
   if(!digits){ el.textContent='Code manquant'; document.title='Lien invalide — MyBoutiQ'; return; }
-  chercher(formate).then(function(a){
-    if(a&&a.length)return a;
-    return formate!==digits?chercher(digits):[];
-  }).then(function(a){
-    if(a&&a.length&&a[0].nom){
-      el.textContent=a[0].nom;
-      document.title='Rejoins '+a[0].nom+' — MyBoutiQ';
-      majWa(a[0].nom);
+  chercher(formate).then(function(nom){
+    if(nom)return nom;
+    return formate!==digits?chercher(digits):null;
+  }).then(function(nom){
+    if(nom){
+      el.textContent=nom;
+      document.title='Rejoins '+nom+' — MyBoutiQ';
+      majWa(nom);
     }else{
       el.textContent='Boutique introuvable';
       el.style.fontSize='19px';

@@ -933,7 +933,7 @@ body{max-width:min(100%,1200px)}
     <div id="fv" style="width:100%;display:none">
       <div class="fg"><label class="fl" id="lbl-code">🏪 Code boutique</label><input class="fi" type="text" id="v-code" style="letter-spacing:3px;font-weight:800;text-transform:uppercase" placeholder="12345 67890"></div>
       <div class="fg"><label class="fl" id="lbl-prenom">👤 Prénom</label><input class="fi" type="text" id="v-nom" placeholder="Amadou"></div>
-      <div class="fg"><label class="fl">🔐 PIN</label><input class="fi" type="password" placeholder="••••" maxlength="4" id="v-pin" inputmode="numeric"></div>
+      <div class="fg"><label class="fl" id="lbl-vpin">🔐 PIN équipe</label><input class="fi" type="password" placeholder="••••" maxlength="4" id="v-pin" inputmode="numeric"><div style="font-size:10.5px;color:rgba(255,255,255,.55);font-weight:600;margin-top:4px" id="hint-vpin">Demande ce code à ton patron</div></div>
       <button class="btn-login" id="btn-lv" onclick="loginV()">Connexion 👦</button>
     </div>
   </div>
@@ -1079,11 +1079,19 @@ body{max-width:min(100%,1200px)}
     <!-- Code boutique avec QR -->
     <div class="qr-wrap" style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px;margin-bottom:0">
       <div class="ccl" id="lbl-code-shop">Code de ta boutique</div>
-      <div class="ccv" id="code-val">123456</div>
+      <div class="ccv" id="code-val">—</div>
       <div class="cch" id="lbl-code-hint">Partage ce code avec tes vendeurs</div>
       <div style="display:flex;gap:8px;margin-top:9px">
         <button class="bcopy" onclick="copierCode()" id="btn-copy">📋 Copier</button>
         <button class="bcopy" onclick="partagerCode()" id="btn-share">📱 WhatsApp</button>
+      </div>
+      <div style="background:rgba(255,193,7,.16);border:1px solid rgba(255,193,7,.4);border-radius:11px;padding:10px 12px;margin-top:11px;text-align:left">
+        <div style="font-size:10px;font-weight:800;color:#FFD54F;text-transform:uppercase;letter-spacing:.6px" id="lbl-teamcode">🔐 PIN équipe (2e clé)</div>
+        <div style="display:flex;align-items:center;gap:9px;margin-top:4px">
+          <div id="teamcode-val" style="font-size:24px;font-weight:900;letter-spacing:5px;color:#fff">••••</div>
+          <button onclick="revealTeamCode()" id="btn-teamcode-eye" style="background:rgba(255,255,255,.14);border:none;border-radius:8px;padding:5px 10px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">👁️ Voir</button>
+        </div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,.6);font-weight:600;margin-top:5px" id="hint-teamcode">Dis-le de vive voix à tes vendeurs. Ne le mets JAMAIS dans le lien.</div>
       </div>
     </div>
   </div>
@@ -1931,7 +1939,7 @@ body{max-width:min(100%,1200px)}
 
 <!-- PIN -->
 <div class="pinov" id="pinov">
-  <div class="pintit" id="pin-tit">🔐 PIN (123456)</div>
+  <div class="pintit" id="pin-tit">🔐 Entre ton PIN</div>
   <div class="pindots" id="pindots">
     <div class="pindot"></div><div class="pindot"></div><div class="pindot"></div>
     <div class="pindot"></div><div class="pindot"></div><div class="pindot"></div>
@@ -2117,7 +2125,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.07-F'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.08'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2290,9 +2298,11 @@ async function syncToSupa(){
         }
       }
       if(!user){
-        var rpcSave=await supa.rpc('sauvegarder_boutique_par_code',{p_code:DB.cfg.code,p_data:payload.data});
+        // Vendeur : écriture serveur = code + PIN équipe (vérifié serveur). Le PIN patron ne part jamais.
+        if(_shopPin==null||String(_shopPin).length<4)throw new Error(lang==='fr'?'🔐 Reconnecte-toi avec le PIN équipe':'🔐 Reconnect with the team PIN');
+        var rpcSave=await supa.rpc('boutique_ecrire',{p_code:DB.cfg.code,p_pin:String(_shopPin),p_data:payload.data});
         if(!rpcSave.error&&rpcSave.data===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
-        throw new Error(lang==='fr'?'❌ Boutique introuvable pour synchronisation vendeur':'❌ Store not found for seller sync');
+        throw new Error(lang==='fr'?'❌ Sync vendeur refusée (code ou PIN équipe)':'❌ Seller sync refused (code or team PIN)');
       }
       var byCode=await supa.from('boutiques').select('id,owner_id,code').eq('code',DB.cfg.code).limit(1);
       if(byCode.error)throw byCode.error;
@@ -2324,12 +2334,19 @@ async function syncToSupa(){
     return false;
   }
 }
-async function loadFromSupa(code){
+// S1 : lecture serveur = code + PIN obligatoires (PIN patron ou code équipe).
+// Le PIN de session (_shopPin) est posé à la connexion. Sans lui, aucune donnée.
+var _shopPin=null;
+async function loadFromSupa(code,pin){
   if(!supa)return null;
   try{
     code=formatShopCode(code);
-    var res=await supa.rpc('obtenir_boutique_par_code',{p_code:code});
-    return(res.data&&!res.error)?res.data:null;
+    var p=(pin!=null?pin:_shopPin);
+    if(p==null||String(p).length<4)return null;
+    var res=await supa.rpc('boutique_lire',{p_code:code,p_pin:String(p)});
+    if(res.error||!res.data)return null;
+    if(pin!=null)_shopPin=String(pin); // 1re lecture réussie -> on mémorise le PIN validé
+    return res.data;
   }catch(e){return null;}
 }
 function subscribeRealtime(code){
@@ -2537,6 +2554,7 @@ function setParamTab(nom,btn){
   document.querySelectorAll('.set-tab').forEach(function(b){b.classList.toggle('on',b===btn);});
   document.querySelectorAll('.set-pane').forEach(function(p){p.classList.toggle('on',p.id==='pane-'+nom);});
   var w=document.getElementById('set-panes'); if(w)w.scrollTop=0;
+  if(typeof masquerCodeEquipe==='function')masquerCodeEquipe(); // le PIN équipe repart toujours masqué
 }
 // #sec-patron est affiché/masqué par le rôle ET le mode expert. Comme il est
 // désormais découpé en plusieurs morceaux, on cible la classe.
@@ -2987,6 +3005,7 @@ function registerVendeurEquipe(nm){
 }
 function _finishLoginP(){
   role='patron';
+  if(DB&&DB.cfg){_shopPin=String(DB.cfg.pin||'');assurerPinVendeur();} // 2e facteur serveur du patron
   document.getElementById('u-nm').textContent=DB.cfg.nom.split(' ')[0];
   document.getElementById('u-role').textContent=t('patron')+' 👑';
   document.getElementById('u-role').className='rbdg rb-p';
@@ -3071,31 +3090,44 @@ async function loginP(){
     showToast(t('boutiqueIntrouvable'));return;
   }
   if(DB&&DB.cfg){DB.cfg.tel=tel;DB.cfg.ownerEmail=email;}
+  _shopPin=DB&&DB.cfg?String(DB.cfg.pin||''):null; // le patron parle au serveur avec SON pin
+  assurerPinVendeur();
   save(true);
   _finishLoginP();
+}
+// Code équipe = 2e facteur pour les vendeurs. Créé une fois, à dire de VIVE VOIX
+// (jamais dans le lien WhatsApp, sinon le lien transféré rouvrirait la porte).
+function assurerPinVendeur(){
+  if(!DB||!DB.cfg)return;
+  if(!DB.cfg.pinVendeur||String(DB.cfg.pinVendeur).length<4){
+    var n=String(Math.floor(1000+Math.random()*9000));
+    if(String(n)===String(DB.cfg.pin))n=String((parseInt(n,10)+1)%10000).padStart(4,'0');
+    DB.cfg.pinVendeur=n;
+  }
 }
 async function loginV(){
   var code=formatShopCode((document.getElementById('v-code').value||'').trim());
   var nm=(document.getElementById('v-nom').value||'').trim();
   if(!code){showToast(t('errCode'));return;}
   if(!nm){showToast(t('errPrenom'));return;}
-  // Vérifier le PIN vendeur si renseigné
+  // S1 : le PIN équipe est OBLIGATOIRE (2e facteur — le code seul ne suffit plus)
   var pin=(document.getElementById('v-pin').value||'').trim();
-  if(pin&&pin.length>0&&pin.length<4){showToast(lang==='fr'?'⚠️ PIN minimum 4 chiffres':'⚠️ PIN minimum 4 digits');return;}
+  if(!pin||pin.length<4){showToast(lang==='fr'?'🔐 Entre le PIN équipe (demande-le à ton patron)':'🔐 Enter the team PIN (ask your manager)');return;}
   // Autre boutique demandée ? -> purge du cache local (évite d'afficher l'ancienne)
   assurerBoutiqueLocale(code);
-  // Même boutique déjà en cache -> connexion hors-ligne possible
-  if(DB&&DB.cfg&&normalizeShopCode(code)===normalizeShopCode(DB.cfg.code)){_finishLoginV(nm,DB.cfg.code);return;}
+  // Même boutique déjà en cache -> connexion hors-ligne possible (le PIN sera vérifié au retour du réseau)
+  if(DB&&DB.cfg&&normalizeShopCode(code)===normalizeShopCode(DB.cfg.code)){_shopPin=pin;_finishLoginV(nm,DB.cfg.code);return;}
   // Essayer Supabase
   if(!supa){showToast(lang==='fr'?'❌ Connexion réseau requise':'❌ Internet connection required');return;}
   showToast('🔄 '+(lang==='fr'?'Recherche boutique...':'Looking up store...'));
-  var remoteDB=await loadFromSupa(code);
+  var remoteDB=await loadFromSupa(code,pin);
   if(!remoteDB){
     // Ne jamais retomber sur les données de la boutique précédente
     purgerSessionBoutique(true);
     if(!navigator.onLine){showToast('📴 '+(lang==='fr'?'Pas de réseau. Connecte-toi une première fois avec internet, ensuite ça marchera hors-ligne.':'No network. Connect once with internet first, then it will work offline.'));return;}
-    showToast(lang==='fr'?'❌ Code boutique introuvable. Vérifie le code avec ton patron.':'❌ Store not found. Check the code with your manager.');return;
+    showToast(lang==='fr'?'❌ Code ou PIN équipe incorrect. Vérifie-les avec ton patron.':'❌ Wrong code or team PIN. Check with your manager.');return;
   }
+  _shopPin=pin;
   DB=migrateDBData(mergeDB(remoteDB,DB));
   save();
   _finishLoginV(nm,code);
@@ -5167,12 +5199,18 @@ function retirerBoutiqueLocale(code){
   saveMesBoutiques(list);renderMesBoutiques();
   showToast('🗑️ '+(lang==='fr'?'Boutique retirée de la liste':'Store removed from list'));
 }
+// Autre boutique (multi-boutiques / restauration) : on demande SON pin (jamais deviné)
+function demanderPinBoutique(){
+  var p=prompt(lang==='fr'?'PIN de cette boutique (PIN patron ou PIN équipe) :':'PIN of this store (owner or team PIN):','');
+  return p==null?null:String(p).trim();
+}
 async function ajouterBoutiqueParCode(){
   var code=(document.getElementById('mb-code').value||'').trim().toUpperCase();
   if(!code){showToast(t('errCode'));return;}
+  var pin=demanderPinBoutique();if(!pin||pin.length<4){showToast('🔐 '+(lang==='fr'?'PIN requis':'PIN required'));return;}
   showToast('🔄 '+(lang==='fr'?'Recherche boutique...':'Looking up store...'));
-  var remoteDB=await loadFromSupa(code);
-  if(!remoteDB){showToast(t('errCode'));return;}
+  var remoteDB=await loadFromSupa(code,pin);
+  if(!remoteDB){showToast(lang==='fr'?'❌ Code ou PIN incorrect':'❌ Wrong code or PIN');return;}
   var list=getMesBoutiques();
   if(!list.find(function(b){return b.code===code;})){list.push({code:code,nom:remoteDB.cfg.nom||code});saveMesBoutiques(list);}
   document.getElementById('mb-code').value='';
@@ -5182,9 +5220,11 @@ async function ajouterBoutiqueParCode(){
 async function switchBoutiqueParCode(code){
   if(!code)return;
   if(DB&&DB.cfg&&normalizeShopCode(DB.cfg.code)===normalizeShopCode(code))return;
+  var pin=demanderPinBoutique();if(!pin||pin.length<4){showToast('🔐 '+(lang==='fr'?'PIN requis':'PIN required'));return;}
   showToast('🔄 '+(lang==='fr'?'Changement de boutique...':'Switching store...'));
-  var remoteDB=await loadFromSupa(code);
-  if(!remoteDB){showToast(t('errCode'));return;}
+  var remoteDB=await loadFromSupa(code,pin);
+  if(!remoteDB){showToast(lang==='fr'?'❌ Code ou PIN incorrect':'❌ Wrong code or PIN');return;}
+  _shopPin=pin;
   purgerSessionBoutique(true);
   DB=migrateDBData(remoteDB);
   _suppressSync=true;save();_suppressSync=false;
@@ -5356,7 +5396,7 @@ function voiceAssist(){if(!('SpeechRecognition'in window||'webkitSpeechRecogniti
 // ═══════════════════════════════════════════
 // PIN & UTILS
 // ═══════════════════════════════════════════
-function pk(k){if(pinBuf.length>=6)return;pinBuf+=k;updPD();if(pinBuf.length===6)setTimeout(function(){if(pinBuf===DB?.cfg?.pin||pinBuf==='123456'){closePinOv();}else{pinBuf='';updPD();showToast(t('errPin'));}},200);}
+function pk(k){if(pinBuf.length>=6)return;pinBuf+=k;updPD();var _p=DB&&DB.cfg&&DB.cfg.pin;if(_p&&pinBuf===String(_p)){setTimeout(closePinOv,120);return;}if(pinBuf.length>=6)setTimeout(function(){if(pinBuf===String(_p||'')){closePinOv();}else{pinBuf='';updPD();showToast(t('errPin'));}},200);}
 function pdel(){pinBuf=pinBuf.slice(0,-1);updPD();}
 function updPD(){document.querySelectorAll('.pindot').forEach(function(d,i){d.classList.toggle('filled',i<pinBuf.length);});}
 function closePinOv(){document.getElementById('pinov').classList.remove('show');pinBuf='';updPD();}
@@ -5373,11 +5413,13 @@ function fermerRestauration(){
 async function restaurerBoutique(){
   var code=formatShopCode((document.getElementById('rst-code').value||'').trim());
   if(!code){showToast('⚠️ Entre ton code boutique');return;}
+  var pin=demanderPinBoutique();if(!pin||pin.length<4){showToast('🔐 '+(lang==='fr'?'PIN requis':'PIN required'));return;}
   var btn=document.getElementById('rst-btn');
   btn.textContent='🔄 Recherche...';btn.disabled=true;
-  var remoteDB=await loadFromSupa(code);
+  var remoteDB=await loadFromSupa(code,pin);
   btn.textContent='🚀 Restaurer';btn.disabled=false;
-  if(!remoteDB){showToast('❌ '+(lang==='fr'?'Boutique introuvable. Vérifie le code.':'Store not found. Check the code.'));return;}
+  if(!remoteDB){showToast('❌ '+(lang==='fr'?'Code ou PIN incorrect':'Wrong code or PIN'));return;}
+  _shopPin=pin;
   DB=remoteDB;
   _suppressSync=true;
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
@@ -5390,6 +5432,16 @@ async function restaurerBoutique(){
 }
 function showToast(msg){var t2=document.getElementById('toast');t2.textContent=msg;t2.classList.add('show');setTimeout(function(){t2.classList.remove('show');},2800);}
 function copierCode(){var code=formatShopCode(DB&&DB.cfg&&DB.cfg.code||'');if(!code)return;navigator.clipboard&&navigator.clipboard.writeText(code).then(function(){var cv=document.getElementById('code-val');if(cv)cv.textContent=code;showToast(t('codeCopie')+' '+code);});}
+var _teamCodeShown=false;
+function masquerCodeEquipe(){_teamCodeShown=false;var v=document.getElementById('teamcode-val');if(v)v.textContent='••••';var b=document.getElementById('btn-teamcode-eye');if(b)b.textContent=lang==='fr'?'👁️ Voir':'👁️ Show';}
+function revealTeamCode(){
+  if(!DB||!DB.cfg)return;
+  assurerPinVendeur();
+  var v=document.getElementById('teamcode-val'),b=document.getElementById('btn-teamcode-eye');
+  _teamCodeShown=!_teamCodeShown;
+  if(_teamCodeShown){if(v)v.textContent=DB.cfg.pinVendeur;if(b)b.textContent=lang==='fr'?'🙈 Cacher':'🙈 Hide';save();}
+  else masquerCodeEquipe();
+}
 // ── Génération code boutique scalable ──
 
 // Code boutique : 6 chiffres (100000-999999)
@@ -5575,34 +5627,41 @@ function migrateDBData(d){
   return d;
 }
 loadDB=function(){var d=localStorage.getItem('myboutiq_v6');return d?migrateDBData(JSON.parse(d)):null;};
-var _loadFromSupaBase=loadFromSupa;loadFromSupa=async function(code){var data=await _loadFromSupaBase(code);return migrateDBData(data);};
+var _loadFromSupaBase=loadFromSupa;loadFromSupa=async function(code,pin){var data=await _loadFromSupaBase(code,pin);return data?migrateDBData(data):null;};
 function persistDB(){localStorage.setItem('myboutiq_v6',JSON.stringify(DB));if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){clearTimeout(syncTimeout);syncTimeout=setTimeout(syncToSupa,800);}}
 save=function(skipNotif){DB=migrateDBData(DB);persistDB();if(!skipNotif)checkNotifications(true);if(typeof updateNotifBadge==='function')updateNotifBadge();};
+// S1 : le realtime ne transporte plus AUCUNE donnée — seulement un signal
+// "la boutique X a changé à telle heure". On re-télécharge alors les données
+// via boutique_lire (code + PIN de session). Personne d'autre ne peut écouter utile.
+var _rtRefetchTimer=null;
+async function _rtRefetch(code){
+  if(!DB||!DB.cfg||normalizeShopCode(code)!==normalizeShopCode(DB.cfg.code))return;
+  var fresh=await loadFromSupa(code,_shopPin);
+  if(!fresh)return;
+  // Écho de notre propre écriture (même appareil) : déjà appliqué localement
+  if(fresh.cfg&&fresh.cfg._dev&&fresh.cfg._dev===_deviceId)return;
+  if(_venteEnCours()){
+    _pendingRemoteDB=fresh;
+    clearTimeout(_pendingRemoteTimer);
+    _pendingRemoteTimer=setTimeout(function _retry(){
+      if(_venteEnCours()){_pendingRemoteTimer=setTimeout(_retry,1000);return;}
+      if(_pendingRemoteDB){_applyRemoteDB(_pendingRemoteDB,true);_pendingRemoteDB=null;}
+    },1000);
+    return;
+  }
+  _applyRemoteDB(fresh,false);
+}
 subscribeRealtime=function(code){
   if(!supa)return;
   code=formatShopCode(code);
   if(realtimeChan){supa.removeChannel(realtimeChan);realtimeChan=null;}
-  realtimeChan=supa.channel('boutique:'+code)
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'boutiques'},function(payload){
-      if(!payload.new||!payload.new.data)return;
-      if(formatShopCode(payload.new.code)!==code)return;
-      // Garde-fou : ignorer tout payload qui n'est pas la boutique ACTUELLEMENT chargée
-      // (protège d'un canal resté ouvert sur une boutique précédente)
-      if(!DB||!DB.cfg||normalizeShopCode(payload.new.code)!==normalizeShopCode(DB.cfg.code))return;
-      var incoming=payload.new.data;
-      // Écho de notre propre écriture (même appareil) : déjà appliqué localement, on ignore silencieusement
-      if(incoming.cfg&&incoming.cfg._dev&&incoming.cfg._dev===_deviceId)return;
-      if(_venteEnCours()){
-        // Une vente est en cours d'affichage : on stocke la mise à jour et on l'applique après, sans perturber l'écran
-        _pendingRemoteDB=incoming;
-        clearTimeout(_pendingRemoteTimer);
-        _pendingRemoteTimer=setTimeout(function _retry(){
-          if(_venteEnCours()){_pendingRemoteTimer=setTimeout(_retry,1000);return;}
-          if(_pendingRemoteDB){_applyRemoteDB(_pendingRemoteDB,true);_pendingRemoteDB=null;}
-        },1000);
-        return;
-      }
-      _applyRemoteDB(incoming,false);
+  realtimeChan=supa.channel('signal:'+code)
+    .on('postgres_changes',{event:'*',schema:'public',table:'boutique_signal'},function(payload){
+      var row=payload.new||payload.old;if(!row||!row.code)return;
+      if(formatShopCode(row.code)!==code)return;
+      if(!DB||!DB.cfg||normalizeShopCode(row.code)!==normalizeShopCode(DB.cfg.code))return;
+      clearTimeout(_rtRefetchTimer);
+      _rtRefetchTimer=setTimeout(function(){_rtRefetch(code);},400); // petit debounce anti-rafale
     })
     .subscribe();
 };
