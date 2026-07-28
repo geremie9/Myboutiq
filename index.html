@@ -967,6 +967,7 @@ body{max-width:min(100%,1200px)}
     <div><div class="hg" id="hg-bonjour">Bonjour 👋</div><div class="hn"><span id="u-nm">Patron</span><span class="rbdg rb-p" id="u-role">Patron</span></div></div>
     <div class="hrgt">
       <button class="hbtn" id="btn-dep" onclick="ouvrirDep()" style="display:none" title="Dépenses">💸</button>
+      <button class="hbtn" id="btn-verrou" onclick="toggleVerrouVente()" title="Modifications bloquées pendant la vente" style="display:none">🔒</button>
       <button class="hbtn" id="btn-veille" onclick="toggleVeille()" title="Garder l'écran allumé" style="opacity:.55">🌙</button>
       <button class="hbtn" onclick="showNotifs()" title="Notifications"><span>🔔</span><div class="hbtn-badge" id="notif-badge">0</div></button>
       <button class="hbtn" id="btn-st" onclick="goSt()">⚙️</button>
@@ -2235,7 +2236,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.15'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.16'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2631,6 +2632,7 @@ document.addEventListener('DOMContentLoaded',function(){
       if(DB.cfg.veille===undefined)DB.cfg.veille=false;
       if(DB.cfg.noEmoji===undefined)DB.cfg.noEmoji=false;
       if(DB.cfg.recuAuto===undefined)DB.cfg.recuAuto=false; // vente rapide par défaut
+      if(DB.cfg.venteDeverrouillee===undefined)DB.cfg.venteDeverrouillee=false; // on vend, on ne modifie pas
       if(DB.cfg.paramAvances===undefined)DB.cfg.paramAvances=false;
       if(DB.cfg.idFiscal===undefined)DB.cfg.idFiscal='';
       if(DB.cfg.plan===undefined)DB.cfg.plan='gratuit';
@@ -3469,15 +3471,18 @@ function renderProd(lst){
       if(isOut&&p.rt&&livePq===0){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
       addPanier(p,null);
     };
-    if(role==='patron'||hasPerm('produits')){
+    // Modifications bloquées pendant la vente : l'appui long ouvrait le menu au
+    // bout de 600 ms, donc une simple hésitation en faisant défiler suffisait.
+    if((role==='patron'||hasPerm('produits'))&&!venteVerrouillee()){
       d.oncontextmenu=function(e){e.preventDefault();showCtx(e,p);};
       var lt=null;
-      d.addEventListener('touchstart',function(e){lt=setTimeout(function(){ignoreNextTap=true;showCtx({clientX:e.touches[0].clientX,clientY:e.touches[0].clientY},p);},600);});
+      d.addEventListener('touchstart',function(e){lt=setTimeout(function(){ignoreNextTap=true;showCtx({clientX:e.touches[0].clientX,clientY:e.touches[0].clientY},p);},900);});
       d.addEventListener('touchend',function(){if(lt){clearTimeout(lt);lt=null;}});
+      d.addEventListener('touchmove',function(){if(lt){clearTimeout(lt);lt=null;}}); // on fait défiler : ce n'est pas un appui long
     }
     var prixTxt=prixCarte(p);
     d.innerHTML=
-      ((role==='patron'||hasPerm('produits'))?'<button class="pedit" onclick="quickEditPrix(event,'+p.id+')" title="'+(lang==='fr'?'Modifier prix':'Edit price')+'">✎</button>':'')+
+      (((role==='patron'||hasPerm('produits'))&&!venteVerrouillee())?'<button class="pedit" onclick="quickEditPrix(event,'+p.id+')" title="'+(lang==='fr'?'Modifier prix':'Edit price')+'">✎</button>':'')+
       '<div class="qbdg '+(pq>0?'show':'')+'" id="qb-'+p.id+'" onclick="retirerUn(event,'+p.id+')">'+'<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">✕</span></div>'+
       (p.img?
         '<img class="pcard-img" src="'+p.img+'" loading="lazy" onerror="this.parentElement.classList.remove(\'has-photo\');this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pemoji\',textContent:\''+p.e+'\'}))">'+
@@ -5135,6 +5140,32 @@ function toggleVeille(){
   if(DB.cfg.veille){activerVeille();showToast(lang==='fr'?'🔆 Écran maintenu allumé':'🔆 Screen kept on');}
   else{desactiverVeille();showToast(lang==='fr'?'🌙 Veille normale rétablie':'🌙 Normal sleep restored');}
 }
+// ═══ Verrou de vente ═══
+// Pendant qu'on vend, rien ne doit pouvoir être modifié par accident : ni par
+// un appui long involontaire, ni par le crayon. Un cadenas dans la barre du
+// haut ouvre les modifications quand on en a vraiment besoin.
+function venteVerrouillee(){return !(DB&&DB.cfg&&DB.cfg.venteDeverrouillee);}
+function toggleVerrouVente(){
+  if(!DB||!DB.cfg)return;
+  if(!(role==='patron'||hasPerm('produits'))){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  DB.cfg.venteDeverrouillee=!DB.cfg.venteDeverrouillee;
+  save();majBoutonVerrou();
+  try{renderProd(DB.articles);}catch(e){}
+  showToast(DB.cfg.venteDeverrouillee
+    ?('✏️ '+(lang==='fr'?'Modifications ouvertes — appui long et crayon disponibles':'Editing unlocked'))
+    :('🔒 '+(lang==='fr'?'Modifications bloquées — tu peux vendre tranquillement':'Editing locked — sell safely')));
+}
+function majBoutonVerrou(){
+  var b=document.getElementById('btn-verrou');if(!b)return;
+  var peut=(role==='patron'||hasPerm('produits'));
+  b.style.display=peut?'flex':'none';   // inutile pour un vendeur : il ne peut déjà pas modifier
+  if(!peut)return;
+  var ouvert=!venteVerrouillee();
+  b.textContent=ouvert?'✏️':'🔒';
+  b.style.background=ouvert?'rgba(245,166,35,.9)':'rgba(255,255,255,.09)';
+  b.title=ouvert?(lang==='fr'?'Modifications OUVERTES — toucher pour rebloquer':'Editing unlocked — tap to lock')
+                :(lang==='fr'?'Modifications bloquées pendant la vente — toucher pour ouvrir':'Editing locked — tap to unlock');
+}
 // Le vendeur n'a pas accès aux Réglages (engrenage masqué) : l'interrupteur
 // "écran allumé" est donc aussi dans la barre de la caisse, à portée de pouce.
 function majBoutonVeille(){
@@ -6174,6 +6205,8 @@ function migrateDBData(d){
   d.cfg=d.cfg||{};
   if(!Array.isArray(d.suppr))d.suppr=[]; // tombstones : articles supprimés (survit à la fusion)
   if(!Array.isArray(d.journal))d.journal=[]; // S4 : journal des gestes sensibles (prix/stock/suppression)
+  if(d.cfg.venteDeverrouillee===undefined)d.cfg.venteDeverrouillee=false; // on vend, on ne modifie pas
+  if(d.cfg.recuAuto===undefined)d.cfg.recuAuto=false;                     // vente rapide par défaut
   if(!d.arch||typeof d.arch!=='object')d.arch={upTo:0,resume:[]}; // S3 : archivage (upTo = ventes<cette date repliées dans stk0/vd0)
   if(!Array.isArray(d.arch.resume))d.arch.resume=[];
   if(!(d.arch.upTo>0))d.arch.upTo=0;
@@ -6335,7 +6368,7 @@ function renderNotifPanel(){
 showNotifs=function(){renderNotifPanel();document.getElementById('ov-notifs').classList.add('show');};
 var _appliquerLangBase=appliquerLang;appliquerLang=function(){_appliquerLangBase();['dash','dash2','dash3','dash4','dash5'].forEach(function(id){var el=document.getElementById('n-'+id);if(el)el.textContent='Dashboard';});var btnUse=document.getElementById('btn-use-points');if(btnUse)btnUse.textContent=lang==='fr'?'⭐ Utiliser points':'⭐ Use points';var info=document.getElementById('client-vente-info');if(info&&!clientVente)info.textContent=lang==='fr'?'Client fidèle (optionnel)':'Loyal customer (optional)';};
 navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(function(n){var oc=n.getAttribute('onclick')||'';n.classList.toggle('on',oc.indexOf("navTo('"+tab+"'")>-1);});var m={caisse:'s-caisse',stock:'s-stock',rapports:'s-rapports',clients:'s-clients',dash:'s-dashboard'};goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);if(tab==='dash')renderDashboard();};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
