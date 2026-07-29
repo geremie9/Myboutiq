@@ -833,7 +833,7 @@ body{max-width:min(100%,1200px)}
     <div class="ob-step-h" id="ob3-h">📍 Ta région / ville ?</div>
     <input class="ob-inp" type="text" id="ob-region" placeholder="Ex: Abidjan, Dakar, Lagos...">
     <div class="ob-notice" id="ob3-notice">📊 Cette information nous aide à améliorer MyBoutiQ dans ta zone géographique.</div>
-    <button class="btn-ob" id="ob3-btn" onclick="goOb(4)">Continuer →</button>
+    <button class="btn-ob" id="ob3-btn" onclick="apresRegion()">Continuer →</button>
   </div>
 
   <!-- Step 4: Secteur -->
@@ -846,34 +846,17 @@ body{max-width:min(100%,1200px)}
 
   <!-- Step 5: Boutique info -->
   <div class="ob-step" id="obs5">
-    <button class="btn-bk" onclick="goOb(4)">←</button>
+    <button class="btn-bk" onclick="retourDepuisBoutique()">←</button>
     <div class="ob-step-h" id="ob5-h">🏪 Ta boutique</div>
     <input class="ob-inp" type="text" id="ob-nom" placeholder="Nom de ta boutique...">
-    <input class="ob-inp" type="tel" id="ob-tel" placeholder="📱 Ton numéro de téléphone">
+    <input class="ob-inp" type="tel" id="ob-tel" placeholder="📱 Ton numéro de téléphone" inputmode="tel" oninput="apercuTelOb()">
+    <div id="ob-tel-apercu" style="font-size:12.5px;font-weight:800;color:rgba(255,255,255,.85);margin:-6px 0 10px;min-height:16px"></div>
     <input class="ob-inp" type="password" id="ob-pin" placeholder="🔐 Code PIN (6 chiffres)" maxlength="6" inputmode="numeric">
-    <button class="btn-ob" id="ob5-btn" onclick="goOb(6)">Continuer →</button>
+    <div style="font-size:11.5px;color:rgba(255,255,255,.6);font-weight:600;margin:-6px 0 10px;line-height:1.4" id="ob-pin-aide">Ce numéro et ce PIN sont ta clé pour revenir dans ta boutique. Note-les.</div>
+    <button class="btn-ob" id="ob5-btn" onclick="validerEtapeBoutique()">Continuer →</button>
   </div>
 
-  <!-- Step 6: OTP Vérification démo -->
-  <div class="ob-step" id="obs6">
-    <button class="btn-bk" onclick="goOb(5)">←</button>
-    <div class="ob-step-h" id="ob6-h">📱 Vérification démo</div>
-    <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:48px;margin-bottom:10px">📲</div>
-      <div id="otp-tel-display" style="color:rgba(255,255,255,.7);font-size:14px;margin-bottom:6px">Code affiche dans l'application</div>
-      <div style="color:rgba(255,255,255,.5);font-size:12px" id="otp-hint">Entre le code à 4 chiffres affiche pour la demo</div>
-    </div>
-    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px">
-      <input class="ob-inp otp-digit" type="tel" maxlength="1" inputmode="numeric" id="otp-d1" oninput="otpNext(this,'otp-d2')" style="width:60px;text-align:center;font-size:28px;font-weight:800;letter-spacing:0;padding:14px 0">
-      <input class="ob-inp otp-digit" type="tel" maxlength="1" inputmode="numeric" id="otp-d2" oninput="otpNext(this,'otp-d3')" onkeydown="otpBack(event,this,'otp-d1')" style="width:60px;text-align:center;font-size:28px;font-weight:800;letter-spacing:0;padding:14px 0">
-      <input class="ob-inp otp-digit" type="tel" maxlength="1" inputmode="numeric" id="otp-d3" oninput="otpNext(this,'otp-d4')" onkeydown="otpBack(event,this,'otp-d2')" style="width:60px;text-align:center;font-size:28px;font-weight:800;letter-spacing:0;padding:14px 0">
-      <input class="ob-inp otp-digit" type="tel" maxlength="1" inputmode="numeric" id="otp-d4" oninput="otpNext(this,null)" onkeydown="otpBack(event,this,'otp-d3')" style="width:60px;text-align:center;font-size:28px;font-weight:800;letter-spacing:0;padding:14px 0">
-    </div>
-    <button class="btn-ob" id="ob6-btn" onclick="verifierOTP()">✅ Vérifier le code</button>
-    <button onclick="renvoyerOTP()" style="margin-top:10px;background:transparent;border:2px solid rgba(255,255,255,.25);border-radius:14px;padding:13px;width:100%;color:rgba(255,255,255,.7);font-size:14px;font-weight:700;font-family:Outfit,sans-serif;cursor:pointer">📩 Reafficher le code demo</button>
-  </div>
 
-  <!-- Step 7: Confirmation -->
   <div class="ob-step" id="obs7">
     <div class="ob-step-h" id="ob7-h">✅ Tout est prêt !</div>
     <div class="ob-confirm" id="ob-confirm"></div>
@@ -2284,7 +2267,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.18'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.19'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2902,20 +2885,108 @@ function logout(){desactiverVeille();purgerSessionBoutique(false);screenHist=['s
 // ═══════════════════════════════════════════
 // ONBOARDING
 // ═══════════════════════════════════════════
+// ═══ Vérification du numéro de téléphone ═══
+// Le numéro est la CLÉ DE CONNEXION : une faute de frappe et le patron ne peut
+// plus entrer dans sa boutique. Avant, « 12 » était accepté.
+// Nombre de chiffres attendu par pays (partie locale, sans l'indicatif).
+var LONG_TEL={'237':9,'221':9,'223':8,'226':8,'228':8,'229':10,'227':8,'241':8,'242':9,
+  '224':9,'243':9,'212':9,'213':9,'234':10,'233':9,'254':9,'255':9,'256':9,'27':9,
+  '251':9,'250':9,'260':9,'232':8,'220':7,'222':8};
+// Renvoie {ok, digits, msg}. On refuse l'absurde ; si la longueur diffère de
+// l'attendu, on prévient sans bloquer (nos données pays peuvent vieillir —
+// mieux vaut un avertissement qu'un vrai commerçant enfermé dehors).
+function verifierTelephone(saisi,cc){
+  var fr=(typeof obLang!=='undefined'?obLang:lang)==='fr';
+  var d=String(saisi||'').replace(/\D/g,'');
+  if(cc&&d.indexOf(cc)===0&&d.length>cc.length)d=d.slice(cc.length); // indicatif tapé par l'utilisateur
+  if(d[0]==='0'&&d.length>1)d=d.replace(/^0+/,'');                   // 0 local
+  if(!d)return {ok:false,digits:'',msg:fr?'Entre ton numéro de téléphone':'Enter your phone number'};
+  if(d.length<6)return {ok:false,digits:d,msg:fr?('Ce numéro n\'a que '+d.length+' chiffre'+(d.length>1?'s':'')+' — ce n\'est pas un vrai numéro'):'Too short'};
+  if(d.length>15)return {ok:false,digits:d,msg:fr?'Ce numéro est trop long':'Too long'};
+  if(/^(\d)\1+$/.test(d))return {ok:false,digits:d,msg:fr?'Un numéro ne peut pas être fait du même chiffre répété':'Invalid number'};
+  var att=LONG_TEL[cc];
+  if(att&&d.length!==att)return {ok:true,digits:d,doute:true,
+    msg:fr?('Ce numéro a '+d.length+' chiffres, on en attend '+att+' pour ce pays. C\'est bien ton numéro ?')
+          :('This number has '+d.length+' digits, '+att+' expected.')};
+  return {ok:true,digits:d};
+}
+var _telConfirme='';
+// On ne fait pas choisir dans une liste d'un seul élément : s'il n'y a qu'un
+// type de commerce disponible, on le retient et on saute l'étape.
+function apresRegion(){
+  var dispo=SECTEURS.filter(function(s){return s.ok;});
+  if(dispo.length<=1){
+    if(dispo.length===1)obSecteur=dispo[0].id;
+    goOb(5);return;
+  }
+  goOb(4);
+}
+function retourDepuisBoutique(){
+  goOb(SECTEURS.filter(function(s){return s.ok;}).length<=1?3:4);
+}
+// Groupe le numéro pour la lecture : 699112233 -> « 699 11 22 33 »
+// (si le compte est impair, le premier groupe fait 3 chiffres, puis des paires)
+function _grouperTel(d){
+  d=String(d||'');
+  var tete=(d.length%2)?d.slice(0,3):'',reste=(d.length%2)?d.slice(3):d;
+  return (tete?tete+' ':'')+reste.replace(/(\d{2})(?=\d)/g,'$1 ');
+}
+// Affiche le numéro tel qu'il sera enregistré, pour que le patron le relise.
+function apercuTelOb(){
+  var el=document.getElementById('ob-tel-apercu');if(!el)return;
+  var fr=obLang==='fr';
+  var cc=(obPays&&obPays.cc)||'';
+  var v=verifierTelephone(document.getElementById('ob-tel').value,cc);
+  _telConfirme='';
+  if(!v.digits){el.textContent='';return;}
+  if(!v.ok){el.style.color='#FFB4B4';el.textContent='⚠️ '+v.msg;return;}
+  var joli=_grouperTel(v.digits);
+  if(v.doute){el.style.color='#FFD08A';el.textContent='⚠️ +'+cc+' '+joli+' — '+v.msg;return;}
+  el.style.color='#9BE8C0';el.textContent='✓ +'+cc+' '+joli;
+}
+// Étapes réellement parcourues (le type de commerce saute s'il n'y a qu'un choix,
+// et l'ancienne étape 6 — le faux code de vérification — n'existe plus).
+function _etapesActives(){
+  var s=[1,2,3];
+  if(SECTEURS.filter(function(x){return x.ok;}).length>1)s.push(4);
+  s.push(5,7);
+  return s;
+}
 function goOb(n){
   document.querySelectorAll('.ob-step').forEach(function(s){s.classList.remove('on');});
   var el=document.getElementById('obs'+n);
   if(el)el.classList.add('on');
-  var dots=document.querySelectorAll('.ob-dot');
-  dots.forEach(function(d,i){d.classList.remove('cur','done');if(i+1<n)d.classList.add('done');else if(i+1===n)d.classList.add('cur');});
-  if(n===6){
-    // Intercepter étape 6 : envoyer OTP avant confirmation
-    var tel=(document.getElementById('ob-tel')?.value.trim()||'');
-    var pin=(document.getElementById('ob-pin')?.value.trim()||'');
-    if(!tel||!pin||pin.length<4){showToast(obLang==='fr'?'⚠️ Remplis téléphone + PIN':'⚠️ Fill phone + PIN');goOb(5);return;}
-    envoyerOTP(normalizePhone(tel));
+  // Points de progression : autant de points que d'étapes réelles
+  var etapes=_etapesActives(),pos=etapes.indexOf(n)+1,box=document.getElementById('ob-dots');
+  if(box){
+    if(box.children.length!==etapes.length){
+      box.innerHTML=etapes.map(function(){return '<div class="ob-dot"></div>';}).join('');
+    }
+    Array.prototype.forEach.call(box.children,function(d,i){
+      d.classList.remove('cur','done');
+      if(pos>0&&i+1<pos)d.classList.add('done');else if(i+1===pos)d.classList.add('cur');
+    });
   }
   if(n===7)buildObConfirm();
+}
+// Contrôle avant de quitter l'étape « Ta boutique » : le nom, le PIN et
+// surtout le NUMÉRO, qui servira à se reconnecter.
+function validerEtapeBoutique(){
+  var fr=obLang==='fr';
+  var nm=(document.getElementById('ob-nom')?.value.trim()||'');
+  var tel=(document.getElementById('ob-tel')?.value.trim()||'');
+  var pin=(document.getElementById('ob-pin')?.value.trim()||'');
+  if(!nm){showToast('🏪 '+(fr?'Donne un nom à ta boutique':'Name your shop'));document.getElementById('ob-nom').focus();return;}
+  var cc=(obPays&&obPays.cc)||'';
+  var v=verifierTelephone(tel,cc);
+  if(!v.ok){showToast('📱 '+v.msg);document.getElementById('ob-tel').focus();return;}
+  if(v.doute&&_telConfirme!==v.digits){
+    _telConfirme=v.digits;   // deuxième appui = le patron confirme que c'est bien son numéro
+    showToast('⚠️ '+v.msg+' '+(fr?'Touche encore « Continuer » pour confirmer.':'Tap Continue again to confirm.'));
+    return;
+  }
+  if(!pin||pin.length<4){showToast('🔐 '+(fr?'Choisis un PIN d\'au moins 4 chiffres':'Choose a PIN of at least 4 digits'));document.getElementById('ob-pin').focus();return;}
+  goOb(7); // l'étape 6 (faux code de vérification) est supprimée
 }
 function setLang(l){
   obLang=l;lang=l;
@@ -3024,41 +3095,9 @@ function buildObConfirm(){
 }
 
 // ── OTP VÉRIFICATION ──
-var _otpCode='',_otpTel='',_otpExpiry=0;
-var DEMO_OTP_MODE=true;
-function genOTP(){return String(Math.floor(1000+Math.random()*9000));}
-function envoyerOTP(tel){
-  _otpCode=genOTP();
-  _otpTel=tel;
-  _otpExpiry=Date.now()+5*60*1000; // expire dans 5 min
-  ['otp-d1','otp-d2','otp-d3','otp-d4'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
-  var dispEl=document.getElementById('otp-tel-display');
-  var hintEl=document.getElementById('otp-hint');
-  var ph=tel.replace(/(\d{3})(\d+)(\d{4})$/,function(m,a,b,c){return a+'****'+c;});
-  if(dispEl)dispEl.textContent=(obLang==='fr'?'Numero verifie : ':'Verified number: ')+ph;
-  if(hintEl)hintEl.textContent=(obLang==='fr'?'Code demo : ':'Demo code: ')+_otpCode;
-  showToast((obLang==='fr'?'Code demo : ':'Demo code: ')+_otpCode);
-  var d1=document.getElementById('otp-d1');if(d1)setTimeout(function(){d1.focus();},400);
-}
-function renvoyerOTP(){envoyerOTP(_otpTel||normalizePhone(document.getElementById('ob-tel')?.value.trim()||''));showToast(obLang==='fr'?'📩 Code demo reaffiche !':'📩 Demo code shown again!');}
-function otpNext(el,nextId){
-  el.value=el.value.replace(/[^0-9]/g,'').slice(-1);
-  if(el.value&&nextId){var nx=document.getElementById(nextId);if(nx)nx.focus();}
-  if(!nextId&&el.value){
-    // dernier chiffre saisi → vérifier auto
-    var code=['otp-d1','otp-d2','otp-d3','otp-d4'].map(function(id){var e=document.getElementById(id);return e?e.value:'';}).join('');
-    if(code.length===4)setTimeout(verifierOTP,200);
-  }
-}
-function otpBack(e,el,prevId){if(e.key==='Backspace'&&!el.value&&prevId){var pv=document.getElementById(prevId);if(pv){pv.value='';pv.focus();}}}
-function verifierOTP(){
-  var code=['otp-d1','otp-d2','otp-d3','otp-d4'].map(function(id){var e=document.getElementById(id);return e?e.value:'';}).join('');
-  if(code.length<4){showToast(obLang==='fr'?'⚠️ Entre les 4 chiffres':'⚠️ Enter all 4 digits');return;}
-  if(Date.now()>_otpExpiry){showToast(obLang==='fr'?'⏱️ Code expiré. Renvoie un code.':'⏱️ Code expired. Resend.');return;}
-  if(code!==_otpCode){showToast(obLang==='fr'?'❌ Code incorrect. Réessaie.':'❌ Wrong code. Try again.');['otp-d1','otp-d2','otp-d3','otp-d4'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var d1=document.getElementById('otp-d1');if(d1)d1.focus();return;}
-  showToast(obLang==='fr'?'✅ Numéro vérifié !':'✅ Phone verified!');
-  goOb(7);
-}
+// Le faux système de code de vérification a été retiré : il affichait le code
+// à l'écran puis annonçait « Numéro vérifié », ce qui était mensonger. Le
+// numéro est désormais contrôlé sur son format (voir verifierTelephone).
 async function finaliserOb(){
   var nm=document.getElementById('ob-nom')?.value.trim()||'';
   var tel=normalizePhone(document.getElementById('ob-tel')?.value.trim()||'');
@@ -3288,9 +3327,14 @@ function altPhoneDigits(tel){
   return out.filter(function(d,i,arr){return d&&d!==digits&&arr.indexOf(d)===i;});
 }
 async function loginP(){
-  var tel=normalizePhone(document.getElementById('p-tel').value||'');
+  var brut=document.getElementById('p-tel').value||'';
+  var tel=normalizePhone(brut);
   var pin=(document.getElementById('p-pin').value||'').trim();
   if(!tel){showToast(t('errTel'));return;}
+  // Même contrôle qu'à l'inscription : un numéro absurde ne trouvera jamais de
+  // compte, autant le dire tout de suite au lieu de « compte introuvable ».
+  var vt=verifierTelephone(brut,(DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.cc)||(obPays&&obPays.cc)||'');
+  if(!vt.ok){showToast('📱 '+vt.msg);document.getElementById('p-tel').focus();return;}
   if(!pin){showToast(t('errPin'));return;}
   showToast('🔐 '+(lang==='fr'?'Connexion...':'Signing in...'));
   var canMigrateOffline=DB&&DB.cfg&&pin&&pin===DB.cfg.pin;
