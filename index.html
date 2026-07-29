@@ -1602,12 +1602,57 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- AJOUT EXPRESS : remplir sa boutique vite (nom + prix, le reste plus tard) -->
+<div class="ov" id="ov-express" onclick="closeOv(event,'ov-express')">
+  <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">⚡ <span id="exp-tit">Ajout express</span></div><button class="bcl" onclick="closeSheet('ov-express')">✕</button></div>
+    <div style="padding:4px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.45;margin-bottom:11px" id="exp-aide">
+        Tape le nom et le prix de vente, valide, et enchaîne. L'icône et la catégorie se devinent toutes seules. Le reste se complète plus tard.
+      </div>
+      <button type="button" class="bvid" style="margin-bottom:12px" onclick="ouvrirCollageListe()">📋 <span id="exp-coller-l">Coller une liste (WhatsApp, fournisseur)</span></button>
+
+      <div class="pig" style="margin-bottom:8px"><label class="pl" id="exp-nm-l">Nom de l'article</label>
+        <input class="pi sm" id="exp-nm" type="text" style="font-weight:700" placeholder="ex : Riz parfumé" autocomplete="off" onkeydown="expTouche(event,'exp-pv')"></div>
+      <div style="display:flex;gap:7px">
+        <div class="pig" style="flex:1"><label class="pl" id="exp-pa-l">Achat</label><input class="pi sm" id="exp-pa" type="number" inputmode="numeric" placeholder="—" onkeydown="expTouche(event,'exp-pv')"></div>
+        <div class="pig" style="flex:1"><label class="pl" id="exp-pv-l">Vente *</label><input class="pi sm" id="exp-pv" type="number" inputmode="numeric" placeholder="1200" onkeydown="expTouche(event,'AJOUT')"></div>
+        <div class="pig" style="flex:1"><label class="pl" id="exp-stk-l">Stock</label><input class="pi sm" id="exp-stk" type="number" inputmode="decimal" step="0.25" placeholder="—" onkeydown="expTouche(event,'AJOUT')"></div>
+      </div>
+      <button class="bnxt" onclick="expAjouterLigne()" style="margin-bottom:14px">➕ <span id="exp-add-l">Ajouter à la liste</span></button>
+
+      <div id="exp-compte" style="font-size:12px;font-weight:800;color:var(--B);margin-bottom:8px"></div>
+      <div id="exp-liste" style="max-height:34vh;overflow-y:auto;margin-bottom:13px"></div>
+      <button class="bnxt" id="exp-valider" onclick="expCreerTous()" style="display:none">✅ <span id="exp-valider-l">Créer les articles</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- COLLAGE D'UNE LISTE -->
+<div class="ov" id="ov-collage" onclick="closeOv(event,'ov-collage')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">📋 <span id="col-tit">Coller une liste</span></div><button class="bcl" onclick="closeSheet('ov-collage')">✕</button></div>
+    <div style="padding:4px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.45;margin-bottom:10px" id="col-aide">
+        Colle ici la liste reçue par WhatsApp ou notée sur ton téléphone. Un article par ligne. Le dernier nombre est le prix de vente ; s'il y en a deux, le premier est le prix d'achat.
+      </div>
+      <div style="background:var(--BG);border-radius:10px;padding:9px 11px;font-size:11px;color:var(--M);font-weight:600;margin-bottom:11px;line-height:1.6" id="col-ex">
+        Riz parfumé 1200<br>Huile 1L - 900 1000<br>Savon Azur : 300
+      </div>
+      <textarea id="col-txt" style="width:100%;min-height:150px;border:1.5px solid var(--BD);border-radius:12px;padding:11px;font-family:Outfit,sans-serif;font-size:14px;color:var(--T);background:var(--C);outline:none" placeholder="Colle ta liste ici…"></textarea>
+      <div id="col-apercu" style="font-size:12px;font-weight:800;margin:9px 0;min-height:17px"></div>
+      <button class="bnxt" onclick="analyserCollage()">🔎 <span id="col-ok">Analyser la liste</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- AJOUT ARTICLE -->
 <div class="ov" id="ov-art" onclick="closeOv(event,'ov-art')">
   <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="ov-art-t">Nouvel article</div><button class="bcl" onclick="closeSheet('ov-art')">✕</button></div>
     <div class="pstps">
       <div class="pst on" id="as0">
+        <button type="button" onclick="closeSheet('ov-art');ouvrirAjoutExpress()" style="width:100%;background:#EFEDFD;color:#534AB7;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:13px;display:flex;align-items:center;justify-content:center;gap:8px">⚡ <span id="lbl-express-lien">Ajout express — plusieurs articles d'un coup</span></button>
         <div class="sth2" id="as0-h">Informations</div>
         <div class="pig"><label class="pl" id="lbl-nm-art">Nom de l'article</label><input class="pi sm" type="text" id="art-nm" style="font-size:15px;font-weight:700" oninput="majIdentitePastille()"></div>
         <div class="sth2" id="as0-ico-h">Photo ou icône</div>
@@ -2239,7 +2284,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.17'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.18'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3438,6 +3483,7 @@ function renderProd(lst){
         '<div class="eg-t">'+(fr?'Ta caisse est prête !':'Your register is ready!')+'</div>'+
         '<div class="eg-s">'+(fr?'Ajoute ton premier article pour commencer à vendre.':'Add your first item to start selling.')+'</div>'+
         '<button class="eg-btn" onclick="ouvrirAjout()">➕ '+(fr?'Ajouter mon 1ᵉʳ article':'Add my 1st item')+'</button>'+
+        '<div><button class="eg-btn2" onclick="ouvrirAjoutExpress()">⚡ '+(fr?'Ajouter plusieurs articles d\'un coup':'Add several items at once')+'</button></div>'+
         '<div><button class="eg-btn2" onclick="importerModeleArticles()">📦 '+(fr?'Ou partir d\'un modèle d\'articles':'Or start from a template')+'</button></div>'+
         '<div class="eg-step"><span class="eg-num">1</span><span>'+(fr?'<b>Ajoute</b> tes articles (nom + prix)':'<b>Add</b> your items (name + price)')+'</span></div>'+
         '<div class="eg-step"><span class="eg-num">2</span><span>'+(fr?'<b>Touche</b> un article pour le vendre':'<b>Tap</b> an item to sell it')+'</span></div>'+
@@ -5055,6 +5101,160 @@ function importerSelectionCatalogue(){
 }
 
 function initCatGrid(){var g=document.getElementById('cgrd');g.innerHTML='';var cats=lang==='fr'?CATS_FR:CATS_EN;cats.forEach(function(c){var b=document.createElement('button');b.className='cbtn'+(c===selCat?' on':'');b.textContent=(CE[c]||'📦')+' '+c;b.onclick=function(){selCat=c;document.querySelectorAll('.cgrd .cbtn').forEach(function(x){x.classList.remove('on');});b.classList.add('on');};g.appendChild(b);});}
+// ═══════════════════════════════════════════
+// AJOUT EXPRESS — remplir une boutique vite
+// Le formulaire complet demande 11 champs sur 3 écrans : 3 à 6 heures pour
+// 200 articles. Ici : nom + prix de vente suffisent, l'icône et la catégorie
+// sont devinées, et l'article est vendable tout de suite.
+// ═══════════════════════════════════════════
+var _expListe=[];
+function ouvrirAjoutExpress(){
+  if(!(role==='patron'||hasPerm('produits')))return;
+  _expListe=[];
+  ['exp-nm','exp-pa','exp-pv','exp-stk'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  expRender();
+  document.getElementById('ov-express').classList.add('show');
+  setTimeout(function(){try{document.getElementById('exp-nm').focus();}catch(e){}},250);
+}
+// Entrée = passer au champ suivant, ou ajouter la ligne
+function expTouche(ev,suite){
+  if(ev.key!=='Enter')return;
+  ev.preventDefault();
+  if(suite==='AJOUT'){expAjouterLigne();return;}
+  var el=document.getElementById(suite);if(el)el.focus();
+}
+function expAjouterLigne(){
+  var fr=lang==='fr';
+  var nm=(document.getElementById('exp-nm').value||'').trim();
+  var pv=parseFloat(document.getElementById('exp-pv').value)||0;
+  var pa=parseFloat(document.getElementById('exp-pa').value)||0;
+  var stk=Math.round((parseFloat(String(document.getElementById('exp-stk').value||'').replace(',','.'))||0)*100)/100;
+  if(!nm){showToast('✏️ '+(fr?'Écris le nom de l\'article':'Type the item name'));document.getElementById('exp-nm').focus();return;}
+  if(!pv){showToast('💰 '+(fr?'Entre le prix de vente':'Enter the sell price'));document.getElementById('exp-pv').focus();return;}
+  var dejaApp=DB.articles.some(function(p){return txtNorm(p.nm)===txtNorm(nm);});
+  var dejaListe=_expListe.some(function(x){return txtNorm(x.nm)===txtNorm(nm);});
+  if(dejaApp||dejaListe){showToast('⚠️ '+(fr?'« '+nm+' » existe déjà':'"'+nm+'" already exists'));return;}
+  _expListe.push({nm:nm,pa:pa,px:pv,stk:stk});
+  ['exp-nm','exp-pa','exp-pv','exp-stk'].forEach(function(id){document.getElementById(id).value='';});
+  expRender();
+  document.getElementById('exp-nm').focus();
+}
+function expSupprimer(i){_expListe.splice(i,1);expRender();}
+function expRender(){
+  var fr=lang==='fr',box=document.getElementById('exp-liste'),c=document.getElementById('exp-compte');
+  var btn=document.getElementById('exp-valider'),lbl=document.getElementById('exp-valider-l');
+  if(!_expListe.length){
+    box.innerHTML='';c.textContent='';
+    if(btn)btn.style.display='none';
+    return;
+  }
+  c.textContent=_expListe.length+' '+(fr?('article'+(_expListe.length>1?'s':'')+' prêt'+(_expListe.length>1?'s':'')):('item'+(_expListe.length>1?'s':'')+' ready'));
+  box.innerHTML=_expListe.map(function(a,i){
+    var m=mediaArtInner({nm:a.nm,cat:categorieDepuisNomProduit(a.nm)},18);
+    var sansPa=!(a.pa>0),ben=a.px-a.pa,perte=!sansPa&&ben<=0;
+    return '<div style="display:flex;align-items:center;gap:9px;padding:7px 4px;border-bottom:1px solid var(--BD)">'+
+      '<span style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</span>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:800;color:var(--T)">'+a.nm+'</div>'+
+      '<div style="font-size:10.5px;font-weight:700;color:'+(perte?'var(--R)':sansPa?'var(--O)':'var(--M)')+'">'+fmt(a.px)+
+        (sansPa?(' · '+(fr?'bénéfice inconnu':'profit unknown'))
+               :(perte?(' · ⚠️ '+(fr?'à perte ':'at a loss ')+fmt(ben)):(' · '+(fr?'bénéfice ':'profit ')+fmt(ben))))+
+        (a.stk>0?(' · '+fmtQ(a.stk)+' '+(fr?'en stock':'in stock')):'')+'</div></div>'+
+      '<button type="button" onclick="expSupprimer('+i+')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>'+
+      '</div>';
+  }).join('');
+  if(btn){btn.style.display='block';lbl.textContent=(fr?'Créer les ':'Create the ')+_expListe.length+(fr?' articles':' items');}
+}
+function expCreerTous(){
+  var fr=lang==='fr';
+  if(!_expListe.length)return;
+  if(!DB.nextId)DB.nextId=100;
+  var sansPa=0;
+  _expListe.forEach(function(a){
+    var art={id:DB.nextId++,nm:a.nm,e:emojiDepuisNomProduit(a.nm),cat:categorieDepuisNomProduit(a.nm),
+      px:a.px,pa:a.pa||0,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,um:null,umSac:null};
+    DB.articles.push(art);
+    if(a.stk>0)definirStock(art,null,a.stk);
+    if(!(a.pa>0))sansPa++;
+  });
+  var n=_expListe.length;_expListe=[];
+  save();if(typeof initTabs==='function')initTabs();
+  renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();
+  closeSheet('ov-express');
+  showToast('✅ '+n+' '+(fr?('article'+(n>1?'s':'')+' créé'+(n>1?'s':'')+' !'):('item'+(n>1?'s':'')+' created!'))+
+    (sansPa?(' · '+sansPa+' '+(fr?'sans prix d\'achat':'without cost')):''));
+}
+// ── Coller une liste (WhatsApp, fournisseur) ──
+function ouvrirCollageListe(){
+  document.getElementById('col-txt').value='';
+  document.getElementById('col-apercu').textContent='';
+  document.getElementById('ov-collage').classList.add('show');
+  setTimeout(function(){try{document.getElementById('col-txt').focus();}catch(e){}},250);
+}
+// Une ligne = un nom suivi de 1 ou 2 nombres. 1 nombre -> prix de vente.
+// 2 nombres -> achat puis vente. Séparateurs tolérés : - : ; , tabulation.
+// Retire UN nombre en fin de chaîne et le renvoie.
+// Subtilité : « 1 200 » est un seul nombre (espace des milliers), mais
+// « 900 1000 » en fait deux. On n'accepte l'espace que devant un groupe
+// d'exactement 3 chiffres qui termine le nombre.
+function _retirerNombreFinal(s){
+  var m=s.match(/(\d+(?:[ .]\d{3}(?!\d))*)\s*(?:f|fcfa|xaf|cfa)?\s*$/i);
+  if(!m)return null;
+  var brut=m[1],val=parseFloat(brut.replace(/[ .]/g,''));
+  // L'espace est ambigu : « 1 200 » = mille deux cents, mais « 480 600 » = deux prix.
+  // Arbitrage par le bon sens : un prix unitaire au-dessus de 100 000 F est
+  // invraisemblable en boutique. Dans ce cas on ne prend que le dernier groupe ;
+  // le précédent sera relu au tour suivant comme prix d'achat.
+  // Exception : « 150 000 » garde son zéro final, c'est bien un seul nombre.
+  var grp=brut.split(' ');
+  if(grp.length>1&&val>=100000&&!/^0/.test(grp[grp.length-1])){
+    brut=grp[grp.length-1];
+    val=parseFloat(brut.replace(/[.]/g,''));
+  }
+  if(!(val>0))return null;
+  var idx=s.lastIndexOf(brut);
+  return {reste:s.slice(0,idx).replace(/[\s\-–:;,]+$/,'').trim(),val:val};
+}
+// Une ligne = un nom suivi de 1 ou 2 nombres. 1 nombre -> prix de vente.
+// 2 nombres -> achat puis vente. Séparateurs tolérés : - : ; , tabulation.
+function analyserLigneArticle(ligne){
+  var l=String(ligne||'').replace(/\t/g,' ').replace(/\s+/g,' ').trim();
+  if(!l)return null;
+  l=l.replace(/^(?:[-–•*]|\d+[.)])\s+/,'');   // puce ou numérotation en début de ligne
+  var vals=[],cur=l;
+  for(var k=0;k<2;k++){
+    var r=_retirerNombreFinal(cur);
+    if(!r)break;
+    vals.unshift(r.val);
+    cur=r.reste;
+  }
+  if(!vals.length)return null;
+  var nm=cur.replace(/[\s\-–:;,]+$/,'').trim();
+  if(!nm||nm.length<2)return null;
+  if(vals.length>=2)return {nm:nm,pa:vals[0],px:vals[1],stk:0};
+  return {nm:nm,pa:0,px:vals[0],stk:0};
+}
+function analyserCollage(){
+  var fr=lang==='fr';
+  var txt=document.getElementById('col-txt').value||'';
+  var lignes=txt.split(/\r?\n/);
+  var ajoutes=0,ignores=0;
+  lignes.forEach(function(l){
+    if(!l.trim())return;
+    var a=analyserLigneArticle(l);
+    if(!a){ignores++;return;}
+    if(DB.articles.some(function(p){return txtNorm(p.nm)===txtNorm(a.nm);})||
+       _expListe.some(function(x){return txtNorm(x.nm)===txtNorm(a.nm);})){ignores++;return;}
+    _expListe.push(a);ajoutes++;
+  });
+  if(!ajoutes){
+    document.getElementById('col-apercu').style.color='var(--R)';
+    document.getElementById('col-apercu').textContent='⚠️ '+(fr?'Aucune ligne comprise. Vérifie qu\'il y a un prix à la fin de chaque ligne.':'No line understood.');
+    return;
+  }
+  expRender();
+  closeSheet('ov-collage');
+  showToast('📋 '+ajoutes+' '+(fr?'article(s) reconnu(s)':'item(s) found')+(ignores?(' · '+ignores+' '+(fr?'ligne(s) ignorée(s)':'skipped')):'')+' — '+(fr?'vérifie puis crée':'check then create'));
+}
 function ouvrirAjout(){if(!(role==='patron'||hasPerm('produits')))return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;_lastAutoStk=null;umSel='pc';try{choisirUm('pc');}catch(e){}document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp','ainp-mult','ainp-parcont'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display='none';initEmoGrid();initCatGrid();_emoManuel=false;var _ew=document.getElementById('egrd-wrap');if(_ew)_ew.style.display='none';var _lk=document.getElementById('lnk-ico');if(_lk)_lk.textContent=(lang==='fr'?'Changer l\'icône ▾':'Change icon ▾');majIdentitePastille();goAS(0);document.getElementById('ov-art').classList.add('show');}
 function goAS(n){document.querySelectorAll('#ov-art .pst').forEach(function(s){s.classList.remove('on');});document.getElementById('as'+n).classList.add('on');if(n===1){var nm=document.getElementById('art-nm').value||'Article';var _idh=selImg?('<img src="'+selImg+'" style="width:100%;height:100%;object-fit:cover">'):selEmo;document.getElementById('ae-as').innerHTML=_idh;document.getElementById('an-as').textContent=nm;document.getElementById('ae-as2').innerHTML=_idh;document.getElementById('an-as2').textContent=nm;selTypeA('carton');}}
 function selTypeA(tp){achatTypeA=tp;['carton','palette','lot','unite'].forEach(function(x){var el=document.getElementById('at-'+x[0]);if(el)el.classList.toggle('on',x===tp);});var qs=document.getElementById('aqsec'),qm=document.getElementById('aqmult');if(tp==='unite'){qs.style.display='none';qm.style.display='none';}else{qs.style.display='block';qm.style.display='flex';}
@@ -5211,7 +5411,7 @@ ti.innerHTML='<span>'+(replie?'▸':'▾')+' '+(CE[cat]||'📦')+' '+cat+'</span
 ti.onclick=function(){toggleCatStock(cat);};
 c.appendChild(ti);
 if(replie)return;
-var card=document.createElement('div');card.className='scd';items.forEach(function(p){var ts=getStk(p),dc=(role==='patron')?depCount(p):0,pct=Math.min(100,ts<=0?0:ts/Math.max(ts+10,20)*100),cls=ts<=0?'out':ts<=p.al?'low':'ok';var d=document.createElement('div');d.className='sit';d.onclick=function(){if(role==='patron'){selArtStk(p);document.getElementById('ov-stk').classList.add('show');}};d.innerHTML=(p.img?'<img class="siemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'siemo\',textContent:\''+p.e+'\'}))">':'<div class="siemo-wrap">'+(DB.cfg&&DB.cfg.noEmoji?'<span class="siemo simono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="siemo simono" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</span>';})())+((role==='patron'||hasPerm('produits'))?'<button class="siphoto" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">📷</button>':'')+'</div>')+'<div class="siinf"><div class="sinm">'+p.nm+(p.vr.length?' <span style="font-size:9px;color:var(--B);font-weight:700">('+p.vr.length+')</span>':'')+'</div><div class="sidet">'+prixCarte(p)+' · '+(lang==='fr'?'Vendu 30 j':'Sold 30 d')+' : '+fmtQ(_q30[p.id]||0)+'</div>'+(p.vr.length&&!utiliseStockBase(p)?'<div class="svlist">'+p.vr.map(function(v){var vs=v.stk||0;return '<span class="svchip" style="color:'+(vs<=0?'var(--R)':vs<=2?'var(--O)':'var(--G)')+'">'+(v.nm||'?')+' : '+fmtQ(Math.max(0,vs))+(vs<=0?' ⛔':'')+'</span>';}).join('')+'</div>':'')+'<div class="sbb"><div class="sbf" style="width:'+pct+'%;background:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'"></div></div></div><div class="sistock"><div class="siqty '+cls+'">'+fmtQ(Math.max(0,ts))+'</div><div class="siu">'+uniteArt(p)+'</div>'+(dc>0?'<div style="font-size:9px;color:var(--PU);font-weight:800;margin-top:2px">🔁 '+dc+' '+(lang==='fr'?'dépannage':'stopgap')+'</div>':'')+(role==='patron'?'<div style="font-size:9px;color:var(--B);font-weight:700;margin-top:2px">+ '+(lang==='fr'?'Entrée':'Entry')+'</div>':'')+'</div>';card.appendChild(d);});c.appendChild(card);});}
+var card=document.createElement('div');card.className='scd';items.forEach(function(p){var ts=getStk(p),dc=(role==='patron')?depCount(p):0,pct=Math.min(100,ts<=0?0:ts/Math.max(ts+10,20)*100),cls=ts<=0?'out':ts<=p.al?'low':'ok';var d=document.createElement('div');d.className='sit';d.onclick=function(){if(role==='patron'){selArtStk(p);document.getElementById('ov-stk').classList.add('show');}};d.innerHTML=(p.img?'<img class="siemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'siemo\',textContent:\''+p.e+'\'}))">':'<div class="siemo-wrap">'+(DB.cfg&&DB.cfg.noEmoji?'<span class="siemo simono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="siemo simono" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</span>';})())+((role==='patron'||hasPerm('produits'))?'<button class="siphoto" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">📷</button>':'')+'</div>')+'<div class="siinf"><div class="sinm">'+p.nm+(p.vr.length?' <span style="font-size:9px;color:var(--B);font-weight:700">('+p.vr.length+')</span>':'')+'</div><div class="sidet">'+prixCarte(p)+' · '+(lang==='fr'?'Vendu 30 j':'Sold 30 d')+' : '+fmtQ(_q30[p.id]||0)+(( !p.vr.length&&p.px>0&&!(p.pa>0))?(' · <span style="color:var(--O);font-weight:800">'+(lang==='fr'?'⚠️ prix d\'achat à mettre':'⚠️ cost missing')+'</span>'):'')+'</div>'+(p.vr.length&&!utiliseStockBase(p)?'<div class="svlist">'+p.vr.map(function(v){var vs=v.stk||0;return '<span class="svchip" style="color:'+(vs<=0?'var(--R)':vs<=2?'var(--O)':'var(--G)')+'">'+(v.nm||'?')+' : '+fmtQ(Math.max(0,vs))+(vs<=0?' ⛔':'')+'</span>';}).join('')+'</div>':'')+'<div class="sbb"><div class="sbf" style="width:'+pct+'%;background:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'"></div></div></div><div class="sistock"><div class="siqty '+cls+'">'+fmtQ(Math.max(0,ts))+'</div><div class="siu">'+uniteArt(p)+'</div>'+(dc>0?'<div style="font-size:9px;color:var(--PU);font-weight:800;margin-top:2px">🔁 '+dc+' '+(lang==='fr'?'dépannage':'stopgap')+'</div>':'')+(role==='patron'?'<div style="font-size:9px;color:var(--B);font-weight:700;margin-top:2px">+ '+(lang==='fr'?'Entrée':'Entry')+'</div>':'')+'</div>';card.appendChild(d);});c.appendChild(card);});}
 // ═══ Navigation du stock : recherche + filtres rapides + catégories repliables ═══
 // Au-delà de ~200 articles, une simple liste devient inutilisable.
 var _stkFiltre='tout',_stkQ='',_catsRepliees={};
