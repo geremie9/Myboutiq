@@ -969,6 +969,7 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>
   <div class="syncb hide" id="syncb">⏳ <span id="sync-msg">En attente réseau...</span></div>
+  <div id="conn-bar" onclick="assurerConnexionSupa()" style="display:none;position:fixed;left:12px;right:12px;bottom:96px;max-width:430px;margin:0 auto;background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:12px;padding:10px 13px;font-size:11.5px;font-weight:800;color:#B45309;z-index:70;align-items:center;justify-content:center;text-align:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.12)"></div>
   <div id="update-banner" style="display:none;position:fixed;left:12px;right:12px;top:12px;max-width:440px;margin:0 auto;background:linear-gradient(135deg,#4A6CF7,#7C4DFF);color:#fff;border-radius:14px;padding:11px 14px;align-items:center;gap:11px;z-index:200;box-shadow:0 6px 22px rgba(0,0,0,.28)">
     <span style="font-size:20px">🔄</span>
     <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800" id="upd-t">Nouvelle version disponible</div><div style="font-size:11px;font-weight:600;opacity:.85" id="upd-s">Touche pour charger les dernières améliorations</div></div>
@@ -1520,6 +1521,9 @@ body{max-width:min(100%,1200px)}
           <div class="crow"><span class="clbl" id="lbl-pa-cur">Prix achat actuel</span><span class="cval" id="cur-pa">0</span></div>
           <div class="crow"><span class="clbl" id="lbl-pv-cur">Prix vente actuel</span><span class="cval" id="cur-pv">0</span></div>
         </div>
+        <div class="sth2" id="ps0b-hpa">Prix d'achat (l'unité)</div>
+        <div class="pig"><label class="pl" id="lbl-npa">Ce que TU paies pour un</label>
+          <input class="pi" type="number" id="inp-npa" oninput="calcBenR()" inputmode="numeric" placeholder="—"></div>
         <div class="sth" id="ps0b-h">🏷️ Nouveau prix de vente ?</div>
         <div class="pig"><label class="pl" id="lbl-npx">Nouveau prix</label>
           <input class="pi" type="number" id="inp-npv" oninput="calcBenR()" inputmode="numeric">
@@ -1662,8 +1666,11 @@ body{max-width:min(100%,1200px)}
         <button type="button" id="btn-photo-emoji" onclick="document.getElementById('inp-photo-emoji').click()" style="display:none;width:100%;background:#F0F4FF;color:var(--B);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;align-items:center;justify-content:center;gap:6px">📷 <span id="lbl-photo-emoji">Photo → emoji automatique</span></button>
         <input type="file" id="inp-photo-emoji" accept="image/*" style="display:none" onchange="photoVersEmoji(event)">
         <div id="egrd-wrap" style="display:none"><div class="egrd" id="egrd"></div></div>
-        <div class="sth2" id="as0-cat-h">Catégorie</div>
-        <div class="cgrd" id="cgrd"></div>
+        <div id="cat-auto-row" style="display:flex;align-items:center;gap:8px;margin-bottom:11px;font-size:11.5px;font-weight:700;color:var(--M)">
+          <span id="cat-auto-txt">Rangé dans : 🍚 Alimentation</span>
+          <button type="button" onclick="toggleCatGrid()" id="lnk-cat" style="background:none;border:none;padding:2px 0;color:var(--B);font-size:11.5px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif">Changer ▾</button>
+        </div>
+        <div class="cgrd" id="cgrd" style="display:none"></div>
         <div class="sth2" id="lbl-um-h">Se vend comment ?</div>
         <div class="agrd" style="grid-template-columns:repeat(3,1fr)">
           <div class="abtn on" id="um-p" onclick="choisirUm('pc')"><span class="aemo">🔢</span><span class="albl" id="lbl-um-pc">À la pièce</span></div>
@@ -1735,6 +1742,14 @@ body{max-width:min(100%,1200px)}
             <button class="shct" onclick="stkMotif('Retour')" id="mtf-retour">↩️ Retour</button>
           </div>
           <input class="pi sm" type="text" id="inp-motif" placeholder="Ou écris la raison" style="margin-top:7px">
+        </div>
+        <div class="pig" id="stk-pa-row"><label class="pl" id="lbl-stk-pa">Prix d'achat</label>
+          <div style="display:flex;gap:8px;margin-bottom:7px">
+            <div class="abtn on" id="spa-u" onclick="stkPaMode('u')" style="flex:1;padding:8px"><span class="albl" id="spa-u-l">Par unité</span></div>
+            <div class="abtn" id="spa-t" onclick="stkPaMode('t')" style="flex:1;padding:8px"><span class="albl" id="spa-t-l">Total payé</span></div>
+          </div>
+          <input class="pi" type="number" id="inp-spa" inputmode="numeric" oninput="majApercuStk()" placeholder="—">
+          <div id="stk-pa-info" style="font-size:11px;font-weight:700;color:var(--M);margin-top:5px"></div>
         </div>
         <div class="pig" id="stk-fourn-row"><label class="pl" id="lbl-fourn">Fournisseur</label><input class="pi sm" type="text" id="inp-fourn" placeholder="Optionnel"></div>
         <div id="stk-apercu" style="display:none;border-radius:9px;padding:8px 10px;font-size:12px;font-weight:800;margin-bottom:9px"></div>
@@ -2267,7 +2282,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.19'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.20'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2362,8 +2377,53 @@ function _applyRemoteDB(data,silent){
   if(typeof applyRolePerms==='function')applyRolePerms();
   if(!silent)showSync();
 }
+// ═══ Connexion au serveur : elle DOIT pouvoir se rétablir ═══
+// Avant, initSupa() n'était appelé qu'une fois au démarrage. Si la bibliothèque
+// Supabase n'était pas chargée à cet instant précis (réseau lent, démarrage
+// hors-ligne, coupure), supa restait null pour TOUTE la session : plus aucune
+// synchronisation, plus de temps réel, jusqu'à fermeture complète de l'app.
+// Chacun vendait alors dans son coin sans le savoir.
 function initSupa(){
-  if(typeof supabase!=='undefined')supa=supabase.createClient(SUPA_URL,SUPA_KEY);
+  if(supa)return true;
+  if(typeof supabase==='undefined')return false;
+  try{supa=supabase.createClient(SUPA_URL,SUPA_KEY);}catch(e){return false;}
+  return !!supa;
+}
+function chargerBibliothequeSupa(){
+  if(typeof supabase!=='undefined'||document.getElementById('supa-lib-2'))return;
+  var s=document.createElement('script');
+  s.id='supa-lib-2';
+  s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  s.onload=function(){try{assurerConnexionSupa();}catch(e){}};
+  s.onerror=function(){var e=document.getElementById('supa-lib-2');if(e)e.remove();};
+  document.head.appendChild(s);
+}
+function assurerConnexionSupa(){
+  if(supa){majEtatConnexion();return true;}
+  if(!navigator.onLine){majEtatConnexion();return false;}
+  if(typeof supabase==='undefined'){chargerBibliothequeSupa();majEtatConnexion();return false;}
+  if(!initSupa()){majEtatConnexion();return false;}
+  // Connexion retrouvée : on se réabonne et on rattrape tout ce qu'on a manqué
+  try{
+    if(DB&&DB.cfg&&DB.cfg.code&&_shopPin!=null){
+      subscribeRealtime(DB.cfg.code);
+      _rtRefetch(formatShopCode(DB.cfg.code));
+      syncToSupa();
+    }
+  }catch(e){}
+  majEtatConnexion();
+  showToast('🔗 '+(lang==='fr'?'Connexion rétablie — synchronisation en cours':'Reconnected — syncing'));
+  return true;
+}
+// Bandeau visible : sans lui, on croit que tout va bien alors que rien ne part.
+function majEtatConnexion(){
+  var b=document.getElementById('conn-bar');if(!b)return;
+  var connecte=!!supa&&navigator.onLine;
+  if(connecte){b.style.display='none';return;}
+  b.style.display='flex';
+  b.textContent=navigator.onLine
+    ? '⚠️ '+(lang==='fr'?'Pas de liaison avec le serveur — toucher pour réessayer':'No server link — tap to retry')
+    : '📴 '+(lang==='fr'?'Hors ligne — tes ventes sont gardées ici. Toucher pour réessayer.':'Offline — sales saved locally. Tap to retry.');
 }
 function isInvalidCredError(err){
   var msg=String(err&&err.message||'').toLowerCase();
@@ -4400,7 +4460,7 @@ function showNotifs(){var al=DB.articles.filter(function(p){var ts=getStk(p);ret
 // PRIX
 // ═══════════════════════════════════════════
 function ouvrirPrix(p){if(role!=='patron')return;artCours=p;renderAgpx();goPS(0);document.getElementById('ov-prix').classList.add('show');}
-function ouvrirModifR(p){artCours=p;pxAU=p.pa;document.getElementById('ae-0b').textContent=p.e;document.getElementById('an-0b').textContent=p.nm;document.getElementById('lbl-pa-cur').textContent=lang==='fr'?'Prix achat actuel':'Current buy price';document.getElementById('lbl-pv-cur').textContent=lang==='fr'?'Prix vente actuel':'Current sell price';document.getElementById('cur-pa').textContent=fmt(p.pa);document.getElementById('cur-pv').textContent=fmt(p.px);document.getElementById('inp-npv').value=p.px;document.getElementById('bc-r').style.display='none';calcBenR();goPS('0b');document.getElementById('ov-prix').classList.add('show');}
+function ouvrirModifR(p){artCours=p;pxAU=p.pa;document.getElementById('ae-0b').textContent=p.e;document.getElementById('an-0b').textContent=p.nm;document.getElementById('lbl-pa-cur').textContent=lang==='fr'?'Prix achat actuel':'Current buy price';document.getElementById('lbl-pv-cur').textContent=lang==='fr'?'Prix vente actuel':'Current sell price';document.getElementById('cur-pa').textContent=fmt(p.pa);document.getElementById('cur-pv').textContent=fmt(p.px);document.getElementById('inp-npv').value=p.px;var _ipa=document.getElementById('inp-npa');if(_ipa)_ipa.value=p.pa>0?p.pa:'';document.getElementById('bc-r').style.display='none';calcBenR();goPS('0b');document.getElementById('ov-prix').classList.add('show');}
 function _vignettePicker(p){if(p.img)return '<img src="'+p.img+'" style="width:44px;height:44px;object-fit:cover;border-radius:11px;display:block;margin:0 auto 5px">';var m=mediaArtInner(p,24);return '<span style="width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</span>';}
 function renderAgpx(){var g=document.getElementById('agpx');g.innerHTML='';DB.articles.forEach(function(p){var d=document.createElement('div');d.className='apcd';d.innerHTML=_vignettePicker(p)+'<div style="font-size:11px;font-weight:700;color:var(--T);margin-bottom:2px">'+p.nm+'</div><div style="font-size:11px;font-weight:800;color:var(--B)">'+prixCarte(p)+'</div>';d.onclick=function(){selArt(p,true);};g.appendChild(d);});}
 function filtrAP(q){Array.from(document.getElementById('agpx').children).forEach(function(c){c.style.display=c.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});}
@@ -4421,8 +4481,24 @@ function calcBen(){var pv=parseFloat(document.getElementById('inp-pv').value)||0
 function buildRecap(){var pv=parseFloat(document.getElementById('inp-pv').value)||0;if(!pv){showToast(t('errPrix'));goPS(2);return;}var q=parseInt(document.getElementById('inp-qte').value)||1,pa=parseFloat(document.getElementById('inp-pa').value)||pxAU,transp=parseFloat(document.getElementById('inp-transport').value)||0,diff=pv-pxAU,marge=pv>0?Math.round(diff/pv*100):0,tl={carton:'1 '+(lang==='fr'?'carton':'box')+' = '+q,lot:'1 '+(lang==='fr'?'lot':'batch')+' = '+q,unite:lang==='fr'?"À l'unité":"Per unit"};document.getElementById('rc-e').textContent=artCours?artCours.e:'📦';document.getElementById('rc-n').textContent=artCours?artCours.nm:'';document.getElementById('rc-type').textContent=tl[achatType];document.getElementById('rc-cout').textContent=fmt(pa);document.getElementById('rc-transp').textContent='+ '+fmt(transp);document.getElementById('rc-unit').textContent=fmt(pxAU);document.getElementById('rc-vente').textContent=fmt(pv);document.getElementById('rc-ba').textContent=(diff>=0?'+':'')+fmt(diff);document.getElementById('rc-m').textContent=t('marge')+' '+marge+'%';document.getElementById('rc-bl').textContent=diff>=0?t('beneficeUnit'):t('venteAPerte');document.getElementById('rc-bc').className='bcard '+(diff>=0?'bon':'bad');}
 function savePrix(){var pv=parseFloat(document.getElementById('inp-pv').value)||0;if(artCours&&pv>0){if(Number(artCours.px)!==pv)journalAjouter('prix',artCours.nm,fmt(artCours.px),fmt(pv));artCours.px=pv;artCours.pa=pxAU;save();renderProd(DB.articles);renderAgpx();}closeSheet('ov-prix');showToast(t('prixEnreg'));}
 function setNPV(n){var pa=artCours?artCours.pa:0;if(n===0)document.getElementById('inp-npv').value=pa*2;else document.getElementById('inp-npv').value=pa+n;calcBenR();}
-function calcBenR(){var pv=parseFloat(document.getElementById('inp-npv').value)||0,bc=document.getElementById('bc-r');if(pv>0&&pxAU>0){bc.style.display='flex';var d=pv-pxAU,m=pv>0?Math.round(d/pv*100):0;bc.className='bcard '+(d>=0?'bon':'bad');document.getElementById('bl-r').textContent=d>=0?t('beneficeUnit'):t('venteAPerte');document.getElementById('ba-r').textContent=(d>=0?'+':'')+fmt(d);document.getElementById('bs-r').textContent=t('marge')+' '+m+'%';}else bc.style.display='none';}
-function saveR(){var pv=parseFloat(document.getElementById('inp-npv').value)||0;if(!pv){showToast(t('errPrix'));return;}if(artCours){if(Number(artCours.px)!==pv)journalAjouter('prix',artCours.nm,fmt(artCours.px),fmt(pv));artCours.px=pv;save();renderProd(DB.articles);renderAgpx();}closeSheet('ov-prix');showToast(t('prixMaj'));}
+function calcBenR(){var pv=parseFloat(document.getElementById('inp-npv').value)||0,bc=document.getElementById('bc-r');var _pa=parseFloat((document.getElementById('inp-npa')||{}).value);var base=(_pa>0)?_pa:(Number(pxAU)||0);if(pv>0&&base>0){bc.style.display='flex';var d=pv-base,m=pv>0?Math.round(d/pv*100):0;bc.className='bcard '+(d>=0?'bon':'bad');document.getElementById('bl-r').textContent=d>=0?t('beneficeUnit'):t('venteAPerte');document.getElementById('ba-r').textContent=(d>=0?'+':'')+fmt(d);document.getElementById('bs-r').textContent=t('marge')+' '+m+'%';}else bc.style.display='none';}
+function saveR(){
+  var pv=parseFloat(document.getElementById('inp-npv').value)||0;
+  if(!pv){showToast(t('errPrix'));return;}
+  if(artCours){
+    if(Number(artCours.px)!==pv)journalAjouter('prix',artCours.nm,fmt(artCours.px),fmt(pv));
+    artCours.px=pv;
+    // Le prix d'achat se saisit ENFIN ici : sans lui, le repère « prix d'achat
+    // à mettre » ne disparaissait jamais et le bénéfice restait inconnu.
+    var pa=parseFloat((document.getElementById('inp-npa')||{}).value);
+    if(pa>=0&&!isNaN(pa)&&Number(artCours.pa)!==pa){
+      journalAjouter('prix',artCours.nm+(lang==='fr'?' (achat)':' (cost)'),fmt(artCours.pa||0),fmt(pa));
+      artCours.pa=pa;
+    }
+    save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();
+  }
+  closeSheet('ov-prix');showToast(t('prixMaj'));
+}
 function showSync(){document.getElementById('syncb').classList.remove('hide');setTimeout(function(){document.getElementById('syncb').classList.add('hide');},1600);}
 
 // ═══════════════════════════════════════════
@@ -4432,7 +4508,28 @@ function initEmoGrid(){var g=document.getElementById('egrd');g.innerHTML='';EMOJ
 // ── Pastille d'identité (formulaire article) : photo > emoji auto selon le nom > emoji choisi
 var _emoManuel=false;
 function toggleIcoGrid(){var w=document.getElementById('egrd-wrap');if(!w)return;var on=w.style.display==='none';w.style.display=on?'block':'none';var l=document.getElementById('lnk-ico');if(l)l.textContent=on?(lang==='fr'?'Masquer les icônes ▴':'Hide icons ▴'):(lang==='fr'?'Changer l\'icône ▾':'Change icon ▾');}
+// La catégorie se devine depuis le nom : demander une étape de plus faisait
+// perdre du temps sur CHAQUE article. On l'affiche juste, modifiable si besoin.
+var _catManuel=false;
+function toggleCatGrid(){
+  var g=document.getElementById('cgrd');if(!g)return;
+  var on=g.style.display==='none';
+  g.style.display=on?'grid':'none';
+  var l=document.getElementById('lnk-cat');
+  if(l)l.textContent=on?(lang==='fr'?'Masquer ▴':'Hide ▴'):(lang==='fr'?'Changer ▾':'Change ▾');
+}
+function majCategorieAuto(){
+  var row=document.getElementById('cat-auto-row');if(!row)return;
+  if(!_catManuel){
+    var nmEl=document.getElementById('art-nm'),nm=nmEl?nmEl.value.trim():'';
+    if(nm)selCat=categorieDepuisNomProduit(nm);
+  }
+  var txt=document.getElementById('cat-auto-txt');
+  if(txt)txt.textContent=(lang==='fr'?'Rangé dans : ':'Filed under: ')+((typeof CE!=='undefined'&&CE[selCat])||'📦')+' '+selCat;
+  document.querySelectorAll('#cgrd .cbtn').forEach(function(x){x.classList.toggle('on',x.textContent.indexOf(selCat)>=0);});
+}
 function majIdentitePastille(){var past=document.getElementById('idart-past');if(!past)return;
+  majCategorieAuto();
   if(selImg){past.innerHTML='<img src="'+selImg+'" style="width:100%;height:100%;object-fit:cover">';return;}
   if(!_emoManuel){var nmEl=document.getElementById('art-nm');var nm=nmEl?nmEl.value.trim():'';
     if(nm){var e=emojiDepuisNomProduit(nm);if(e)selEmo=e;
@@ -5144,7 +5241,7 @@ function importerSelectionCatalogue(){
   if(newIds.length)ouvrirGroupementImport(newIds);
 }
 
-function initCatGrid(){var g=document.getElementById('cgrd');g.innerHTML='';var cats=lang==='fr'?CATS_FR:CATS_EN;cats.forEach(function(c){var b=document.createElement('button');b.className='cbtn'+(c===selCat?' on':'');b.textContent=(CE[c]||'📦')+' '+c;b.onclick=function(){selCat=c;document.querySelectorAll('.cgrd .cbtn').forEach(function(x){x.classList.remove('on');});b.classList.add('on');};g.appendChild(b);});}
+function initCatGrid(){var g=document.getElementById('cgrd');g.innerHTML='';var cats=lang==='fr'?CATS_FR:CATS_EN;cats.forEach(function(c){var b=document.createElement('button');b.className='cbtn'+(c===selCat?' on':'');b.textContent=(CE[c]||'📦')+' '+c;b.onclick=function(){selCat=c;_catManuel=true;document.querySelectorAll('#cgrd .cbtn').forEach(function(x){x.classList.remove('on');});b.classList.add('on');majCategorieAuto();};g.appendChild(b);});}
 // ═══════════════════════════════════════════
 // AJOUT EXPRESS — remplir une boutique vite
 // Le formulaire complet demande 11 champs sur 3 écrans : 3 à 6 heures pour
@@ -5299,7 +5396,7 @@ function analyserCollage(){
   closeSheet('ov-collage');
   showToast('📋 '+ajoutes+' '+(fr?'article(s) reconnu(s)':'item(s) found')+(ignores?(' · '+ignores+' '+(fr?'ligne(s) ignorée(s)':'skipped')):'')+' — '+(fr?'vérifie puis crée':'check then create'));
 }
-function ouvrirAjout(){if(!(role==='patron'||hasPerm('produits')))return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;_lastAutoStk=null;umSel='pc';try{choisirUm('pc');}catch(e){}document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp','ainp-mult','ainp-parcont'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display='none';initEmoGrid();initCatGrid();_emoManuel=false;var _ew=document.getElementById('egrd-wrap');if(_ew)_ew.style.display='none';var _lk=document.getElementById('lnk-ico');if(_lk)_lk.textContent=(lang==='fr'?'Changer l\'icône ▾':'Change icon ▾');majIdentitePastille();goAS(0);document.getElementById('ov-art').classList.add('show');}
+function ouvrirAjout(){if(!(role==='patron'||hasPerm('produits')))return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;_lastAutoStk=null;umSel='pc';try{choisirUm('pc');}catch(e){}document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp','ainp-mult','ainp-parcont'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display='none';initEmoGrid();initCatGrid();_emoManuel=false;_catManuel=false;var _cg=document.getElementById('cgrd');if(_cg)_cg.style.display='none';var _cl=document.getElementById('lnk-cat');if(_cl)_cl.textContent=(lang==='fr'?'Changer ▾':'Change ▾');var _ew=document.getElementById('egrd-wrap');if(_ew)_ew.style.display='none';var _lk=document.getElementById('lnk-ico');if(_lk)_lk.textContent=(lang==='fr'?'Changer l\'icône ▾':'Change icon ▾');majIdentitePastille();goAS(0);document.getElementById('ov-art').classList.add('show');}
 function goAS(n){document.querySelectorAll('#ov-art .pst').forEach(function(s){s.classList.remove('on');});document.getElementById('as'+n).classList.add('on');if(n===1){var nm=document.getElementById('art-nm').value||'Article';var _idh=selImg?('<img src="'+selImg+'" style="width:100%;height:100%;object-fit:cover">'):selEmo;document.getElementById('ae-as').innerHTML=_idh;document.getElementById('an-as').textContent=nm;document.getElementById('ae-as2').innerHTML=_idh;document.getElementById('an-as2').textContent=nm;selTypeA('carton');}}
 function selTypeA(tp){achatTypeA=tp;['carton','palette','lot','unite'].forEach(function(x){var el=document.getElementById('at-'+x[0]);if(el)el.classList.toggle('on',x===tp);});var qs=document.getElementById('aqsec'),qm=document.getElementById('aqmult');if(tp==='unite'){qs.style.display='none';qm.style.display='none';}else{qs.style.display='block';qm.style.display='flex';}
   // Au poids/litre, on parle la langue du patron : SACS et BIDONS, pas des casiers
@@ -5544,10 +5641,31 @@ function selArtStk(p){
       chips.innerHTML=[6,12,24,48].map(function(n){return '<button class="shct" onclick="setSQ('+n+')">'+n+'</button>';}).join('');
     }
   }
+  // Prix d'achat : on le pré-remplit avec celui déjà connu. C'est ICI que le
+  // patron croyait le saisir — le champ n'existait pas, donc le repère
+  // « prix d'achat à mettre » ne partait jamais.
+  var _spa=document.getElementById('inp-spa');if(_spa)_spa.value=(p.pa>0?p.pa:'');
+  stkPaMode('u');
   stkSens('in'); // repart toujours sur "J'ai reçu"
   document.getElementById('stk-form').style.display='block';
   document.getElementById('inp-sqte').value='';
   document.getElementById('inp-fourn').value='';
+}
+var _stkPaMode='u';
+function stkPaMode(m){
+  _stkPaMode=m;
+  var u=document.getElementById('spa-u'),tt=document.getElementById('spa-t');
+  if(u)u.classList.toggle('on',m==='u');
+  if(tt)tt.classList.toggle('on',m==='t');
+  majApercuStk();
+}
+// Prix payé pour UNE unité, quel que soit le mode de saisie.
+function stkPaUnit(){
+  var v=parseFloat(String((document.getElementById('inp-spa')||{}).value||'').replace(',','.'))||0;
+  if(v<=0)return 0;
+  if(_stkPaMode!=='t')return v;
+  var q=Math.round((parseFloat(String((document.getElementById('inp-sqte')||{}).value||'').replace(',','.'))||0)*100)/100;
+  return q>0?Math.round(v/q):0;
 }
 function setSQ(n){document.getElementById('inp-sqte').value=n;majApercuStk();}
 // ═══ Entrée OU sortie de stock (casse, vol, périmé, cadeau, retour) ═══
@@ -5566,6 +5684,13 @@ function stkSens(s){
   if(lbl)lbl.textContent=(s==='in'?(fr?'Quantité reçue':'Quantity received'):(fr?'Quantité perdue':'Quantity lost'))+uni;
   var mr=document.getElementById('stk-motif-row');if(mr)mr.style.display=s==='out'?'block':'none';
   var frw=document.getElementById('stk-fourn-row');if(frw)frw.style.display=s==='in'?'block':'none';
+  // Le prix d'achat n'a de sens que quand on REÇOIT de la marchandise.
+  var par=document.getElementById('stk-pa-row');if(par)par.style.display=s==='in'?'block':'none';
+  var pal=document.getElementById('lbl-stk-pa');
+  if(pal)pal.textContent=(fr?'Prix d\'achat':'Cost price')+(artStkCours&&!(artStkCours.pa>0)?(fr?' — manquant !':' — missing!'):(fr?' (facultatif)':' (optional)'));
+  var pau=document.getElementById('spa-u-l'),pat=document.getElementById('spa-t-l');
+  if(pau)pau.textContent=fr?('Par '+(artStkCours?uniteArt(artStkCours):'unité')):('Per '+(artStkCours?uniteArt(artStkCours):'unit'));
+  if(pat)pat.textContent=fr?'Total payé':'Total paid';
   var b=document.getElementById('lbl-enreg-stk');
   if(b)b.textContent=s==='in'?(fr?'Enregistrer l\'entrée':'Save entry'):(fr?'Enregistrer la sortie':'Save removal');
   majApercuStk();
@@ -5578,6 +5703,7 @@ function stkMotif(m){
 function majApercuStk(){
   var box=document.getElementById('stk-apercu');if(!box||!artStkCours)return;
   var q=Math.round((parseFloat(String((document.getElementById('inp-sqte')||{}).value||'').replace(',','.'))||0)*100)/100;
+  majApercuPaStk(q);
   if(!q){box.style.display='none';return;}
   var cible=(artStkCours.vr.length&&!utiliseStockBase(artStkCours)&&artStkVarCours)?artStkVarCours:artStkCours;
   var actuel=(artStkCours.vr.length&&!utiliseStockBase(artStkCours)&&artStkVarCours)?(artStkVarCours.stk||0):getStk(artStkCours);
@@ -5592,6 +5718,28 @@ function majApercuStk(){
     box.style.color=_stkSens==='in'?'#1B5E20':'#B45309';
     box.textContent=(_stkSens==='in'?'📥 ':'📤 ')+fmtQ(actuel)+u+' → '+fmtQ(Math.max(0,apres))+u;
   }
+}
+// Dit à voix haute ce que l'app a compris du prix d'achat, et prévient
+// tout de suite si le prix de vente est en dessous.
+function majApercuPaStk(q){
+  var inf=document.getElementById('stk-pa-info');if(!inf||!artStkCours)return;
+  var fr=lang==='fr',u=uniteArt(artStkCours),pu=stkPaUnit();
+  if(_stkSens!=='in'||pu<=0){
+    inf.textContent=(_stkSens==='in'&&!(artStkCours.pa>0))
+      ? (fr?'Sans lui, l\'app ne peut pas calculer ton bénéfice.':'Without it, profit cannot be computed.')
+      : '';
+    inf.style.color='var(--O)';return;
+  }
+  if(_stkPaMode==='t'&&!(q>0)){inf.textContent=fr?'Indique d\'abord la quantité reçue.':'Enter the quantity first.';inf.style.color='var(--O)';return;}
+  var px=Number(artStkCours.px)||0;
+  if(px>0&&pu>=px){
+    inf.style.color='var(--R)';
+    inf.textContent='⚠️ '+(fr?'Tu achètes à ':'Buying at ')+fmt(pu)+'/'+u+' et tu vends à '+fmt(px)+' : '+(fr?'tu perds':'you lose')+' '+fmt(pu-px)+'/'+u;
+    return;
+  }
+  inf.style.color='var(--M)';
+  inf.textContent=(fr?'Soit ':'That is ')+fmt(pu)+'/'+u+(px>0?(' · '+(fr?'bénéfice ':'profit ')+fmt(px-pu)+'/'+u):'')
+    +(_stkPaMode==='u'&&q>0?(' · '+(fr?'total ':'total ')+fmt(Math.round(pu*q))):'');
 }
 function saveStk(){
   var q=Math.round((parseFloat(String(document.getElementById('inp-sqte').value||'').replace(',','.'))||0)*100)/100;
@@ -5612,9 +5760,17 @@ function saveStk(){
     showToast('📤 '+(fr?'Sortie enregistrée':'Removal saved')+' : −'+fmtQ(sortie)+' '+uniteArt(a)+' ('+motif+')');
     updateNotifBadge();return;
   }
+  // Entrée de marchandise : c'est le moment où le patron CONNAÎT son prix
+  // d'achat. On le mémorise ici, sinon le bénéfice reste inconnu pour toujours.
+  var paU=stkPaUnit(),paMsg='';
+  if(paU>0&&Number(a.pa)!==paU){
+    journalAjouter('prix',a.nm+(fr?' (achat)':' (cost)'),fmt(a.pa||0),fmt(paU));
+    a.pa=paU;
+    paMsg=' · '+(fr?'achat':'cost')+' '+fmt(paU)+'/'+uniteArt(a);
+  }
   ajouterAppro(a.id,vid,q);
   save();renderStock(DB.articles);renderProd(DB.articles);renderAgstk();closeSheet('ov-stk');
-  showToast(t('stockAjoute'));updateNotifBadge();
+  showToast(t('stockAjoute')+paMsg);updateNotifBadge();
 }
 
 // ═══════════════════════════════════════════
@@ -5685,6 +5841,13 @@ function renderRpt(){
     '<div class="rrow"><span class="rlbl">💰 '+(lang==='fr'?'Chiffre d\'affaires':'Revenue')+'</span><span class="rval a">'+fmt(totalV)+'</span></div>'+
     '<div class="rrow"><span class="rlbl">🛒 '+(lang==='fr'?'Coût des ventes':'Cost of sales')+'</span><span class="rval r">-'+fmt(ta)+'</span></div>'+
     '<div class="rrow"><span class="rlbl">📈 '+(lang==='fr'?'Bénéfice brut':'Gross profit')+'</span><span class="rval g">'+fmt(totalB)+'</span></div>'+
+    (function(){
+      // Honnêteté : on montre la part du chiffre d'affaires dont le bénéfice
+      // est inconnu, au lieu de la compter comme du bénéfice.
+      var inc=getCaisseSales().reduce(function(s,v){return s+getSaleCAInconnu(v);},0);
+      if(inc<=0)return '';
+      return '<div class="rrow"><span class="rlbl" style="color:var(--O)">⚠️ '+(lang==='fr'?'Ventes sans prix d\'achat':'Sales without cost')+'<div style="font-size:9.5px;font-weight:600;color:var(--M)">'+(lang==='fr'?'bénéfice inconnu — non compté ci-dessus':'profit unknown — not counted above')+'</div></span><span class="rval" style="color:var(--O)">'+fmt(inc)+'</span></div>';
+    })()+
     '<div class="rrow"><span class="rlbl">💸 '+(lang==='fr'?'Dépenses':'Expenses')+'</span><span class="rval r">-'+fmt(totalDep)+'</span></div>'+
     '<div class="rrow"><span class="rlbl">💎 '+(lang==='fr'?'Bénéfice NET':'NET Profit')+'</span><span class="rval g" style="font-size:17px;font-weight:900">'+fmt(benNet)+'</span></div>'+
     '<div class="rrow"><span class="rlbl">📉 '+(lang==='fr'?'Marge':'Margin')+'</span><span class="rval">'+m+'%</span></div>'+
@@ -5893,23 +6056,41 @@ function ouvrirParrainage(){
 // ── MES BOUTIQUES (multi-boutiques pour un même patron, sur le même appareil) ──
 function getMesBoutiques(){try{return JSON.parse(localStorage.getItem('myboutiq_mesboutiques')||'[]');}catch(e){return [];}}
 function saveMesBoutiques(list){localStorage.setItem('myboutiq_mesboutiques',JSON.stringify(list));}
+// À qui appartient cette boutique ? Le numéro du patron (celui du compte).
+// Sans ça, la liste était liée au TÉLÉPHONE : deux patrons qui se prêtaient
+// l'appareil voyaient le nom et le code de la boutique de l'autre.
+function cleProprietaire(){
+  // Les 8 derniers chiffres seulement : le même patron reste reconnu que son
+  // numéro soit enregistré « 677889900 » ou « +237677889900 ».
+  var d=String((DB&&DB.cfg&&DB.cfg.tel)||'').replace(/\D/g,'');
+  if(d.length>=8)return 'tel:'+d.slice(-8);
+  // Pas de numéro connu : on rattache l'entrée à la boutique elle-même,
+  // elle ne s'affichera donc que pour cette boutique-là.
+  return 'shop:'+((DB&&DB.cfg&&DB.cfg.code)||'?');
+}
 function enregistrerBoutiqueActuelle(){
   if(!DB||!DB.cfg||!DB.cfg.code)return;
+  if(role!=='patron')return; // un vendeur n'a pas de liste de boutiques
   var list=getMesBoutiques();
   var i=list.findIndex(function(b){return b.code===DB.cfg.code;});
-  var entry={code:DB.cfg.code,nom:DB.cfg.nom||DB.cfg.code};
+  var entry={code:DB.cfg.code,nom:DB.cfg.nom||DB.cfg.code,prop:cleProprietaire()};
   if(i>=0)list[i]=entry;else list.push(entry);
   saveMesBoutiques(list);
 }
 function ouvrirMesBoutiques(){
+  if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
   enregistrerBoutiqueActuelle();
   renderMesBoutiques();
   document.getElementById('ov-boutiques').classList.add('show');
 }
 function renderMesBoutiques(){
   var c=document.getElementById('mb-lst');if(!c)return;
-  var list=getMesBoutiques();
   var curCode=DB&&DB.cfg&&DB.cfg.code;
+  var moi=cleProprietaire();
+  // On n'affiche QUE mes boutiques. Les anciennes entrées sans propriétaire
+  // (enregistrées avant cette correction) sont ignorées, sauf la boutique
+  // ouverte en ce moment.
+  var list=getMesBoutiques().filter(function(b){return b.prop===moi||b.code===curCode;});
   c.innerHTML=list.length?list.map(function(b){
     var isCur=b.code===curCode;
     return '<div class="fourn-cd"><div style="font-size:26px">'+(isCur?'⭐':'🏬')+'</div><div class="fourn-inf"><div class="fourn-nm">'+b.nom+(isCur?' (actuelle)':'')+'</div><div class="fourn-det">'+b.code+'</div></div>'+
@@ -5935,7 +6116,10 @@ async function ajouterBoutiqueParCode(){
   var remoteDB=await loadFromSupa(code,pin);
   if(!remoteDB){showToast(lang==='fr'?'❌ Code ou PIN incorrect':'❌ Wrong code or PIN');return;}
   var list=getMesBoutiques();
-  if(!list.find(function(b){return b.code===code;})){list.push({code:code,nom:remoteDB.cfg.nom||code});saveMesBoutiques(list);}
+  var _i=list.findIndex(function(b){return b.code===code;});
+  var _e={code:code,nom:remoteDB.cfg.nom||code,prop:cleProprietaire()};
+  if(_i>=0)list[_i]=_e;else list.push(_e);
+  saveMesBoutiques(list);
   document.getElementById('mb-code').value='';
   renderMesBoutiques();
   showToast('✅ '+(lang==='fr'?'Boutique ajoutée ! Clique 🔀 pour y basculer':'Store added! Tap 🔀 to switch'));
@@ -6235,7 +6419,32 @@ function isoJour(d){var x=d||new Date();return x.getFullYear()+'-'+String(x.getM
 function parseDateFR(s){if(!s)return null;if(/^\d{4}-\d{2}-\d{2}$/.test(s))return new Date(s+'T00:00:00');var m=String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return new Date(parseInt(m[3],10),parseInt(m[2],10)-1,parseInt(m[1],10));var d=new Date(s);return isNaN(d)?null:d;}
 function dateInputValue(d){return isoJour(d);}
 function getSaleHeure(v){return v.heure||v.h||'00:00';}
-function getSaleBenef(v){return Number(v&&((v.benefice!==undefined&&v.benefice!==null)?v.benefice:v.ben)||0);}
+// Bénéfice d'une vente : on ne compte QUE les lignes dont le prix d'achat est connu.
+// Avant, vendre 2 000 F sans prix d'achat ajoutait 2 000 F au chiffre d'affaires ET
+// 2 000 F au bénéfice — l'app faisait croire que tout était gagné. Recalculé depuis
+// les lignes, donc les ventes déjà enregistrées sont corrigées elles aussi.
+function getSaleBenef(v){
+  if(!v)return 0;
+  if(Array.isArray(v.lignes)&&v.lignes.length){
+    var b=0,connu=false;
+    v.lignes.forEach(function(l){
+      var pa=Number(l.pa)||0,px=Number(l.px)||0,q=Number(l.qte||l.qty)||0;
+      if(pa>0){b+=(px-pa)*q;connu=true;}
+    });
+    if(!connu)return 0;                                   // rien de connu : on n'invente pas un bénéfice
+    b-=(Number(v.remise)||0)+(Number(v.reductionPoints)||0); // les remises sortent du bénéfice
+    return b;
+  }
+  return Number((v.benefice!==undefined&&v.benefice!==null)?v.benefice:v.ben)||0;
+}
+// Chiffre d'affaires dont le bénéfice est INCONNU (articles sans prix d'achat).
+function getSaleCAInconnu(v){
+  if(!v||!Array.isArray(v.lignes))return 0;
+  return v.lignes.reduce(function(s,l){
+    if((Number(l.pa)||0)>0)return s;
+    return s+(Number(l.px)||0)*(Number(l.qte||l.qty)||0);
+  },0);
+}
 function getSaleDateObj(v){var d=parseDateFR(v.date)||new Date();var h=getSaleHeure(v).split(':');d.setHours(parseInt(h[0],10)||0,parseInt(h[1],10)||0,0,0);return d;}
 function isSaleToday(v){return isoJour(getSaleDateObj(v))===isoJour(new Date());}
 function getTodaySales(){return (DB.ventes||[]).filter(function(v){return !v.annulee&&isSaleToday(v);});}
@@ -6269,7 +6478,9 @@ function saleLinesLabel(v){return (v.lignes||[]).map(function(l){return l.nm||'A
 function saleArticleBaseName(nm){return String(nm||'').replace(/\s×\d+$/,'').split(' — ')[0].trim();}
 function findArticleByLineName(nm){var base=saleArticleBaseName(nm);return (DB.articles||[]).find(function(a){return a.nm===base||String(nm||'').indexOf(a.nm)===0;})||null;}
 function calcTotalBrut(){return Object.entries(panier).reduce(function(s,e){var k=e[0],qty=e[1],parts=k.split('-'),pid=parts[0],vid=parts[1],p=DB.articles.find(function(x){return x.id==pid;});if(!p)return s;if(vid&&vid!=='0'){var v=p.vr.find(function(x){return x.id==vid;});return s+(v?v.px*qty:0);}return s+p.px*qty;},0);}
-function calcBenBrut(){return Object.entries(panier).reduce(function(s,e){var k=e[0],qty=e[1],parts=k.split('-'),pid=parts[0],vid=parts[1],p=DB.articles.find(function(x){return x.id==pid;});if(!p)return s;if(vid&&vid!=='0'){var v=p.vr.find(function(x){return x.id==vid;});return s+(v?(v.px-v.pa)*qty:0);}return s+(p.px-p.pa)*qty;},0);}
+// Ne compte que ce dont on connaît le prix d'achat : sans lui, le bénéfice est
+// inconnu, pas égal au prix de vente.
+function calcBenBrut(){return Object.entries(panier).reduce(function(s,e){var k=e[0],qty=e[1],parts=k.split('-'),pid=parts[0],vid=parts[1],p=DB.articles.find(function(x){return x.id==pid;});if(!p)return s;if(vid&&vid!=='0'){var v=p.vr.find(function(x){return x.id==vid;});return s+((v&&v.pa>0)?(v.px-v.pa)*qty:0);}return s+((p.pa>0)?(p.px-p.pa)*qty:0);},0);}
 calcTotal=function(){return Math.max(0,calcTotalBrut()-remisePoints-(remiseVente||0));};
 calcBenTotal=function(){return calcBenBrut()-remisePoints-(remiseVente||0);};
 function pointsGagnesPour(total){return Math.floor((total||0)/100);}
@@ -6559,13 +6770,28 @@ function reconnecterTempsReel(forcerAbonnement){
 function demarrerSurveillanceTempsReel(){
   clearInterval(_rtTimerFond);
   _rtTimerFond=setInterval(function(){
-    if(document.visibilityState==='visible'&&navigator.onLine)reconnecterTempsReel(false);
-  },45000);
+    if(document.visibilityState!=='visible')return;
+    if(!supa){assurerConnexionSupa();return;}   // sans liaison, on tente d'abord de la rétablir
+    if(navigator.onLine)reconnecterTempsReel(false);
+  },20000);
+  majEtatConnexion();
 }
 document.addEventListener('visibilitychange',function(){
-  if(document.visibilityState==='visible')reconnecterTempsReel(true);
+  if(document.visibilityState!=='visible')return;
+  if(!supa){assurerConnexionSupa();return;}
+  reconnecterTempsReel(true);
 });
-window.addEventListener('online',function(){reconnecterTempsReel(true);});
+window.addEventListener('online',function(){
+  if(!supa){assurerConnexionSupa();return;}
+  reconnecterTempsReel(true);
+});
+window.addEventListener('offline',function(){try{majEtatConnexion();}catch(e){}});
+// Au chargement COMPLET de la page : si la bibliothèque du serveur est arrivée
+// en retard (réseau lent), on rattrape ici. Sans cela, l'app restait déconnectée
+// toute la session sans le dire.
+window.addEventListener('load',function(){
+  setTimeout(function(){try{if(!supa)assurerConnexionSupa();else majEtatConnexion();}catch(e){}},1200);
+});
 window.addEventListener('focus',function(){
   if(document.visibilityState==='visible')reconnecterTempsReel(false);
 });
