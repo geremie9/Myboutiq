@@ -1196,6 +1196,7 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" onclick="ouvrirAjout();goBack()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="st-art">Ajouter un article</div><div class="stisub" id="st-art-s">Nouvel article</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirPrix(null);goBack()"><div class="stico" style="background:#E3F2FD">💰</div><div class="stii"><div class="stitl" id="st-prix">Modifier les prix</div><div class="stisub" id="st-prix-s">Prix achat, vente, bénéfice</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirStk(null);goBack()"><div class="stico" style="background:#E8F5E9">📦</div><div class="stii"><div class="stitl" id="st-stk">Entrée de stock</div><div class="stisub" id="st-stk-s">Ajouter des quantités</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirRanger()"><div class="stico" style="background:#FFF3E0">🧹</div><div class="stii"><div class="stitl" id="st-rng">Ranger ma boutique</div><div class="stisub" id="st-rng-s">Regrouper les articles d'une même famille</div></div><span class="starr">›</span></div>
       </div>
       <div class="sttit">💼 Gestion boutique</div>
       <div class="stcd">
@@ -1783,6 +1784,31 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>
 
+  <!-- PROPOSITION DE REGROUPEMENT (à la création d'un article) -->
+  <div class="ov" id="ov-regroup" onclick="closeOv(event,'ov-regroup')">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">🔗 <span id="rgp-tit">Les mettre ensemble ?</span></div><button class="bcl" onclick="refuserRegroupement()">✕</button></div>
+      <div class="pstps">
+        <div id="rgp-corps" style="margin-bottom:13px"></div>
+        <div style="background:#F0F4FF;border-radius:10px;padding:10px 12px;font-size:11.5px;font-weight:600;color:var(--M);line-height:1.5;margin-bottom:13px" id="rgp-expl"></div>
+        <button class="bnxt" onclick="accepterRegroupement()"><span id="rgp-oui">Oui, les regrouper</span></button>
+        <button class="bvid" style="margin-top:7px" onclick="refuserRegroupement()"><span id="rgp-non">Non, garder séparés</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RANGER MA BOUTIQUE -->
+  <div class="ov" id="ov-ranger" onclick="closeOv(event,'ov-ranger')">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">🧹 <span id="rng-tit">Ranger ma boutique</span></div><button class="bcl" onclick="closeSheet('ov-ranger')">✕</button></div>
+      <div class="pstps">
+        <div id="rng-intro" style="font-size:12px;font-weight:700;color:var(--M);margin-bottom:12px;line-height:1.5"></div>
+        <div id="rng-lst" style="max-height:52vh;overflow-y:auto"></div>
+        <button class="bnxt" style="margin-top:13px" onclick="appliquerRangement()"><span id="rng-btn">Regrouper</span></button>
+      </div>
+    </div>
+  </div>
+
   <!-- BULK IMPORT REVIEW -->
 <div class="ov" id="ov-bulk-group" onclick="closeOv(event,'ov-bulk-group')">
   <div class="bsht"><div class="shndl"></div>
@@ -2303,7 +2329,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.22'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.23'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4834,6 +4860,275 @@ function catalogueIndex(){
   });
   return _catIdx;
 }
+// ═══════════════════════════════════════════════════════════════════
+// MOTEUR DE RAPPROCHEMENT — « ces deux articles vont-ils ensemble ? »
+// Deux questions DIFFÉRENTES, qu'on ne doit jamais confondre :
+//   • DOUBLON : « Coca » et « Coca-Cola 60 cl » sont LE MÊME produit.
+//     Les laisser vivre séparément coupe le stock et les rapports en deux.
+//   • FAMILLE : « Savon Azur » et « Savon Lux » sont DEUX produits qui se
+//     demandent sous le même mot. Une seule carte en caisse, on précise après.
+// Règle absolue : on PROPOSE, on ne fusionne jamais tout seul. Regrouper un
+// article qui a déjà des ventes, c'est réécrire un compte vivant — et
+// cmpDetachVar recrée un article NEUF, donc l'historique ne revient pas.
+// ═══════════════════════════════════════════════════════════════════
+var _MOTS_VIDES=['de','du','des','la','le','les','un','une','au','aux','en','et','pour','avec','sans'];
+// Mots qui désignent un CONTENANT ou une matière, pas un produit. « eau »
+// couvre l'eau de javel ET l'eau minérale : partager ce mot ne prouve RIEN.
+// C'est exactement là que le regroupement automatique se trompe.
+var _MOTS_LARGES=['eau','huile','papier','sac','lait','savon','jus','poudre','boite','sachet','paquet','creme','pate','the','farine','produit','lampe','cable','piece','conserve','cube','pile','biscuit','pain','sucre','sel'];
+var _FORMAT=/^(\d+(\.\d+)?|cl|ml|kg|mg|cm|mm|go|mo|pc|pcs|w|v)$/;
+function motsArticle(nm){
+  // « 1,5 L » doit rester UN nombre : sans ça « Tangui 1,5 L » et
+  // « Tangui 50 cl » finissaient avec les mêmes mots et passaient pour
+  // le même produit. Les nombres courts sont gardés (« 1 kg »).
+  return txtNorm(nm).replace(/(\d)[.,](\d)/g,'$1.$2').replace(/[^a-z0-9.]+/g,' ')
+    .split(' ').map(function(m){return m.replace(/^\.+|\.+$/g,'');})
+    .filter(function(m){return m&&(m.length>1||/\d/.test(m))&&_MOTS_VIDES.indexOf(m)<0;});
+}
+// Mots qui portent le SENS : on retire les formats (60, cl, kg…), qui ne
+// distinguent pas deux produits mais deux conditionnements.
+function motsForts(nm){
+  return motsArticle(nm).filter(function(m){return !_FORMAT.test(m);});
+}
+// Même produit écrit deux fois ? Les mots du nom le plus court doivent TOUS
+// être dans le plus long, ET le court doit porter un mot distinctif.
+// « savon » ⊂ « savon lux » : pas un doublon, « savon » ne distingue rien.
+// « coca »  ⊂ « coca cola 60 cl » : doublon, « coca » est distinctif.
+function _fmtNom(nm){
+  return motsArticle(nm).filter(function(m){return _FORMAT.test(m);}).join(' ');
+}
+function estDoublonNom(a,b){
+  var A=motsForts(a),B=motsForts(b);
+  if(!A.length||!B.length)return false;
+  // Deux formats PRÉCISÉS et différents = deux produits, jamais un doublon.
+  // « Cahier 100 pages » / « Cahier 200 pages », « Tangui 1,5 L » / « 50 cl »,
+  // « Omo 35 g » / « Omo 400 g ». Si un seul précise, c'est le même produit
+  // écrit court puis long (« Savon Lux » / « Savon Lux 175 g »).
+  var fa=_fmtNom(a),fb=_fmtNom(b);
+  if(fa&&fb&&fa!==fb)return false;
+  if(A.join(' ')===B.join(' '))return true;
+  var court=A.length<=B.length?A:B,lg=A.length<=B.length?B:A;
+  if(!court.every(function(m){return lg.indexOf(m)>=0;}))return false;
+  return court.some(function(m){return _MOTS_LARGES.indexOf(m)<0;});
+}
+// L'article existant que ce nom risque de dédoubler (ou null).
+function articleDoublon(nm,saufId){
+  if(!DB||!DB.articles)return null;
+  for(var i=0;i<DB.articles.length;i++){
+    var a=DB.articles[i];
+    if(a.id===saufId)continue;
+    if(estDoublonNom(a.nm,nm))return a;
+  }
+  return null;
+}
+// À quelle famille du catalogue ce nom appartient-il ? C'est CE test qui
+// évite le piège « eau de javel / eau minérale » : le catalogue les range
+// dans deux familles différentes, donc on refusera de les rapprocher.
+var _famCatCache=null;
+function familleCatalogueDe(nm){
+  if(!_famCatCache){
+    _famCatCache={};
+    catalogueIndex().forEach(function(e){if(e.fam)_famCatCache[txtNorm(e.plein)]=e.fam;});
+  }
+  var n=txtNorm(nm);
+  if(_famCatCache[n])return _famCatCache[n];
+  var M=motsForts(nm),best=null;
+  if(!M.length)return null;
+  catalogueIndex().forEach(function(e){
+    if(!e.fam)return;
+    var E=motsForts(e.plein);
+    if(!E.length)return;
+    if(E.every(function(m){return M.indexOf(m)>=0;})&&(!best||E.length>best.n))best={f:e.fam,n:E.length};
+  });
+  return best?best.f:null;
+}
+// Ces deux noms méritent-ils une même famille ? conf = confiance.
+//   haute  : le catalogue le dit, ou 2 mots communs → coché d'avance
+//   basse  : un seul mot commun et c'est un mot large → proposé, PAS coché
+function rapprochementFamille(a,b){
+  var fa=familleCatalogueDe(a),fb=familleCatalogueDe(b);
+  if(fa&&fb)return (fa===fb)?{ok:true,fam:fa,conf:'haute'}:{ok:false};
+  var A=motsForts(a),B=motsForts(b);
+  if(!A.length||!B.length)return {ok:false};
+  var comm=A.filter(function(m){return B.indexOf(m)>=0;});
+  if(!comm.length)return {ok:false};
+  if(comm.length>=2)return {ok:true,fam:comm.join(' '),conf:'haute'};
+  if(A[0]!==B[0])return {ok:false};
+  return {ok:true,fam:comm[0],conf:_MOTS_LARGES.indexOf(comm[0])>=0?'basse':'moyenne'};
+}
+// ── Regrouper : on renomme la cible du nom de la famille, sinon la famille
+//    s'appellerait « Savon Azur » et personne n'y retrouverait le Savon Lux.
+function _majuscule(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
+function regrouperDans(cible,membres,fam){
+  if(!cible||!membres||!membres.length)return 0;
+  var n=0;
+  membres.forEach(function(m){
+    if(!m||m.id===cible.id)return;
+    if(!DB.articles.some(function(x){return x.id===m.id;}))return;
+    mettreDansFamille(m.id,cible.id);n++;
+  });
+  if(n&&fam&&txtNorm(cible.nm)!==txtNorm(fam)){
+    journalAjouter('famille',cible.nm,cible.nm,_majuscule(fam));
+    cible.nm=_majuscule(fam);
+  }
+  return n;
+}
+// ── Candidats de famille pour UN article (au moment de sa création) ──
+// On ne retient que la HAUTE confiance : le catalogue l'affirme, ou les deux
+// noms partagent 2 mots forts. Jamais sur un seul mot large (« eau », « savon »)
+// — c'est précisément là que la machine se trompe, et une fusion ratée ne se
+// répare pas.
+function candidatsFamille(art){
+  if(!DB||!DB.articles||!art)return [];
+  var fam=familleCatalogueDe(art.nm),out=[];
+  DB.articles.forEach(function(b){
+    if(b.id===art.id)return;
+    if(fam&&txtNorm(b.nm)===txtNorm(fam)){out.push({art:b,fam:fam});return;}
+    if(b.vr&&b.vr.length)return;
+    var r=rapprochementFamille(art.nm,b.nm);
+    if(r.ok&&r.conf==='haute')out.push({art:b,fam:r.fam});
+  });
+  return out;
+}
+// ── Mémoire des refus : « non » veut dire non pour toujours ──
+// Rangé dans cfg pour survivre à la fusion multi-téléphones. Clé = les noms
+// triés, pas les identifiants (qui changent quand un article devient variante).
+function _cleRefus(noms){
+  return noms.map(function(x){return txtNorm(x);}).sort().join('|');
+}
+function estRefuse(noms){
+  var l=(DB&&DB.cfg&&DB.cfg.refusFam)||[];
+  return l.indexOf(_cleRefus(noms))>=0;
+}
+function memoriserRefus(noms){
+  if(!DB||!DB.cfg)return;
+  if(!Array.isArray(DB.cfg.refusFam))DB.cfg.refusFam=[];
+  var k=_cleRefus(noms);
+  if(DB.cfg.refusFam.indexOf(k)<0){DB.cfg.refusFam.push(k);save();}
+}
+var _rgpEnCours=null;
+function proposerRegroupement(art){
+  var c=candidatsFamille(art);
+  if(!c.length)return false;
+  if(estRefuse([art.nm].concat(c.map(function(x){return x.art.nm;}))))return false;
+  var fr=lang==='fr',fam=c[0].fam,cibles=c.map(function(x){return x.art;});
+  _rgpEnCours={art:art,cibles:cibles,fam:fam};
+  document.getElementById('rgp-tit').textContent=fr?'Les mettre ensemble ?':'Group them?';
+  var m=mediaArtInner(art,20);
+  document.getElementById('rgp-corps').innerHTML=
+    '<div style="font-size:13px;font-weight:700;color:var(--T);margin-bottom:9px">'
+    +(fr?'Tu vends déjà :':'You already sell:')+'</div>'
+    +cibles.map(function(x){var mm=mediaArtInner(x,17);
+      return '<div style="display:flex;align-items:center;gap:9px;margin-bottom:6px"><span style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:'+mm.bg+';color:'+mm.fg+'">'+mm.svg+'</span><b style="font-size:13px">'+x.nm+'</b></div>';}).join('')
+    +'<div style="font-size:13px;font-weight:700;color:var(--T);margin:11px 0 9px">'+(fr?'Y ajouter :':'Add to it:')+'</div>'
+    +'<div style="display:flex;align-items:center;gap:9px"><span style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</span><b style="font-size:13px;color:var(--B)">'+art.nm+'</b></div>';
+  document.getElementById('rgp-expl').innerHTML=(fr
+    ? 'Ils deviendraient <b>une seule carte « '+_majuscule(fam)+' »</b> en caisse. Tu touches la carte, tu choisis la marque, tu vends. Chaque marque garde <b>son prix et son stock</b>.'
+    : 'They become <b>one card “'+_majuscule(fam)+'”</b> at the till. Each keeps its own price and stock.');
+  document.getElementById('rgp-oui').textContent=fr?'Oui, les regrouper':'Yes, group them';
+  document.getElementById('rgp-non').textContent=fr?'Non, garder séparés':'No, keep separate';
+  document.getElementById('ov-regroup').classList.add('show');
+  return true;
+}
+function accepterRegroupement(){
+  var g=_rgpEnCours;if(!g){closeSheet('ov-regroup');return;}
+  var cible=g.cibles[0];
+  // On rattache le NOUVEL article (et les autres candidats seuls) à la cible.
+  var membres=[g.art].concat(g.cibles.slice(1).filter(function(x){return !(x.vr&&x.vr.length);}));
+  var n=regrouperDans(cible,membres,g.fam);
+  save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();
+  _rgpEnCours=null;closeSheet('ov-regroup');
+  if(n)showToast('🔗 '+_majuscule(g.fam)+' — '+cible.vr.length+' '+(lang==='fr'?'variantes':'variants'));
+}
+function refuserRegroupement(){
+  var g=_rgpEnCours;
+  if(g)memoriserRefus([g.art.nm].concat(g.cibles.map(function(x){return x.nm;})));
+  _rgpEnCours=null;closeSheet('ov-regroup');
+}
+// ── « Ranger ma boutique » : détection automatique, décision humaine, en bloc ──
+function propositionsRangement(){
+  if(!DB||!DB.articles)return [];
+  var seuls=DB.articles.filter(function(a){return !(a.vr&&a.vr.length);});
+  var fams=DB.articles.filter(function(a){return a.vr&&a.vr.length;});
+  var pris={},g=[];
+  // 1) un article seul qui appartient à une famille DÉJÀ ouverte
+  seuls.forEach(function(a){
+    var f=familleCatalogueDe(a.nm);if(!f)return;
+    var cible=fams.filter(function(x){return txtNorm(x.nm)===txtNorm(f);})[0];
+    if(!cible)return;
+    pris[a.id]=1;
+    var ex=g.filter(function(x){return x.cible.id===cible.id;})[0];
+    if(ex)ex.membres.push(a);
+    else g.push({fam:f,cible:cible,membres:[a],conf:'haute',existe:true});
+  });
+  // 2) des articles seuls qui vont ensemble
+  seuls.forEach(function(a,i){
+    if(pris[a.id])return;
+    var membres=[],fam=null,conf='haute';
+    seuls.forEach(function(b,j){
+      if(j<=i||pris[b.id])return;
+      var r=rapprochementFamille(a.nm,b.nm);
+      if(!r.ok)return;
+      membres.push(b);fam=fam||r.fam;
+      if(r.conf==='basse')conf='basse';
+      else if(r.conf==='moyenne'&&conf==='haute')conf='moyenne';
+    });
+    if(!membres.length)return;
+    pris[a.id]=1;membres.forEach(function(m){pris[m.id]=1;});
+    g.push({fam:fam||a.nm,cible:a,membres:membres,conf:conf,existe:false});
+  });
+  // Ce que le patron a déjà refusé ne revient plus le déranger.
+  return g.filter(function(x){
+    return !estRefuse([x.cible.nm].concat(x.membres.map(function(m){return m.nm;})));
+  });
+}
+var _rangProps=[];
+function ouvrirRanger(){
+  if(role!=='patron'&&!hasPerm('produits')){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  var fr=lang==='fr';
+  _rangProps=propositionsRangement();
+  var intro=document.getElementById('rng-intro'),lst=document.getElementById('rng-lst');
+  if(!_rangProps.length){
+    intro.innerHTML='✅ '+(fr?'Rien à ranger : tes articles sont déjà bien classés.':'Nothing to tidy: your items are already sorted.');
+    lst.innerHTML='';document.getElementById('rng-btn').textContent=fr?'Fermer':'Close';
+    document.getElementById('ov-ranger').classList.add('show');return;
+  }
+  var nH=_rangProps.filter(function(p){return p.conf==='haute';}).length;
+  intro.innerHTML=(fr?'J\'ai trouvé <b>':'Found <b>')+_rangProps.length+(fr?' regroupement':' group')+(_rangProps.length>1?'s':'')+(fr?' possible':' possible')+(_rangProps.length>1?'s':'')+'</b> '
+    +(fr?'dans tes ':'in your ')+DB.articles.length+(fr?' articles.<br>Les ':' items.<br>The ')+'<b>'+nH+'</b>'+(fr?' sûrs sont cochés. Décoche ce qui ne va pas ensemble — <b>rien ne bouge sans ton accord</b>.':' safe ones are ticked. Nothing moves without your approval.');
+  lst.innerHTML=_rangProps.map(function(p,i){
+    var sur=p.conf==='haute',tous=[p.cible].concat(p.membres);
+    return '<label style="display:flex;gap:10px;align-items:flex-start;padding:11px 4px;border-bottom:1px solid var(--BD);cursor:pointer">'
+      +'<input type="checkbox" data-i="'+i+'" '+(sur?'checked':'')+' style="width:20px;height:20px;flex-shrink:0;margin-top:2px;accent-color:var(--B)">'
+      +'<span style="flex:1;min-width:0">'
+      +'<span style="display:block;font-size:13px;font-weight:800;color:var(--T)">'+_majuscule(p.fam)
+      +(p.existe?(' <span style="font-size:10px;color:var(--G);font-weight:800">'+(fr?'famille existante':'existing')+'</span>'):'')+'</span>'
+      +'<span style="display:block;font-size:11.5px;color:var(--M);font-weight:600;margin-top:3px">'+tous.map(function(x){return x.nm;}).join('  ·  ')+'</span>'
+      +(sur?'':'<span style="display:block;font-size:10.5px;color:var(--O);font-weight:800;margin-top:4px">⚠️ '+(fr?'même mot, mais peut-être pas le même genre de produit — à toi de voir':'same word, maybe not the same kind of product')+'</span>')
+      +'</span></label>';
+  }).join('');
+  document.getElementById('rng-btn').textContent=fr?'Regrouper les cochés':'Group the ticked';
+  document.getElementById('ov-ranger').classList.add('show');
+}
+function appliquerRangement(){
+  var fr=lang==='fr';
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('#rng-lst input[type=checkbox]'));
+  var choisis=boxes.filter(function(b){return b.checked;}).map(function(b){return _rangProps[+b.getAttribute('data-i')];});
+  // Ce qu'il a décoché, c'est un NON : on ne le lui reproposera plus.
+  boxes.filter(function(b){return !b.checked;}).forEach(function(b){
+    var p=_rangProps[+b.getAttribute('data-i')];
+    if(p)memoriserRefus([p.cible.nm].concat(p.membres.map(function(m){return m.nm;})));
+  });
+  if(!choisis.length){closeSheet('ov-ranger');return;}
+  var nGroupes=0,nArt=0;
+  choisis.forEach(function(p){
+    var n=regrouperDans(p.cible,p.membres,p.fam);
+    if(n){nGroupes++;nArt+=n;}
+  });
+  save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();
+  closeSheet('ov-ranger');
+  showToast('🧹 '+nGroupes+' '+(fr?'famille':'family')+(nGroupes>1?'s':'')+' · '+nArt+' '+(fr?'articles rangés':'items grouped'));
+}
 // La boutique a-t-elle déjà un article portant le nom de cette famille ?
 function familleEnBoutique(fam){
   if(!fam||!DB||!DB.articles)return null;
@@ -4891,7 +5186,12 @@ function majSuggestionsArticle(){
     var m=mediaArtInner({nm:e.plein,cat:e.cat},17),deja=dejaEnBoutique(e);
     var pere=e.fam?familleEnBoutique(e.fam):null;
     var info=e.fam?((fr?'dans ':'in ')+'« '+e.fam+' »'):e.cat;
-    if(pere&&!deja)info+=' · '+(fr?'tu l\'as déjà ✚':'you have it ✚');
+    // Doublon écrit autrement (« Coca » vs « Coca-Cola 60 cl ») : sans ce
+    // repère, la boutique se retrouve avec deux articles pour un produit,
+    // donc un stock et des rapports coupés en deux.
+    var dbl=deja?null:articleDoublon(e.plein);
+    if(dbl){deja=true;info='⚠️ '+(fr?'c\'est sûrement ton « ':'likely your “')+dbl.nm+' »';}
+    else if(pere&&!deja)info+=' · '+(fr?'tu l\'as déjà ✚':'you have it ✚');
     return '<button type="button" class="sugit'+(deja?' off':'')+'" onclick="choisirSuggestion('+i+')">'
       +'<span class="sugico" style="background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</span>'
       +'<span class="sugtx"><b>'+titre+'</b><i>'+info+(e.px>0?(' · ~'+fmt(e.px)+(fr?' ailleurs':' elsewhere')):'')+'</i></span>'
@@ -4902,6 +5202,8 @@ function choisirSuggestion(i){
   var e=_sugCour[i];if(!e)return;
   var fr=lang==='fr';
   if(dejaEnBoutique(e)){showToast('✅ '+(fr?'Tu vends déjà cet article':'You already sell this'));return;}
+  var dbl=articleDoublon(e.plein);
+  if(dbl){showToast('⚠️ '+(fr?'Tu as déjà « ':'You already have “')+dbl.nm+(fr?' » — même produit, ne le crée pas deux fois':'” — same product'));return;}
   var pere=e.fam?familleEnBoutique(e.fam):null;
   if(pere){
     // La famille existe déjà dans la boutique : on ajoute une VARIANTE au lieu
@@ -5688,7 +5990,10 @@ document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='visible')try{majBoutonVeille();}catch(e){}
 });
 function saveArt(){var nm=document.getElementById('art-nm').value.trim(),pv=parseFloat(document.getElementById('ainp-pv').value)||0,stk=Math.round((parseFloat(String(document.getElementById('ainp-stk').value||'').replace(',','.'))||0)*100)/100,al=parseInt(document.getElementById('ainp-alerte').value)||5;if(!nm){showToast(t('errNom'));goAS(0);return;}if(!pv){showToast(t('errPrix'));return;}var _sac=Math.round((parseFloat(String((document.getElementById('ainp-sac')||{}).value||'').replace(',','.'))||0)*100)/100;
-DB.articles.push({id:DB.nextId++,nm,e:selEmo,img:selImg||null,cat:selCat||'Autre',px:pv,pa:pxAUA||0,stk,al,vd:0,vr:[],rt:ruptSel,um:umSel==='pc'?null:umSel,umSac:umSel!=='pc'&&_sac>0?_sac:null});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();closeSheet('ov-art');showToast(t('articleCree'));}
+DB.articles.push({id:DB.nextId++,nm,e:selEmo,img:selImg||null,cat:selCat||'Autre',px:pv,pa:pxAUA||0,stk,al,vd:0,vr:[],rt:ruptSel,um:umSel==='pc'?null:umSel,umSac:umSel!=='pc'&&_sac>0?_sac:null});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();closeSheet('ov-art');showToast(t('articleCree'));
+// Le bon moment pour proposer une famille, c'est MAINTENANT : le nouvel
+// article n'a encore aucune vente, donc le regroupement est sans risque.
+try{proposerRegroupement(DB.articles[DB.articles.length-1]);}catch(e){}}
 function calcBenVar(){var pa=parseFloat(document.getElementById('var-pa').value)||0,pv=parseFloat(document.getElementById('var-pv').value)||0,bc=document.getElementById('var-bc');if(pa>0&&pv>0){bc.style.display='flex';var d=pv-pa;bc.className='bcard '+(d>=0?'bon':'bad');document.getElementById('var-bl').textContent=d>=0?t('beneficeUnit'):t('venteAPerte');document.getElementById('var-ba').textContent=(d>=0?'+':'')+fmt(d);}else bc.style.display='none';}
 function saveVar(){var nm=document.getElementById('var-nm').value.trim(),pa=parseFloat(document.getElementById('var-pa').value)||0,pv=parseFloat(document.getElementById('var-pv').value)||0,stk=parseInt(document.getElementById('var-stk').value)||0;if(!nm||!pv){showToast(t('errNom'));return;}if(!varArtCours)return;var nid=(varArtCours.vr.length?Math.max.apply(null,varArtCours.vr.map(function(v){return v.id;})):0)+1;var qBase=1;if(varArtCours.stk>0){var msg=lang==='fr'?'Quantité de stock de base consommée par cette variante ?\\n(1 pour unité simple, 100 pour 100g, 1000 pour 1kg, 0.5 pour une demi-unité, etc.)':'Base stock units consumed by this variant?\\n(1 for single unit, 100 for 100g, 1000 for 1kg, 0.5 for half a unit, etc.)';var rep=prompt(msg,'1');if(rep===null)return;qBase=Math.max(0.001,parseFloat((rep||'1').replace(',','.'))||1);}var nv={id:nid,nm,px:pv,pa,stk,rt:true,qBase:qBase};if(typeof selVarImg!=='undefined'&&selVarImg)nv.img=selVarImg;varArtCours.vr.push(nv);if(stk>0){nv.stk0=stk;}save();renderProd(DB.articles);renderStock(DB.articles);closeSheet('ov-addvar');
   // Si la fiche famille est ouverte derrière, on la rafraîchit avec la nouvelle variante
