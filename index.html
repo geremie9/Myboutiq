@@ -2371,7 +2371,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.27'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.28'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2670,7 +2670,7 @@ async function syncToSupa(){
         var ownerExact=ownerRows.find(function(r){return normalizeShopCode(r.code)===normalizeShopCode(DB.cfg.code);})||null;
         if(ownerExact){
           var updExact=await supa.from('boutiques').update(payload).eq('id',ownerExact.id);
-          if(!updExact.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB();var cv1=document.getElementById('code-val');if(cv1)cv1.textContent=DB.cfg.code;return true;}
+          if(!updExact.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);var cv1=document.getElementById('code-val');if(cv1)cv1.textContent=DB.cfg.code;return true;}
           if(String(updExact.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
           throw updExact.error;
         }
@@ -2684,7 +2684,7 @@ async function syncToSupa(){
         // Vendeur : écriture serveur = code + PIN équipe (vérifié serveur). Le PIN patron ne part jamais.
         if(_shopPin==null||String(_shopPin).length<4)throw new Error(lang==='fr'?'🔐 Reconnecte-toi avec le PIN équipe':'🔐 Reconnect with the team PIN');
         var rpcSave=await supa.rpc('boutique_ecrire',{p_code:DB.cfg.code,p_pin:String(_shopPin),p_data:payload.data});
-        if(!rpcSave.error&&rpcSave.data===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
+        if(!rpcSave.error&&rpcSave.data===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
         // Serveur temporairement fermé (trop de PIN faux) : les ventes restent
         // dans le téléphone et repartiront au prochain essai.
         if(rpcSave.error&&_signalerBlocagePin(rpcSave.error))throw new Error('PIN_BLOQUE');
@@ -2696,7 +2696,7 @@ async function syncToSupa(){
         var row=byCode.data[0];
         if(!row.owner_id||row.owner_id===((user&&user.id)||DB.cfg.ownerId)){
           var updCode=await supa.from('boutiques').update(payload).eq('id',row.id);
-          if(!updCode.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
+          if(!updCode.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
           if(String(updCode.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
           throw updCode.error;
         }
@@ -2704,7 +2704,7 @@ async function syncToSupa(){
         continue;
       }
       var ins=await supa.from('boutiques').insert(payload);
-      if(!ins.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB();var cv4=document.getElementById('code-val');if(cv4)cv4.textContent=DB.cfg.code;return true;}
+      if(!ins.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);var cv4=document.getElementById('code-val');if(cv4)cv4.textContent=DB.cfg.code;return true;}
       if(String(ins.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
       throw ins.error;
     }
@@ -7537,8 +7537,14 @@ function migrateDBData(d){
 }
 loadDB=function(){var d=localStorage.getItem('myboutiq_v6');return d?migrateDBData(JSON.parse(d)):null;};
 var _loadFromSupaBase=loadFromSupa;loadFromSupa=async function(code,pin){var data=await _loadFromSupaBase(code,pin);return data?migrateDBData(data):null;};
+// delaiMs === false : on écrit dans le téléphone SANS reprogrammer d'envoi.
+// Indispensable à la fin de syncToSupa : sinon chaque envoi réussi en
+// reprogrammait un autre 800 ms plus tard, qui réussissait, qui en
+// reprogrammait un autre… une boucle d'écriture sans fin sur chaque
+// appareil connecté, jour et nuit.
 function persistDB(delaiMs){
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
+  if(delaiMs===false)return;
   if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){
     clearTimeout(syncTimeout);
     syncTimeout=setTimeout(syncToSupa,(delaiMs==null?800:delaiMs));
