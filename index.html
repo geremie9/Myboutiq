@@ -895,14 +895,11 @@ body{max-width:min(100%,1200px)}
 <div id="ov-reset-pin" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;padding:24px">
   <div style="background:#1A1A2E;border-radius:24px;padding:28px 22px;width:100%;max-width:380px">
     <div style="font-size:32px;text-align:center;margin-bottom:8px">🔁</div>
-    <div style="color:#fff;font-size:18px;font-weight:800;text-align:center;margin-bottom:4px">Réinitialiser PIN</div>
-    <div style="color:rgba(255,255,255,.5);font-size:13px;text-align:center;margin-bottom:16px">Pour la demo, le code s'affiche directement ici. Choisis ensuite un nouveau PIN.</div>
+    <div style="color:#fff;font-size:18px;font-weight:800;text-align:center;margin-bottom:4px" id="rp-tit">PIN oublié</div>
+    <div style="color:rgba(255,255,255,.6);font-size:13px;text-align:left;margin-bottom:14px;line-height:1.5" id="rp-expl">Ton PIN protège ton argent : personne ne peut le changer depuis ce téléphone, pas même toi. Écris au support, on vérifie que la boutique est bien la tienne, puis on te débloque.</div>
     <input id="rp-tel" type="tel" style="width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;color:#fff;font-size:15px;font-weight:700;font-family:Outfit,sans-serif;outline:none;margin-bottom:10px" placeholder="+237 6XXXXXXXX">
-    <button onclick="envoyerOtpResetPin()" style="width:100%;background:#F5A623;border:none;border-radius:14px;padding:12px;color:#1A1A2E;font-size:14px;font-weight:800;font-family:Outfit,sans-serif;cursor:pointer;margin-bottom:10px">📩 Afficher code demo</button>
-    <input id="rp-otp" type="tel" maxlength="4" inputmode="numeric" style="width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;color:#fff;font-size:18px;font-weight:800;letter-spacing:8px;text-align:center;font-family:Outfit,sans-serif;outline:none;margin-bottom:10px" placeholder="••••">
-    <input id="rp-new-pin" type="password" maxlength="6" inputmode="numeric" style="width:100%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);border-radius:14px;padding:14px;color:#fff;font-size:16px;font-weight:700;font-family:Outfit,sans-serif;outline:none;margin-bottom:10px" placeholder="Nouveau PIN (4 à 6 chiffres)">
-    <button onclick="confirmerResetPin()" style="width:100%;background:#00C853;border:none;border-radius:14px;padding:12px;color:#fff;font-size:14px;font-weight:800;font-family:Outfit,sans-serif;cursor:pointer;margin-bottom:10px">✅ Confirmer</button>
-    <button onclick="demanderResetSupport()" style="width:100%;background:transparent;border:2px solid rgba(255,255,255,.2);border-radius:14px;padding:12px;color:#fff;font-size:13px;font-weight:700;font-family:Outfit,sans-serif;cursor:pointer;margin-bottom:10px">📞 Support manuel (si PIN serveur oublié)</button>
+    <button onclick="demanderResetSupport()" style="width:100%;background:#00C853;border:none;border-radius:14px;padding:13px;color:#fff;font-size:14px;font-weight:800;font-family:Outfit,sans-serif;cursor:pointer;margin-bottom:10px" id="rp-btn-sup">📞 Écrire au support</button>
+    <div style="color:rgba(255,255,255,.45);font-size:11.5px;text-align:center;margin-bottom:12px;line-height:1.45" id="rp-note">⚠️ N'écris JAMAIS ton PIN dans un message, à personne.</div>
     <button onclick="fermerResetPin()" style="width:100%;background:transparent;border:2px solid rgba(255,255,255,.2);border-radius:14px;padding:12px;color:rgba(255,255,255,.6);font-size:14px;font-weight:700;font-family:Outfit,sans-serif;cursor:pointer">✕ Annuler</button>
   </div>
 </div>
@@ -927,6 +924,16 @@ body{max-width:min(100%,1200px)}
     <button class="entry-btn" id="btn-new-user" onclick="setModeEntree('new')">🆕 <span id="lbl-new-user">Nouvelle inscription</span></button>
   </div>
   <div id="auth-wrap" style="width:100%">
+    <div id="conn-connu" style="display:none;width:100%;background:rgba(255,255,255,.10);border:1.5px solid rgba(255,255,255,.20);border-radius:14px;padding:11px 14px;margin-bottom:13px;text-align:left">
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="font-size:20px">👋</span>
+        <div style="flex:1;min-width:0">
+          <div id="connu-nm" style="font-size:14px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+          <div id="connu-sub" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.65)"></div>
+        </div>
+      </div>
+      <button type="button" onclick="oublierEntree()" id="connu-chg" style="background:none;border:none;padding:6px 0 0;color:rgba(255,255,255,.75);font-size:11.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline"></button>
+    </div>
     <div class="login-tabs">
       <button class="ltab on" id="lt-p" onclick="swTab(this,'fp')">👑 <span id="lt-patron">Patron</span></button>
       <button class="ltab" id="lt-v" onclick="swTab(this,'fv')">👦 <span id="lt-vendeur">Vendeur</span></button>
@@ -1201,6 +1208,7 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" onclick="ouvrirAjout();goBack()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="st-art">Ajouter un article</div><div class="stisub" id="st-art-s">Nouvel article</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirPrix(null);goBack()"><div class="stico" style="background:#E3F2FD">💰</div><div class="stii"><div class="stitl" id="st-prix">Modifier les prix</div><div class="stisub" id="st-prix-s">Prix achat, vente, bénéfice</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirStk(null);goBack()"><div class="stico" style="background:#E8F5E9">📦</div><div class="stii"><div class="stitl" id="st-stk">Entrée de stock</div><div class="stisub" id="st-stk-s">Ajouter des quantités</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirChangerPin()"><div class="stico" style="background:#FFEBEE">🔐</div><div class="stii"><div class="stitl" id="st-chpin">Changer mon PIN</div><div class="stisub" id="st-chpin-s">Le code qui ouvre ta caisse</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirRanger()"><div class="stico" style="background:#FFF3E0">🧹</div><div class="stii"><div class="stitl" id="st-rng">Ranger ma boutique</div><div class="stisub" id="st-rng-s">Regrouper les articles d'une même famille</div></div><span class="starr">›</span></div>
       </div>
       <div class="sttit">💼 Gestion boutique</div>
@@ -1789,6 +1797,20 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>
 
+  <!-- CHANGER MON PIN -->
+  <div class="ov" id="ov-chpin" onclick="closeOv(event,'ov-chpin')">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">🔐 <span id="cp-tit">Changer mon PIN</span></div><button class="bcl" onclick="closeSheet('ov-chpin')">✕</button></div>
+      <div class="pstps">
+        <div style="background:#FFF8E1;border:1.4px solid #FFD79A;border-radius:10px;padding:10px 12px;font-size:11.5px;font-weight:700;color:#B45309;margin-bottom:13px;line-height:1.5" id="cp-note">Ton PIN ouvre ta caisse et tes bénéfices. Ne le dis à personne, et n'utilise pas ta date de naissance.</div>
+        <div class="pig"><label class="pl" id="cp-l1">PIN actuel</label><input class="pi" type="password" id="cp-actuel" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
+        <div class="pig"><label class="pl" id="cp-l2">Nouveau PIN (4 à 6 chiffres)</label><input class="pi" type="password" id="cp-new" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
+        <div class="pig"><label class="pl" id="cp-l3">Répète le nouveau PIN</label><input class="pi" type="password" id="cp-new2" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
+        <button class="bnxt" onclick="validerChangerPin()"><span id="cp-btn">Changer mon PIN</span></button>
+      </div>
+    </div>
+  </div>
+
   <!-- BILAN DE L'ANNÉE -->
   <div class="ov" id="ov-annee" onclick="closeOv(event,'ov-annee')">
     <div class="bsht"><div class="shndl"></div>
@@ -2349,7 +2371,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.25'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.26'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2642,6 +2664,9 @@ async function syncToSupa(){
         if(_shopPin==null||String(_shopPin).length<4)throw new Error(lang==='fr'?'🔐 Reconnecte-toi avec le PIN équipe':'🔐 Reconnect with the team PIN');
         var rpcSave=await supa.rpc('boutique_ecrire',{p_code:DB.cfg.code,p_pin:String(_shopPin),p_data:payload.data});
         if(!rpcSave.error&&rpcSave.data===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
+        // Serveur temporairement fermé (trop de PIN faux) : les ventes restent
+        // dans le téléphone et repartiront au prochain essai.
+        if(rpcSave.error&&_signalerBlocagePin(rpcSave.error))throw new Error('PIN_BLOQUE');
         throw new Error(lang==='fr'?'❌ Sync vendeur refusée (code ou PIN équipe)':'❌ Seller sync refused (code or team PIN)');
       }
       var byCode=await supa.from('boutiques').select('id,owner_id,code').eq('code',DB.cfg.code).limit(1);
@@ -2684,10 +2709,31 @@ async function loadFromSupa(code,pin){
     var p=(pin!=null?pin:_shopPin);
     if(p==null||String(p).length<4)return null;
     var res=await supa.rpc('boutique_lire',{p_code:code,p_pin:String(p)});
-    if(res.error||!res.data)return null;
+    if(res.error){_signalerBlocagePin(res.error);return null;}
+    if(!res.data)return null;
     if(pin!=null)_shopPin=String(pin); // 1re lecture réussie -> on mémorise le PIN validé
     return res.data;
-  }catch(e){return null;}
+  }catch(e){_signalerBlocagePin(e);return null;}
+}
+// Le serveur compte les PIN ratés et ferme la porte un moment. Il faut le
+// DIRE, sinon le commerçant croit que l'app est cassée et réessaie en boucle.
+var _pinBloqueJusqu=0;
+function _signalerBlocagePin(err){
+  var m=String((err&&(err.message||err.msg))||'');
+  var i=m.indexOf('PIN_BLOQUE:');
+  if(i<0)return false;
+  var sec=parseInt(m.slice(i+11),10)||60;
+  _pinBloqueJusqu=Date.now()+sec*1000;
+  var fr=lang==='fr';
+  var min=Math.ceil(sec/60);
+  showToast('🚫 '+(fr
+    ? 'Trop de PIN faux. Réessaie dans '+(sec<90?(sec+' secondes'):(min+' minutes'))+'.'
+    : 'Too many wrong PINs. Try again in '+(sec<90?(sec+' seconds'):(min+' minutes'))+'.'));
+  return true;
+}
+function attentePinRestante(){
+  var r=Math.ceil((_pinBloqueJusqu-Date.now())/1000);
+  return r>0?r:0;
 }
 function subscribeRealtime(code){
   if(!supa)return;
@@ -2872,6 +2918,60 @@ function navTo(tab,btn){
   if(tab==='stock')renderStock(DB.articles);
 }
 function goSt(){if(role!=='patron'){showToast('⛔ Réservé au patron');return;}screenHist.push('s-settings');construireOngletsParams();majModeParametres();goScreen('s-settings');}
+// ═══════════════════════════════════════════════════════════════════
+// SE SOUVENIR DE QUI ENTRE — sans affaiblir la porte
+// Le patron voulait ne taper qu'UNE chose. La bonne réponse n'est pas de
+// supprimer l'identifiant (il ne resterait qu'un PIN de 4 chiffres, valable
+// pour n'importe quelle boutique = un passe-partout), mais de ne plus avoir
+// à le TAPER : le téléphone s'en souvient et devient le 2e facteur.
+// On ne garde JAMAIS le PIN — seulement l'identifiant, comme un nom d'usager.
+// ═══════════════════════════════════════════════════════════════════
+function memoriserEntree(o){
+  try{
+    if(!o)return;
+    o.q=Date.now();
+    localStorage.setItem('myboutiq_entree',JSON.stringify(o));
+  }catch(e){}
+}
+function lireEntree(){
+  try{return JSON.parse(localStorage.getItem('myboutiq_entree')||'null');}catch(e){return null;}
+}
+function oublierEntree(){
+  try{localStorage.removeItem('myboutiq_entree');}catch(e){}
+  ['p-tel','p-pin','v-code','v-nom','v-pin'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  var b=document.getElementById('conn-connu');if(b)b.style.display='none';
+  var t=document.getElementById('lt-p');if(t)swTab(t,'fp');
+  var p=document.getElementById('p-tel');if(p)p.focus();
+  showToast('↩️ '+(lang==='fr'?'Compte oublié sur ce téléphone':'Account forgotten on this phone'));
+}
+function prefillEntree(){
+  var e=lireEntree();
+  var bandeau=document.getElementById('conn-connu');
+  if(!e||!e.role){if(bandeau)bandeau.style.display='none';return;}
+  var fr=lang==='fr';
+  if(e.role==='vendeur'){
+    var t2=document.getElementById('lt-v');if(t2)swTab(t2,'fv');
+    var c=document.getElementById('v-code');if(c&&e.code)c.value=formatShopCode(e.code);
+    var n=document.getElementById('v-nom');if(n&&e.nom)n.value=e.nom;
+    var vp=document.getElementById('v-pin');if(vp)vp.value='';
+    setTimeout(function(){try{document.getElementById('v-pin').focus();}catch(x){}},350);
+  }else{
+    var t1=document.getElementById('lt-p');if(t1)swTab(t1,'fp');
+    var tel=document.getElementById('p-tel');if(tel&&e.tel)tel.value=e.tel;
+    if(e.ccNum){var cn=document.getElementById('p-cc-num');if(cn)cn.textContent=e.ccNum;}
+    if(e.ccFlag){var cf=document.getElementById('p-cc-flag');if(cf)cf.textContent=e.ccFlag;}
+    var pp=document.getElementById('p-pin');if(pp)pp.value='';
+    setTimeout(function(){try{document.getElementById('p-pin').focus();}catch(x){}},350);
+  }
+  if(bandeau){
+    bandeau.style.display='block';
+    document.getElementById('connu-nm').textContent=
+      (e.role==='vendeur'?(e.nom||''):(fr?'Patron':'Owner'))
+      +(e.boutique?(' · '+e.boutique):'');
+    document.getElementById('connu-sub').textContent=fr?'Il ne reste que ton PIN.':'Only your PIN is left.';
+    document.getElementById('connu-chg').textContent=fr?'Ce n\'est pas toi ? Changer de compte':'Not you? Switch account';
+  }
+}
 function setModeEntree(mode){
   var isNew=mode==='new';
   var bo=document.getElementById('btn-old-user'),bn=document.getElementById('btn-new-user');
@@ -2884,6 +2984,9 @@ function setModeEntree(mode){
   if(!isNew){
     var tp=document.getElementById('lt-p');
     if(tp)swTab(tp,'fp');
+    try{prefillEntree();}catch(e){}
+  }else{
+    var bc=document.getElementById('conn-connu');if(bc)bc.style.display='none';
   }
 }
 function ouvrirInscriptionDepuisLogin(){
@@ -3375,41 +3478,58 @@ function appliquerLang(){
 var role='patron';
 var nomVendeur='';
 var ventAnnulEnCours=null;
-var _rpCode="",_rpPhone="",_rpExp=0;
 function ouvrirResetPin(){
   var ov=document.getElementById('ov-reset-pin');
   if(!ov)return;
   var tel=document.getElementById('p-tel');
   var rt=document.getElementById('rp-tel');
   if(rt&&tel&&tel.value)rt.value=tel.value;
-  ['rp-otp','rp-new-pin'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   ov.style.display='flex';
 }
 function fermerResetPin(){var ov=document.getElementById('ov-reset-pin');if(ov)ov.style.display='none';}
-function envoyerOtpResetPin(){
-  var tel=normalizePhone(document.getElementById('rp-tel').value||'');
-  if(!tel){showToast(lang==='fr'?'⚠️ Entre ton numéro':'⚠️ Enter your phone');return;}
-  _rpCode=String(Math.floor(1000+Math.random()*9000));
-  _rpPhone=tel;
-  _rpExp=Date.now()+5*60*1000;
-  var otpInp=document.getElementById('rp-otp');
-  if(otpInp)otpInp.value=_rpCode;
-  showToast((lang==='fr'?'📩 Code demo PIN : ':'📩 Demo PIN code: ')+_rpCode);
+// ⚠️ RETIRÉ : « PIN oublié » fabriquait le code de vérification DANS LE
+// TÉLÉPHONE, l'écrivait tout seul dans le champ et l'affichait à l'écran —
+// puis changeait le PIN. N'importe qui tenant l'appareil entrait en trois
+// touches. Une porte dérobée déguisée en sécurité vaut moins que rien.
+// Tant qu'il n'y a pas de vrai SMS, la seule voie honnête est le support,
+// qui vérifie que la boutique appartient bien à celui qui demande.
+// Pour CHANGER un PIN qu'on connaît, voir ouvrirChangerPin().
+
+// ── Changer son PIN quand on le connaît (patron connecté) ──
+// Le PIN patron est AUSSI son mot de passe Supabase : il faut donc changer
+// les deux ensemble, sinon la prochaine connexion échoue. On exige donc le
+// réseau — un changement à moitié fait serait pire que pas de changement.
+function ouvrirChangerPin(){
+  if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  ['cp-actuel','cp-new','cp-new2'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('ov-chpin').classList.add('show');
 }
-async function confirmerResetPin(){
-  var otp=(document.getElementById('rp-otp').value||'').trim();
-  var newPin=(document.getElementById('rp-new-pin').value||'').trim();
-  var tel=normalizePhone(document.getElementById('rp-tel').value||'');
-  if(!tel||tel!==_rpPhone){showToast(lang==='fr'?'⚠️ Renvoie le code d\'abord':'⚠️ Send code first');return;}
-  if(Date.now()>_rpExp){showToast(lang==='fr'?'⏱️ Code expiré':'⏱️ Code expired');return;}
-  if(otp!==_rpCode){showToast(lang==='fr'?'❌ Code incorrect':'❌ Wrong code');return;}
-  if(!newPin||newPin.length<4){showToast(lang==='fr'?'⚠️ PIN minimum 4 chiffres':'⚠️ PIN min 4 digits');return;}
-  if(DB&&DB.cfg&&normalizePhone(DB.cfg.tel||'')===tel){
-    DB.cfg.pin=newPin;save();
-    showToast(lang==='fr'?'✅ PIN local mis à jour':'✅ Local PIN updated');
+async function validerChangerPin(){
+  var fr=lang==='fr';
+  var act=(document.getElementById('cp-actuel').value||'').trim();
+  var n1=(document.getElementById('cp-new').value||'').trim();
+  var n2=(document.getElementById('cp-new2').value||'').trim();
+  if(!DB||!DB.cfg)return;
+  if(act!==String(DB.cfg.pin||'')){showToast('❌ '+(fr?'PIN actuel incorrect':'Wrong current PIN'));return;}
+  if(!/^\d{4,6}$/.test(n1)){showToast('⚠️ '+(fr?'Le nouveau PIN doit faire 4 à 6 chiffres':'New PIN must be 4 to 6 digits'));return;}
+  if(n1!==n2){showToast('⚠️ '+(fr?'Les deux nouveaux PIN ne sont pas pareils':'The two new PINs differ'));return;}
+  if(n1===act){showToast('⚠️ '+(fr?'C\'est déjà ton PIN actuel':'That is already your PIN'));return;}
+  if(/^(\d)\1+$/.test(n1)||n1==='1234'||n1==='123456'){
+    if(!confirm(fr?'« '+n1+' » se devine en une seconde. Le garder quand même ?':'“'+n1+'” is trivial to guess. Keep it anyway?'))return;
   }
-  showToast(lang==='fr'?'✅ Vérifié. Si le PIN serveur est oublié, utilisez le support admin pour reset final.':'✅ Verified. If server PIN is forgotten, use admin support for final reset.');
-  fermerResetPin();
+  if(!supa||!navigator.onLine){
+    showToast('📴 '+(fr?'Connecte-toi à internet : le PIN doit changer sur le serveur aussi.':'Go online: the PIN must change on the server too.'));return;
+  }
+  showToast('🔄 '+(fr?'Changement en cours…':'Changing…'));
+  try{
+    var up=await supa.auth.updateUser({password:n1});
+    if(up.error){showToast('❌ '+(up.error.message||(fr?'Changement refusé':'Change refused')));return;}
+  }catch(e){showToast('❌ '+(fr?'Changement refusé':'Change refused'));return;}
+  DB.cfg.pin=n1;_shopPin=n1;
+  journalAjouter('pin',fr?'PIN patron':'Owner PIN','••••','••••');
+  save();
+  closeSheet('ov-chpin');
+  showToast('✅ '+(fr?'PIN changé. Utilise-le à la prochaine connexion.':'PIN changed. Use it next login.'));
 }
 function swTab(btn,fid){document.querySelectorAll('.ltab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.getElementById('fp').style.display=fid==='fp'?'block':'none';document.getElementById('fv').style.display=fid==='fv'?'block':'none';}
 function applyRolePerms(){
@@ -3446,6 +3566,12 @@ function _finishLoginP(){
   try{demarrerSurveillanceTempsReel();}catch(e){}
   syncToSupa(); // S'assurer que les données sont bien dans Supabase
   enregistrerBoutiqueActuelle();
+  // On retient l'identifiant (jamais le PIN) pour ne plus le faire taper.
+  try{memoriserEntree({role:'patron',
+    tel:(document.getElementById('p-tel')||{}).value||DB.cfg.tel||'',
+    ccNum:(document.getElementById('p-cc-num')||{}).textContent||'',
+    ccFlag:(document.getElementById('p-cc-flag')||{}).textContent||'',
+    boutique:DB.cfg.nom||''});}catch(e){}
   lancerApp();
   applyRolePerms();
 }
@@ -3472,7 +3598,17 @@ function altPhoneDigits(tel){
   }catch(e){}
   return out.filter(function(d,i,arr){return d&&d!==digits&&arr.indexOf(d)===i;});
 }
+// Le serveur nous a déjà dit d'attendre : inutile de brûler un essai de plus.
+function _refusePendantBlocage(){
+  var r=attentePinRestante();
+  if(r<=0)return false;
+  var fr=lang==='fr';
+  showToast('🚫 '+(fr?'Attends encore '+(r<90?(r+' secondes'):(Math.ceil(r/60)+' minutes'))+' avant de réessayer.'
+                    :'Wait '+(r<90?(r+' s'):(Math.ceil(r/60)+' min'))+' before retrying.'));
+  return true;
+}
 async function loginP(){
+  if(_refusePendantBlocage())return;
   var brut=document.getElementById('p-tel').value||'';
   var tel=normalizePhone(brut);
   var pin=(document.getElementById('p-pin').value||'').trim();
@@ -3541,6 +3677,7 @@ function assurerPinVendeur(){
   }
 }
 async function loginV(){
+  if(_refusePendantBlocage())return;
   var code=formatShopCode((document.getElementById('v-code').value||'').trim());
   var nm=(document.getElementById('v-nom').value||'').trim();
   if(!code){showToast(t('errCode'));return;}
@@ -3577,6 +3714,8 @@ function _finishLoginV(nm,code){
   showSecPatron(false);var spb=document.getElementById('sec-patron-backup');if(spb)spb.style.display='none';
   registerVendeurEquipe(nm);
   save();
+  try{memoriserEntree({role:'vendeur',code:DB.cfg.code||code,nom:nm,
+    boutique:(DB.cfg&&DB.cfg.nom)||''});}catch(e){}
   subscribeRealtime(DB.cfg.code||code);
   try{demarrerSurveillanceTempsReel();}catch(e){}
   lancerApp();
