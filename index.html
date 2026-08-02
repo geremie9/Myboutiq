@@ -2371,7 +2371,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.26'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.27'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2580,13 +2580,35 @@ async function getAuthUser(){
     return res&&res.data&&res.data.user?res.data.user:null;
   }catch(e){return null;}
 }
-async function loadOwnerBoutiqueFromSupa(){
+// Un même numéro peut posséder PLUSIEURS boutiques. Avant, on rapatriait
+// toujours la dernière modifiée : en créant une 2e boutique, le patron voyait
+// arriver les ventes de la 1re, et sa nouvelle boutique était remplacée.
+// On ne ramène donc que la boutique DEMANDÉE.
+async function loadOwnerBoutiqueFromSupa(codeVoulu){
   var user=await getAuthUser();
   if(!supa||!user)return null;
   try{
-    var res=await supa.from('boutiques').select('data').eq('owner_id',user.id).order('updated_at',{ascending:false}).limit(1);
-    return(!res.error&&res.data&&res.data.length&&res.data[0].data)?res.data[0].data:null;
+    var res=await supa.from('boutiques').select('code,data').eq('owner_id',user.id).order('updated_at',{ascending:false});
+    if(res.error||!res.data||!res.data.length)return null;
+    var rows=res.data;
+    if(codeVoulu){
+      var exact=rows.filter(function(r){return normalizeShopCode(r.code)===normalizeShopCode(codeVoulu);})[0];
+      if(exact)return exact.data||null;
+      // Ce patron a déjà des boutiques, mais pas celle-ci : elle est neuve et
+      // pas encore en ligne. Surtout ne rien rapatrier d'une autre.
+      return null;
+    }
+    return rows[0].data||null;
   }catch(e){return null;}
+}
+// Combien de boutiques ce compte possède-t-il déjà ?
+async function nbBoutiquesDuCompte(){
+  try{
+    var user=await getAuthUser();
+    if(!supa||!user)return 0;
+    var r=await supa.from('boutiques').select('code').eq('owner_id',user.id);
+    return (!r.error&&r.data)?r.data.length:0;
+  }catch(e){return 0;}
 }
 async function signUpOwnerAuth(phone,pin){
   if(!supa||!supa.auth)return {user:null,error:new Error('auth indisponible')};
@@ -2652,12 +2674,11 @@ async function syncToSupa(){
           if(String(updExact.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
           throw updExact.error;
         }
-        if(ownerRows.length){
-          var updOwner=await supa.from('boutiques').update(payload).eq('id',ownerRows[0].id);
-          if(!updOwner.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB();var cv2=document.getElementById('code-val');if(cv2)cv2.textContent=DB.cfg.code;return true;}
-          if(String(updOwner.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
-          throw updOwner.error;
-        }
+        // ⚠️ NE JAMAIS écrire dans une AUTRE boutique du même patron.
+        // Avant, faute de code correspondant, on écrasait sa 1re boutique avec
+        // les données de la 2e — code compris. La 1re disparaissait purement et
+        // simplement. Un même numéro peut posséder plusieurs boutiques : si le
+        // code n'existe pas encore, on en CRÉE une, on n'en écrase aucune.
       }
       if(!user){
         // Vendeur : écriture serveur = code + PIN équipe (vérifié serveur). Le PIN patron ne part jamais.
@@ -3648,7 +3669,7 @@ async function loginP(){
       showToast((authFriendlyError(authRes.error).message)||t('compteIntrouvable'));return;
     }
   }
-  var remoteDB=await loadOwnerBoutiqueFromSupa();
+  var remoteDB=await loadOwnerBoutiqueFromSupa((DB&&DB.cfg&&DB.cfg.code)||'');
   if(remoteDB){
     DB=migrateDBData(mergeDB(remoteDB,DB));
     _suppressSync=true;
@@ -7516,7 +7537,22 @@ function migrateDBData(d){
 }
 loadDB=function(){var d=localStorage.getItem('myboutiq_v6');return d?migrateDBData(JSON.parse(d)):null;};
 var _loadFromSupaBase=loadFromSupa;loadFromSupa=async function(code,pin){var data=await _loadFromSupaBase(code,pin);return data?migrateDBData(data):null;};
-function persistDB(){localStorage.setItem('myboutiq_v6',JSON.stringify(DB));if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){clearTimeout(syncTimeout);syncTimeout=setTimeout(syncToSupa,800);}}
+function persistDB(delaiMs){
+  localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
+  if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){
+    clearTimeout(syncTimeout);
+    syncTimeout=setTimeout(syncToSupa,(delaiMs==null?800:delaiMs));
+  }
+}
+// Une VENTE ne doit pas attendre : c'est l'évènement que l'autre téléphone
+// guette. Les 800 ms de regroupement servent aux retouches en rafale (prix,
+// stock), pas à l'encaissement.
+function sauverEtEnvoyerVite(){
+  DB=migrateDBData(DB);
+  persistDB(0);
+  try{checkNotifications(true);}catch(e){}
+  try{if(typeof updateNotifBadge==='function')updateNotifBadge();}catch(e){}
+}
 save=function(skipNotif){DB=migrateDBData(DB);persistDB();if(!skipNotif)checkNotifications(true);if(typeof updateNotifBadge==='function')updateNotifBadge();};
 // S2 : marquer l'heure de la dernière sauvegarde RÉUSSIE (sans relancer de sync)
 var _syncToSupaBase=syncToSupa;
@@ -7560,7 +7596,7 @@ subscribeRealtime=function(code){
       if(formatShopCode(row.code)!==code)return;
       if(!DB||!DB.cfg||normalizeShopCode(row.code)!==normalizeShopCode(DB.cfg.code))return;
       clearTimeout(_rtRefetchTimer);
-      _rtRefetchTimer=setTimeout(function(){_rtRefetch(code);},400); // petit debounce anti-rafale
+      _rtRefetchTimer=setTimeout(function(){_rtRefetch(code);},150); // anti-rafale, mais court
     })
     .subscribe();
 };
@@ -7748,7 +7784,7 @@ encaisser=function(){
   }
   var vendeur=role==='vendeur'?(nomVendeur||'Vendeur'):(DB.cfg.nom.split(' ')[0]||'Patron');
   DB.ventes.push({id:genVenteId(),total:total,totalBrut:totalBrut,benefice:ben,ben:ben,lignes:lignes,h:h,heure:h,date:dateFr,vendeur:vendeur,clientId:clientId,clientNom:clientNm,pointsGagnes:ptsGagnes,pointsUtilises:ptsUtilises,reductionPoints:remisePoints,remise:remiseVente||0,paiement:paiement,annulee:false});
-  save();dernierRecu={boutique:DB.cfg.nom,lignes:lignes.map(function(l){var _p=DB.articles.find(function(x){return x.id==l.pid;});var _u=(_p&&estMesure(_p)&&!l.vid)?(' '+uniteArt(_p)):'';return {nm:l.nm+' ×'+fmtQ(l.qte)+_u,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:remiseVente||0,client:clientNm};
+  sauverEtEnvoyerVite();dernierRecu={boutique:DB.cfg.nom,lignes:lignes.map(function(l){var _p=DB.articles.find(function(x){return x.id==l.pid;});var _u=(_p&&estMesure(_p)&&!l.vid)?(' '+uniteArt(_p)):'';return {nm:l.nm+' ×'+fmtQ(l.qte)+_u,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:remiseVente||0,client:clientNm};
   panier={};remisePoints=0;remiseVente=0;clientVente=null;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
   renderProd(DB.articles);renderStock(DB.articles);renderClients();renderDashboard();recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
   document.getElementById('succ-amt').textContent=fmt(total);
