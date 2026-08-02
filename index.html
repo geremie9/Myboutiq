@@ -1189,6 +1189,7 @@ body{max-width:min(100%,1200px)}
       <div class="sttit">📊 Analyses</div>
       <div class="stcd">
         <div class="stit2" onclick="navTo('dash');goBack()"><div class="stico" style="background:#E3F2FD">📊</div><div class="stii"><div class="stitl">Tableau de bord</div><div class="stisub">KPI du jour, heures de pointe, vendeurs</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirAnnee()"><div class="stico" style="background:#EDE7F6">📅</div><div class="stii"><div class="stitl" id="st-annee">Mon année</div><div class="stisub" id="st-annee-s">Chiffre d'affaires et bénéfice, mois par mois</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirHistory()"><div class="stico" style="background:#FFF3E0">📋</div><div class="stii"><div class="stitl">Historique des ventes</div><div class="stisub">Filtres, export Excel, annulations</div></div><span class="starr">›</span></div>
       </div>
       <div class="sttit">🛍️ Catalogue</div>
@@ -1784,6 +1785,21 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>
 
+  <!-- BILAN DE L'ANNÉE -->
+  <div class="ov" id="ov-annee" onclick="closeOv(event,'ov-annee')">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">📅 <span id="an-tit">Mon année</span></div><button class="bcl" onclick="closeSheet('ov-annee')">✕</button></div>
+      <div class="pstps">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <button class="bwa" onclick="changerAnnee(-1)" id="an-prev" style="width:42px;height:42px;font-size:17px">‹</button>
+          <div style="text-align:center"><div id="an-label" style="font-size:23px;font-weight:900;color:var(--T);line-height:1">2026</div><div id="an-sous" style="font-size:10.5px;font-weight:700;color:var(--M);margin-top:2px"></div></div>
+          <button class="bwa" onclick="changerAnnee(1)" id="an-next" style="width:42px;height:42px;font-size:17px">›</button>
+        </div>
+        <div id="an-corps"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- PROPOSITION DE REGROUPEMENT (à la création d'un article) -->
   <div class="ov" id="ov-regroup" onclick="closeOv(event,'ov-regroup')">
     <div class="bsht"><div class="shndl"></div>
@@ -2329,7 +2345,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.23'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.24'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4955,6 +4971,137 @@ function rapprochementFamille(a,b){
   if(comm.length>=2)return {ok:true,fam:comm.join(' '),conf:'haute'};
   if(A[0]!==B[0])return {ok:false};
   return {ok:true,fam:comm[0],conf:_MOTS_LARGES.indexOf(comm[0])>=0?'basse':'moyenne'};
+}
+// ═══════════════════════════════════════════════════════════════════
+// BILAN DE L'ANNÉE
+// Deux sources qui ne se recouvrent JAMAIS : les ventes encore détaillées
+// (DB.ventes) et le résumé mensuel des ventes archivées (DB.arch.resume).
+// L'archivage RETIRE de DB.ventes exactement ce qu'il met dans le résumé,
+// donc on additionne sans jamais compter deux fois — y compris quand un
+// mois est à moitié archivé.
+// ═══════════════════════════════════════════════════════════════════
+function donneesAnnee(an){
+  var mois=[],i;
+  for(i=0;i<12;i++)mois.push({ca:0,ben:0,nb:0,arch:false});
+  var inconnu=0;
+  (DB.ventes||[]).forEach(function(v){
+    if(!v||v.annulee)return;
+    var d=getSaleDateObj(v);
+    if(!d||isNaN(d)||d.getFullYear()!==an)return;
+    var m=mois[d.getMonth()];
+    m.ca+=Number(v.total)||0;m.ben+=getSaleBenef(v);m.nb++;
+    inconnu+=getSaleCAInconnu(v);
+  });
+  ((DB.arch&&DB.arch.resume)||[]).forEach(function(r){
+    if(!r||!r.mois)return;
+    var p=String(r.mois).split('-');
+    if(parseInt(p[0],10)!==an)return;
+    var k=parseInt(p[1],10)-1;
+    if(!(k>=0&&k<12))return;
+    mois[k].ca+=Number(r.ca)||0;mois[k].ben+=Number(r.ben)||0;mois[k].nb+=Number(r.nb)||0;mois[k].arch=true;
+  });
+  var tot={ca:0,ben:0,nb:0,arch:0};
+  mois.forEach(function(m){tot.ca+=m.ca;tot.ben+=m.ben;tot.nb+=m.nb;if(m.arch)tot.arch++;});
+  return {mois:mois,tot:tot,inconnu:inconnu};
+}
+function anneesConnues(){
+  var s={},now=new Date().getFullYear();
+  (DB.ventes||[]).forEach(function(v){
+    if(!v||v.annulee)return;
+    var d=getSaleDateObj(v);
+    if(d&&!isNaN(d))s[d.getFullYear()]=1;
+  });
+  ((DB.arch&&DB.arch.resume)||[]).forEach(function(r){
+    if(r&&r.mois)s[parseInt(String(r.mois).split('-')[0],10)]=1;
+  });
+  s[now]=1;
+  return Object.keys(s).map(Number).filter(function(x){return x>2000&&x<3000;}).sort();
+}
+var _anCour=null;
+function ouvrirAnnee(){
+  if(!(role==='patron'||hasPerm('rapports'))){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  _anCour=new Date().getFullYear();
+  renderAnnee();
+  document.getElementById('ov-annee').classList.add('show');
+}
+function changerAnnee(d){
+  var dispo=anneesConnues(),i=dispo.indexOf(_anCour);
+  if(i<0)i=dispo.length-1;
+  var j=i+d;
+  if(j<0||j>=dispo.length)return;
+  _anCour=dispo[j];renderAnnee();
+}
+function renderAnnee(){
+  var fr=lang==='fr',an=_anCour||new Date().getFullYear();
+  var D=donneesAnnee(an),P=donneesAnnee(an-1);
+  var noms=fr?['Janv','Févr','Mars','Avr','Mai','Juin','Juil','Août','Sept','Oct','Nov','Déc']
+             :['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var dispo=anneesConnues();
+  document.getElementById('an-label').textContent=an;
+  var pv=document.getElementById('an-prev'),nx=document.getElementById('an-next');
+  pv.style.opacity=dispo.indexOf(an)>0?'1':'.25';
+  nx.style.opacity=dispo.indexOf(an)<dispo.length-1?'1':'.25';
+  document.getElementById('an-sous').textContent=D.tot.nb
+    ? (D.tot.nb+' '+(fr?'vente':'sale')+(D.tot.nb>1?'s':''))
+    : (fr?'aucune vente':'no sales');
+  var c=document.getElementById('an-corps');
+  if(!D.tot.nb){
+    c.innerHTML='<div class="dash-empty" style="padding:26px 12px;text-align:center">'
+      +(fr?'Rien enregistré pour cette année.':'Nothing recorded for this year.')+'</div>';
+    return;
+  }
+  var mx=Math.max.apply(null,D.mois.map(function(m){return m.ca;}))||1;
+  var moisAvecVentes=D.mois.filter(function(m){return m.nb>0;});
+  var best=-1,worst=-1;
+  D.mois.forEach(function(m,i){
+    if(m.nb<=0)return;
+    if(best<0||m.ca>D.mois[best].ca)best=i;
+    if(worst<0||m.ca<D.mois[worst].ca)worst=i;
+  });
+  var evo=P.tot.ca>0?Math.round((D.tot.ca-P.tot.ca)/P.tot.ca*100):null;
+  var panier=D.tot.nb?Math.round(D.tot.ca/D.tot.nb):0;
+  var marge=D.tot.ca>0?Math.round(D.tot.ben/D.tot.ca*100):0;
+  var h='';
+  // ── Les 3 chiffres qui comptent
+  h+='<div style="background:linear-gradient(135deg,#2E1A6E,#4A3399);border-radius:15px;padding:16px 18px;color:#fff;margin-bottom:12px">'
+    +'<div style="font-size:11px;font-weight:800;opacity:.75;letter-spacing:.5px">'+(fr?'CHIFFRE D\'AFFAIRES DE L\'ANNÉE':'REVENUE THIS YEAR')+'</div>'
+    +'<div style="font-size:29px;font-weight:900;line-height:1.15;margin:3px 0 2px">'+fmt(D.tot.ca)+'</div>'
+    +(evo!==null?('<div style="font-size:12px;font-weight:800;color:'+(evo>=0?'#7EE787':'#FF9B9B')+'">'+(evo>=0?'▲ +':'▼ ')+evo+'% '+(fr?'par rapport à ':'vs ')+(an-1)+'</div>'):'')
+    +'</div>';
+  h+='<div style="display:flex;gap:9px;margin-bottom:14px">'
+    +'<div style="flex:1;background:var(--BG);border-radius:11px;padding:11px 12px"><div style="font-size:10px;font-weight:800;color:var(--M)">'+(fr?'BÉNÉFICE':'PROFIT')+'</div><div style="font-size:16px;font-weight:900;color:var(--G)">'+fmt(D.tot.ben)+'</div><div style="font-size:10px;font-weight:700;color:var(--M)">'+(fr?'marge ':'margin ')+marge+'%</div></div>'
+    +'<div style="flex:1;background:var(--BG);border-radius:11px;padding:11px 12px"><div style="font-size:10px;font-weight:800;color:var(--M)">'+(fr?'PANIER MOYEN':'AVG BASKET')+'</div><div style="font-size:16px;font-weight:900;color:var(--T)">'+fmt(panier)+'</div><div style="font-size:10px;font-weight:700;color:var(--M)">'+D.tot.nb+' '+(fr?'vente':'sale')+(D.tot.nb>1?'s':'')+'</div></div>'
+    +'</div>';
+  // ── Honnêteté : ce qu'on ne sait pas
+  if(D.inconnu>0){
+    h+='<div style="background:#FFF3E0;border:1.4px solid #FFD79A;border-radius:10px;padding:9px 12px;font-size:11px;font-weight:700;color:#B45309;margin-bottom:13px">⚠️ '
+      +fmt(D.inconnu)+' '+(fr?'de ventes sans prix d\'achat : leur bénéfice est inconnu et n\'est PAS compté ci-dessus.':'sold without a cost price: their profit is unknown and NOT counted above.')+'</div>';
+  }
+  // ── Les 12 mois
+  h+='<div class="sth2" style="margin-bottom:9px">'+(fr?'Mois par mois':'Month by month')+'</div>';
+  h+=D.mois.map(function(m,i){
+    var w=Math.round(m.ca/mx*100);
+    var coul=i===best?'var(--G)':i===worst&&moisAvecVentes.length>1?'var(--O)':'var(--B)';
+    return '<div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">'
+      +'<span style="width:38px;font-size:11px;font-weight:800;color:'+(m.nb?'var(--T)':'#C9C4DE')+';flex-shrink:0">'+noms[i]+'</span>'
+      +'<span style="flex:1;height:19px;background:#F0EEF8;border-radius:5px;overflow:hidden;min-width:0"><span style="display:block;height:100%;width:'+w+'%;background:'+coul+';border-radius:5px"></span></span>'
+      +'<span style="width:76px;text-align:right;font-size:11px;font-weight:800;color:'+(m.nb?'var(--T)':'#C9C4DE')+';flex-shrink:0">'+(m.nb?fmt(m.ca):'—')+'</span>'
+      +'</div>';
+  }).join('');
+  // ── Meilleur / pire
+  if(best>=0&&moisAvecVentes.length>1){
+    h+='<div style="display:flex;gap:9px;margin-top:13px">'
+      +'<div style="flex:1;background:#E8F5E9;border-radius:11px;padding:10px 12px"><div style="font-size:10px;font-weight:800;color:#1B5E20">🏆 '+(fr?'MEILLEUR MOIS':'BEST MONTH')+'</div><div style="font-size:14px;font-weight:900;color:#1B5E20">'+noms[best]+'</div><div style="font-size:11px;font-weight:800;color:#1B5E20">'+fmt(D.mois[best].ca)+'</div></div>'
+      +'<div style="flex:1;background:#FFF3E0;border-radius:11px;padding:10px 12px"><div style="font-size:10px;font-weight:800;color:#B45309">📉 '+(fr?'MOIS LE PLUS FAIBLE':'WEAKEST MONTH')+'</div><div style="font-size:14px;font-weight:900;color:#B45309">'+noms[worst]+'</div><div style="font-size:11px;font-weight:800;color:#B45309">'+fmt(D.mois[worst].ca)+'</div></div>'
+      +'</div>';
+  }
+  // ── D'où viennent ces chiffres
+  if(D.tot.arch>0){
+    h+='<div style="margin-top:14px;font-size:10.5px;font-weight:600;color:var(--M);line-height:1.5">📚 '
+      +(fr?D.tot.arch+' mois de cette année viennent du résumé d\'archivage (le détail vente par vente a été rangé pour alléger l\'app). Les totaux restent exacts.'
+          :D.tot.arch+' months come from the archive summary. Totals stay exact.')+'</div>';
+  }
+  c.innerHTML=h;
 }
 // ── Regrouper : on renomme la cible du nom de la famille, sinon la famille
 //    s'appellerait « Savon Azur » et personne n'y retrouverait le Savon Lux.
