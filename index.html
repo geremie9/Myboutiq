@@ -334,6 +334,10 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 /* ── MODULE PRIX ── */
 .pstps{padding:14px 19px}.pst{display:none}.pst.on{display:block}
 .sth{font-size:14px;font-weight:800;color:var(--T);margin-bottom:13px}
+/* Les styles de #conn-bar sont en ligne : sans !important la pastille
+   garderait la largeur du bandeau et continuerait de couvrir la vente. */
+#conn-bar.mini{right:auto!important;left:12px!important;max-width:none!important;width:auto!important;margin:0!important;padding:9px 12px!important;font-size:18px!important;border-radius:24px!important;bottom:100px!important}
+#conn-bar.mini #conn-txt{display:none}
 .sth2{font-size:13.5px;font-weight:800;color:var(--T);margin-bottom:11px;padding-left:9px;border-left:3.5px solid var(--B);line-height:1.2}
 .agrd{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:16px}
 .abtn{background:var(--BG);border:2.5px solid var(--BD);border-radius:14px;padding:13px 7px;text-align:center;cursor:pointer;transition:all .2s;font-family:'Outfit',sans-serif}
@@ -979,7 +983,7 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>
   <div class="syncb hide" id="syncb">⏳ <span id="sync-msg">En attente réseau...</span></div>
-  <div id="conn-bar" onclick="assurerConnexionSupa()" style="display:none;position:fixed;left:12px;right:12px;bottom:96px;max-width:430px;margin:0 auto;background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:12px;padding:10px 13px;font-size:11.5px;font-weight:800;color:#B45309;z-index:70;align-items:center;justify-content:center;text-align:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.12)"></div>
+  <div id="conn-bar" onclick="toucherBandeauConnexion()" style="display:none;position:fixed;left:12px;right:12px;bottom:96px;max-width:430px;margin:0 auto;background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:12px;padding:10px 13px;font-size:11.5px;font-weight:800;color:#B45309;z-index:70;align-items:center;justify-content:center;gap:7px;text-align:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.12);transition:all .25s"><span id="conn-ico">⚠️</span><span id="conn-txt"></span></div>
   <div id="update-banner" style="display:none;position:fixed;left:12px;right:12px;top:12px;max-width:440px;margin:0 auto;background:linear-gradient(135deg,#4A6CF7,#7C4DFF);color:#fff;border-radius:14px;padding:11px 14px;align-items:center;gap:11px;z-index:200;box-shadow:0 6px 22px rgba(0,0,0,.28)">
     <span style="font-size:20px">🔄</span>
     <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800" id="upd-t">Nouvelle version disponible</div><div style="font-size:11px;font-weight:600;opacity:.85" id="upd-s">Touche pour charger les dernières améliorations</div></div>
@@ -2345,7 +2349,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.24'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.25'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2479,14 +2483,33 @@ function assurerConnexionSupa(){
   return true;
 }
 // Bandeau visible : sans lui, on croit que tout va bien alors que rien ne part.
+// Le bandeau prévient, puis il s'efface. Il ne doit PAS camper par-dessus
+// l'écran de vente toute la journée : il se réduit en pastille au bout de
+// 6 secondes, et ne reprend sa taille que si l'état CHANGE vraiment.
+var _connTimer=null,_connEtat=null;
 function majEtatConnexion(){
   var b=document.getElementById('conn-bar');if(!b)return;
+  var ico=document.getElementById('conn-ico'),txt=document.getElementById('conn-txt');
   var connecte=!!supa&&navigator.onLine;
-  if(connecte){b.style.display='none';return;}
+  var etat=connecte?'ok':(navigator.onLine?'srv':'off');
+  if(connecte){b.style.display='none';b.classList.remove('mini');clearTimeout(_connTimer);_connEtat=etat;return;}
+  var change=(etat!==_connEtat);_connEtat=etat;
   b.style.display='flex';
-  b.textContent=navigator.onLine
-    ? '⚠️ '+(lang==='fr'?'Pas de liaison avec le serveur — toucher pour réessayer':'No server link — tap to retry')
-    : '📴 '+(lang==='fr'?'Hors ligne — tes ventes sont gardées ici. Toucher pour réessayer.':'Offline — sales saved locally. Tap to retry.');
+  if(ico)ico.textContent=navigator.onLine?'⚠️':'📴';
+  if(txt)txt.textContent=navigator.onLine
+    ? (lang==='fr'?'Pas de liaison avec le serveur — toucher pour réessayer':'No server link — tap to retry')
+    : (lang==='fr'?'Hors ligne — tes ventes sont gardées ici. Toucher pour réessayer.':'Offline — sales saved locally. Tap to retry.');
+  if(change)reduireBandeauPlusTard(b);
+}
+function reduireBandeauPlusTard(b){
+  b.classList.remove('mini');
+  clearTimeout(_connTimer);
+  _connTimer=setTimeout(function(){b.classList.add('mini');},6000);
+}
+function toucherBandeauConnexion(){
+  var b=document.getElementById('conn-bar');
+  if(b&&b.classList.contains('mini')){reduireBandeauPlusTard(b);}
+  try{assurerConnexionSupa();}catch(e){}
 }
 function isInvalidCredError(err){
   var msg=String(err&&err.message||'').toLowerCase();
@@ -4196,6 +4219,13 @@ function mettreDansFamille(artId,cibleId){
     _artVersVariante(t,t);
     t.px=0;t.pa=0;t.stk=0;t.stk0=0;
   }
+  // La MESURE appartient au produit, pas à la variante : le riz se vend au
+  // kilo que ce soit du parfumé ou de l'ordinaire. Si la cible ne la connaît
+  // pas, elle la prend chez l'article qui arrive — sinon regrouper deux riz
+  // faisait perdre « au kilo » ET « sac de 25 kg », et la fiche repassait
+  // en « à la pièce » sans prévenir.
+  if(!t.um&&a.um)t.um=a.um;
+  if(!(t.umSac>0)&&a.umSac>0)t.umSac=a.umSac;
   _artVersVariante(t,a);
   journalAjouter('famille',a.nm,(lang==='fr'?'article seul':'own item'),(lang==='fr'?'variante de ':'variant of ')+t.nm);
   // L'ancien article disparaît PARTOUT (tombstone pour que la fusion multi-téléphones ne le ressuscite pas)
@@ -4903,8 +4933,16 @@ function motsArticle(nm){
 }
 // Mots qui portent le SENS : on retire les formats (60, cl, kg…), qui ne
 // distinguent pas deux produits mais deux conditionnements.
+// ⚠️ Mis en cache : sans ça, « Ranger ma boutique » recalculait les mêmes
+// découpages des millions de fois et figeait le téléphone (voir _MF_CACHE).
+var _MF_CACHE={};
 function motsForts(nm){
-  return motsArticle(nm).filter(function(m){return !_FORMAT.test(m);});
+  var k=String(nm||'');
+  var v=_MF_CACHE[k];
+  if(v)return v;
+  v=motsArticle(k).filter(function(m){return !_FORMAT.test(m);});
+  _MF_CACHE[k]=v;
+  return v;
 }
 // Même produit écrit deux fois ? Les mots du nom le plus court doivent TOUS
 // être dans le plus long, ET le court doit porter un mot distinctif.
@@ -4940,7 +4978,7 @@ function articleDoublon(nm,saufId){
 // À quelle famille du catalogue ce nom appartient-il ? C'est CE test qui
 // évite le piège « eau de javel / eau minérale » : le catalogue les range
 // dans deux familles différentes, donc on refusera de les rapprocher.
-var _famCatCache=null;
+var _famCatCache=null,_famVu={};
 function familleCatalogueDe(nm){
   if(!_famCatCache){
     _famCatCache={};
@@ -4948,15 +4986,21 @@ function familleCatalogueDe(nm){
   }
   var n=txtNorm(nm);
   if(_famCatCache[n])return _famCatCache[n];
+  // Réponse déjà calculée pour ce nom ? « Ranger ma boutique » compare chaque
+  // article à tous les autres : sans ce cache, on rebalayait les 361 lignes
+  // du catalogue des milliers de fois (1,8 million de balayages à 80 articles).
+  if(_famVu.hasOwnProperty(n))return _famVu[n];
   var M=motsForts(nm),best=null;
-  if(!M.length)return null;
-  catalogueIndex().forEach(function(e){
-    if(!e.fam)return;
-    var E=motsForts(e.plein);
-    if(!E.length)return;
-    if(E.every(function(m){return M.indexOf(m)>=0;})&&(!best||E.length>best.n))best={f:e.fam,n:E.length};
-  });
-  return best?best.f:null;
+  if(M.length){
+    catalogueIndex().forEach(function(e){
+      if(!e.fam)return;
+      var E=motsForts(e.plein);
+      if(!E.length)return;
+      if(E.every(function(m){return M.indexOf(m)>=0;})&&(!best||E.length>best.n))best={f:e.fam,n:E.length};
+    });
+  }
+  _famVu[n]=best?best.f:null;
+  return _famVu[n];
 }
 // Ces deux noms méritent-ils une même famille ? conf = confiance.
 //   haute  : le catalogue le dit, ou 2 mots communs → coché d'avance
@@ -5118,7 +5162,26 @@ function regrouperDans(cible,membres,fam){
     journalAjouter('famille',cible.nm,cible.nm,_majuscule(fam));
     cible.nm=_majuscule(fam);
   }
+  // Dernier filet : si AUCUN des articles ne portait la mesure, le catalogue
+  // la connaît (le riz se vend au kilo, en sac de 25).
+  if(n&&fam){
+    var m=mesureCatalogue(fam);
+    if(m){
+      if(!cible.um&&m.um&&m.um!=='pc')cible.um=m.um;
+      if(!(cible.umSac>0)&&m.sac>0)cible.umSac=m.sac;
+    }
+  }
   return n;
+}
+// Mesure et conditionnement que le catalogue connaît pour cette famille.
+function mesureCatalogue(fam){
+  var f=txtNorm(fam||''),r=null;
+  if(!f)return null;
+  catalogueIndex().some(function(e){
+    if(e.fam&&txtNorm(e.fam)===f){r={um:e.um,sac:e.sac||0};return true;}
+    return false;
+  });
+  return r;
 }
 // ── Candidats de famille pour UN article (au moment de sa création) ──
 // On ne retient que la HAUTE confiance : le catalogue l'affirme, ou les deux
