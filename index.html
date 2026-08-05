@@ -2371,7 +2371,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.29'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.30'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2603,8 +2603,13 @@ async function loadOwnerBoutiqueFromSupa(codeVoulu){
     if(codeVoulu){
       var exact=rows.filter(function(r){return normalizeShopCode(r.code)===normalizeShopCode(codeVoulu);})[0];
       if(exact)return exact.data||null;
-      // Ce patron a déjà des boutiques, mais pas celle-ci : elle est neuve et
-      // pas encore en ligne. Surtout ne rien rapatrier d'une autre.
+      // Pas de correspondance. S'il n'a qu'UNE seule boutique, aucun doute
+      // possible : c'est celle-là (téléphone neuf, ou reste d'une autre
+      // boutique dans la mémoire locale). Le refuser l'enfermerait dehors.
+      if(rows.length===1)return rows[0].data||null;
+      // Plusieurs boutiques et aucune ne correspond : on ne DEVINE pas, on ne
+      // rapatrie surtout pas les ventes d'une autre. Il faudra lui demander
+      // laquelle il veut ouvrir.
       return null;
     }
     return rows[0].data||null;
@@ -3571,6 +3576,21 @@ function applyRolePerms(){
   var bas=document.getElementById('btn-add-stk');if(bas)bas.style.display=showStk?'flex':'none';
   var bd=document.getElementById('btn-dep');if(bd)bd.style.display=showExp?'flex':'none';
   var cb=document.getElementById('card-ben');if(cb)cb.style.display=showBen?'':'none';
+  // Remises et clients/crédits : les interrupteurs existaient dans « Mon équipe »
+  // mais n'étaient branchés sur RIEN. On cache maintenant ce qui est interdit.
+  var showRem=(role==='patron'||hasPerm('remises'));
+  var br=document.getElementById('btn-rem-toggle');
+  if(br)br.style.display=showRem?'':'none';
+  if(!showRem){
+    var rw=document.getElementById('rem-wrap');if(rw)rw.style.display='none';
+    remiseVente=0;
+  }
+  // Clients & crédits : sans ce droit, un vendeur ne doit pas pouvoir engager
+  // l'argent du patron en vendant à crédit.
+  var showCli=(role==='patron'||hasPerm('clients'));
+  var lb=document.getElementById('loyalty-btn');if(lb)lb.style.display=showCli?'':'none';
+  var pc=document.getElementById('pmv-credit');if(pc)pc.style.display=showCli?'':'none';
+  if(!showCli&&pmntModeVente==='credit'){try{selPmntVente('especes');}catch(e){}}
   renderProd(DB.articles);
 }
 function registerVendeurEquipe(nm){
@@ -4506,6 +4526,11 @@ function procederPmt(){
 }
 var pmntModeVente='especes',splitVenteOn=false,splitModeVente='orange',remiseVente=0;
 function selPmntVente(mode){
+  // Barrière côté action : cacher le bouton « Crédit » ne suffit pas.
+  if(mode==='credit'&&!(role==='patron'||hasPerm('clients'))){
+    showToast('🔒 '+(lang==='fr'?'Ton patron ne t\'a pas autorisé la vente à crédit':'Credit sales not allowed for you'));
+    return;
+  }
   pmntModeVente=mode;
   ['especes','orange','mtn','moov','credit'].forEach(function(m){var el=document.getElementById('pmv-'+m);if(el)el.classList.toggle('on',m===mode);});
   splitVenteOn=false;document.getElementById('split-wrap').style.display='none';
@@ -4539,7 +4564,17 @@ function calcCreditVente(){
   if(el)el.textContent=(lang==='fr'?'Restera dû : ':'Will owe: ')+fmt(Math.max(0,total-av));
 }
 // ── Remise encadrée : enregistrée dans la vente, bénéfice recalculé ──
+// ⚠️ Une permission qui n'est vérifiée NULLE PART est un mensonge : le patron
+// coupe l'interrupteur « Appliquer des remises » et croit son argent protégé.
+// On barre donc l'action elle-même, pas seulement le bouton — cacher un bouton
+// n'empêche personne d'appeler la fonction.
+function _peutRemise(){return role==='patron'||hasPerm('remises');}
+function _refusPerm(quoi){
+  showToast('🔒 '+(lang==='fr'?'Ton patron ne t\'a pas autorisé à '+quoi:'Your manager did not allow you to '+quoi));
+  return false;
+}
 function toggleRemiseVente(){
+  if(!_peutRemise())return _refusPerm(lang==='fr'?'faire des remises':'give discounts');
   var w=document.getElementById('rem-wrap');if(!w)return;
   var on=w.style.display==='none';
   w.style.display=on?'block':'none';
@@ -4549,7 +4584,11 @@ function toggleRemiseVente(){
 }
 function calcRemiseVente(){
   var brut=calcTotalBrut()-remisePoints;
-  remiseVente=Math.min(Math.max(0,brut),Math.max(0,parseFloat((document.getElementById('rem-inp')||{}).value)||0));
+  // Deuxième barrière : même si le champ est atteint autrement, la remise
+  // d'un vendeur non autorisé vaut zéro.
+  remiseVente=_peutRemise()
+    ? Math.min(Math.max(0,brut),Math.max(0,parseFloat((document.getElementById('rem-inp')||{}).value)||0))
+    : 0;
   var total=calcTotal(),ben=calcBenTotal();
   var t1=document.getElementById('calc-tot');if(t1)t1.textContent=fmt(total);
   var t2=document.getElementById('calc-tot-mobile');if(t2)t2.textContent=fmt(total);
