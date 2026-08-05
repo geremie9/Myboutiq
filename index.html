@@ -1226,6 +1226,7 @@ body{max-width:min(100%,1200px)}
       </div>
       <div class="sttit">🏬 Multi-boutiques & Support</div>
       <div class="stcd">
+        <div class="stit2" onclick="changerDeBoutique()"><div class="stico" style="background:#EDE7F6">🔀</div><div class="stii"><div class="stitl" id="st-chgb">Changer de boutique</div><div class="stisub" id="st-chgb-s">Passer à une autre de tes boutiques</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirMesBoutiques()"><div class="stico" style="background:#FFF3E0">🏬</div><div class="stii"><div class="stitl">Mes boutiques</div><div class="stisub">Gérer plusieurs boutiques</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="contacterSupport()"><div class="stico" style="background:#E8F5E9">📞</div><div class="stii"><div class="stitl">Contacter le support</div><div class="stisub">Assistance via WhatsApp</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirParrainage()"><div class="stico" style="background:#EDE7F6">🤝</div><div class="stii"><div class="stitl">Programme parrainage</div><div class="stisub">Inviter une boutique et gagner des bonus</div></div><span class="starr">›</span></div>
@@ -1794,6 +1795,17 @@ body{max-width:min(100%,1200px)}
         <div style="font-size:11px;font-weight:700;color:var(--M);margin-bottom:9px" id="catalog-cnt">Recherche...</div>
         <div id="catalog-grid" style="max-height:52vh;overflow-y:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"></div>
         <button class="bnxt" style="margin-top:9px" onclick="importerSelectionCatalogue()" id="btn-catalog-import">⬇️ <span id="lbl-catalog-import">Importer la sélection</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHOIX DE LA BOUTIQUE À L'ENTRÉE -->
+  <div class="ov" id="ov-choixb">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">🏬 <span id="cb-tit">Quelle boutique ?</span></div></div>
+      <div class="pstps">
+        <div id="cb-sous" style="font-size:12px;font-weight:700;color:var(--M);margin-bottom:13px;line-height:1.5"></div>
+        <div id="cb-lst" style="max-height:56vh;overflow-y:auto"></div>
       </div>
     </div>
   </div>
@@ -2385,7 +2397,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.31'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.32'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3713,23 +3725,105 @@ async function loginP(){
       showToast((authFriendlyError(authRes.error).message)||t('compteIntrouvable'));return;
     }
   }
-  var remoteDB=await loadOwnerBoutiqueFromSupa((DB&&DB.cfg&&DB.cfg.code)||'');
+  // ═══ Un numéro peut posséder PLUSIEURS boutiques ═══
+  // L'app devinait laquelle ouvrir (la dernière modifiée). Un ordinateur ne
+  // doit pas deviner de quelle caisse on parle : il demande.
+  var mes=await listerBoutiquesDuCompte();
+  if(mes.length>1){
+    // Celle qu'il ouvre d'habitude sur ce téléphone : on n'impose pas un écran
+    // de plus à quelqu'un qui revient toujours au même endroit.
+    var pref=((lireEntree()||{}).code)||((DB&&DB.cfg&&DB.cfg.code)||'');
+    var vue=mes.filter(function(b){return normalizeShopCode(b.code)===normalizeShopCode(pref);})[0];
+    if(vue){_terminerLoginPatron(vue.data,tel,email);return;}
+    ouvrirChoixBoutique(mes,tel,email);
+    return;
+  }
+  var remoteDB=(mes.length===1)?mes[0].data:await loadOwnerBoutiqueFromSupa((DB&&DB.cfg&&DB.cfg.code)||'');
+  if(remoteDB){
+    _terminerLoginPatron(remoteDB,tel,email);
+    return;
+  }
+  if(DB&&normalizePhone(DB.cfg.tel||'')===tel){
+    DB.cfg.tel=tel;
+    await syncToSupa();
+  }else{
+    showToast(t('boutiqueIntrouvable'));return;
+  }
+  _terminerLoginPatron(null,tel,email);
+}
+// Fin de connexion patron, partagée par tous les chemins (une seule boutique,
+// boutique choisie dans la liste, ou reprise des données locales).
+function _terminerLoginPatron(remoteDB,tel,email){
   if(remoteDB){
     DB=migrateDBData(mergeDB(remoteDB,DB));
     _suppressSync=true;
     localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
     _suppressSync=false;
-  }else if(DB&&normalizePhone(DB.cfg.tel||'')===tel){
-    DB.cfg.tel=tel;
-    await syncToSupa();
-  }else{
-    showToast(t('boutiqueIntrouvable'));return;
   }
   if(DB&&DB.cfg){DB.cfg.tel=tel;DB.cfg.ownerEmail=email;}
   _shopPin=DB&&DB.cfg?String(DB.cfg.pin||''):null; // le patron parle au serveur avec SON pin
   assurerPinVendeur();
   save(true);
   _finishLoginP();
+}
+// ── Écran de choix : on montre des faits, jamais un chiffre deviné ──
+var _cbListe=[],_cbTel='',_cbEmail='';
+function ouvrirChoixBoutique(liste,tel,email){
+  _cbListe=liste;_cbTel=tel;_cbEmail=email;
+  var fr=lang==='fr';
+  document.getElementById('cb-tit').textContent=fr?'Quelle boutique ?':'Which shop?';
+  document.getElementById('cb-sous').textContent=fr
+    ?'Ce numéro possède '+liste.length+' boutiques. Choisis celle que tu ouvres maintenant — tu pourras changer à tout moment.'
+    :'This number owns '+liste.length+' shops. Pick the one to open now.';
+  document.getElementById('cb-lst').innerHTML=liste.map(function(b,i){
+    var d=b.data||{},cfg=d.cfg||{};
+    var nbA=(d.articles||[]).length,nbV=(d.ventes||[]).length;
+    return '<button type="button" onclick="choisirBoutiqueEntree('+i+')" style="display:flex;width:100%;text-align:left;align-items:center;gap:11px;background:var(--BG);border:1.6px solid var(--BD);border-radius:13px;padding:13px;margin-bottom:9px;cursor:pointer;font-family:Outfit,sans-serif">'
+      +'<span style="font-size:26px">🏬</span>'
+      +'<span style="flex:1;min-width:0">'
+      +'<span style="display:block;font-size:14.5px;font-weight:800;color:var(--T);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(cfg.nom||b.nom||'—')+'</span>'
+      +'<span style="display:block;font-size:11px;font-weight:700;color:var(--M);margin-top:2px">'+formatShopCode(b.code)+'</span>'
+      +'<span style="display:block;font-size:11px;font-weight:600;color:var(--M);margin-top:2px">'+nbA+' '+(fr?'articles':'items')+' · '+nbV+' '+(fr?'ventes gardées':'sales kept')+' · '+(fr?'active ':'active ')+_ilYA(b.updated_at?new Date(b.updated_at).getTime():0)+'</span>'
+      +'</span><span style="font-size:19px;color:var(--B)">›</span></button>';
+  }).join('');
+  document.getElementById('ov-choixb').classList.add('show');
+}
+function choisirBoutiqueEntree(i){
+  var b=_cbListe[i];if(!b)return;
+  closeSheet('ov-choixb');
+  // Cette boutique remplace ce qu'il y avait sur le téléphone : fusionner
+  // avec les restes d'une AUTRE boutique mélangerait deux caisses.
+  DB=null;
+  try{localStorage.removeItem('myboutiq_v6');}catch(e){}
+  _terminerLoginPatron(b.data,_cbTel,_cbEmail);
+  try{memoriserEntree({role:'patron',tel:_cbTel,code:b.code,
+    ccNum:(document.getElementById('p-cc-num')||{}).textContent||'',
+    ccFlag:(document.getElementById('p-cc-flag')||{}).textContent||'',
+    boutique:(b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||''});}catch(e){}
+  showToast('🏬 '+((b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||''));
+}
+// Changer de boutique sans se déconnecter : il a déjà prouvé qu'il est le
+// patron en entrant son PIN, on ne le lui redemande pas pour SES boutiques.
+async function changerDeBoutique(){
+  if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  if(!supa||!navigator.onLine){showToast('📴 '+(lang==='fr'?'Connecte-toi à internet pour voir tes boutiques':'Go online to list your shops'));return;}
+  showToast('🔄 '+(lang==='fr'?'Recherche de tes boutiques…':'Looking up your shops…'));
+  var mes=await listerBoutiquesDuCompte();
+  if(mes.length<2){showToast('🏬 '+(lang==='fr'?'Tu n\'as qu\'une seule boutique':'You only have one shop'));return;}
+  await syncToSupa().catch(function(){});   // ne rien perdre de la boutique en cours
+  ouvrirChoixBoutique(mes,(DB&&DB.cfg&&DB.cfg.tel)||'',(DB&&DB.cfg&&DB.cfg.ownerEmail)||'');
+}
+// Toutes les boutiques de ce compte. Les droits serveur (sel_owner) ne
+// laissent voir que les siennes.
+async function listerBoutiquesDuCompte(){
+  try{
+    var user=await getAuthUser();
+    if(!supa||!user||!navigator.onLine)return [];
+    var r=await supa.from('boutiques').select('code,nom,updated_at,data')
+            .eq('owner_id',user.id).eq('actif',true).order('updated_at',{ascending:false});
+    if(r.error||!r.data)return [];
+    return r.data.filter(function(b){return b&&b.code&&b.data;});
+  }catch(e){return [];}
 }
 // Code équipe = 2e facteur pour les vendeurs. Créé une fois, à dire de VIVE VOIX
 // (jamais dans le lien WhatsApp, sinon le lien transféré rouvrirait la porte).
