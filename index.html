@@ -2371,7 +2371,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.28'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.29'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2459,7 +2459,16 @@ function _applyRemoteDB(data,silent){
   DB=migrateDBData(mergeDB(data,DB));
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
   _suppressSync=false;
-  renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();renderDashboard();renderNotifPanel();recalcTotaux();updateNotifBadge();updateClientVenteUI();updateObjBar();
+  // ⚠️ TOUT ce que la connexion redessine doit AUSSI être redessiné quand des
+  // données arrivent du serveur. Il manquait l'équipe : un vendeur pouvait se
+  // connecter, arriver dans DB.equipe du patron… et rester invisible à l'écran
+  // tant que le patron ne quittait pas la page. Idem pour les listes d'articles
+  // des fiches Prix/Stock et les fournisseurs.
+  renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();
+  try{renderEquipe();}catch(e){}
+  try{renderAgpx();renderAgstk();}catch(e){}
+  try{renderFourn();}catch(e){}
+  renderDashboard();renderNotifPanel();recalcTotaux();updateNotifBadge();updateClientVenteUI();updateObjBar();
   var codeEl=document.getElementById('code-val');if(codeEl)codeEl.textContent=DB.cfg.code;
   var hdr=document.getElementById('bn-hdr');if(hdr)hdr.textContent=DB.cfg.nom||'Ma Boutique';
   if(role==='vendeur'){var un=document.getElementById('u-nm');if(un)un.textContent=nomVendeur||'Vendeur';}
