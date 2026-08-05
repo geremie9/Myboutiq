@@ -1266,6 +1266,7 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" onclick="document.getElementById('inp-restore-backup').click()"><div class="stico" style="background:#FFEBEE">♻️</div><div class="stii"><div class="stitl">Restaurer une sauvegarde</div><div class="stisub">Remplace toutes les données actuelles</div></div><span class="starr">›</span></div>
         <input type="file" id="inp-restore-backup" accept="application/json" style="display:none" onchange="restaurerSauvegarde(this.files[0])">
         <div class="stit2" id="row-savestate" onclick="montrerEtatSauvegarde()"><div class="stico" id="savestate-ico" style="background:#E8F5E9">☁️</div><div class="stii"><div class="stitl" id="savestate-tit">Sauvegarde en ligne</div><div class="stisub" id="savestate-sub">—</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirLiaison()"><div class="stico" style="background:#E3F2FD">📡</div><div class="stii"><div class="stitl" id="st-liaison">État de la liaison</div><div class="stisub" id="st-liaison-s">Voir si les ventes circulent entre les téléphones</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirJournal()"><div class="stico" style="background:#F3E5F5">📋</div><div class="stii"><div class="stitl">Journal des modifications</div><div class="stisub">Prix, stock, suppressions — qui &amp; quand</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirArchivage()"><div class="stico" style="background:#E1F5FE">🧹</div><div class="stii"><div class="stitl">Alléger l'application</div><div class="stisub" id="st-archive-s">Garde l'app rapide pour des années</div></div><span class="starr">›</span></div>
       </div>
@@ -1793,6 +1794,19 @@ body{max-width:min(100%,1200px)}
         <div style="font-size:11px;font-weight:700;color:var(--M);margin-bottom:9px" id="catalog-cnt">Recherche...</div>
         <div id="catalog-grid" style="max-height:52vh;overflow-y:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"></div>
         <button class="bnxt" style="margin-top:9px" onclick="importerSelectionCatalogue()" id="btn-catalog-import">⬇️ <span id="lbl-catalog-import">Importer la sélection</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÉTAT DE LA LIAISON -->
+  <div class="ov" id="ov-liaison" onclick="closeOv(event,'ov-liaison')">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">📡 <span id="li-tit">État de la liaison</span></div><button class="bcl" onclick="fermerLiaison()">✕</button></div>
+      <div class="pstps">
+        <div id="li-resume" style="border-radius:13px;padding:13px 15px;font-size:13.5px;font-weight:800;margin-bottom:13px;line-height:1.45"></div>
+        <div id="li-lst"></div>
+        <button class="bnxt" style="margin-top:13px" onclick="assurerConnexionSupa();reconnecterTempsReel(true);majLiaison();"><span id="li-btn">Réessayer maintenant</span></button>
+        <div style="font-size:10.5px;font-weight:600;color:var(--M);margin-top:11px;line-height:1.5" id="li-aide">Si une ligne est rouge, envoie cet écran au support : il dit exactement où ça bloque.</div>
       </div>
     </div>
   </div>
@@ -2371,7 +2385,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.30'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.31'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2455,6 +2469,7 @@ function _venteEnCours(){
   return(succ&&succ.classList.contains('show'))||(ovCalc&&ovCalc.classList.contains('show'))||(ovRecu&&ovRecu.classList.contains('show'))||Object.keys(panier||{}).length>0;
 }
 function _applyRemoteDB(data,silent){
+  _rtDerniereMaj=Date.now();
   _suppressSync=true;
   DB=migrateDBData(mergeDB(data,DB));
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
@@ -7623,10 +7638,14 @@ syncToSupa=async function(){
 // "la boutique X a changé à telle heure". On re-télécharge alors les données
 // via boutique_lire (code + PIN de session). Personne d'autre ne peut écouter utile.
 var _rtRefetchTimer=null;
+// Points de mesure — ils ne servent qu'à l'écran « État de la liaison »,
+// pour cesser de deviner quand un commerçant dit « ça ne bouge pas ».
+var _rtDernierSignal=0,_rtDernierEssai=0,_rtDerniereMaj=0,_rtDernierRefus=0;
 async function _rtRefetch(code){
   if(!DB||!DB.cfg||normalizeShopCode(code)!==normalizeShopCode(DB.cfg.code))return;
+  _rtDernierEssai=Date.now();
   var fresh=await loadFromSupa(code,_shopPin);
-  if(!fresh)return;
+  if(!fresh){_rtDernierRefus=Date.now();return;}
   // Écho de notre propre écriture (même appareil) : déjà appliqué localement
   if(fresh.cfg&&fresh.cfg._dev&&fresh.cfg._dev===_deviceId)return;
   if(_venteEnCours()){
@@ -7649,6 +7668,7 @@ subscribeRealtime=function(code){
       var row=payload.new||payload.old;if(!row||!row.code)return;
       if(formatShopCode(row.code)!==code)return;
       if(!DB||!DB.cfg||normalizeShopCode(row.code)!==normalizeShopCode(DB.cfg.code))return;
+      _rtDernierSignal=Date.now();
       clearTimeout(_rtRefetchTimer);
       _rtRefetchTimer=setTimeout(function(){_rtRefetch(code);},150); // anti-rafale, mais court
     })
@@ -7667,6 +7687,82 @@ function reconnecterTempsReel(forcerAbonnement){
   if(forcerAbonnement){try{subscribeRealtime(code);}catch(e){}}
   _rtRefetch(code); // on ne fait pas confiance au canal : on redemande les données
 }
+// ═══════════════════════════════════════════════════════════════════
+// ÉTAT DE LA LIAISON — dire, en français, où ça bloque.
+// Trois échanges ont été perdus à supposer pourquoi « ça ne bouge pas ».
+// Le commerçant lit cet écran, et on sait.
+// ═══════════════════════════════════════════════════════════════════
+var _liTimer=null;
+function _ilYA(ts){
+  if(!ts)return lang==='fr'?'jamais':'never';
+  var s=Math.round((Date.now()-ts)/1000);
+  if(s<60)return (lang==='fr'?'il y a ':'')+s+' s'+(lang==='fr'?'':' ago');
+  var m=Math.round(s/60);
+  if(m<60)return (lang==='fr'?'il y a ':'')+m+' min'+(lang==='fr'?'':' ago');
+  return (lang==='fr'?'il y a ':'')+Math.round(m/60)+' h'+(lang==='fr'?'':' ago');
+}
+// ok : true = va bien, false = bloque, null = en cours, 'info' = simple rappel
+// (une ligne d'information ne doit pas porter une pastille d'alerte)
+function _liLigne(ok,titre,detail){
+  var c=ok===true?'#1B5E20':(ok===false?'#C62828':(ok==='info'?'var(--T)':'#B45309'));
+  var b=ok===true?'#E8F5E9':(ok===false?'#FFEBEE':(ok==='info'?'var(--BG)':'#FFF8E1'));
+  var p=ok===true?'🟢':(ok===false?'🔴':(ok==='info'?'🏪':'🟠'));
+  return '<div style="display:flex;gap:10px;align-items:flex-start;background:'+b+';border-radius:10px;padding:10px 12px;margin-bottom:7px">'
+    +'<span style="font-size:13px;line-height:1.3">'+p+'</span><span style="flex:1;min-width:0">'
+    +'<span style="display:block;font-size:13px;font-weight:800;color:'+c+'">'+titre+'</span>'
+    +'<span style="display:block;font-size:11.5px;font-weight:600;color:var(--M);margin-top:1px">'+detail+'</span></span></div>';
+}
+function majLiaison(){
+  var box=document.getElementById('li-lst');if(!box)return;
+  var fr=lang==='fr';
+  var enLigne=navigator.onLine, lie=!!supa&&enLigne;
+  var canal=(typeof realtimeChan!=='undefined'&&realtimeChan)?realtimeChan.state:null;
+  var canalOk=(canal==='joined');
+  var pinOk=(_shopPin!=null&&String(_shopPin).length>=4);
+  var surv=!!_rtTimerFond;
+  var majRecente=_rtDerniereMaj&&(Date.now()-_rtDerniereMaj<120000);
+  var h='';
+  h+=_liLigne(enLigne?(lie?true:false):null,
+      fr?'Internet et serveur':'Internet & server',
+      enLigne?(lie?(fr?'Connecté au serveur MyBoutiQ':'Connected'):(fr?'Internet marche, mais le serveur ne répond pas':'Online but server unreachable'))
+             :(fr?'Ce téléphone est hors ligne — tes ventes sont gardées ici':'Offline — sales kept on this phone'));
+  h+=_liLigne(pinOk,
+      fr?'Clé de ta boutique':'Shop key',
+      pinOk?(fr?'Présente — le téléphone peut lire les nouvelles ventes':'Present')
+           :(fr?'MANQUANTE — c\'est pour ça que rien n\'arrive. Déconnecte-toi et reconnecte-toi.':'MISSING — log out and back in'));
+  h+=_liLigne(canalOk?true:(canal?null:false),
+      fr?'Écoute des ventes':'Live listening',
+      canalOk?(fr?'Active — les ventes des autres arrivent toutes seules':'Active')
+             :(canal?(fr?'En cours d\'ouverture ('+canal+')':'Connecting ('+canal+')')
+                    :(fr?'ARRÊTÉE — aucune vente ne peut arriver toute seule':'STOPPED')));
+  h+=_liLigne(surv,
+      fr?'Vérification automatique':'Automatic check',
+      surv?(fr?'Toutes les 20 secondes, même si l\'écoute tombe':'Every 20 s')
+          :(fr?'ARRÊTÉE — il faut se reconnecter pour voir du nouveau':'STOPPED'));
+  h+=_liLigne(majRecente?true:(_rtDerniereMaj?null:false),
+      fr?'Dernière nouvelle reçue':'Last update received',
+      _ilYA(_rtDerniereMaj)+(_rtDernierRefus>_rtDerniereMaj?(fr?' · dernier essai refusé par le serveur':' · last try refused'):''));
+  h+=_liLigne('info',
+      fr?'Cette boutique':'This shop',
+      ((DB&&DB.cfg&&DB.cfg.nom)||'—')+' · '+((DB&&DB.cfg&&DB.cfg.code)||'—')+' · '
+      +(role==='patron'?(fr?'patron':'owner'):(fr?'vendeur '+(nomVendeur||''):'seller')));
+  box.innerHTML=h;
+  var r=document.getElementById('li-resume');
+  var toutVa=lie&&pinOk&&canalOk&&surv;
+  if(toutVa){r.style.background='#E8F5E9';r.style.color='#1B5E20';
+    r.textContent='✅ '+(fr?'Tout circule. Une vente faite ailleurs arrive ici en 1 à 2 secondes.':'All good.');}
+  else if(!enLigne){r.style.background='#FFF8E1';r.style.color='#B45309';
+    r.textContent='📴 '+(fr?'Hors ligne. Tu peux continuer à vendre : tout repartira au retour du réseau.':'Offline — sales are kept here.');}
+  else{r.style.background='#FFEBEE';r.style.color='#C62828';
+    r.textContent='⚠️ '+(fr?'Les ventes des autres téléphones n\'arrivent pas. Regarde la ligne rouge ci-dessous.':'Updates are not arriving. See the red line below.');}
+}
+function ouvrirLiaison(){
+  majLiaison();
+  clearInterval(_liTimer);
+  _liTimer=setInterval(majLiaison,1000);
+  document.getElementById('ov-liaison').classList.add('show');
+}
+function fermerLiaison(){clearInterval(_liTimer);_liTimer=null;closeSheet('ov-liaison');}
 function demarrerSurveillanceTempsReel(){
   clearInterval(_rtTimerFond);
   _rtTimerFond=setInterval(function(){
