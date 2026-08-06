@@ -2426,7 +2426,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.34'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.35'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3058,6 +3058,12 @@ function entreeRapidePossible(){
   var e=lireEntree();
   return !!(e&&e.role==='patron'&&e.tel&&e.boutiques&&e.boutiques.length);
 }
+// Le PIN d'abord, les boutiques ensuite. Le PIN n'appartient pas à UNE
+// boutique : c'est la clé du COMPTE, la même pour toutes. Le demander après
+// avoir choisi la boutique n'avait aucun sens. Et une fois le compte ouvert,
+// on peut demander la liste au SERVEUR — une boutique créée sur un autre
+// téléphone apparaît donc tout de suite.
+var _erBoutiques=null;
 function majEntreeRapide(){
   var pan=document.getElementById('entree-rapide');
   var tabs=document.getElementById('login-tabs');
@@ -3066,91 +3072,128 @@ function majEntreeRapide(){
   if(!pan)return false;
   if(!entreeRapidePossible()){pan.style.display='none';return false;}
   var e=lireEntree(),fr=lang==='fr';
+  _erBoutiques=null;_erCible=null;
   pan.style.display='block';
   if(tabs)tabs.style.display='none';
   if(fp)fp.style.display='none';
   if(fv)fv.style.display='none';
   if(banniere)banniere.style.display='none';
   document.getElementById('er-bonjour').textContent=fr?'Bonjour 👋':'Hello 👋';
-  document.getElementById('er-sous').textContent=e.boutiques.length>1
-    ?(fr?'Touche la boutique que tu ouvres.':'Tap the shop you are opening.')
-    :(fr?'Ta boutique t\'attend.':'Your shop is waiting.');
+  document.getElementById('er-sous').textContent=fr?'Entre ton PIN pour ouvrir tes boutiques.':'Enter your PIN to open your shops.';
   document.getElementById('er-chg').textContent=fr?'Ce n\'est pas toi ? Changer de compte':'Not you? Switch account';
-  document.getElementById('er-lst').innerHTML=e.boutiques.map(function(b,i){
-    return '<button type="button" onclick="choisirBoutiqueRapide('+i+')" style="display:flex;width:100%;align-items:center;gap:11px;background:rgba(255,255,255,.10);border:1.5px solid rgba(255,255,255,.20);border-radius:14px;padding:13px;margin-bottom:8px;cursor:pointer;font-family:Outfit,sans-serif;text-align:left">'
-      +'<span style="font-size:24px">🏬</span>'
-      +'<span style="flex:1;min-width:0;font-size:14.5px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(b.nom||b.code)+'</span>'
-      +'<span style="font-size:18px;color:rgba(255,255,255,.5)">›</span></button>';
-  }).join('');
-  document.getElementById('er-pin-wrap').style.display='none';
-  document.getElementById('er-lst').style.display='block';
-  return true;
-}
-function choisirBoutiqueRapide(i){
-  var e=lireEntree();if(!e||!e.boutiques)return;
-  var b=e.boutiques[i];if(!b)return;
-  _erCible=b;
-  var fr=lang==='fr';
-  document.getElementById('er-lst').style.display=(e.boutiques.length>1)?'none':'block';
+  // Étape 1 : le PIN, rien d'autre.
+  document.getElementById('er-lst').style.display='none';
+  document.getElementById('er-lst').innerHTML='';
   document.getElementById('er-pin-wrap').style.display='block';
-  document.getElementById('er-cible').innerHTML='🏬 <span style="font-weight:800">'+(b.nom||b.code)+'</span>';
-  document.getElementById('er-retour').textContent=fr?'Choisir une autre boutique':'Pick another shop';
-  document.getElementById('er-btn').textContent=fr?'Entrer':'Enter';
+  document.getElementById('er-cible').innerHTML='';
+  document.getElementById('er-cible').style.display='none';
+  document.getElementById('er-btn').textContent=fr?'Ouvrir':'Open';
+  var ret=document.getElementById('er-retour');if(ret)ret.parentNode.style.display='none';
   var bio=document.getElementById('er-bio');
   if(bio)bio.style.display=(window.PublicKeyCredential&&e.bio)?'block':'none';
   var p=document.getElementById('er-pin');p.value='';
-  document.getElementById('er-retour').parentNode.style.display='block';
-  if(e.boutiques.length<2){var r=document.getElementById('er-retour');if(r&&r.parentNode)r.style.display='none';}
   setTimeout(function(){try{p.focus();}catch(x){}},250);
+  return true;
+}
+// Étape 2 : les boutiques, une fois le compte ouvert.
+function afficherBoutiquesDeverrouillees(liste){
+  var fr=lang==='fr';
+  _erBoutiques=liste;
+  document.getElementById('er-sous').textContent=liste.length>1
+    ?(fr?'Touche la boutique que tu ouvres.':'Tap the shop you are opening.')
+    :(fr?'Ta boutique t\'attend.':'Your shop is waiting.');
+  document.getElementById('er-pin-wrap').style.display='none';
+  var l=document.getElementById('er-lst');
+  l.style.display='block';
+  l.innerHTML=liste.map(function(b,i){
+    var nom=(b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||b.code;
+    var d=b.data||{},nbA=(d.articles||[]).length;
+    return '<button type="button" onclick="ouvrirBoutiqueDeverrouillee('+i+')" style="display:flex;width:100%;align-items:center;gap:11px;background:rgba(255,255,255,.10);border:1.5px solid rgba(255,255,255,.20);border-radius:14px;padding:13px;margin-bottom:8px;cursor:pointer;font-family:Outfit,sans-serif;text-align:left">'
+      +'<span style="font-size:24px">🏬</span>'
+      +'<span style="flex:1;min-width:0">'
+      +'<span style="display:block;font-size:14.5px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+nom+'</span>'
+      +'<span style="display:block;font-size:10.5px;font-weight:600;color:rgba(255,255,255,.55);margin-top:1px">'+formatShopCode(b.code)+' · '+nbA+' '+(fr?'articles':'items')+'</span>'
+      +'</span><span style="font-size:18px;color:rgba(255,255,255,.5)">›</span></button>';
+  }).join('');
+}
+function ouvrirBoutiqueDeverrouillee(i){
+  var b=_erBoutiques&&_erBoutiques[i];if(!b)return;
+  var e=lireEntree()||{};
+  // On efface l'ancienne boutique du téléphone : garder les restes d'une
+  // autre caisse mélangerait deux comptabilités.
+  DB=null;try{localStorage.removeItem('myboutiq_v6');}catch(x){}
+  _terminerLoginPatron(b.data,e.tel||'',e.email||'');
+  try{memoriserEntree({role:'patron',tel:e.tel||'',code:b.code,
+    boutique:(b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||''});}catch(x){}
+  showToast('🏬 '+((b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||''));
 }
 function retourListeBoutiques(){
-  _erCible=null;
-  document.getElementById('er-pin-wrap').style.display='none';
-  document.getElementById('er-lst').style.display='block';
+  if(_erBoutiques&&_erBoutiques.length)afficherBoutiquesDeverrouillees(_erBoutiques);
+  else majEntreeRapide();
 }
+// Le PIN ouvre le COMPTE. Ensuite seulement on montre les boutiques.
 async function validerEntreeRapide(){
   var fr=lang==='fr';
   if(_refusePendantBlocage())return;
   var e=lireEntree();
-  if(!e||!_erCible){majEntreeRapide();return;}
+  if(!e||!e.tel){majEntreeRapide();return;}
   var pin=(document.getElementById('er-pin').value||'').trim();
   if(pin.length<4){showToast('🔐 '+(fr?'Entre ton PIN':'Enter your PIN'));return;}
-  // Le numéro mémorisé redevient l'identité : on se connecte exactement
-  // comme avant, sans le faire retaper.
-  document.getElementById('p-tel').value=e.tel||'';
-  document.getElementById('p-pin').value=pin;
-  if(e.ccNum){var cn=document.getElementById('p-cc-num');if(cn)cn.textContent=e.ccNum;}
-  if(e.ccFlag){var cf=document.getElementById('p-cc-flag');if(cf)cf.textContent=e.ccFlag;}
-  // La boutique choisie devient celle qu'on ouvre (loginP la préfère).
-  var maj=lireEntree()||{};maj.code=_erCible.code;memoriserEntree(maj);
-  showToast('🔐 '+(fr?'Connexion…':'Signing in…'));
-  await loginP();
-  document.getElementById('p-pin').value='';
+  document.getElementById('er-pin').value='';
+  // Hors réseau : on vérifie le PIN contre la boutique déjà sur le téléphone.
+  // On ne peut ouvrir que celle-là, et on le dit.
+  assurerConnexionSupa();
+  if(!supa||!supa.auth||!navigator.onLine){
+    if(DB&&DB.cfg&&String(DB.cfg.pin||'')===pin){
+      _shopPin=pin;_finishLoginP();
+      showToast('📴 '+(fr?'Hors ligne — seule '+(DB.cfg.nom||'ta boutique')+' est disponible':'Offline — only this shop is available'));
+    }else showToast('📴 '+(fr?'Pas de réseau, et ce PIN ne correspond pas à la boutique gardée ici':'No network, and this PIN does not match the shop stored here'));
+    return;
+  }
+  showToast('🔐 '+(fr?'Vérification…':'Checking…'));
+  var email=authEmailFromPhone(e.tel);
+  var res=await supa.auth.signInWithPassword({email:email,password:pin});
+  if(res.error){
+    var alts=altPhoneDigits(e.tel);
+    for(var i=0;i<alts.length&&res.error;i++){
+      var r2=await supa.auth.signInWithPassword({email:'owner-'+alts[i]+'@myboutiq.app',password:pin});
+      if(!r2.error){res=r2;email='owner-'+alts[i]+'@myboutiq.app';}
+    }
+  }
+  if(res.error){showToast('❌ '+(fr?'PIN incorrect':'Wrong PIN'));return;}
+  try{memoriserEntree({role:'patron',tel:e.tel,email:email});}catch(x){}
+  var mes=await listerBoutiquesDuCompte();
+  if(!mes.length){
+    // Compte reconnu mais aucune boutique en ligne : on reprend celle du
+    // téléphone plutôt que de le laisser dehors.
+    if(DB&&DB.cfg&&DB.cfg.code){_shopPin=String(DB.cfg.pin||pin);_finishLoginP();return;}
+    showToast(t('boutiqueIntrouvable'));return;
+  }
+  afficherBoutiquesDeverrouillees(mes);
 }
 // L'empreinte ne remplace pas le PIN : elle déverrouille l'appareil quand la
 // session serveur est encore valide. Si elle ne l'est plus, le PIN reste
 // nécessaire — sinon on ouvrirait une boutique sans rien prouver au serveur.
 async function entreeEmpreinte(){
   var fr=lang==='fr';
-  if(!window.PublicKeyCredential||!_erCible){showToast('⛔ '+(fr?'Empreinte indisponible':'Biometrics unavailable'));return;}
+  if(!window.PublicKeyCredential){showToast('⛔ '+(fr?'Empreinte indisponible':'Biometrics unavailable'));return;}
   try{
     var ch=crypto.getRandomValues(new Uint8Array(32));
     var ok=await navigator.credentials.get({publicKey:{challenge:ch,userVerification:'required',timeout:60000}});
     if(!ok)throw new Error('refus');
   }catch(x){showToast('⛔ '+(fr?'Empreinte non reconnue':'Not recognised'));return;}
-  if(!assurerConnexionSupa()||!supa||!supa.auth){showToast('📴 '+(fr?'Entre ton PIN (pas de réseau)':'Enter your PIN (offline)'));return;}
+  // L'empreinte remplace la SAISIE du PIN, pas la preuve donnée au serveur.
+  // Sans session valide, elle ne peut rien ouvrir : on le dit franchement.
+  assurerConnexionSupa();
+  if(!supa||!supa.auth||!navigator.onLine){showToast('📴 '+(fr?'Entre ton PIN (pas de réseau)':'Enter your PIN (offline)'));return;}
   var ses=null;
   try{ses=await supa.auth.getSession();}catch(x){}
   if(!ses||!ses.data||!ses.data.session){
     showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));return;
   }
-  var e=lireEntree()||{};e.code=_erCible.code;memoriserEntree(e);
   var mes=await listerBoutiquesDuCompte();
-  var b=mes.filter(function(x){return normalizeShopCode(x.code)===normalizeShopCode(_erCible.code);})[0];
-  if(!b){showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));return;}
-  DB=null;try{localStorage.removeItem('myboutiq_v6');}catch(x){}
-  _terminerLoginPatron(b.data,e.tel||'',e.email||'');
-  showToast('👆 '+(b.data&&b.data.cfg&&b.data.cfg.nom||''));
+  if(!mes.length){showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));return;}
+  afficherBoutiquesDeverrouillees(mes);
 }
 function prefillEntree(){
   if(majEntreeRapide())return;
