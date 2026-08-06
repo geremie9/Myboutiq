@@ -2438,7 +2438,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.36'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.37'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2934,11 +2934,14 @@ function installerIconesNav(){
 // INIT & SPLASH
 // ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',function(){
-  initSupa();
-  try{console.log('MyBoutiQ build '+APP_BUILD);var _ab=document.getElementById('app-build');if(_ab)_ab.textContent='Version '+APP_BUILD;}catch(e){}
+  // ═══ Ouverture INSTANTANÉE pour qui est déjà connu ═══
+  // Le commerçant ouvre son app des dizaines de fois par jour. L'écran de
+  // démarrage n'a de sens que la première fois : quand l'appareil sait déjà
+  // qui entre, on va droit au PIN, sans une seconde d'attente.
+  var _connu=false;
+  try{_connu=!!localStorage.getItem('myboutiq_entree')||!!localStorage.getItem('myboutiq_v6');}catch(e){}
   try{initPaysLogin();}catch(e){}
-  try{installerIconesNav();}catch(e){}
-  // Arrivée depuis un lien d'invitation (/join/12345) : on pré-remplit le code vendeur
+  // Le code d'invitation doit être lu AVANT le démarrage, il décide de l'écran.
   try{
     var _c=new URLSearchParams(location.search).get('code');
     if(_c){
@@ -2950,7 +2953,17 @@ document.addEventListener('DOMContentLoaded',function(){
       history.replaceState(null,'',location.pathname); // URL propre
     }
   }catch(e){}
-  setTimeout(function(){
+  if(_connu){try{_demarrerApp();}catch(e){}}
+  // Le reste (connexion serveur, icônes, version) se fait APRÈS l'affichage :
+  // rien de tout cela n'est nécessaire pour taper son PIN.
+  initSupa();
+  try{console.log('MyBoutiQ build '+APP_BUILD);var _ab=document.getElementById('app-build');if(_ab)_ab.textContent='Version '+APP_BUILD;}catch(e){}
+  try{installerIconesNav();}catch(e){}
+  if(!_connu)setTimeout(_demarrerApp,1150);
+});
+var _demarre=false;
+function _demarrerApp(){
+    if(_demarre)return; _demarre=true;
     DB=loadDB();
     // Le pays de la boutique chargée est prioritaire sur la détection automatique
     if(DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.cc){obPays=DB.cfg.pays;try{majChipPays();}catch(e){}}
@@ -2981,8 +2994,7 @@ document.addEventListener('DOMContentLoaded',function(){
       renderSecGrid('sec-grid','boutique');
       goScreen('s-landing');
     }
-  },1150); // écran de démarrage : juste le temps de lire le logo (avant : 2200 ms d'attente inutile)
-});
+}
 // Invitation reçue : onglet Vendeur, code pré-rempli, curseur sur le prénom
 function ouvrirInvitationVendeur(){
   var tv=document.getElementById('lt-v'); if(tv)swTab(tv,'fv');
@@ -3104,7 +3116,9 @@ function majEntreeRapide(){
   var bio=document.getElementById('er-bio');
   if(bio)bio.style.display=(window.PublicKeyCredential&&e.bio)?'block':'none';
   var p=document.getElementById('er-pin');p.value='';
-  setTimeout(function(){try{p.focus();}catch(x){}},250);
+  // Le clavier doit être là tout de suite : il tape son PIN, il vend.
+  try{p.focus();}catch(x){}
+  setTimeout(function(){try{p.focus();}catch(x){}},60);
   return true;
 }
 // Étape 2 : les boutiques, une fois le compte ouvert.
