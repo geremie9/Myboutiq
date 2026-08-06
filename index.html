@@ -302,6 +302,10 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
    article. Le − / + obligeait à viser un bouton de 38 px pendant qu'un
    client attend ; ici toute la tuile est la cible. ── */
 .vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
+/* Panneau des variantes, glissé juste sous la carte touchée */
+.vinline{grid-column:1/-1;background:#fff;border:2px solid var(--B);border-radius:16px;padding:11px;margin:2px 0 4px;box-shadow:0 6px 18px rgba(0,0,0,.10);animation:vinOuvre .16s ease-out}
+.vinline-t{font-size:12.5px;font-weight:800;color:var(--T);margin-bottom:9px}
+@keyframes vinOuvre{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .vtile{position:relative;background:var(--BG);border:2px solid var(--BD);border-radius:15px;padding:11px 9px 9px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-family:'Outfit',sans-serif;text-align:center;transition:transform .08s,border-color .15s;-webkit-tap-highlight-color:transparent;user-select:none}
 .vtile:active{transform:scale(.95)}
 .vtile.hq{border-color:var(--G);background:#F0FFF8}
@@ -1192,6 +1196,15 @@ body{max-width:min(100%,1200px)}
     </div>
     <!-- Équipe -->
     <div class="stsc"><div class="sttit" id="lbl-equipe">👥 Mon équipe</div><div class="stcd" id="equipe-lst"></div></div>
+    <!-- La sécurité mérite sa propre section : « Changer mon PIN » était rangé
+         sous « Catalogue », personne n'irait l'y chercher. -->
+    <div class="stsc" id="sec-securite">
+      <div class="sttit" id="lbl-securite">🔐 Sécurité</div>
+      <div class="stcd">
+        <div class="stit2" onclick="ouvrirChangerPin()"><div class="stico" style="background:#FFEBEE">🔑</div><div class="stii"><div class="stitl" id="st-chpin">Changer mon PIN</div><div class="stisub" id="st-chpin-s">Le code qui ouvre ta caisse</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="toggleBiometrie()"><div class="stico" style="background:#E3F2FD">👆</div><div class="stii"><div class="stitl" id="st-bio2">Empreinte / Face ID</div><div class="stisub" id="st-bio2-s">Entrer sans taper le PIN</div></div><button class="tog off" id="tog-bio2" onclick="event.stopPropagation();toggleBiometrie()"></button></div>
+      </div>
+    </div>
     <!-- Rythme de vente -->
     <div class="stsc" id="sec-rythme">
       <div class="sttit" id="lbl-rythme">⚡ Rythme de vente</div>
@@ -1237,7 +1250,6 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" onclick="ouvrirAjout();goBack()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="st-art">Ajouter un article</div><div class="stisub" id="st-art-s">Nouvel article</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirPrix(null);goBack()"><div class="stico" style="background:#E3F2FD">💰</div><div class="stii"><div class="stitl" id="st-prix">Modifier les prix</div><div class="stisub" id="st-prix-s">Prix achat, vente, bénéfice</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirStk(null);goBack()"><div class="stico" style="background:#E8F5E9">📦</div><div class="stii"><div class="stitl" id="st-stk">Entrée de stock</div><div class="stisub" id="st-stk-s">Ajouter des quantités</div></div><span class="starr">›</span></div>
-        <div class="stit2" onclick="ouvrirChangerPin()"><div class="stico" style="background:#FFEBEE">🔐</div><div class="stii"><div class="stitl" id="st-chpin">Changer mon PIN</div><div class="stisub" id="st-chpin-s">Le code qui ouvre ta caisse</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirRanger()"><div class="stico" style="background:#FFF3E0">🧹</div><div class="stii"><div class="stitl" id="st-rng">Ranger ma boutique</div><div class="stisub" id="st-rng-s">Regrouper les articles d'une même famille</div></div><span class="starr">›</span></div>
       </div>
       <div class="sttit">💼 Gestion boutique</div>
@@ -2426,7 +2438,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.35'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.36'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3685,6 +3697,7 @@ function appliquerLang(){
   var bioBtn=document.getElementById('btn-bio-login');
   if(bioBtn)bioBtn.style.display=(DB.cfg.bioEnabled?'flex':'none');
   document.getElementById('tog-bio').className='tog '+(DB.cfg.bioEnabled?'on':'off');
+  var tb2=document.getElementById('tog-bio2');if(tb2)tb2.className='tog '+(DB.cfg.bioEnabled?'on':'off');
   // Caisse
   document.getElementById('src-c').placeholder='🔍 '+(lang==='fr'?'Chercher...':'Search...');
   document.getElementById('btn-enc').innerHTML='💵 '+t('encaisser');
@@ -3839,7 +3852,7 @@ function _finishLoginP(){
     tel:(document.getElementById('p-tel')||{}).value||DB.cfg.tel||'',
     ccNum:(document.getElementById('p-cc-num')||{}).textContent||'',
     ccFlag:(document.getElementById('p-cc-flag')||{}).textContent||'',
-    code:DB.cfg.code||'',boutique:DB.cfg.nom||''});}catch(e){}
+    code:DB.cfg.code||'',boutique:DB.cfg.nom||'',bio:!!DB.cfg.bioEnabled});}catch(e){}
   // On rafraîchit discrètement la liste de ses boutiques pour la prochaine
   // entrée : elle doit être là AVANT de parler au serveur.
   setTimeout(function(){try{listerBoutiquesDuCompte();}catch(e){}},1500);
@@ -4167,6 +4180,9 @@ function mettreEnAvant(pid){
   if(ordrePrio.length>8)ordrePrio.length=8;
 }
 function renderProd(lst){
+  // La grille est reconstruite : le panneau des variantes n'y survivrait pas,
+  // on le referme proprement plutôt que d'en garder une référence morte.
+  try{fermerVarInline();}catch(e){}
   try{renderTopVentes();}catch(e){}
   lst=appliquerOrdrePrio(lst);
   var g=document.getElementById('pgrid');g.innerHTML='';
@@ -4211,7 +4227,7 @@ function renderProd(lst){
         return;
       }
       if(isOut&&!p.rt){showToast('⚠️ Stock épuisé !');return;}
-      if(hasV){ouvrirVar(p);return;} // famille -> toujours le sélecteur (dépannage géré PAR variante)
+      if(hasV){ouvrirVarInline(p,d);return;} // famille -> les variantes sortent SOUS la carte
       if(estMesure(p)){ouvrirQteMesure(p);return;}
       if(isOut&&p.rt&&livePq===0){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
       addPanier(p,null);
@@ -4765,8 +4781,42 @@ function _dispoApresPanier(p,v){
   }
   return Math.max(0,(Number(v.stk)||0)-(varQtys[v.id]||0));
 }
+// ── Les variantes sortent SOUS l'article touché ──
+// Avant, elles remontaient toujours du bas de l'écran : on touchait une carte
+// en haut et il fallait aller chercher la suite tout en bas. L'œil et le doigt
+// restent maintenant au même endroit.
+var _varBox=null,_varCarteId=null;
+function fermerVarInline(){
+  if(_varBox&&_varBox.parentNode)_varBox.parentNode.removeChild(_varBox);
+  _varBox=null;_varCarteId=null;
+}
+function ouvrirVarInline(p,carte){
+  var dejaOuvert=(_varCarteId===p.id);
+  fermerVarInline();
+  if(dejaOuvert)return;              // 2e touche sur la même carte = on referme
+  varArtCours=p;varQtys={};
+  p.vr.forEach(function(v){varQtys[v.id]=panier[p.id+'-'+v.id]||0;});
+  var box=document.createElement('div');
+  box.className='vinline';
+  box.innerHTML='<div class="vinline-t">'+(p.e||'')+' '+p.nm+'</div><div class="vgrid" id="vinline-lst"></div>';
+  if(carte&&carte.parentNode)carte.parentNode.insertBefore(box,carte.nextSibling);
+  else return;
+  _varBox=box;_varCarteId=p.id;
+  renderVarLst(p);
+  try{box.scrollIntoView({behavior:'smooth',block:'nearest'});}catch(e){}
+}
+// Ce qui est choisi part DIRECTEMENT au panier : plus de bouton à valider.
+function _varVersPanier(p){
+  p.vr.forEach(function(v){
+    var k=p.id+'-'+v.id,q=varQtys[v.id]||0;
+    if(q>0)panier[k]=q;else delete panier[k];
+  });
+  updatePUI(p.id);
+}
 function renderVarLst(p){
-  var l=document.getElementById('var-lst');l.innerHTML='';l.className='vgrid';
+  var l=(_varBox&&document.getElementById('vinline-lst'))||document.getElementById('var-lst');
+  if(!l)return;
+  l.innerHTML='';l.className='vgrid';
   var fr=lang==='fr';
   p.vr.forEach(function(v){
     var dispo=_dispoApresPanier(p,v),qBase=getQBase(v),isOut=dispo<=0&&!v.rt&&!p.rt;
@@ -4820,6 +4870,7 @@ function chgVQ(vid,pid,delta,rt){
   // On redessine la grille : le stock restant de chaque carreau change quand
   // les variantes puisent dans un stock commun (sac, carton).
   renderVarLst(p);
+  if(_varBox)_varVersPanier(p);   // sortie sous l'article : le panier suit tout de suite
   if(navigator.vibrate&&delta>0)navigator.vibrate(12);
 }
 function confirmerVar(){
@@ -7222,17 +7273,24 @@ async function activerBiometrieFlow(){
   }catch(e){console.log('WebAuthn:',e);showToast('⛔ '+(lang==='fr'?'Activation annulée ou échouée':'Activation cancelled or failed'));}
   return false;
 }
+function _majTogBio(on){
+  ['tog-bio','tog-bio2'].forEach(function(id){var e=document.getElementById(id);if(e)e.className='tog '+(on?'on':'off');});
+  // L'écran d'entrée ne connaît pas DB : sans ce drapeau dans la mémoire de
+  // l'appareil, le bouton Empreinte ne s'affichait JAMAIS.
+  try{memoriserEntree({role:'patron',bio:!!on});}catch(e){}
+}
 function toggleBiometrie(){
-  if(!DB)return;
+  if(!DB){showToast('⛔ '+(lang==='fr'?'Connecte-toi d\'abord':'Sign in first'));return;}
+  if(!window.PublicKeyCredential){showToast('⛔ '+(lang==='fr'?'Ce téléphone ne gère pas l\'empreinte':'This phone has no biometrics'));return;}
   if(!DB.cfg.bioEnabled){
     activerBiometrieFlow().then(function(ok){
-      document.getElementById('tog-bio').className='tog '+(ok?'on':'off');
-      if(ok)showToast('✅ '+(lang==='fr'?'Connexion biométrique activée':'Biometric login enabled'));
+      _majTogBio(ok);
+      if(ok)showToast('✅ '+(lang==='fr'?'Empreinte activée — elle servira à la prochaine ouverture':'Biometrics enabled'));
     });
   }else{
     DB.cfg.bioEnabled=false;save();
-    document.getElementById('tog-bio').className='tog off';
-    showToast('🔓 '+(lang==='fr'?'Connexion biométrique désactivée':'Biometric login disabled'));
+    _majTogBio(false);
+    showToast('🔓 '+(lang==='fr'?'Empreinte désactivée':'Biometrics disabled'));
   }
 }
 async function loginBiometrique(){
