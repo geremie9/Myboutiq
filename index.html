@@ -298,6 +298,21 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 
 /* ── VARIANTES ── */
 .vlst{padding:11px 19px;display:flex;flex-direction:column;gap:9px}
+/* ── Variantes en CARREAUX : on touche pour vendre, comme la carte d'un
+   article. Le − / + obligeait à viser un bouton de 38 px pendant qu'un
+   client attend ; ici toute la tuile est la cible. ── */
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
+.vtile{position:relative;background:var(--BG);border:2px solid var(--BD);border-radius:15px;padding:11px 9px 9px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-family:'Outfit',sans-serif;text-align:center;transition:transform .08s,border-color .15s;-webkit-tap-highlight-color:transparent;user-select:none}
+.vtile:active{transform:scale(.95)}
+.vtile.hq{border-color:var(--G);background:#F0FFF8}
+.vtile.out{opacity:.45}
+.vtile img{width:46px;height:46px;object-fit:cover;border-radius:11px}
+.vtile .vt-emo{font-size:34px;line-height:1}
+.vtile .vt-nm{font-size:12px;font-weight:800;color:var(--T);line-height:1.2;word-break:break-word}
+.vtile .vt-px{font-size:12px;font-weight:800;color:var(--B)}
+.vtile .vt-stk{font-size:9.5px;font-weight:700}
+.vt-badge{position:absolute;top:-7px;right:-7px;min-width:26px;height:26px;border-radius:13px;background:var(--G);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.vt-moins{position:absolute;top:-7px;left:-7px;width:26px;height:26px;border-radius:13px;background:#fff;border:1.5px solid var(--BD);color:var(--R);font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12)}
 .vit{background:var(--BG);border:2px solid var(--BD);border-radius:15px;padding:13px;display:flex;align-items:center;gap:11px;transition:border-color .2s}
 .vit.hq{border-color:var(--G);background:#F0FFF8}
 .vemo{font-size:34px;flex-shrink:0}
@@ -2397,7 +2412,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.32'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.33'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4545,15 +4560,58 @@ function ouvrirVar(p){
   renderVarLst(p);
   document.getElementById('ov-var').classList.add('show');
 }
+// Ce qui reste VRAIMENT, une fois retiré ce qui est déjà dans le panier.
+// stockVarDispo() ignore le panier : l'écran annonçait « 10 restants » alors
+// que les 10 kg étaient déjà pris, puis refusait la vente. Un chiffre faux à
+// l'écran vaut moins que pas de chiffre.
+function _dispoApresPanier(p,v){
+  if(utiliseStockBase(p)){
+    var pris=0;
+    p.vr.forEach(function(it){pris+=(varQtys[it.id]||0)*getQBase(it);});
+    return Math.floor(Math.max(0,(Number(p.stk)||0)-pris)/getQBase(v));
+  }
+  return Math.max(0,(Number(v.stk)||0)-(varQtys[v.id]||0));
+}
 function renderVarLst(p){
-  var l=document.getElementById('var-lst');l.innerHTML='';
+  var l=document.getElementById('var-lst');l.innerHTML='';l.className='vgrid';
+  var fr=lang==='fr';
   p.vr.forEach(function(v){
-    var dispo=stockVarDispo(p,v),qBase=getQBase(v),isOut=dispo<=0&&!v.rt&&!p.rt;
-    var d=document.createElement('div');d.className='vit'+(varQtys[v.id]>0?' hq':'');d.style.opacity=isOut?.5:1;
-    var detBase=utiliseStockBase(p)?' · '+(lang==='fr'?'conso: ':'cons: ')+qBase:'';
-    d.innerHTML=(v.img?'<img src="'+v.img+'" style="width:42px;height:42px;object-fit:cover;border-radius:10px;flex-shrink:0" loading="lazy">':'<span class="vemo">'+p.e+'</span>')+'<div class="vinf"><div class="vnm">'+v.nm+'</div><div class="vpr">'+(v.px>0?fmt(v.px):(lang==='fr'?'💰 prix à définir':'💰 set price'))+'</div><div class="vstk" style="color:'+(dispo<=0?'var(--R)':dispo<=3?'var(--O)':'var(--G)')+'">'+( dispo<=0?(lang==='fr'?'Épuisé':'Out'):dispo+' '+(lang==='fr'?'disponibles':'available'))+detBase+'</div></div><div class="vqctl"><button class="vqb m" onclick="chgVQ('+v.id+','+p.id+',-1,'+!!p.rt+')">−</button><span class="vqn" id="vqn-'+v.id+'">'+(varQtys[v.id]||0)+'</span><button class="vqb p" onclick="chgVQ('+v.id+','+p.id+',1,'+!!p.rt+')">+</button></div>';
+    var dispo=_dispoApresPanier(p,v),qBase=getQBase(v),isOut=dispo<=0&&!v.rt&&!p.rt;
+    var q=varQtys[v.id]||0;
+    var d=document.createElement('div');
+    d.className='vtile'+(q>0?' hq':'')+(isOut?' out':'');
+    var detBase=utiliseStockBase(p)?(' · '+(fr?'conso ':'cons ')+qBase):'';
+    d.innerHTML=(q>0?('<span class="vt-badge">'+fmtQ(q)+'</span><span class="vt-moins" data-moins="1">−</span>'):'')
+      +(v.img?'<img src="'+v.img+'" loading="lazy">':'<span class="vt-emo">'+p.e+'</span>')
+      +'<span class="vt-nm">'+(v.nm||'?')+'</span>'
+      +'<span class="vt-px">'+(v.px>0?fmt(v.px):('💰 '+(fr?'prix ?':'price ?')))+'</span>'
+      +'<span class="vt-stk" style="color:'+(dispo<=0?'var(--R)':dispo<=3?'var(--O)':'var(--G)')+'">'
+      +(dispo<=0?(fr?'Épuisé':'Out'):(fmtQ(dispo)+' '+(fr?'restants':'left')))+detBase+'</span>';
+    // Toucher = +1. Le petit − en coin retire, sans jamais gêner la vente.
+    d.onclick=function(ev){
+      if(ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-moins')){
+        chgVQ(v.id,p.id,-1,!!p.rt);return;
+      }
+      chgVQ(v.id,p.id,1,!!p.rt);
+    };
+    // Appui long = saisir la quantité d'un coup (le carton de 12).
+    var t=null;
+    d.addEventListener('touchstart',function(){t=setTimeout(function(){t=null;saisirQteVariante(p,v);},550);},{passive:true});
+    ['touchend','touchmove','touchcancel'].forEach(function(e){d.addEventListener(e,function(){if(t){clearTimeout(t);t=null;}},{passive:true});});
+    d.oncontextmenu=function(e){e.preventDefault();saisirQteVariante(p,v);return false;};
     l.appendChild(d);
   });
+}
+// Quantité en une fois : sans ça, vendre 12 pièces demanderait 12 tapes.
+function saisirQteVariante(p,v){
+  var fr=lang==='fr';
+  if(v.px<=0){showToast('💰 '+(fr?'Prix manquant — complète cette variante d\'abord':'Missing price'));return;}
+  var rep=prompt((fr?'Combien de ':'How many ')+(v.nm||'')+' ?',String(varQtys[v.id]||1));
+  if(rep===null)return;
+  var n=Math.max(0,Math.round((parseFloat(String(rep).replace(',','.'))||0)*100)/100);
+  var cur=varQtys[v.id]||0;
+  if(n>cur)chgVQ(v.id,p.id,n-cur,!!p.rt);
+  else{varQtys[v.id]=n;renderVarLst(p);}
 }
 function chgVQ(vid,pid,delta,rt){
   var p=DB.articles.find(function(x){return x.id==pid;});var v=p&&p.vr.find(function(x){return x.id==vid;});if(!v)return;
@@ -4565,9 +4623,11 @@ function chgVQ(vid,pid,delta,rt){
       if((p.stk-used)<getQBase(v)&&!rt){showToast(t('stockInsuf'));return;}
     }else if(v.stk<=cur&&!rt){showToast(t('stockInsuf'));return;}
   }
-  varQtys[vid]=Math.max(0,cur+delta);
-  var el=document.getElementById('vqn-'+vid);if(el)el.textContent=varQtys[vid];
-  var itm=el&&el.closest('.vit');if(itm)itm.classList.toggle('hq',varQtys[vid]>0);
+  varQtys[vid]=Math.max(0,Math.round((cur+delta)*100)/100);
+  // On redessine la grille : le stock restant de chaque carreau change quand
+  // les variantes puisent dans un stock commun (sac, carton).
+  renderVarLst(p);
+  if(navigator.vibrate&&delta>0)navigator.vibrate(12);
 }
 function confirmerVar(){
   if(!varArtCours)return;
