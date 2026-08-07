@@ -2443,7 +2443,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.40'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.41'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8512,6 +8512,12 @@ saveCli=function(){
 ouvrirDetCli=function(id){cliCours=DB.clients.find(function(c){return c.id===id;});if(!cliCours)return;majNiveauClient(cliCours);var pg=clientProgressData(cliCours);document.getElementById('cli-det-nm').textContent=cliCours.nm;document.getElementById('cli-d-dette').textContent=fmt(cliCours.credit);document.getElementById('cli-d-date').textContent=cliCours.date?new Date(cliCours.date).toLocaleDateString('fr-FR'):'N/A';document.getElementById('cli-d-tel').textContent=cliCours.tel||'N/A';var info=document.getElementById('lbl-info-cred');if(info)info.textContent='Info crédit & fidélité';var hist=document.getElementById('cli-hist');hist.innerHTML='<div class="lv-badge" style="margin:0 0 8px 0">'+pg.lvl+' · '+pg.cur+'</div><div class="lv-bar"><div class="lv-fill" style="width:'+pg.pct+'%"></div></div><div class="lv-meta"><span>'+pg.cur+'</span><span>'+pg.next+'</span></div><div style="height:10px"></div>'+histClientHTML(cliCours);document.getElementById('cli-pmt').value='';document.getElementById('reste-card').style.display='none';document.getElementById('ov-cli-det').classList.add('show');};
 enregPmt=function(){var amt=parseFloat(document.getElementById('cli-pmt').value)||0;if(!amt||!cliCours){showToast(t('errQte'));return;}cliCours.credit=Math.max(0,cliCours.credit-amt);if(!cliCours.hist)cliCours.hist=[];cliCours.hist.push({date:new Date().toLocaleDateString('fr-FR'),type:'payment',amt:amt});save();closeSheet('ov-cli-det');renderClients();showToast(cliCours.credit<=0?'✅ '+(lang==='fr'?'Crédit soldé !':'Credit cleared!'):'✅ '+(lang==='fr'?'Paiement enregistré !':'Payment recorded!'));};
 encaisser=function(){
+  // La DERNIÈRE permission qui ne protégeait rien : le patron pouvait couper
+  // « Encaisser des ventes » et le vendeur encaissait quand même.
+  if(role!=='patron'&&!hasPerm('vente')){
+    showToast('🔒 '+(lang==='fr'?'Ton patron ne t\'a pas autorisé à encaisser':'You are not allowed to take payments'));
+    return;
+  }
   // Vente à crédit : impossible sans client (le carnet doit savoir QUI doit)
   if(pmntModeVente==='credit'&&!clientVente){
     showToast('👤 '+(lang==='fr'?'Choisis d\'abord le client pour le crédit':'Pick the customer first for credit'));
