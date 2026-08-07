@@ -2443,7 +2443,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.38'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.39'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8128,13 +8128,35 @@ var _rtRefetchTimer=null;
 // Points de mesure — ils ne servent qu'à l'écran « État de la liaison »,
 // pour cesser de deviner quand un commerçant dit « ça ne bouge pas ».
 var _rtDernierSignal=0,_rtDernierEssai=0,_rtDerniereMaj=0,_rtDernierRefus=0;
+// Le patron possède une SESSION serveur : c'est une preuve plus forte qu'un
+// PIN. On lit donc avec elle en priorité — ainsi son rafraîchissement ne
+// dépend plus de l'état du PIN gardé sur le téléphone. Le PIN reste la voie
+// du vendeur, et le secours du patron.
+async function _lirePourMoi(code){
+  if(role==='patron'){
+    try{
+      var d=await loadOwnerBoutiqueFromSupa(code);
+      if(d){_rtVoie='session';return d;}
+    }catch(e){}
+  }
+  var f=await loadFromSupa(code,_shopPin);
+  _rtVoie=f?'pin':'';
+  return f;
+}
+var _rtVoie='',_rtEchoIgnore=0;
 async function _rtRefetch(code){
   if(!DB||!DB.cfg||normalizeShopCode(code)!==normalizeShopCode(DB.cfg.code))return;
   _rtDernierEssai=Date.now();
-  var fresh=await loadFromSupa(code,_shopPin);
+  var fresh=await _lirePourMoi(code);
   if(!fresh){_rtDernierRefus=Date.now();return;}
-  // Écho de notre propre écriture (même appareil) : déjà appliqué localement
-  if(fresh.cfg&&fresh.cfg._dev&&fresh.cfg._dev===_deviceId)return;
+  // Écho de notre propre écriture : on ne l'ignore QUE s'il n'apporte rien.
+  // Avant, on sortait dès que l'appareil était le dernier écrivain — et si le
+  // patron était ce dernier écrivain, plus rien ne rentrait jamais.
+  if(fresh.cfg&&fresh.cfg._dev&&fresh.cfg._dev===_deviceId){
+    var nA=(fresh.ventes||[]).length,nL=((DB&&DB.ventes)||[]).length;
+    var aA=(fresh.articles||[]).length,aL=((DB&&DB.articles)||[]).length;
+    if(nA<=nL&&aA<=aL){_rtEchoIgnore=Date.now();return;}
+  }
   if(_venteEnCours()){
     _pendingRemoteDB=fresh;
     clearTimeout(_pendingRemoteTimer);
@@ -8226,9 +8248,19 @@ function majLiaison(){
       fr?'Vérification automatique':'Automatic check',
       surv?(fr?'Toutes les 20 secondes, même si l\'écoute tombe':'Every 20 s')
           :(fr?'ARRÊTÉE — il faut se reconnecter pour voir du nouveau':'STOPPED'));
+  // ⚠️ Ne JAMAIS accuser le serveur sans savoir : une lecture peut échouer
+  // avant même de l'atteindre, ou réussir et être écartée comme un écho.
+  var detail;
+  if(_rtEchoIgnore>_rtDerniereMaj&&_rtEchoIgnore>_rtDernierRefus)
+    detail=fr?' · le serveur répond, mais rien de nouveau à prendre':' · server answers, nothing new';
+  else if(_rtDernierRefus>_rtDerniereMaj)
+    detail=fr?' · dernière lecture refusée ('+(pinOk?'clé rejetée':'clé trop courte')+')':' · last read refused';
+  else if(_rtDernierEssai&&!_rtDerniereMaj)
+    detail=fr?' · aucune lecture aboutie pour l\'instant':' · no successful read yet';
+  else detail='';
   h+=_liLigne(majRecente?true:(_rtDerniereMaj?null:false),
       fr?'Dernière nouvelle reçue':'Last update received',
-      _ilYA(_rtDerniereMaj)+(_rtDernierRefus>_rtDerniereMaj?(fr?' · dernier essai refusé par le serveur':' · last try refused'):''));
+      _ilYA(_rtDerniereMaj)+detail+(_rtVoie?(fr?' · voie : '+(_rtVoie==='session'?'session patron':'PIN'):''):''));
   h+=_liLigne('info',
       fr?'Cette boutique':'This shop',
       ((DB&&DB.cfg&&DB.cfg.nom)||'—')+' · '+((DB&&DB.cfg&&DB.cfg.code)||'—')+' · '
