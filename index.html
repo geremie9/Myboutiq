@@ -303,7 +303,9 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
    client attend ; ici toute la tuile est la cible. ── */
 .vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
 /* Panneau des variantes, glissé juste sous la carte touchée */
-.vinline{grid-column:1/-1;background:#fff;border:2px solid var(--B);border-radius:16px;padding:11px;margin:2px 0 4px;box-shadow:0 6px 18px rgba(0,0,0,.10);animation:vinOuvre .16s ease-out}
+/* Le panneau FLOTTE par-dessus la grille : il ne pousse aucun article, donc
+   rien ne bouge sous le doigt. Il se referme et tout est déjà en place. */
+.vinline{position:fixed;z-index:80;background:#fff;border:2px solid var(--B);border-radius:16px;padding:11px;box-shadow:0 10px 30px rgba(0,0,0,.22);animation:vinOuvre .14s ease-out;max-height:52vh;overflow-y:auto}
 .vinline-t{font-size:12.5px;font-weight:800;color:var(--T);margin-bottom:9px}
 @keyframes vinOuvre{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .vtile{position:relative;background:var(--BG);border:2px solid var(--BD);border-radius:15px;padding:11px 9px 9px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-family:'Outfit',sans-serif;text-align:center;transition:transform .08s,border-color .15s;-webkit-tap-highlight-color:transparent;user-select:none}
@@ -965,7 +967,10 @@ body{max-width:min(100%,1200px)}
         <button class="btn-login" id="er-bio" onclick="entreeEmpreinte()" style="display:none;margin-top:8px;background:rgba(255,255,255,.12);color:#fff">👆 <span id="er-bio-l">Empreinte / Face ID</span></button>
         <button class="btn-login" onclick="retourListeBoutiques()" style="margin-top:8px;background:transparent;color:rgba(255,255,255,.6);box-shadow:none">↩︎ <span id="er-retour">Choisir une autre boutique</span></button>
       </div>
-      <button type="button" onclick="oublierEntree()" id="er-chg" style="background:none;border:none;padding:8px 0;color:rgba(255,255,255,.6);font-size:11.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline;width:100%"></button>
+      <div style="display:flex;gap:14px;justify-content:center;padding-top:6px">
+        <button type="button" onclick="ouvrirResetPin()" id="er-oubli" style="background:none;border:none;padding:8px 0;color:rgba(255,255,255,.6);font-size:11.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline">PIN oublié ?</button>
+        <button type="button" onclick="oublierEntree()" id="er-chg" style="background:none;border:none;padding:8px 0;color:rgba(255,255,255,.6);font-size:11.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline"></button>
+      </div>
     </div>
     <div class="login-tabs" id="login-tabs">
       <button class="ltab on" id="lt-p" onclick="swTab(this,'fp')">👑 <span id="lt-patron">Patron</span></button>
@@ -2438,7 +2443,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.37'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.38'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3779,6 +3784,27 @@ function fermerResetPin(){var ov=document.getElementById('ov-reset-pin');if(ov)o
 // Le PIN patron est AUSSI son mot de passe Supabase : il faut donc changer
 // les deux ensemble, sinon la prochaine connexion échoue. On exige donc le
 // réseau — un changement à moitié fait serait pire que pas de changement.
+// Un seul PIN pour toutes ses boutiques : on le pose partout, sinon il
+// n'ouvrirait plus que celle depuis laquelle il l'a changé.
+async function _propagerPinAuxBoutiques(nouveau){
+  var n=1;
+  try{
+    var user=await getAuthUser();
+    if(!supa||!user||!navigator.onLine)return n;
+    var r=await supa.from('boutiques').select('id,code,data').eq('owner_id',user.id).eq('actif',true);
+    if(r.error||!r.data)return n;
+    n=r.data.length||1;
+    for(var i=0;i<r.data.length;i++){
+      var b=r.data[i];
+      if(normalizeShopCode(b.code)===normalizeShopCode((DB&&DB.cfg&&DB.cfg.code)||''))continue;
+      var d=b.data||{};
+      if(!d.cfg)d.cfg={};
+      d.cfg.pin=nouveau;
+      await supa.from('boutiques').update({pin:nouveau,data:d,updated_at:new Date().toISOString()}).eq('id',b.id);
+    }
+  }catch(e){}
+  return n;
+}
 function ouvrirChangerPin(){
   if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
   ['cp-actuel','cp-new','cp-new2'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
@@ -3808,8 +3834,14 @@ async function validerChangerPin(){
   DB.cfg.pin=n1;_shopPin=n1;
   journalAjouter('pin',fr?'PIN patron':'Owner PIN','••••','••••');
   save();
+  // ⚠️ Le PIN est celui du COMPTE, pas d'une boutique. Le changer ici sans
+  // toucher aux autres laissait chaque boutique avec un PIN différent : le
+  // patron se serait retrouvé dehors sur les autres.
+  var n=await _propagerPinAuxBoutiques(n1);
   closeSheet('ov-chpin');
-  showToast('✅ '+(fr?'PIN changé. Utilise-le à la prochaine connexion.':'PIN changed. Use it next login.'));
+  showToast('✅ '+(fr
+    ? ('PIN changé'+(n>1?(' pour tes '+n+' boutiques'):'')+'. Utilise-le à la prochaine connexion.')
+    : ('PIN changed'+(n>1?(' for your '+n+' shops'):'')+'.')));
 }
 function swTab(btn,fid){document.querySelectorAll('.ltab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.getElementById('fp').style.display=fid==='fp'?'block':'none';document.getElementById('fv').style.display=fid==='fv'?'block':'none';}
 function applyRolePerms(){
@@ -4801,23 +4833,59 @@ function _dispoApresPanier(p,v){
 // restent maintenant au même endroit.
 var _varBox=null,_varCarteId=null;
 function fermerVarInline(){
+  if(_varFermeAuto){
+    window.removeEventListener('scroll',_varFermeAuto,true);
+    window.removeEventListener('resize',_varFermeAuto);
+    _varFermeAuto=null;
+  }
+  document.removeEventListener('pointerdown',_varDehors,true);
   if(_varBox&&_varBox.parentNode)_varBox.parentNode.removeChild(_varBox);
-  _varBox=null;_varCarteId=null;
+  _varBox=null;_varCarteId=null;_varCarteEl=null;
 }
 function ouvrirVarInline(p,carte){
   var dejaOuvert=(_varCarteId===p.id);
   fermerVarInline();
   if(dejaOuvert)return;              // 2e touche sur la même carte = on referme
+  if(Date.now()-_varJusteFerme<350)return; // il vient de le refermer en touchant la carte
   varArtCours=p;varQtys={};
   p.vr.forEach(function(v){varQtys[v.id]=panier[p.id+'-'+v.id]||0;});
+  if(!carte)return;
   var box=document.createElement('div');
   box.className='vinline';
   box.innerHTML='<div class="vinline-t">'+(p.e||'')+' '+p.nm+'</div><div class="vgrid" id="vinline-lst"></div>';
-  if(carte&&carte.parentNode)carte.parentNode.insertBefore(box,carte.nextSibling);
-  else return;
-  _varBox=box;_varCarteId=p.id;
+  document.body.appendChild(box);
+  _varBox=box;_varCarteId=p.id;_varCarteEl=carte;
   renderVarLst(p);
-  try{box.scrollIntoView({behavior:'smooth',block:'nearest'});}catch(e){}
+  _placerVarBox(carte);
+  // Il flotte : s'il défile ou si l'écran tourne, on le referme plutôt que de
+  // le laisser posé au mauvais endroit.
+  _varFermeAuto=function(){fermerVarInline();};
+  window.addEventListener('scroll',_varFermeAuto,{passive:true,capture:true});
+  window.addEventListener('resize',_varFermeAuto);
+  setTimeout(function(){document.addEventListener('pointerdown',_varDehors,true);},0);
+}
+var _varFermeAuto=null,_varJusteFerme=0,_varCarteEl=null;
+function _varDehors(ev){
+  if(!_varBox||_varBox.contains(ev.target))return;
+  // Toucher ailleurs referme. UNIQUEMENT si c'est la carte elle-même, on note
+  // l'heure pour que son propre clic ne le rouvre pas dans la foulée — sinon
+  // toucher un autre article empêcherait de rouvrir celui-ci tout de suite.
+  if(_varCarteEl&&_varCarteEl.contains(ev.target))_varJusteFerme=Date.now();
+  fermerVarInline();
+}
+// On le pose juste sous la carte touchée, sans jamais sortir de l'écran.
+function _placerVarBox(carte){
+  if(!_varBox||!carte)return;
+  var r=carte.getBoundingClientRect();
+  var marge=10,largeur=Math.min(window.innerWidth-2*marge,430);
+  _varBox.style.width=largeur+'px';
+  var g=_varBox.getBoundingClientRect();
+  var gauche=Math.min(Math.max(marge,r.left+r.width/2-largeur/2),window.innerWidth-largeur-marge);
+  var haut=r.bottom+6;
+  // Pas la place en dessous ? On le met au-dessus de la carte.
+  if(haut+g.height>window.innerHeight-70)haut=Math.max(marge,r.top-g.height-6);
+  _varBox.style.left=gauche+'px';
+  _varBox.style.top=haut+'px';
 }
 // Ce qui est choisi part DIRECTEMENT au panier : plus de bouton à valider.
 function _varVersPanier(p){
