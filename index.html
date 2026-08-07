@@ -2483,7 +2483,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.44'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.45'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7442,9 +7442,16 @@ function renderRpt(){
         ['🧾',lang==='fr'?'Crédit accordé (à récupérer)':'Credit given (to collect)',pb.credit],
         ['🏷️',lang==='fr'?'Remises accordées':'Discounts given',pb.remises]
       ].filter(function(r){return r[2]>0;});
+      // La consigne est dans le tiroir mais ne t'appartient pas : on la montre
+      // à part, jamais mélangée au chiffre d'affaires.
+      var cons=pb.consignes||0;
+      var ligneCons=cons!==0
+        ?('<div class="rrow"><span class="rlbl" style="color:var(--O)">🍾 '+(lang==='fr'?'dont consignes (dans le tiroir)':'incl. deposits (in the drawer)')+'</span>'
+          +'<span class="rval" style="color:var(--O)">'+(cons>0?'+':'')+fmt(cons)+'</span></div>')
+        :'';
       if(!rows.length)return '';
       return '<div class="rcd"><div class="rctit">💳 '+(lang==='fr'?'Répartition par moyen de paiement':'Breakdown by payment method')+'</div>'+
-        rows.map(function(r){return '<div class="rrow"><span class="rlbl">'+r[0]+' '+r[1]+'</span><span class="rval">'+fmt(r[2])+'</span></div>';}).join('')+
+        rows.map(function(r){return '<div class="rrow"><span class="rlbl">'+r[0]+' '+r[1]+'</span><span class="rval">'+fmt(r[2])+'</span></div>';}).join('')+ligneCons+
         '<div class="rrow" style="border-top:1px solid var(--BD);margin-top:6px;padding-top:9px"><span class="rlbl" style="font-weight:800">'+(lang==='fr'?'💰 Espèces en caisse (à compter)':'💰 Cash in drawer (to count)')+'</span><span class="rval a" style="font-weight:900">'+fmt(pb.especes)+'</span></div>'+
         '</div>';
     })()+
@@ -7789,27 +7796,35 @@ function choisirImprimanteThermique(){
 // ═══════════════════════════════════════════
 // CLÔTURE
 // ═══════════════════════════════════════════
+// La consigne EST physiquement dans le tiroir : elle doit être comptée pour
+// que la caisse tombe juste. Elle suit le moyen de paiement de la vente.
+// Sans ça, le patron aurait vu un excédent tous les soirs.
+function consignesDuJour(){
+  return getCaisseSales().reduce(function(s,v){return s+(Number(v.consigne)||0);},0);
+}
 function totalEspecesJour(){
   return getCaisseSales().reduce(function(s,v){
-    var p=v.paiement;
-    if(!p||p.mode==='especes')return s+v.total;
-    if(p.mode==='mixte')return s+(p.especes||0);
+    var p=v.paiement,c=Number(v.consigne)||0;
+    if(!p||p.mode==='especes')return s+v.total+c;
+    if(p.mode==='mixte')return s+(p.especes||0)+c;
+    if(p.mode==='credit')return s+(p.avance||0)+c;
     return s;
   },0);
 }
 function paiementBreakdownJour(){
-  var b={especes:0,orange:0,mtn:0,moov:0,credit:0,remises:0};
+  var b={especes:0,orange:0,mtn:0,moov:0,credit:0,remises:0,consignes:0};
   getCaisseSales().forEach(function(v){
-    var p=v.paiement;
+    var p=v.paiement,c=Number(v.consigne)||0;
     b.remises+=(v.remise||0);
-    if(!p||p.mode==='especes')b.especes+=v.total;
-    else if(p.mode==='mixte'){b.especes+=(p.especes||0);b[p.moyenMobile]=(b[p.moyenMobile]||0)+(p.mobile||0);}
-    else if(p.mode==='credit'){b.especes+=(p.avance||0);b.credit+=(p.du||0);}
-    else b[p.mode]=(b[p.mode]||0)+v.total;
+    b.consignes+=c;
+    if(!p||p.mode==='especes')b.especes+=v.total+c;
+    else if(p.mode==='mixte'){b.especes+=(p.especes||0)+c;b[p.moyenMobile]=(b[p.moyenMobile]||0)+(p.mobile||0);}
+    else if(p.mode==='credit'){b.especes+=(p.avance||0)+c;b.credit+=(p.du||0);}
+    else {b[p.mode]=(b[p.mode]||0)+v.total;b.especes+=c;}
   });
   return b;
 }
-function ouvrirClot(){var att=DB.fondsDepart+totalEspecesJour();document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+t('benefice')+'</span><span class="rval g">'+fmt(totalB)+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';document.getElementById('ov-clot').classList.add('show');}
+function ouvrirClot(){var att=DB.fondsDepart+totalEspecesJour();document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div>'+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+'</span><span class="rval g">'+fmt(totalB)+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';document.getElementById('ov-clot').classList.add('show');}
 function calcEcart(){var compt=parseFloat(document.getElementById('inp-compt').value)||0,att=DB.fondsDepart+totalEspecesJour(),ec=compt-att,el=document.getElementById('ecart-cd');el.style.display='flex';el.className='bcard '+(Math.abs(ec)<100?'bon':'bad');document.getElementById('ecart-lbl').textContent=ec===0?'✅ '+(lang==='fr'?'Équilibrée':'Balanced'):ec>0?'📈 '+(lang==='fr'?'Excédent':'Surplus'):'⚠️ '+(lang==='fr'?'Déficit':'Deficit');document.getElementById('ecart-amt').textContent=(ec>=0?'+':'')+fmt(ec);}
 function validerClot(){closeSheet('ov-clot');showToast(t('clotureOk')+' '+t('benefice')+': '+fmt(totalB));(DB.ventes||[]).forEach(function(v){if(!v.annulee&&!v.cloturee&&isSaleToday(v))v.cloturee=true;});DB.depenses=[];save();recalcTotaux();updateObjBar();}
 
