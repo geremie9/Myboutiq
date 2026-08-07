@@ -2443,7 +2443,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.39'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.40'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6652,6 +6652,54 @@ function expAjouterLigne(){
   document.getElementById('exp-nm').focus();
 }
 function expSupprimer(i){_expListe.splice(i,1);expRender();}
+// ═══════════════════════════════════════════════════════════════════
+// ON ACHÈTE UN BIDON, ON VEND AU LITRE
+// L'import créait TOUT « à la pièce » et prenait le prix payé pour un prix
+// unitaire : un bidon d'huile à 12 000 F revendu 700 F/L s'affichait comme
+// une vente à perte énorme, et le stock se comptait en « unités ».
+// Chaque ligne porte donc maintenant : comment ça se VEND (pièce/kg/L) et
+// comment ça s'ACHÈTE (à l'unité, ou en gros par N). Le catalogue devine.
+// ═══════════════════════════════════════════════════════════════════
+function _mesureDevinee(nm){
+  try{
+    var n=txtNorm(nm||''),best=null;
+    catalogueIndex().forEach(function(e){
+      if(txtNorm(e.plein)===n||txtNorm(e.nm)===n)best=best||{um:e.um,sac:e.sac||0};
+    });
+    if(best)return {um:(best.um==='pc'?null:best.um),sac:best.sac||0};
+    var f=familleCatalogueDe(nm);
+    if(f){var m=mesureCatalogue(f);if(m)return {um:(m.um==='pc'?null:m.um),sac:m.sac||0};}
+  }catch(e){}
+  return {um:null,sac:0};
+}
+function _expLigneComplete(a){
+  if(a.um===undefined){var d=_mesureDevinee(a.nm);a.um=d.um;a.gros=d.sac||0;}
+  if(a.gros===undefined)a.gros=0;
+  return a;
+}
+// Ce que coûte UNE unité de vente, quel que soit le conditionnement acheté.
+function _expPaUnit(a){
+  var pa=Number(a.pa)||0;
+  if(pa<=0)return 0;
+  return (a.gros>0)?Math.round(pa/a.gros):pa;
+}
+function _expUmLbl(a){return a.um==='kg'?'kg':(a.um==='L'?'L':(lang==='fr'?'pièce':'unit'));}
+function expSetUm(i,u){
+  var a=_expListe[i];if(!a)return;
+  a.um=(u==='pc')?null:u;
+  if(!a.um)a.gros=a.gros||0;
+  expRender();
+}
+function expSetGros(i,v){
+  var a=_expListe[i];if(!a)return;
+  a.gros=Math.max(0,Math.round(parseFloat(String(v).replace(',','.'))||0));
+  expRender();
+}
+function expBasculeDetail(i){
+  _expOuvert=(_expOuvert===i)?-1:i;
+  expRender();
+}
+var _expOuvert=-1;
 function expRender(){
   var fr=lang==='fr',box=document.getElementById('exp-liste'),c=document.getElementById('exp-compte');
   var btn=document.getElementById('exp-valider'),lbl=document.getElementById('exp-valider-l');
@@ -6662,17 +6710,47 @@ function expRender(){
   }
   c.textContent=_expListe.length+' '+(fr?('article'+(_expListe.length>1?'s':'')+' prêt'+(_expListe.length>1?'s':'')):('item'+(_expListe.length>1?'s':'')+' ready'));
   box.innerHTML=_expListe.map(function(a,i){
+    _expLigneComplete(a);
     var m=mediaArtInner({nm:a.nm,cat:categorieDepuisNomProduit(a.nm)},18);
-    var sansPa=!(a.pa>0),ben=a.px-a.pa,perte=!sansPa&&ben<=0;
-    return '<div style="display:flex;align-items:center;gap:9px;padding:7px 4px;border-bottom:1px solid var(--BD)">'+
+    var u=_expUmLbl(a),paU=_expPaUnit(a);
+    var sansPa=!(paU>0),ben=a.px-paU,perte=!sansPa&&ben<=0;
+    var achat=a.gros>0
+      ?((fr?'acheté par ':'bought by ')+a.gros+' '+u+(paU>0?(' → '+fmt(paU)+'/'+u):''))
+      :(paU>0?(fmt(paU)+'/'+u+(fr?' à l\'achat':' cost')):(fr?'prix d\'achat inconnu':'cost unknown'));
+    var ouvert=(_expOuvert===i);
+    var h='<div style="border-bottom:1px solid var(--BD);padding:7px 4px">'+
+      '<div style="display:flex;align-items:center;gap:9px">'+
       '<span style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</span>'+
-      '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:800;color:var(--T)">'+a.nm+'</div>'+
-      '<div style="font-size:10.5px;font-weight:700;color:'+(perte?'var(--R)':sansPa?'var(--O)':'var(--M)')+'">'+fmt(a.px)+
-        (sansPa?(' · '+(fr?'bénéfice inconnu':'profit unknown'))
-               :(perte?(' · ⚠️ '+(fr?'à perte ':'at a loss ')+fmt(ben)):(' · '+(fr?'bénéfice ':'profit ')+fmt(ben))))+
-        (a.stk>0?(' · '+fmtQ(a.stk)+' '+(fr?'en stock':'in stock')):'')+'</div></div>'+
+      '<div style="flex:1;min-width:0;cursor:pointer" onclick="expBasculeDetail('+i+')">'+
+        '<div style="font-size:12.5px;font-weight:800;color:var(--T)">'+a.nm+'</div>'+
+        '<div style="font-size:10.5px;font-weight:700;color:'+(perte?'var(--R)':sansPa?'var(--O)':'var(--M)')+'">'+
+          fmt(a.px)+'/'+u+
+          (sansPa?(' · '+(fr?'bénéfice inconnu':'profit unknown'))
+                 :(perte?(' · ⚠️ '+(fr?'à perte ':'at a loss ')+fmt(ben)):(' · '+(fr?'bénéfice ':'profit ')+fmt(ben)+'/'+u)))+
+          (a.stk>0?(' · '+fmtQ(a.stk)+' '+u):'')+'</div>'+
+        '<div style="font-size:10px;font-weight:700;color:var(--B);margin-top:1px">'+achat+' ✎</div>'+
+      '</div>'+
       '<button type="button" onclick="expSupprimer('+i+')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>'+
       '</div>';
+    if(ouvert){
+      h+='<div style="background:var(--BG);border-radius:11px;padding:10px;margin:8px 0 4px">'+
+        '<div style="font-size:10.5px;font-weight:800;color:var(--M);margin-bottom:5px">'+(fr?'SE VEND :':'SOLD BY:')+'</div>'+
+        '<div style="display:flex;gap:6px;margin-bottom:9px">'+
+        ['pc','kg','L'].map(function(k){
+          var on=(k==='pc')?!a.um:(a.um===k);
+          return '<button type="button" onclick="expSetUm('+i+',\''+k+'\')" style="flex:1;padding:8px;border-radius:9px;border:1.5px solid '+(on?'var(--B)':'var(--BD)')+';background:'+(on?'#EFEDFD':'#fff')+';color:'+(on?'var(--B)':'var(--M)')+';font-size:11.5px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif">'+
+            (k==='pc'?(fr?'À la pièce':'Per unit'):(k==='kg'?(fr?'Au kilo':'Per kg'):(fr?'Au litre':'Per litre')))+'</button>';
+        }).join('')+'</div>'+
+        '<div style="font-size:10.5px;font-weight:800;color:var(--M);margin-bottom:5px">'+(fr?'TU AS PAYÉ '+fmt(a.pa)+' POUR :':'YOU PAID '+fmt(a.pa)+' FOR:')+'</div>'+
+        '<div style="display:flex;gap:6px;align-items:center">'+
+        '<button type="button" onclick="expSetGros('+i+',0)" style="flex:1;padding:8px;border-radius:9px;border:1.5px solid '+(!a.gros?'var(--B)':'var(--BD)')+';background:'+(!a.gros?'#EFEDFD':'#fff')+';color:'+(!a.gros?'var(--B)':'var(--M)')+';font-size:11.5px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif">1 '+u+'</button>'+
+        '<input type="number" inputmode="numeric" value="'+(a.gros||'')+'" placeholder="'+(fr?'ex : 20':'e.g. 20')+'" onchange="expSetGros('+i+',this.value)" style="flex:1;padding:8px;border-radius:9px;border:1.5px solid '+(a.gros?'var(--B)':'var(--BD)')+';font-size:12.5px;font-weight:800;text-align:center;font-family:Outfit,sans-serif">'+
+        '<span style="font-size:11.5px;font-weight:800;color:var(--M)">'+u+'</span>'+
+        '</div>'+
+        (a.gros>0&&a.pa>0?('<div style="font-size:11px;font-weight:800;color:var(--G);margin-top:8px">✓ '+(fr?'Soit ':'That is ')+fmt(_expPaUnit(a))+' '+(fr?'le ':'per ')+u+'</div>'):'')+
+        '</div>';
+    }
+    return h+'</div>';
   }).join('');
   if(btn){btn.style.display='block';lbl.textContent=(fr?'Créer les ':'Create the ')+_expListe.length+(fr?' articles':' items');}
 }
@@ -6682,11 +6760,16 @@ function expCreerTous(){
   if(!DB.nextId)DB.nextId=100;
   var sansPa=0;
   _expListe.forEach(function(a){
+    _expLigneComplete(a);
+    // Le prix d'achat est TOUJOURS stocké par unité de VENTE : le bidon de
+    // 20 L payé 12 000 F devient 600 F le litre.
+    var paU=_expPaUnit(a);
     var art={id:DB.nextId++,nm:a.nm,e:emojiDepuisNomProduit(a.nm),cat:categorieDepuisNomProduit(a.nm),
-      px:a.px,pa:a.pa||0,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,um:null,umSac:null};
+      px:a.px,pa:paU,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,
+      um:a.um||null,umSac:(a.um&&a.gros>0)?a.gros:null};
     DB.articles.push(art);
     if(a.stk>0)definirStock(art,null,a.stk);
-    if(!(a.pa>0))sansPa++;
+    if(!(paU>0))sansPa++;
   });
   var n=_expListe.length;_expListe=[];
   save();if(typeof initTabs==='function')initTabs();
