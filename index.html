@@ -1767,6 +1767,12 @@ body{max-width:min(100%,1200px)}
           <div class="abtn" id="um-k" onclick="choisirUm('kg')"><span class="aemo">⚖️</span><span class="albl">Au kilo</span></div>
           <div class="abtn" id="um-l" onclick="choisirUm('L')"><span class="aemo">🫗</span><span class="albl">Au litre</span></div>
         </div>
+        <!-- Vivrier : le mot que le commerçant emploie vraiment -->
+        <div id="umnom-row" style="margin-bottom:11px">
+          <div style="font-size:10.5px;font-weight:800;color:var(--M);margin-bottom:6px" id="lbl-umnom">Tu dis plutôt « tas », « botte », « cuvette » ? (facultatif)</div>
+          <div id="umnom-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:7px"></div>
+          <input class="pi sm" type="text" id="ainp-umnom" maxlength="12" placeholder="ex : tas" oninput="majChipsUmNom()">
+        </div>
         <div class="pig" id="sac-row" style="display:none"><label class="pl" id="lbl-sac">Taille du sac / bidon</label><input class="pi" type="number" id="ainp-sac" inputmode="decimal" step="0.5" placeholder="ex : 50"></div>
         <button class="bnxt" onclick="goAS(1)" id="btn-as0">→ Continuer</button>
       </div>
@@ -1833,6 +1839,9 @@ body{max-width:min(100%,1200px)}
             <button class="shct" onclick="stkMotif('Retour')" id="mtf-retour">↩️ Retour</button>
           </div>
           <input class="pi sm" type="text" id="inp-motif" placeholder="Ou écris la raison" style="margin-top:7px">
+        </div>
+        <div class="pig" id="stk-umnom-row"><label class="pl" id="lbl-stk-umnom">Ça se compte en quoi ? (tas, botte, cuvette…)</label>
+          <input class="pi sm" type="text" id="inp-sumnom" maxlength="12" placeholder="laisse vide pour « unités »">
         </div>
         <div class="pig" id="stk-consigne-row"><label class="pl" id="lbl-stk-cons">Consigne de l'emballage (0 si aucune)</label>
           <input class="pi" type="number" id="inp-scons" inputmode="numeric" placeholder="0" oninput="majApercuStk()">
@@ -2464,7 +2473,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.42'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.43'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2886,12 +2895,30 @@ var DB=null;
 var lang='fr',obLang='fr',obPays=null,obSecteur='boutique',obRegion='';
 var selEmo='📦',selCat='',selDCat='loyer',achatType='carton',achatTypeA='carton',selImg=null;
 var umSel='pc'; // unité de vente choisie dans le formulaire d'ajout (pc | kg | L)
+function majChipsUmNom(){
+  var box=document.getElementById('umnom-chips');if(!box)return;
+  var inp=document.getElementById('ainp-umnom');
+  var cur=txtNorm((inp&&inp.value)||'');
+  box.innerHTML=UNITES_VIVRIER.map(function(u){
+    var on=(txtNorm(u)===cur);
+    return '<button type="button" onclick="poserUmNom(\''+u+'\')" style="padding:6px 11px;border-radius:16px;border:1.5px solid '+(on?'var(--B)':'var(--BD)')+';background:'+(on?'#EFEDFD':'#fff')+';color:'+(on?'var(--B)':'var(--M)')+';font-size:11.5px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif">'+u+'</button>';
+  }).join('');
+}
+function poserUmNom(u){
+  var inp=document.getElementById('ainp-umnom');if(!inp)return;
+  inp.value=(txtNorm(inp.value)===txtNorm(u))?'':u;   // retoucher = retirer
+  majChipsUmNom();
+}
 function choisirUm(u){
   umSel=u;
   var ids={pc:'um-p',kg:'um-k',L:'um-l'};
   Object.keys(ids).forEach(function(k){var el=document.getElementById(ids[k]);if(el)el.classList.toggle('on',k===u);});
   var row=document.getElementById('sac-row');
   if(row)row.style.display=(u==='pc')?'none':'block';
+  // Le nom libre n'a de sens qu'à la pièce : au kilo, l'unité est le kilo.
+  var nr=document.getElementById('umnom-row');
+  if(nr)nr.style.display=(u==='pc')?'block':'none';
+  try{majChipsUmNom();}catch(e){}
   var lbl=document.getElementById('lbl-sac');
   if(lbl)lbl.textContent=(lang==='fr'?'Taille du sac / bidon':'Bag / can size')+' ('+(u==='kg'?'kg':'L')+')';
 }
@@ -2946,7 +2973,17 @@ function svgIcoArt(key,size){return '<svg viewBox="0 0 24 24" width="'+size+'" h
 function mediaArtInner(p,size){var i=iconArticle(p),c=_RAYON[i.ray]||_RAYON.amber;return {bg:c.bg,fg:c.fg,svg:svgIcoArt(i.ico,size)};}
 // ── Unités de mesure : le commerce informel vend au ½ kg (riz, farine) et au ½ L (huile) ──
 function estMesure(p){return !!(p&&(p.um==='kg'||p.um==='L'));}
-function uniteArt(p){return p&&p.um==='kg'?'kg':(p&&p.um==='L'?'L':(lang==='fr'?'unités':'units'));}
+// Le vivrier ne se vend ni au kilo ni à la pièce : il se vend au TAS, à la
+// BOTTE, à la CUVETTE. L'app disait « 3 unités » pour trois tas de tomates —
+// un mot que le commerçant n'emploie jamais. Le nom de l'unité est donc
+// libre, sans toucher au calcul (un tas reste une pièce entière).
+var UNITES_VIVRIER=['tas','botte','cuvette','sceau','panier','régime','boîte','sachet','paquet','bouquet'];
+function uniteArt(p){
+  if(p&&p.um==='kg')return 'kg';
+  if(p&&p.um==='L')return 'L';
+  if(p&&p.umNom)return p.umNom;
+  return lang==='fr'?'unités':'units';
+}
 function fmtQ(n){var v=Math.round((+n||0)*100)/100;return String(v).replace('.',',');}
 // Jeu d'icônes cohérent pour la barre de navigation (remplace les emojis disparates)
 function installerIconesNav(){
@@ -6876,7 +6913,7 @@ function analyserCollage(){
   closeSheet('ov-collage');
   showToast('📋 '+ajoutes+' '+(fr?'article(s) reconnu(s)':'item(s) found')+(ignores?(' · '+ignores+' '+(fr?'ligne(s) ignorée(s)':'skipped')):'')+' — '+(fr?'vérifie puis crée':'check then create'));
 }
-function ouvrirAjout(){if(!(role==='patron'||hasPerm('produits')))return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;_lastAutoStk=null;umSel='pc';try{choisirUm('pc');}catch(e){}document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp','ainp-mult','ainp-parcont'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';var _sa=document.getElementById('sug-prix-a');if(_sa)_sa.style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display='none';initEmoGrid();initCatGrid();masquerSuggestions();_emoManuel=false;_catManuel=false;var _cg=document.getElementById('cgrd');if(_cg)_cg.style.display='none';var _cl=document.getElementById('lnk-cat');if(_cl)_cl.textContent=(lang==='fr'?'Changer ▾':'Change ▾');var _ew=document.getElementById('egrd-wrap');if(_ew)_ew.style.display='none';var _lk=document.getElementById('lnk-ico');if(_lk)_lk.textContent=(lang==='fr'?'Changer l\'icône ▾':'Change icon ▾');majIdentitePastille();goAS(0);document.getElementById('ov-art').classList.add('show');}
+function ouvrirAjout(){if(!(role==='patron'||hasPerm('produits')))return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;_lastAutoStk=null;umSel='pc';try{choisirUm('pc');}catch(e){}document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp','ainp-mult','ainp-parcont','ainp-umnom'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';var _sa=document.getElementById('sug-prix-a');if(_sa)_sa.style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display='none';initEmoGrid();initCatGrid();masquerSuggestions();_emoManuel=false;_catManuel=false;var _cg=document.getElementById('cgrd');if(_cg)_cg.style.display='none';var _cl=document.getElementById('lnk-cat');if(_cl)_cl.textContent=(lang==='fr'?'Changer ▾':'Change ▾');var _ew=document.getElementById('egrd-wrap');if(_ew)_ew.style.display='none';var _lk=document.getElementById('lnk-ico');if(_lk)_lk.textContent=(lang==='fr'?'Changer l\'icône ▾':'Change icon ▾');majIdentitePastille();goAS(0);document.getElementById('ov-art').classList.add('show');}
 function goAS(n){document.querySelectorAll('#ov-art .pst').forEach(function(s){s.classList.remove('on');});document.getElementById('as'+n).classList.add('on');if(n===1){var nm=document.getElementById('art-nm').value||'Article';var _idh=selImg?('<img src="'+selImg+'" style="width:100%;height:100%;object-fit:cover">'):selEmo;document.getElementById('ae-as').innerHTML=_idh;document.getElementById('an-as').textContent=nm;document.getElementById('ae-as2').innerHTML=_idh;document.getElementById('an-as2').textContent=nm;selTypeA('carton');}}
 function selTypeA(tp){achatTypeA=tp;['carton','palette','lot','unite'].forEach(function(x){var el=document.getElementById('at-'+x[0]);if(el)el.classList.toggle('on',x===tp);});var qs=document.getElementById('aqsec'),qm=document.getElementById('aqmult');if(tp==='unite'){qs.style.display='none';qm.style.display='none';}else{qs.style.display='block';qm.style.display='flex';}
   // Au poids/litre, on parle la langue du patron : SACS et BIDONS, pas des casiers
@@ -7012,7 +7049,7 @@ document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='visible')try{majBoutonVeille();}catch(e){}
 });
 function saveArt(){var nm=document.getElementById('art-nm').value.trim(),pv=parseFloat(document.getElementById('ainp-pv').value)||0,stk=Math.round((parseFloat(String(document.getElementById('ainp-stk').value||'').replace(',','.'))||0)*100)/100,al=parseInt(document.getElementById('ainp-alerte').value)||5;if(!nm){showToast(t('errNom'));goAS(0);return;}if(!pv){showToast(t('errPrix'));return;}var _sac=Math.round((parseFloat(String((document.getElementById('ainp-sac')||{}).value||'').replace(',','.'))||0)*100)/100;
-DB.articles.push({id:DB.nextId++,nm,e:selEmo,img:selImg||null,cat:selCat||'Autre',px:pv,pa:pxAUA||0,stk,al,vd:0,vr:[],rt:ruptSel,um:umSel==='pc'?null:umSel,umSac:umSel!=='pc'&&_sac>0?_sac:null});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();closeSheet('ov-art');showToast(t('articleCree'));
+DB.articles.push({id:DB.nextId++,nm,e:selEmo,img:selImg||null,cat:selCat||'Autre',px:pv,pa:pxAUA||0,stk,al,vd:0,vr:[],rt:ruptSel,um:umSel==='pc'?null:umSel,umSac:umSel!=='pc'&&_sac>0?_sac:null,umNom:(umSel==='pc'?((document.getElementById('ainp-umnom')||{}).value||'').trim().slice(0,12)||null:null)});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();closeSheet('ov-art');showToast(t('articleCree'));
 // Le bon moment pour proposer une famille, c'est MAINTENANT : le nouvel
 // article n'a encore aucune vente, donc le regroupement est sans risque.
 try{proposerRegroupement(DB.articles[DB.articles.length-1]);}catch(e){}}
@@ -7129,6 +7166,7 @@ function selArtStk(p){
   // « prix d'achat à mettre » ne partait jamais.
   var _spa=document.getElementById('inp-spa');if(_spa)_spa.value=(p.pa>0?p.pa:'');
   var _sc=document.getElementById('inp-scons');if(_sc)_sc.value=(p.consigne>0?p.consigne:'');
+  var _un=document.getElementById('inp-sumnom');if(_un)_un.value=p.umNom||'';
   stkPaMode('u');
   stkSens('in'); // repart toujours sur "J'ai reçu"
   document.getElementById('stk-form').style.display='block';
@@ -7171,6 +7209,8 @@ function stkSens(s){
   // Le prix d'achat n'a de sens que quand on REÇOIT de la marchandise.
   var par=document.getElementById('stk-pa-row');if(par)par.style.display=s==='in'?'block':'none';
   var pcr=document.getElementById('stk-consigne-row');if(pcr)pcr.style.display=s==='in'?'block':'none';
+  var unr=document.getElementById('stk-umnom-row');
+  if(unr)unr.style.display=(s==='in'&&!estMesure(artStkCours))?'block':'none';
   var pal=document.getElementById('lbl-stk-pa');
   if(pal)pal.textContent=(fr?'Prix d\'achat':'Cost price')+(artStkCours&&!(artStkCours.pa>0)?(fr?' — manquant !':' — missing!'):(fr?' (facultatif)':' (optional)'));
   var pau=document.getElementById('spa-u-l'),pat=document.getElementById('spa-t-l');
@@ -7248,6 +7288,12 @@ function saveStk(){
   // Entrée de marchandise : c'est le moment où le patron CONNAÎT son prix
   // d'achat. On le mémorise ici, sinon le bénéfice reste inconnu pour toujours.
   // Consigne de l'emballage : elle appartient au produit, pas à la vente.
+  // Le mot du commerçant : « 12 tas » plutôt que « 12 unités ».
+  var _un=((document.getElementById('inp-sumnom')||{}).value||'').trim().slice(0,12);
+  if(!estMesure(a)&&(a.umNom||'')!==_un){
+    journalAjouter('prix',a.nm+(fr?' (unité)':' (unit)'),a.umNom||(fr?'unités':'units'),_un||(fr?'unités':'units'));
+    a.umNom=_un||null;
+  }
   var _cons=parseFloat(String((document.getElementById('inp-scons')||{}).value||'').replace(',','.'));
   if(!isNaN(_cons)&&_cons>=0&&Number(a.consigne||0)!==_cons){
     journalAjouter('prix',a.nm+(fr?' (consigne)':' (deposit)'),fmt(a.consigne||0),fmt(_cons));
