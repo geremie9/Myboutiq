@@ -1431,6 +1431,23 @@ body{max-width:min(100%,1200px)}
         <div class="pmnt-btn" id="pmv-moov" onclick="selPmntVente('moov')"><span class="pmnt-emo">🔵</span><div class="pmnt-nm">Moov</div></div>
         <div class="pmnt-btn" id="pmv-credit" onclick="selPmntVente('credit')"><span class="pmnt-emo">🧾</span><div class="pmnt-nm" id="pmv-credit-nm">Crédit</div></div>
       </div>
+      <!-- CONSIGNE : n'apparaît que si le panier contient un article consigné -->
+      <div id="consigne-row" style="display:none;background:#FFF8E1;border:1.5px solid #FFD79A;border-radius:12px;padding:11px 13px;margin-bottom:11px">
+        <div style="font-size:11px;font-weight:800;color:#B45309;margin-bottom:8px" id="cons-lbl">Consigne</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+          <span style="flex:1;font-size:12px;font-weight:700;color:var(--T)" id="cons-l1">🍾 Emballages emportés</span>
+          <button type="button" onclick="chgConsigne('prises',-1)" style="width:34px;height:34px;border-radius:10px;border:none;background:#fff;font-size:19px;font-weight:900;cursor:pointer;font-family:Outfit,sans-serif">−</button>
+          <span id="cons-prises" style="min-width:24px;text-align:center;font-size:16px;font-weight:900;color:var(--T)">0</span>
+          <button type="button" onclick="chgConsigne('prises',1)" style="width:34px;height:34px;border-radius:10px;border:none;background:#fff;font-size:19px;font-weight:900;cursor:pointer;font-family:Outfit,sans-serif">+</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="flex:1;font-size:12px;font-weight:700;color:var(--T)" id="cons-l2">↩️ Emballages rendus</span>
+          <button type="button" onclick="chgConsigne('rendues',-1)" style="width:34px;height:34px;border-radius:10px;border:none;background:#fff;font-size:19px;font-weight:900;cursor:pointer;font-family:Outfit,sans-serif">−</button>
+          <span id="cons-rendues" style="min-width:24px;text-align:center;font-size:16px;font-weight:900;color:var(--T)">0</span>
+          <button type="button" onclick="chgConsigne('rendues',1)" style="width:34px;height:34px;border-radius:10px;border:none;background:#fff;font-size:19px;font-weight:900;cursor:pointer;font-family:Outfit,sans-serif">+</button>
+        </div>
+        <div style="text-align:right;font-size:14px;font-weight:900;margin-top:8px" id="cons-total">0</div>
+      </div>
       <div id="btn-split-toggle" onclick="toggleSplitVente()" style="text-align:center;font-size:12px;font-weight:700;color:var(--B);padding:6px;cursor:pointer">➕ Paiement en 2 parties (espèces + mobile money)</div>
       <div style="text-align:center">
         <button type="button" id="btn-rem-toggle" onclick="toggleRemiseVente()" style="background:none;border:none;font-size:12px;font-weight:700;color:var(--O);padding:6px;cursor:pointer;font-family:Outfit,sans-serif">🏷️ Faire une remise</button>
@@ -1816,6 +1833,10 @@ body{max-width:min(100%,1200px)}
             <button class="shct" onclick="stkMotif('Retour')" id="mtf-retour">↩️ Retour</button>
           </div>
           <input class="pi sm" type="text" id="inp-motif" placeholder="Ou écris la raison" style="margin-top:7px">
+        </div>
+        <div class="pig" id="stk-consigne-row"><label class="pl" id="lbl-stk-cons">Consigne de l'emballage (0 si aucune)</label>
+          <input class="pi" type="number" id="inp-scons" inputmode="numeric" placeholder="0" oninput="majApercuStk()">
+          <div style="font-size:10.5px;font-weight:600;color:var(--M);margin-top:4px" id="cons-aide">Bouteille, casier, bidon de gaz : la somme que le client laisse et récupère en rendant l'emballage. Elle n'est jamais comptée dans ton bénéfice.</div>
         </div>
         <div class="pig" id="stk-pa-row"><label class="pl" id="lbl-stk-pa">Prix d'achat</label>
           <div style="display:flex;gap:8px;margin-bottom:7px">
@@ -2443,7 +2464,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.41'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.42'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5085,8 +5106,12 @@ function calcRemiseVente(){
     ? Math.min(Math.max(0,brut),Math.max(0,parseFloat((document.getElementById('rem-inp')||{}).value)||0))
     : 0;
   var total=calcTotal(),ben=calcBenTotal();
-  var t1=document.getElementById('calc-tot');if(t1)t1.textContent=fmt(total);
-  var t2=document.getElementById('calc-tot-mobile');if(t2)t2.textContent=fmt(total);
+  // Ce qui s'affiche est ce que le CLIENT sort de sa poche : marchandise
+  // + consigne. Le chiffre d'affaires, lui, ne retient que la marchandise.
+  try{majConsigneUI();}catch(e){}
+  var aPayer=calcAPayer();
+  var t1=document.getElementById('calc-tot');if(t1)t1.textContent=fmt(aPayer);
+  var t2=document.getElementById('calc-tot-mobile');if(t2)t2.textContent=fmt(aPayer);
   calcCreditVente();
   var info=document.getElementById('rem-info');
   if(info){
@@ -5112,7 +5137,8 @@ function calcSplitVente(){
   el.style.color=esp>total?'var(--R)':'var(--T)';
 }
 function calcMonnaie(){
-  var total=calcTotal(),recu=parseFloat(document.getElementById('calc-recu').value)||0;
+  // La monnaie se calcule sur ce qu'il DOIT payer, consigne comprise.
+  var total=calcAPayer(),recu=parseFloat(document.getElementById('calc-recu').value)||0;
   var res=document.getElementById('calc-res');res.style.display='block';
   var monnaie=recu-total;
   document.getElementById('calc-res-amt').textContent=monnaie>=0?fmt(monnaie):fmt(0);
@@ -7102,6 +7128,7 @@ function selArtStk(p){
   // patron croyait le saisir — le champ n'existait pas, donc le repère
   // « prix d'achat à mettre » ne partait jamais.
   var _spa=document.getElementById('inp-spa');if(_spa)_spa.value=(p.pa>0?p.pa:'');
+  var _sc=document.getElementById('inp-scons');if(_sc)_sc.value=(p.consigne>0?p.consigne:'');
   stkPaMode('u');
   stkSens('in'); // repart toujours sur "J'ai reçu"
   document.getElementById('stk-form').style.display='block';
@@ -7143,6 +7170,7 @@ function stkSens(s){
   var frw=document.getElementById('stk-fourn-row');if(frw)frw.style.display=s==='in'?'block':'none';
   // Le prix d'achat n'a de sens que quand on REÇOIT de la marchandise.
   var par=document.getElementById('stk-pa-row');if(par)par.style.display=s==='in'?'block':'none';
+  var pcr=document.getElementById('stk-consigne-row');if(pcr)pcr.style.display=s==='in'?'block':'none';
   var pal=document.getElementById('lbl-stk-pa');
   if(pal)pal.textContent=(fr?'Prix d\'achat':'Cost price')+(artStkCours&&!(artStkCours.pa>0)?(fr?' — manquant !':' — missing!'):(fr?' (facultatif)':' (optional)'));
   var pau=document.getElementById('spa-u-l'),pat=document.getElementById('spa-t-l');
@@ -7219,6 +7247,12 @@ function saveStk(){
   }
   // Entrée de marchandise : c'est le moment où le patron CONNAÎT son prix
   // d'achat. On le mémorise ici, sinon le bénéfice reste inconnu pour toujours.
+  // Consigne de l'emballage : elle appartient au produit, pas à la vente.
+  var _cons=parseFloat(String((document.getElementById('inp-scons')||{}).value||'').replace(',','.'));
+  if(!isNaN(_cons)&&_cons>=0&&Number(a.consigne||0)!==_cons){
+    journalAjouter('prix',a.nm+(fr?' (consigne)':' (deposit)'),fmt(a.consigne||0),fmt(_cons));
+    a.consigne=_cons>0?_cons:0;
+  }
   var paU=stkPaUnit(),paMsg='';
   if(paU>0&&Number(a.pa)!==paU){
     journalAjouter('prix',a.nm+(fr?' (achat)':' (cost)'),fmt(a.pa||0),fmt(paU));
@@ -7304,6 +7338,19 @@ function renderRpt(){
       var inc=getCaisseSales().reduce(function(s,v){return s+getSaleCAInconnu(v);},0);
       if(inc<=0)return '';
       return '<div class="rrow"><span class="rlbl" style="color:var(--O)">⚠️ '+(lang==='fr'?'Ventes sans prix d\'achat':'Sales without cost')+'<div style="font-size:9.5px;font-weight:600;color:var(--M)">'+(lang==='fr'?'bénéfice inconnu — non compté ci-dessus':'profit unknown — not counted above')+'</div></span><span class="rval" style="color:var(--O)">'+fmt(inc)+'</span></div>';
+    })()+
+    (function(){
+      // La consigne n'est ni un chiffre d'affaires ni un bénéfice : c'est de
+      // l'argent qu'on garde pour le rendre. On l'affiche à part, avec ce
+      // qu'il reste à devoir depuis toujours.
+      var fr=lang==='fr';
+      var jour=getCaisseSales().reduce(function(s,v){return s+(Number(v.consigne)||0);},0);
+      var total=(DB.ventes||[]).reduce(function(s,v){return s+((v&&!v.annulee)?(Number(v.consigne)||0):0);},0);
+      if(!jour&&!total)return '';
+      return '<div class="rrow"><span class="rlbl" style="color:#B45309">🍾 '+(fr?'Consignes du jour':'Deposits today')
+        +'<div style="font-size:9.5px;font-weight:600;color:var(--M)">'+(fr?'argent gardé pour être rendu — ni chiffre d\'affaires ni bénéfice':'held to be returned')
+        +(total?('<br>'+(fr?'tu dois en tout : ':'you owe in total: ')+fmt(total)):'')
+        +'</div></span><span class="rval" style="color:#B45309">'+(jour>=0?'+':'')+fmt(jour)+'</span></div>';
     })()+
     '<div class="rrow"><span class="rlbl">💸 '+(lang==='fr'?'Dépenses':'Expenses')+'</span><span class="rval r">-'+fmt(totalDep)+'</span></div>'+
     '<div class="rrow"><span class="rlbl">💎 '+(lang==='fr'?'Bénéfice NET':'NET Profit')+'</span><span class="rval g" style="font-size:17px;font-weight:900">'+fmt(benNet)+'</span></div>'+
@@ -7946,6 +7993,54 @@ function calcTotalBrut(){return Object.entries(panier).reduce(function(s,e){var 
 // inconnu, pas égal au prix de vente.
 function calcBenBrut(){return Object.entries(panier).reduce(function(s,e){var k=e[0],qty=e[1],parts=k.split('-'),pid=parts[0],vid=parts[1],p=DB.articles.find(function(x){return x.id==pid;});if(!p)return s;if(vid&&vid!=='0'){var v=p.vr.find(function(x){return x.id==vid;});return s+((v&&v.pa>0)?(v.px-v.pa)*qty:0);}return s+((p.pa>0)?(p.px-p.pa)*qty:0);},0);}
 calcTotal=function(){return Math.max(0,calcTotalBrut()-remisePoints-(remiseVente||0));};
+// ═══════════════════════════════════════════════════════════════════
+// LA CONSIGNE — de l'argent qui passe par la caisse SANS t'appartenir
+// La bouteille de bière, le casier, la bouteille de gaz sont consignés :
+// le client laisse une somme, il la reprend en rendant l'emballage. Ce
+// n'est NI un chiffre d'affaires NI un bénéfice — c'est une dette.
+// L'app l'ignorait totalement : l'argent des consignes gonflait la caisse
+// sans qu'on sache qu'il faudrait le rendre.
+// ═══════════════════════════════════════════════════════════════════
+var consignePrises=0,consigneRendues=0;
+// Le montant unitaire de consigne du panier (le plus élevé des articles
+// consignés : on ne mélange pas deux tarifs dans une même vente).
+function consigneUnitPanier(){
+  var u=0;
+  Object.keys(panier||{}).forEach(function(k){
+    var p=DB.articles.find(function(x){return x.id==k.split('-')[0];});
+    if(p&&p.consigne>0)u=Math.max(u,Number(p.consigne)||0);
+  });
+  return u;
+}
+function consigneNette(){
+  var u=consigneUnitPanier();
+  if(u<=0)return 0;
+  return (consignePrises-consigneRendues)*u;
+}
+// Ce que le client sort de sa poche : la marchandise PLUS la consigne.
+function calcAPayer(){return calcTotal()+consigneNette();}
+function chgConsigne(quoi,d){
+  if(quoi==='prises')consignePrises=Math.max(0,consignePrises+d);
+  else consigneRendues=Math.max(0,consigneRendues+d);
+  majConsigneUI();
+  try{calcRemiseVente();}catch(e){}
+}
+function majConsigneUI(){
+  var box=document.getElementById('consigne-row');if(!box)return;
+  var u=consigneUnitPanier(),fr=lang==='fr';
+  if(u<=0){box.style.display='none';consignePrises=0;consigneRendues=0;return;}
+  box.style.display='block';
+  var net=consigneNette();
+  var e1=document.getElementById('cons-prises');if(e1)e1.textContent=consignePrises;
+  var e2=document.getElementById('cons-rendues');if(e2)e2.textContent=consigneRendues;
+  var t=document.getElementById('cons-total');
+  if(t){
+    t.textContent=(net>0?'+ ':(net<0?'− ':''))+fmt(Math.abs(net));
+    t.style.color=net>0?'var(--O)':(net<0?'var(--G)':'var(--M)');
+  }
+  var l=document.getElementById('cons-lbl');
+  if(l)l.textContent=(fr?'Consigne ':'Deposit ')+fmt(u)+(fr?' / emballage — ce n\'est pas ton bénéfice':' each — not your profit');
+}
 calcBenTotal=function(){return calcBenBrut()-remisePoints-(remiseVente||0);};
 function pointsGagnesPour(total){return Math.floor((total||0)/100);}
 function clientProgressData(cl){var pts=cl&&cl.points||0;if(pts>=2000)return {pct:100,next:'Niveau maximum atteint',cur:pts+' pts',lvl:cl.niveau||niveauClient(pts)};var next=pts>=500?2000:500;var prev=pts>=500?500:0;var pct=Math.max(0,Math.min(100,Math.round(((pts-prev)/(next-prev))*100)));return {pct:pct,next:(next-pts)+' pts avant '+(pts>=500?'Or 🥇':'Argent 🥈'),cur:pts+' pts',lvl:cl.niveau||niveauClient(pts)};}
@@ -8451,7 +8546,7 @@ function suggererArchivage(){
   setTimeout(function(){showToast('🧹 '+(lang==='fr'?'Beaucoup de ventes en mémoire — Réglages › Alléger l\'application pour rester rapide':'Many sales in memory — Settings › Lighten the app'));},2500);
 }
 var _logoutBase=logout;logout=function(){clientVente=null;remisePoints=0;remiseVente=0;_logoutBase();};
-viderPanier=function(){panier={};remisePoints=0;remiseVente=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');};
+viderPanier=function(){panier={};remisePoints=0;remiseVente=0;consignePrises=0;consigneRendues=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');};
 function renderClientVenteList(){var c=document.getElementById('client-vente-list');if(!c||!DB)return;c.innerHTML=DB.clients.length?DB.clients.map(function(cl){majNiveauClient(cl);return '<div class="hist-sale" onclick="choisirClientVente('+cl.id+')"><div class="hist-h"><div><div class="hist-d">'+cl.nm+'</div><div class="hist-s">'+cl.niveau+' · '+(cl.points||0)+' pts</div></div><div class="hist-t">'+fmt(cl.credit||0)+'</div></div></div>';}).join(''):'<div class="dash-empty">Aucun client enregistré</div>'; }
 function ouvrirClientVente(){renderClientVenteList();document.getElementById('ov-client-vente').classList.add('show');}
 function choisirClientVente(id){clientVente=DB.clients.find(function(c){return c.id===id;})||null;remisePoints=0;updateClientVenteUI();closeSheet('ov-client-vente');showToast(clientVente?'👤 '+clientVente.nm+' sélectionné':'Client retiré');}
@@ -8541,9 +8636,14 @@ encaisser=function(){
     if(paiement.mode==='credit'&&paiement.du>0){cl.credit=(cl.credit||0)+paiement.du;if(!cl.date){var _e=new Date();_e.setDate(_e.getDate()+7);cl.date=_e.toISOString().slice(0,10);}cl.hist.push({date:dateFr,type:'credit',amt:paiement.du});}
   }
   var vendeur=role==='vendeur'?(nomVendeur||'Vendeur'):(DB.cfg.nom.split(' ')[0]||'Patron');
-  DB.ventes.push({id:genVenteId(),total:total,totalBrut:totalBrut,benefice:ben,ben:ben,lignes:lignes,h:h,heure:h,date:dateFr,vendeur:vendeur,clientId:clientId,clientNom:clientNm,pointsGagnes:ptsGagnes,pointsUtilises:ptsUtilises,reductionPoints:remisePoints,remise:remiseVente||0,paiement:paiement,annulee:false});
+  // La consigne voyage À CÔTÉ du total : elle passe par la caisse mais
+  // n'est ni un chiffre d'affaires ni un bénéfice. On garde aussi le détail
+  // pris/rendu pour pouvoir expliquer la somme au commerçant.
+  var _consNet=consigneNette(),_consU=consigneUnitPanier();
+  DB.ventes.push({id:genVenteId(),total:total,totalBrut:totalBrut,benefice:ben,ben:ben,lignes:lignes,h:h,heure:h,date:dateFr,vendeur:vendeur,clientId:clientId,clientNom:clientNm,pointsGagnes:ptsGagnes,pointsUtilises:ptsUtilises,reductionPoints:remisePoints,remise:remiseVente||0,paiement:paiement,annulee:false,
+    consigne:_consNet,consignePrises:consignePrises,consigneRendues:consigneRendues,consigneUnit:_consU});
   sauverEtEnvoyerVite();dernierRecu={boutique:DB.cfg.nom,lignes:lignes.map(function(l){var _p=DB.articles.find(function(x){return x.id==l.pid;});var _u=(_p&&estMesure(_p)&&!l.vid)?(' '+uniteArt(_p)):'';return {nm:l.nm+' ×'+fmtQ(l.qte)+_u,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:remiseVente||0,client:clientNm};
-  panier={};remisePoints=0;remiseVente=0;clientVente=null;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
+  panier={};remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
   renderProd(DB.articles);renderStock(DB.articles);renderClients();renderDashboard();recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
   document.getElementById('succ-amt').textContent=fmt(total);
   var sc=document.getElementById('succ');sc.classList.add('show');if(navigator.vibrate)navigator.vibrate([50,30,50]);
