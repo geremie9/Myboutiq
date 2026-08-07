@@ -1200,7 +1200,17 @@ body{max-width:min(100%,1200px)}
       </div>
     </div>
     <!-- Équipe -->
-    <div class="stsc"><div class="sttit" id="lbl-equipe">👥 Mon équipe</div><div class="stcd" id="equipe-lst"></div></div>
+    <div class="stsc"><div class="sttit" id="lbl-equipe">👥 Mon équipe</div><div class="stcd" id="equipe-lst"></div>
+      <div class="stcd" style="margin-top:9px">
+        <div class="stit2" style="cursor:default">
+          <div class="stico" style="background:#EDE7F6">🔢</div>
+          <div class="stii"><div class="stitl" id="st-maxv">Nombre de vendeurs autorisés</div>
+            <div class="stisub" id="st-maxv-s">0 = pas de limite</div></div>
+          <input type="number" id="inp-maxv" min="0" max="50" inputmode="numeric" onchange="definirMaxVendeurs(this.value)"
+                 style="width:62px;text-align:center;font-size:15px;font-weight:900;padding:7px;border-radius:9px;border:1.5px solid var(--BD);font-family:Outfit,sans-serif">
+        </div>
+      </div>
+    </div>
     <!-- La sécurité mérite sa propre section : « Changer mon PIN » était rangé
          sous « Catalogue », personne n'irait l'y chercher. -->
     <div class="stsc" id="sec-securite">
@@ -2473,7 +2483,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.43'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.44'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3928,14 +3938,24 @@ function applyRolePerms(){
   if(!showCli&&pmntModeVente==='credit'){try{selPmntVente('especes');}catch(e){}}
   renderProd(DB.articles);
 }
+// Renvoie 'ok', 'desactive' ou 'trop'. Ne crée le vendeur que si c'est permis.
+// ⚠️ Avant, un vendeur DÉSACTIVÉ par le patron se réactivait tout seul en se
+// reconnectant (existant.actif=true) : l'interrupteur de « Mon équipe » ne
+// servait à rien. Même faute que les permissions branchées sur du vide.
 function registerVendeurEquipe(nm){
   if(!DB.equipe)DB.equipe=[];
   var nmNorm=txtNorm(nm);
   var existant=DB.equipe.find(function(v){return v.role==='vendeur'&&txtNorm(v.nm)===nmNorm;});
-  if(existant){existant.actif=true;return;}
+  if(existant)return existant.actif?'ok':'desactive';
+  var max=Number((DB.cfg&&DB.cfg.maxVendeurs)||0);
+  if(max>0){
+    var actifs=DB.equipe.filter(function(v){return v.role==='vendeur'&&v.actif;}).length;
+    if(actifs>=max)return 'trop';
+  }
   var bgs=[['#E3F2FD','#2979FF'],['#FFF8E1','#F5A623'],['#E8F5E9','#00C853'],['#FCE4EC','#E91E63'],['#F3E5F5','#7C4DFF']];
   var c=bgs[DB.equipe.length%bgs.length];
   DB.equipe.push({id:(DB.equipe.reduce(function(m,v){return Math.max(m,v.id||0);},0)+1),nm:nm,role:'vendeur',bg:c[0],tc:c[1],actif:true,perms:defautPerms()});
+  return 'ok';
 }
 function _finishLoginP(){
   role='patron';
@@ -4189,6 +4209,17 @@ async function loginV(){
   _finishLoginV(nm,code);
 }
 function _finishLoginV(nm,code){
+  // On demande AVANT d'ouvrir la boutique : un vendeur écarté par le patron,
+  // ou un vendeur de trop, ne doit pas entrer.
+  var etat=registerVendeurEquipe(nm),fr=lang==='fr';
+  if(etat==='desactive'){
+    showToast('🚫 '+(fr?'Ton patron a désactivé ton accès. Parle-lui.':'Your manager disabled your access.'));
+    return;
+  }
+  if(etat==='trop'){
+    showToast('🚫 '+(fr?'Cette boutique a déjà tous ses vendeurs. Demande au patron.':'This shop already has all its sellers.'));
+    return;
+  }
   role='vendeur';nomVendeur=nm;
   document.getElementById('u-nm').textContent=nm;
   document.getElementById('u-role').textContent=t('vendeur');
@@ -4196,7 +4227,6 @@ function _finishLoginV(nm,code){
   ['btn-st','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
   var bes=document.getElementById('btn-exp-stk');if(bes)bes.style.display='none';
   showSecPatron(false);var spb=document.getElementById('sec-patron-backup');if(spb)spb.style.display='none';
-  registerVendeurEquipe(nm);
   save();
   try{memoriserEntree({role:'vendeur',code:DB.cfg.code||code,nom:nm,
     boutique:(DB.cfg&&DB.cfg.nom)||''});}catch(e){}
@@ -7465,7 +7495,9 @@ function appelCli(){if(cliCours&&cliCours.tel&&cliCours.tel!=='N/A')window.open(
 // ═══════════════════════════════════════════
 // ÉQUIPE
 // ═══════════════════════════════════════════
-function renderEquipe(){var c=document.getElementById('equipe-lst');if(!c)return;var rl={patron:lang==='fr'?'👑 Patron':'👑 Owner',vendeur:lang==='fr'?'👦 Vendeur':'👦 Seller',gerant:lang==='fr'?'👨‍💼 Gérant':'👨‍💼 Manager'};var rc={patron:'var(--A)',vendeur:'var(--B)',gerant:'var(--PU)'};c.innerHTML=DB.equipe.map(function(v,i){return '<div class="vit3"><div class="vav" style="background:'+v.bg+';color:'+v.tc+'">'+v.nm[0]+'</div><div class="vinf3"><div class="vnm3">'+v.nm+'</div><div class="vrl" style="color:'+rc[v.role]+'">'+rl[v.role]+'</div></div>'+(v.role!=='patron'?'<button onclick="ouvrirPerm('+i+')" style="background:#F0F4FF;color:var(--B);border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:8px">🔐</button><button class="tog '+(v.actif?'on':'off')+'" onclick="togV('+i+')" style="width:38px;height:22px"></button>':'<span style="font-size:10px;font-weight:700;background:#E8F5E9;color:var(--G);padding:2px 8px;border-radius:20px">'+(lang==='fr'?'Actif':'Active')+'</span>')+'</div>';}).join('')+'<div class="stit2" style="justify-content:center;color:var(--B);font-weight:800;font-size:13px;cursor:pointer;padding:12px" onclick="inviterVendeur()">+ '+(lang==='fr'?'Inviter un vendeur':'Invite a seller')+'</div>';}
+function renderEquipe(){var c=document.getElementById('equipe-lst');if(!c)return;
+  var _mv=document.getElementById('inp-maxv');
+  if(_mv&&document.activeElement!==_mv)_mv.value=(DB&&DB.cfg&&DB.cfg.maxVendeurs)||0;var rl={patron:lang==='fr'?'👑 Patron':'👑 Owner',vendeur:lang==='fr'?'👦 Vendeur':'👦 Seller',gerant:lang==='fr'?'👨‍💼 Gérant':'👨‍💼 Manager'};var rc={patron:'var(--A)',vendeur:'var(--B)',gerant:'var(--PU)'};c.innerHTML=DB.equipe.map(function(v,i){return '<div class="vit3"><div class="vav" style="background:'+v.bg+';color:'+v.tc+'">'+v.nm[0]+'</div><div class="vinf3"><div class="vnm3">'+v.nm+'</div><div class="vrl" style="color:'+rc[v.role]+'">'+rl[v.role]+'</div></div>'+(v.role!=='patron'?'<button onclick="ouvrirPerm('+i+')" style="background:#F0F4FF;color:var(--B);border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:8px">🔐</button><button class="tog '+(v.actif?'on':'off')+'" onclick="togV('+i+')" style="width:38px;height:22px"></button>':'<span style="font-size:10px;font-weight:700;background:#E8F5E9;color:var(--G);padding:2px 8px;border-radius:20px">'+(lang==='fr'?'Actif':'Active')+'</span>')+'</div>';}).join('')+'<div class="stit2" style="justify-content:center;color:var(--B);font-weight:800;font-size:13px;cursor:pointer;padding:12px" onclick="inviterVendeur()">+ '+(lang==='fr'?'Inviter un vendeur':'Invite a seller')+'</div>';}
 // ── PERMISSIONS VENDEUR ──
 var PERM_LIST=[
   {k:'vente',e:'🛒',fr:'Encaisser des ventes',en:'Process sales'},
@@ -7560,6 +7592,25 @@ async function loginBiometrique(){
   }catch(e){console.log('WebAuthn login:',e);showToast('⛔ '+(lang==='fr'?'Authentification échouée':'Authentication failed'));}
 }
 function togV(i){DB.equipe[i].actif=!DB.equipe[i].actif;save();renderEquipe();}
+// Combien de vendeurs le patron accepte. 0 = pas de limite (comportement
+// d'avant : on ne change rien pour les boutiques déjà en route).
+function definirMaxVendeurs(v){
+  if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  var n=Math.max(0,Math.min(50,Math.round(parseFloat(v)||0)));
+  var actifs=(DB.equipe||[]).filter(function(x){return x.role==='vendeur'&&x.actif;}).length;
+  var fr=lang==='fr';
+  if(n>0&&n<actifs){
+    // On ne met personne dehors dans le dos du patron : il le fait lui-même.
+    showToast('⚠️ '+(fr?'Tu as déjà '+actifs+' vendeurs actifs. Désactive-en d\'abord.':'You already have '+actifs+' active sellers.'));
+    var e=document.getElementById('inp-maxv');if(e)e.value=(DB.cfg.maxVendeurs||0);
+    return;
+  }
+  DB.cfg.maxVendeurs=n;
+  journalAjouter('equipe',fr?'Vendeurs autorisés':'Sellers allowed',String(DB.cfg.maxVendeurs||0),String(n));
+  save();
+  showToast(n>0?('✅ '+(fr?'Maximum '+n+' vendeur'+(n>1?'s':''):'Max '+n))
+               :('✅ '+(fr?'Aucune limite de vendeurs':'No seller limit')));
+}
 function editNumFiscal(){
   var msg=lang==='fr'?"N° d'identifiant fiscal / réglementaire de la boutique (apparaîtra sur les factures) :":'Store tax/registration ID (will appear on invoices):';
   var v=prompt(msg,DB.cfg.numFiscal||'');
