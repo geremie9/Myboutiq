@@ -1060,7 +1060,7 @@ body{max-width:min(100%,1200px)}
       <div class="tscr" id="tabs-c"></div>
     </div>
     <div id="topventes" style="display:none"></div>
-    <div class="shdr"><span class="stit" id="sec-lbl">⭐</span><button class="sact" id="btn-add" onclick="ouvrirAjout()" style="display:none">+ Ajouter</button></div>
+    <div class="shdr"><span class="stit" id="sec-lbl">⭐</span><button class="sact" id="btn-add" onclick="ouvrirPorteArticles()" style="display:none">+ Ajouter</button></div>
     <div class="cash-guide" id="cash-guide">🟢 Taper = +1 · 💰 Prix · 🔴 ✕ = -1</div>
     <div class="pgrid" id="pgrid"></div>
     <div style="height:20px"></div>
@@ -1278,7 +1278,7 @@ body{max-width:min(100%,1200px)}
       </div>
       <div class="sttit">🛍️ Catalogue</div>
       <div class="stcd">
-        <div class="stit2" onclick="ouvrirAjout();goBack()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="st-art">Ajouter un article</div><div class="stisub" id="st-art-s">Nouvel article</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirPorteArticles();goBack()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="st-art">Ajouter un article</div><div class="stisub" id="st-art-s">Nouvel article</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirPrix(null);goBack()"><div class="stico" style="background:#E3F2FD">💰</div><div class="stii"><div class="stitl" id="st-prix">Modifier les prix</div><div class="stisub" id="st-prix-s">Prix achat, vente, bénéfice</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirStk(null);goBack()"><div class="stico" style="background:#E8F5E9">📦</div><div class="stii"><div class="stitl" id="st-stk">Entrée de stock</div><div class="stisub" id="st-stk-s">Ajouter des quantités</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirRanger()"><div class="stico" style="background:#FFF3E0">🔗</div><div class="stii"><div class="stitl" id="st-rng">Regrouper mes articles</div><div class="stisub" id="st-rng-s">Mettre ensemble ce qui va ensemble (Savon Lux + Savon Protex)</div></div><span class="starr">›</span></div>
@@ -1747,10 +1747,10 @@ body{max-width:min(100%,1200px)}
     <div class="shhdr"><div class="shtit">📋 <span id="col-tit">Coller une liste</span></div><button class="bcl" onclick="closeSheet('ov-collage')">✕</button></div>
     <div style="padding:4px 19px 24px">
       <div style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.45;margin-bottom:10px" id="col-aide">
-        Colle ici la liste reçue par WhatsApp ou notée sur ton téléphone. Un article par ligne. Le dernier nombre est le prix de vente ; s'il y en a deux, le premier est le prix d'achat.
+        Colle ici la liste reçue par WhatsApp, notée sur ton téléphone ou recopiée de ton cahier. Un article par ligne. <b>Écris-la comme tu en as l'habitude</b> — l'app regarde toute la liste pour comprendre ta façon de noter, et te demande si elle hésite.
       </div>
       <div style="background:var(--BG);border-radius:10px;padding:9px 11px;font-size:11px;color:var(--M);font-weight:600;margin-bottom:11px;line-height:1.6" id="col-ex">
-        Riz parfumé 1200<br>Huile 1L - 900 1000<br>Savon Azur : 300
+        Savon Azur 300 500<br>Riz parfumé 25kg 15000<br>Coca 24 bouteilles 600<br>Huile de palme 5L ; 3500 ; 4500
       </div>
       <textarea id="col-txt" style="width:100%;min-height:150px;border:1.5px solid var(--BD);border-radius:12px;padding:11px;font-family:Outfit,sans-serif;font-size:14px;color:var(--T);background:var(--C);outline:none" placeholder="Colle ta liste ici…"></textarea>
       <div id="col-apercu" style="font-size:12px;font-weight:800;margin:9px 0;min-height:17px"></div>
@@ -2100,6 +2100,31 @@ body{max-width:min(100%,1200px)}
 </div>
 
 <!-- DEPENSES -->
+<!-- LA PORTE D'ENTRÉE UNIQUE POUR AJOUTER DES ARTICLES -->
+<!-- Il existait six chemins dispersés dans l'app, et le commerçant devait
+     deviner lequel prendre. On n'en supprime aucun — on arrête juste de le
+     faire choisir entre six portes qui ne se ressemblent pas. -->
+<div class="ov" id="ov-porte" onclick="closeOv(event,'ov-porte')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">📦 <span id="porte-tit">Ajouter des articles</span></div><button class="bcl" onclick="closeSheet('ov-porte')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px" id="porte-aide">Choisis ce qui te va le mieux. Tu peux mélanger les trois.</div>
+      <div class="stit2" onclick="closeSheet('ov-porte');ouvrirCollageListe()"><div class="stico" style="background:#E8F5E9">📋</div><div class="stii"><div class="stitl" id="porte-coller">Coller une liste</div><div class="stisub" id="porte-coller-s">Depuis WhatsApp ou ton fournisseur — le plus rapide pour démarrer</div></div><span class="starr">›</span></div>
+      <div class="stit2" onclick="closeSheet('ov-porte');ouvrirCatalogueRegional()"><div class="stico" style="background:#E3F2FD">🗺️</div><div class="stii"><div class="stitl" id="porte-cat">Choisir dans le catalogue</div><div class="stisub" id="porte-cat-s">Les articles courants du pays, déjà nommés et rangés</div></div><span class="starr">›</span></div>
+      <div class="stit2" onclick="closeSheet('ov-porte');ouvrirAjoutExpress()"><div class="stico" style="background:#FFF3E0">⚡</div><div class="stii"><div class="stitl" id="porte-exp">Taper à la suite</div><div class="stisub" id="porte-exp-s">Nom et prix, un article après l'autre, sans t'arrêter</div></div><span class="starr">›</span></div>
+      <div class="stit2" onclick="closeSheet('ov-porte');ouvrirAjout()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="porte-un">Un seul article, en détail</div><div class="stisub" id="porte-un-s">Avec photo, variantes, conditionnement et seuil d'alerte</div></div><span class="starr">›</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- COUCHE 3 : la seule question posée au commerçant, pour toute la liste -->
+<div class="ov" id="ov-forme" onclick="closeOv(event,'ov-forme')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🤔 <span id="forme-tit">Comment lire ta liste ?</span></div><button class="bcl" onclick="closeSheet('ov-forme')">✕</button></div>
+    <div style="padding:15px 19px" id="forme-cont"></div>
+  </div>
+</div>
+
 <!-- ÉCRIRE UNE ANNONCE (administrateurs MyBoutiQ seulement) -->
 <div class="ov" id="ov-annonce" onclick="closeOv(event,'ov-annonce')">
   <div class="bsht"><div class="shndl"></div>
@@ -2576,7 +2601,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.56'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.57'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4424,7 +4449,7 @@ function renderProd(lst){
         '<div class="eg-ico">🛍️</div>'+
         '<div class="eg-t">'+(fr?'Ta caisse est prête !':'Your register is ready!')+'</div>'+
         '<div class="eg-s">'+(fr?'Ajoute ton premier article pour commencer à vendre.':'Add your first item to start selling.')+'</div>'+
-        '<button class="eg-btn" onclick="ouvrirAjout()">➕ '+(fr?'Ajouter mon 1ᵉʳ article':'Add my 1st item')+'</button>'+
+        '<button class="eg-btn" onclick="ouvrirPorteArticles()">📦 '+(fr?'Ajouter mes articles':'Add my 1st item')+'</button>'+
         '<div><button class="eg-btn2" onclick="ouvrirAjoutExpress()">⚡ '+(fr?'Ajouter plusieurs articles d\'un coup':'Add several items at once')+'</button></div>'+
         '<div><button class="eg-btn2" onclick="importerModeleArticles()">📦 '+(fr?'Ou partir d\'un modèle d\'articles':'Or start from a template')+'</button></div>'+
         '<div class="eg-step"><span class="eg-num">1</span><span>'+(fr?'<b>Ajoute</b> tes articles (nom + prix)':'<b>Add</b> your items (name + price)')+'</span></div>'+
@@ -7003,6 +7028,10 @@ function expCreerTous(){
     (sansPa?(' · '+sansPa+' '+(fr?'sans prix d\'achat':'without cost')):''));
 }
 // ── Coller une liste (WhatsApp, fournisseur) ──
+function ouvrirPorteArticles(){
+  if(!(role==='patron'||hasPerm('produits'))){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  document.getElementById('ov-porte').classList.add('show');
+}
 function ouvrirCollageListe(){
   document.getElementById('col-txt').value='';
   document.getElementById('col-apercu').textContent='';
@@ -7011,10 +7040,120 @@ function ouvrirCollageListe(){
 }
 // Une ligne = un nom suivi de 1 ou 2 nombres. 1 nombre -> prix de vente.
 // 2 nombres -> achat puis vente. Séparateurs tolérés : - : ; , tabulation.
-// Retire UN nombre en fin de chaîne et le renvoie.
-// Subtilité : « 1 200 » est un seul nombre (espace des milliers), mais
-// « 900 1000 » en fait deux. On n'accepte l'espace que devant un groupe
-// d'exactement 3 chiffres qui termine le nombre.
+// ═══════════════════════════════════════════════════════════════════
+//  IMPORT D'UNE LISTE — trois couches
+// ═══════════════════════════════════════════════════════════════════
+// L'ancien analyseur devinait le sens de CHAQUE LIGNE isolément. C'était
+// l'erreur de méthode. « Savon 50 300 » est indécidable seul : cinquante
+// mille trois cents, ou cinquante savons à trois cents ? Mesuré au banc
+// d'essai, il tombait à 58 % — et 11 lignes sur 43 mettaient un prix FAUX
+// dans la caisse. On ne rustine pas 58 %.
+//
+//   Couche 1  découper sans décider  — les deux lectures restent vivantes
+//   Couche 2  reconnaître la forme de la LISTE, pas de la ligne
+//   Couche 3  demander UNE fois quand c'est vraiment indécidable
+//
+// Le retournement est en couche 2 : si les quarante lignes autour ont trois
+// nombres dont le premier est un petit entier, alors « 50 300 » est deux
+// colonnes — et l'ambiguïté s'évapore sans qu'on ait rien deviné.
+
+// Un nombre collé à une mesure appartient au NOM : « Riz 25kg » n'a pas
+// un stock de 25, il s'appelle « Riz 25kg ».
+var _MESURE_RX=/^(kgs?|kilos?|g|gr|grammes?|l|litres?|cl|ml|cc|mg|m|cm|mm)$/i;
+// Un nombre collé à un contenant est une QUANTITÉ, et c'est certain.
+var _CONTENANT_RX=/^(cartons?|sacs?|bouteilles?|casiers?|paquets?|bo[iî]tes?|pi[eè]ces?|pcs?|pce|unit[eé]s?|sachets?|tas|bottes?|r[eé]gimes?|plaquettes?|douzaines?|rouleaux?|bidons?|seaux?|cuvettes?|plateaux?)$/i;
+// En-têtes, totaux, politesses : jamais des articles.
+var _PARASITE_RX=/^(total|sous.?total|liste|inventaire|stock|articles?|prix|noms?|d[eé]signations?|quantit[eé]s?|merci|dates?|pages?|bonjour|salut|reste|solde)\b/i;
+
+// ── Couche 1 : découper une ligne, sans rien trancher ──────────────
+// Renvoie {nm, qte, qteSure, vals[], groupes[]} ou null si ce n'est pas
+// un article. `groupes` mémorise les endroits où deux nombres voisins
+// POURRAIENT n'en faire qu'un (« 2 500 » = 2500) : c'est là que vit
+// l'ambiguïté, et on la garde intacte pour la couche 2.
+function _decouperLigne(ligne){
+  var l=String(ligne||'').replace(/\t/g,' ').replace(/ /g,' ').replace(/\s+/g,' ').trim();
+  if(!l)return null;
+  l=l.replace(/^(?:[-–—•*·]|\d+[.)])\s+/,'');                 // puce ou numérotation
+  if(_PARASITE_RX.test(l))return null;
+  if(!/\d/.test(l))return null;                                // aucun chiffre : pas un article
+  if(/^\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}$/.test(l))return null; // une date seule
+
+  var qte=null,qteSure=false;
+
+  // « 2 cartons de Reaktor » : la quantité ouvre la ligne.
+  var m=l.match(/^(\d+)\s+([A-Za-zÀ-ÿ]+)\s+(?:de\s+|d'\s*)?(.+)$/i);
+  if(m&&_CONTENANT_RX.test(m[2])){qte=parseInt(m[1],10);qteSure=true;l=m[3];}
+
+  // « Coca 24 bouteilles 600 » : quantité + contenant au milieu.
+  l=l.replace(/(\d+)\s*([A-Za-zÀ-ÿ]+)/g,function(tout,n,mot){
+    if(!qteSure&&_CONTENANT_RX.test(mot)){qte=parseInt(n,10);qteSure=true;return ' ';}
+    return tout;
+  });
+
+  // « Savon x50 » ou « Sardine (120) » : deux façons d'être explicite.
+  l=l.replace(/\bx\s*(\d+)\b|\b(\d+)\s*x\b/gi,function(t,a,b){
+    if(!qteSure){qte=parseInt(a||b,10);qteSure=true;}return ' ';});
+  l=l.replace(/\((\d+)\)/g,function(t,n){
+    if(!qteSure){qte=parseInt(n,10);qteSure=true;}return ' ';});
+
+  // Les mesures partent au coffre : elles font partie du nom, pas des colonnes.
+  var coffre=[];
+  l=l.replace(/(\d+(?:[.,]\d+)?)\s*([A-Za-zÀ-ÿ]+)\b/g,function(tout,n,mot){
+    if(_MESURE_RX.test(mot)){coffre.push(n+mot);return ''+(coffre.length-1)+'';}
+    return tout;
+  });
+
+  // Séparateurs explicites : le commerçant a déjà fait le découpage pour nous.
+  var cols=null;
+  if(/[;|]/.test(l))cols=l.split(/\s*[;|]\s*/);
+  else if(/:/.test(l)&&!/\b\d{1,2}:\d{2}\b/.test(l))cols=l.split(/\s*:\s*/);
+  else if(/,\s/.test(l))cols=l.split(/\s*,\s+/);          // « , » suivi d'espace ; « 3,5 » reste un décimal
+
+  var nm='',vals=[],groupes=[];
+  if(cols){
+    nm=cols.shift()||'';
+    cols.forEach(function(c){
+      var v=_nombreSeul(c);
+      if(v!=null)vals.push(v);
+    });
+  }else{
+    // Balayage des nombres depuis la FIN : le nom est ce qui reste devant.
+    var jetons=l.split(' '),i=jetons.length-1,bruts=[];
+    while(i>=0){
+      var t=jetons[i].replace(/[.,;:]+$/,'');
+      if(/^(?:f|fcfa|xaf|cfa)$/i.test(t)){i--;continue;}      // la monnaie seule ne compte pas
+      var v=_nombreSeul(t);
+      // « 5 000 » : le groupe « 000 » vaut zéro tout seul, mais c'est bien un
+      // groupe de milliers. On l'accepte ici ; la fusion lui rendra son sens,
+      // et s'il reste seul il sera écarté (un prix de 0 n'existe pas).
+      if(v==null&&/^0{1,3}$/.test(t))v=0;
+      if(v==null)break;
+      bruts.unshift({v:v,brut:t.replace(/[^\d]/g,'')});
+      i--;
+    }
+    nm=jetons.slice(0,i+1).join(' ');
+    vals=bruts.map(function(b){return b.v;});
+    // Où deux voisins pourraient-ils n'en faire qu'un ? Uniquement si le
+    // second fait EXACTEMENT trois chiffres (« 2 500 », « 50 300 »).
+    for(var k=0;k+1<bruts.length;k++){
+      if(bruts[k+1].brut.length===3&&bruts[k].brut.length<=3)groupes.push(k);
+    }
+  }
+
+  nm=nm.replace(/(\d+)/g,function(t,i){return coffre[+i]||'';});
+  nm=nm.replace(/\s+/g,' ').replace(/^[\s\-–:;,]+|[\s\-–:;,]+$/g,'').trim();
+  if(!nm||nm.length<2||!vals.length)return null;
+  if(_PARASITE_RX.test(nm))return null;
+  return {nm:nm,qte:qte,qteSure:qteSure,vals:vals,groupes:groupes};
+}
+function _nombreSeul(s){
+  var t=String(s||'').trim().replace(/\s*(?:f|fcfa|xaf|cfa)\s*$/i,'').replace(/\s/g,'');
+  if(!/^\d+(?:[.,]\d{1,2})?$/.test(t))return null;
+  var v=parseFloat(t.replace(',','.'));
+  return (v>0&&isFinite(v))?v:null;
+}
+// Retire UN nombre en fin de chaîne et le renvoie. (Ancien analyseur, gardé
+// le temps de la bascule — plus aucun appelant dans l'app.)
 function _retirerNombreFinal(s){
   var m=s.match(/(\d+(?:[ .]\d{3}(?!\d))*)\s*(?:f|fcfa|xaf|cfa)?\s*$/i);
   if(!m)return null;
@@ -7052,27 +7191,225 @@ function analyserLigneArticle(ligne){
   if(vals.length>=2)return {nm:nm,pa:vals[0],px:vals[1],stk:0};
   return {nm:nm,pa:0,px:vals[0],stk:0};
 }
-function analyserCollage(){
-  var fr=lang==='fr';
-  var txt=document.getElementById('col-txt').value||'';
-  var lignes=txt.split(/\r?\n/);
-  var ajoutes=0,ignores=0;
+// ── Couche 2 : reconnaître la forme de la LISTE ────────────────────
+// Toutes les combinaisons de fusion « milliers » possibles pour une ligne.
+// « Lait 2 500 3 200 » peut se lire [2,500,3,200], [2500,3,200],
+// [2,500,3200] ou [2500,3200]. On les garde toutes ; la liste tranchera.
+function _vecteursPossibles(d){
+  var g=(d.groupes||[]).slice(0,3),res=[],total=1<<g.length;
+  for(var m=0;m<total;m++){
+    var pris=[];
+    for(var b=0;b<g.length;b++)if(m&(1<<b))pris.push(g[b]);
+    var chevauche=false;
+    for(var i=1;i<pris.length;i++)if(pris[i]<=pris[i-1]+1)chevauche=true;
+    if(chevauche)continue;
+    var v=d.vals.slice(),dec=0;
+    pris.forEach(function(k){var j=k-dec;v.splice(j,2,v[j]*1000+v[j+1]);dec++;});
+    res.push(v);
+  }
+  return res;
+}
+// Une marge de commerçant vit entre +2 % et +300 %. Au-delà, ce n'est plus
+// une marge : c'est qu'on a pris une quantité pour un prix.
+function _margePlausible(pa,px){var r=px/pa;return r>=1.02&&r<=4;}
+function _coefVariation(t){
+  if(t.length<2)return 9;
+  var m=t.reduce(function(a,b){return a+b;},0)/t.length;
+  if(!(m>0))return 9;
+  var v=t.reduce(function(a,b){return a+(b-m)*(b-m);},0)/t.length;
+  return Math.sqrt(v)/m;
+}
+// Note une hypothèse de rôles sur TOUTE la liste.
+function _noterRoles(vecs,roles){
+  var ipa=roles.indexOf('pa'),ipx=roles.indexOf('px'),istk=roles.indexOf('stk');
+  var score=0,ratios=[];
+  vecs.forEach(function(v){
+    if(ipa>=0&&ipx>=0){
+      var pa=v[ipa],px=v[ipx],r=px/pa;
+      if(_margePlausible(pa,px)){score+=1;ratios.push(r);}
+      else if(r>8||r<1)score-=2;                 // marge absurde, ou vente à perte
+    }
+    if(istk>=0){
+      var q=v[istk];
+      // ⚠️ Ne compter ce nombre comme une quantité QUE s'il ne pourrait pas
+      // aussi passer pour un prix d'achat. Sans cette condition, « Savon 300
+      // 500 » marquait des points dans les deux hypothèses et la quantité
+      // gagnait par un demi-point — le prix d'achat du commerçant devenait
+      // un stock de 300. Une preuve qui vaut pour les deux camps ne prouve rien.
+      var aussiUnPrix=(ipx>=0&&_margePlausible(q,v[ipx]));
+      if(q===Math.round(q)&&q<=2000&&!aussiUnPrix)score+=1;
+      if(q>5000)score-=2;
+    }
+  });
+  // Le signal décisif : un commerçant applique une marge RÉGULIÈRE. Des
+  // rapports serrés = deux colonnes de prix. Des rapports qui partent dans
+  // tous les sens = le premier nombre n'était pas un prix.
+  if(ipa>=0&&ipx>=0&&ratios.length>=3&&_coefVariation(ratios)<0.35)score+=ratios.length*1.5;
+  return score;
+}
+var _FORMES={
+  1:[['px']],
+  2:[['pa','px'],['stk','px']],
+  3:[['stk','pa','px'],['pa','px','stk']]
+};
+function _choisirForme(decoupes){
+  // 1) Combien de colonnes ? Celle que le PLUS de lignes savent produire.
+  var parLongueur={};
+  decoupes.forEach(function(d){
+    var vus={};
+    _vecteursPossibles(d).forEach(function(v){
+      if(vus[v.length])return;vus[v.length]=1;
+      parLongueur[v.length]=(parLongueur[v.length]||0)+1;
+    });
+  });
+  var n=0,meilleur=-1;
+  Object.keys(parLongueur).forEach(function(k){
+    var kk=+k;if(!_FORMES[kk])return;
+    if(parLongueur[k]>meilleur||(parLongueur[k]===meilleur&&kk>n)){meilleur=parLongueur[k];n=kk;}
+  });
+  if(!n)return {n:1,roles:['px'],confiance:0,ecart:0};
+  // 2) Quels rôles ? On note chaque hypothèse sur toute la liste.
+  var vecs=[];
+  decoupes.forEach(function(d){
+    var c=_vecteursPossibles(d).filter(function(v){return v.length===n;})[0];
+    if(c)vecs.push(c);
+  });
+  var notes=_FORMES[n].map(function(r){return {roles:r,score:_noterRoles(vecs,r)};})
+                      .sort(function(a,b){return b.score-a.score;});
+  var ecart=notes.length>1?(notes[0].score-notes[1].score):99;
+  // Une seule ligne explicite (« x50 », « 24 bouteilles ») prouve la forme.
+  var preuves=decoupes.filter(function(d){return d.qteSure;}).length;
+  return {n:n,roles:notes[0].roles,score:notes[0].score,ecart:ecart,
+          confiance:(ecart>=Math.max(2,vecs.length*0.4)||preuves>0)?'haute':'basse',
+          alternative:notes[1]?notes[1].roles:null};
+}
+function _appliquerForme(d,forme){
+  var v=_vecteursPossibles(d).filter(function(x){return x.length===forme.n;})[0];
+  if(!v)v=_vecteursPossibles(d).sort(function(a,b){return Math.abs(a.length-forme.n)-Math.abs(b.length-forme.n);})[0];
+  if(!v||!v.length)return null;
+  var a={nm:d.nm,pa:0,px:0,stk:0};
+  // Une ligne plus courte que la forme (« Sucre 900 » dans une liste à deux
+  // colonnes) : on aligne par la DROITE. Le dernier nombre d'une ligne est
+  // toujours le prix de vente — c'est le seul repère qui ne trompe jamais.
+  // Avant, on alignait par la gauche : 900 devenait un stock et l'article
+  // partait à la poubelle faute de prix.
+  var decalage=forme.roles.length-v.length;
+  forme.roles.forEach(function(r,i){
+    var j=i-decalage;
+    if(j<0||v[j]==null)return;
+    a[r]=v[j];
+  });
+  // La quantité écrite noir sur blanc l'emporte sur toute déduction.
+  if(d.qteSure&&d.qte>0)a.stk=d.qte;
+  if(!(a.px>0))return null;
+  // Prix inversés : on ne devine pas, on REDRESSE et on le signale. Une
+  // marge négative n'est jamais voulue — l'ancien analyseur la laissait passer.
+  if(a.pa>0&&a.pa>a.px){var t=a.pa;a.pa=a.px;a.px=t;a.inverse=true;}
+  return a;
+}
+// ── Point d'entrée : une liste entière, une seule décision ──────────
+function analyserListe(texte,formeImposee){
+  var lignes=String(texte||'').split(/\r?\n/),decoupes=[],ignorees=0;
   lignes.forEach(function(l){
-    if(!l.trim())return;
-    var a=analyserLigneArticle(l);
-    if(!a){ignores++;return;}
+    if(!String(l).trim())return;
+    var d=_decouperLigne(l);
+    if(!d){ignorees++;return;}
+    decoupes.push(d);
+  });
+  if(!decoupes.length)return {articles:[],ignorees:ignorees,forme:null};
+  var f=formeImposee||_choisirForme(decoupes);
+  var articles=[];
+  decoupes.forEach(function(d){var a=_appliquerForme(d,f);if(a)articles.push(a);});
+  return {articles:articles,ignorees:ignorees,forme:f,decoupes:decoupes};
+}
+// ── Couche 3 : demander UNE fois, jamais deux cents fois ────────────
+// Quand les deux lectures se valent, on ne tire pas à pile ou face : on
+// montre au commerçant TROIS lignes de SA liste, avec les deux résultats
+// côte à côte. Il touche une fois, et le choix vaut pour toute la liste.
+var _collageEnAttente=null;
+function _libelleForme(roles,fr){
+  var mots={pa:fr?'prix d\'achat':'cost',px:fr?'prix de vente':'price',stk:fr?'quantité':'quantity'};
+  return roles.map(function(r){return mots[r];}).join(' · ');
+}
+function _apercuForme(decoupes,roles,fr){
+  var f={n:roles.length,roles:roles};
+  return decoupes.slice(0,3).map(function(d){
+    var a=_appliquerForme(d,f);
+    if(!a)return '<div style="font-size:11px;color:var(--M)">'+d.nm+' — '+(fr?'illisible':'unreadable')+'</div>';
+    var bouts=[];
+    if(a.stk>0)bouts.push(fmtQ(a.stk)+' '+(fr?'en stock':'in stock'));
+    if(a.pa>0)bouts.push(fmt(a.pa)+' '+(fr?'à l\'achat':'cost'));
+    bouts.push(fmt(a.px)+' '+(fr?'à la vente':'price'));
+    return '<div style="font-size:11.5px;color:var(--T);font-weight:700;margin-bottom:3px">'+a.nm
+          +' <span style="color:var(--M);font-weight:600">'+bouts.join(' · ')+'</span></div>';
+  }).join('');
+}
+function demanderForme(res){
+  var fr=lang==='fr';
+  _collageEnAttente=res;
+  var a=res.forme.roles,b=res.forme.alternative;
+  var h='<div style="font-size:12.5px;font-weight:700;color:var(--T);margin-bottom:4px">'
+       +(fr?'Ta liste peut se lire de deux façons. Laquelle est la bonne ?':'Your list reads two ways. Which one?')+'</div>'
+       +'<div style="font-size:11px;color:var(--M);font-weight:600;margin-bottom:13px">'
+       +(fr?'Regarde tes trois premières lignes. Ton choix s\'appliquera aux '+res.articles.length+' articles.'
+           :'Look at your first three lines. Your choice applies to all '+res.articles.length+' items.')+'</div>';
+  [[a,'A'],[b,'B']].forEach(function(p){
+    if(!p[0])return;
+    h+='<div onclick="choisirForme(\''+p[0].join(',')+'\')" style="border:2px solid var(--BD);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer;background:var(--C)">'
+      +'<div style="font-size:11px;font-weight:800;color:var(--B);margin-bottom:7px">'+_libelleForme(p[0],fr).toUpperCase()+'</div>'
+      +_apercuForme(res.decoupes,p[0],fr)
+      +'<div style="margin-top:9px;padding-top:8px;border-top:1px solid var(--BD);font-size:12px;font-weight:800;color:var(--B)">'
+      +(fr?'C\'est ça → touche ici':'That\'s it → tap here')+'</div></div>';
+  });
+  document.getElementById('forme-cont').innerHTML=h;
+  document.getElementById('ov-forme').classList.add('show');
+}
+function choisirForme(cle){
+  var roles=cle.split(','),res=_collageEnAttente;
+  closeSheet('ov-forme');
+  if(!res)return;
+  var f={n:roles.length,roles:roles,confiance:'haute'};
+  var articles=[];
+  res.decoupes.forEach(function(d){var a=_appliquerForme(d,f);if(a)articles.push(a);});
+  _verserDansListe({articles:articles,ignorees:res.ignorees,forme:f});
+}
+function _verserDansListe(res){
+  var fr=lang==='fr',ajoutes=0,doublons=0,inverses=0;
+  res.articles.forEach(function(a){
     if(DB.articles.some(function(p){return txtNorm(p.nm)===txtNorm(a.nm);})||
-       _expListe.some(function(x){return txtNorm(x.nm)===txtNorm(a.nm);})){ignores++;return;}
+       _expListe.some(function(x){return txtNorm(x.nm)===txtNorm(a.nm);})){doublons++;return;}
+    if(a.inverse)inverses++;
     _expListe.push(a);ajoutes++;
   });
   if(!ajoutes){
-    document.getElementById('col-apercu').style.color='var(--R)';
-    document.getElementById('col-apercu').textContent='⚠️ '+(fr?'Aucune ligne comprise. Vérifie qu\'il y a un prix à la fin de chaque ligne.':'No line understood.');
+    var ap=document.getElementById('col-apercu');
+    if(ap){ap.style.color='var(--R)';
+      ap.textContent='⚠️ '+(doublons?(fr?'Ces '+doublons+' article(s) sont déjà dans ta boutique.':'Already in your shop.')
+                                    :(fr?'Aucune ligne comprise. Vérifie qu\'il y a un prix à la fin de chaque ligne.':'No line understood.'));}
     return;
   }
   expRender();
   closeSheet('ov-collage');
-  showToast('📋 '+ajoutes+' '+(fr?'article(s) reconnu(s)':'item(s) found')+(ignores?(' · '+ignores+' '+(fr?'ligne(s) ignorée(s)':'skipped')):'')+' — '+(fr?'vérifie puis crée':'check then create'));
+  var bouts=[ajoutes+' '+(fr?'article(s) reconnu(s)':'item(s) found')];
+  if(res.ignorees)bouts.push(res.ignorees+' '+(fr?'ligne(s) ignorée(s)':'skipped'));
+  if(doublons)bouts.push(doublons+' '+(fr?'déjà chez toi':'already there'));
+  if(inverses)bouts.push('↔️ '+inverses+' '+(fr?'prix remis à l\'endroit':'price(s) put back in order'));
+  showToast('📋 '+bouts.join(' · ')+' — '+(fr?'vérifie puis crée':'check then create'));
+}
+function analyserCollage(){
+  var fr=lang==='fr';
+  var res=analyserListe(document.getElementById('col-txt').value||'');
+  if(!res.articles.length){
+    var ap=document.getElementById('col-apercu');
+    ap.style.color='var(--R)';
+    ap.textContent='⚠️ '+(fr?'Aucune ligne comprise. Vérifie qu\'il y a un prix à la fin de chaque ligne.':'No line understood.');
+    return;
+  }
+  // Forme évidente : on ne dérange pas. Forme douteuse : on demande, une fois.
+  if(res.forme&&res.forme.confiance==='basse'&&res.forme.alternative&&res.articles.length>=2){
+    demanderForme(res);return;
+  }
+  _verserDansListe(res);
 }
 function ouvrirAjout(){if(!(role==='patron'||hasPerm('produits')))return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;_lastAutoStk=null;umSel='pc';try{choisirUm('pc');}catch(e){}document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp','ainp-mult','ainp-parcont','ainp-umnom'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';var _sa=document.getElementById('sug-prix-a');if(_sa)_sa.style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display='none';initEmoGrid();initCatGrid();masquerSuggestions();_emoManuel=false;_catManuel=false;var _cg=document.getElementById('cgrd');if(_cg)_cg.style.display='none';var _cl=document.getElementById('lnk-cat');if(_cl)_cl.textContent=(lang==='fr'?'Changer ▾':'Change ▾');var _ew=document.getElementById('egrd-wrap');if(_ew)_ew.style.display='none';var _lk=document.getElementById('lnk-ico');if(_lk)_lk.textContent=(lang==='fr'?'Changer l\'icône ▾':'Change icon ▾');majIdentitePastille();goAS(0);document.getElementById('ov-art').classList.add('show');}
 function goAS(n){document.querySelectorAll('#ov-art .pst').forEach(function(s){s.classList.remove('on');});document.getElementById('as'+n).classList.add('on');if(n===1){var nm=document.getElementById('art-nm').value||'Article';var _idh=selImg?('<img src="'+selImg+'" style="width:100%;height:100%;object-fit:cover">'):selEmo;document.getElementById('ae-as').innerHTML=_idh;document.getElementById('an-as').textContent=nm;document.getElementById('ae-as2').innerHTML=_idh;document.getElementById('an-as2').textContent=nm;selTypeA('carton');}}
@@ -7227,7 +7564,7 @@ function depCount(p){var s=(p.dep0||0);(DB.ventes||[]).forEach(function(v){if(v.
 function renderStock(lst){var c=document.getElementById('stk-lst');if(!c)return;c.innerHTML='';var _fr=lang==='fr';
   // "Vendu" sur 30 jours : c'est la donnée utile pour décider quoi racheter.
   // (Avant : p.vd = total depuis toujours, qui ne dit rien de l'activité récente.)
-  var _q30=qteVendueParArticle(30);if(!lst.length){c.innerHTML=(!DB.articles.length&&(role==='patron'||hasPerm('produits')))?('<div class="empty-guide"><div class="eg-ico">📦</div><div class="eg-t">'+(_fr?'Ton stock est vide':'Your stock is empty')+'</div><div class="eg-s">'+(_fr?'Ajoute tes articles pour suivre les quantités et être alerté quand ça baisse.':'Add your items to track quantities and get low-stock alerts.')+'</div><button class="eg-btn" onclick="ouvrirAjout()">➕ '+(_fr?'Ajouter un article':'Add an item')+'</button></div>'):('<div class="empty"><div class="empty-e">🔍</div><div class="empty-t">'+(_fr?'Aucun résultat':'No result')+'</div></div>');return;}var bc={};lst.forEach(function(p){if(!bc[p.cat])bc[p.cat]=[];bc[p.cat].push(p);});Object.entries(bc).forEach(function(e){var cat=e[0],items=e[1];var replie=!!_catsRepliees[cat];
+  var _q30=qteVendueParArticle(30);if(!lst.length){c.innerHTML=(!DB.articles.length&&(role==='patron'||hasPerm('produits')))?('<div class="empty-guide"><div class="eg-ico">📦</div><div class="eg-t">'+(_fr?'Ton stock est vide':'Your stock is empty')+'</div><div class="eg-s">'+(_fr?'Ajoute tes articles pour suivre les quantités et être alerté quand ça baisse.':'Add your items to track quantities and get low-stock alerts.')+'</div><button class="eg-btn" onclick="ouvrirPorteArticles()">📦 '+(_fr?'Ajouter un article':'Add an item')+'</button></div>'):('<div class="empty"><div class="empty-e">🔍</div><div class="empty-t">'+(_fr?'Aucun résultat':'No result')+'</div></div>');return;}var bc={};lst.forEach(function(p){if(!bc[p.cat])bc[p.cat]=[];bc[p.cat].push(p);});Object.entries(bc).forEach(function(e){var cat=e[0],items=e[1];var replie=!!_catsRepliees[cat];
 var ti=document.createElement('div');ti.className='scat-h';
 ti.innerHTML='<span>'+(replie?'▸':'▾')+' '+(CE[cat]||'📦')+' '+cat+'</span><span class="scat-n">'+items.length+'</span>';
 ti.onclick=function(){toggleCatStock(cat);};
