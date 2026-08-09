@@ -2519,7 +2519,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.50'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.51'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2605,7 +2605,7 @@ function _venteEnCours(){
 function _applyRemoteDB(data,silent){
   _rtDerniereMaj=Date.now();
   _suppressSync=true;
-  DB=migrateDBData(mergeDB(data,DB));
+  DB=migrateDBData(mergeDB(data,DB));_artSnapApresFusion();
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
   _suppressSync=false;
   // ⚠️ TOUT ce que la connexion redessine doit AUSSI être redessiné quand des
@@ -2803,7 +2803,7 @@ async function syncToSupa(){
     var user=await getAuthUser();
     if(user)DB.cfg.ownerId=user.id;
     // Fusionner l'état serveur AVANT d'écrire : ne jamais écraser les ventes d'un autre vendeur hors-ligne
-    try{ if(navigator.onLine&&DB.cfg.code){ var _rem=await loadFromSupa(DB.cfg.code); if(_rem) DB=migrateDBData(mergeDB(DB,_rem)); } }catch(e){}
+    try{ if(navigator.onLine&&DB.cfg.code){ var _rem=await loadFromSupa(DB.cfg.code); if(_rem){ DB=migrateDBData(mergeDB(DB,_rem));_artSnapApresFusion(); } } }catch(e){}
     DB.cfg._dev=_deviceId;
     for(var attempt=0;attempt<3;attempt++){
       DB.cfg.code=formatShopCode(DB.cfg.code||genCode());
@@ -2833,7 +2833,7 @@ async function syncToSupa(){
         var ownerExact=ownerRows.find(function(r){return normalizeShopCode(r.code)===normalizeShopCode(DB.cfg.code);})||null;
         if(ownerExact){
           var updExact=await supa.from('boutiques').update(payload).eq('id',ownerExact.id);
-          if(!updExact.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);var cv1=document.getElementById('code-val');if(cv1)cv1.textContent=DB.cfg.code;return true;}
+          if(!updExact.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv1=document.getElementById('code-val');if(cv1)cv1.textContent=DB.cfg.code;return true;}
           if(String(updExact.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
           throw updExact.error;
         }
@@ -2847,7 +2847,7 @@ async function syncToSupa(){
         // Vendeur : écriture serveur = code + PIN équipe (vérifié serveur). Le PIN patron ne part jamais.
         if(_shopPin==null||String(_shopPin).length<4)throw new Error(lang==='fr'?'🔐 Reconnecte-toi avec le PIN équipe':'🔐 Reconnect with the team PIN');
         var rpcSave=await supa.rpc('boutique_ecrire',{p_code:DB.cfg.code,p_pin:String(_shopPin),p_data:payload.data});
-        if(!rpcSave.error&&rpcSave.data===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
+        if(!rpcSave.error&&rpcSave.data===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
         // Serveur temporairement fermé (trop de PIN faux) : les ventes restent
         // dans le téléphone et repartiront au prochain essai.
         if(rpcSave.error&&_signalerBlocagePin(rpcSave.error))throw new Error('PIN_BLOQUE');
@@ -2859,7 +2859,7 @@ async function syncToSupa(){
         var row=byCode.data[0];
         if(!row.owner_id||row.owner_id===((user&&user.id)||DB.cfg.ownerId)){
           var updCode=await supa.from('boutiques').update(payload).eq('id',row.id);
-          if(!updCode.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
+          if(!updCode.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
           if(String(updCode.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
           throw updCode.error;
         }
@@ -2867,7 +2867,7 @@ async function syncToSupa(){
         continue;
       }
       var ins=await supa.from('boutiques').insert(payload);
-      if(!ins.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);var cv4=document.getElementById('code-val');if(cv4)cv4.textContent=DB.cfg.code;return true;}
+      if(!ins.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv4=document.getElementById('code-val');if(cv4)cv4.textContent=DB.cfg.code;return true;}
       if(String(ins.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
       throw ins.error;
     }
@@ -4125,7 +4125,7 @@ async function loginP(){
 // boutique choisie dans la liste, ou reprise des données locales).
 function _terminerLoginPatron(remoteDB,tel,email){
   if(remoteDB){
-    DB=migrateDBData(mergeDB(remoteDB,DB));
+    DB=migrateDBData(mergeDB(remoteDB,DB));_artSnapApresFusion();
     _suppressSync=true;
     localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
     _suppressSync=false;
@@ -4243,7 +4243,7 @@ async function loginV(){
     showToast(lang==='fr'?'❌ Code ou PIN équipe incorrect. Vérifie-les avec ton patron.':'❌ Wrong code or team PIN. Check with your manager.');return;
   }
   _shopPin=pin;
-  DB=migrateDBData(mergeDB(remoteDB,DB));
+  DB=migrateDBData(mergeDB(remoteDB,DB));_artSnapApresFusion();
   save();
   _finishLoginV(nm,code);
 }
@@ -8522,6 +8522,56 @@ function renderResumeArchive(){
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--BD)"><div><div style="font-size:12.5px;font-weight:800;color:var(--T)">'+lbl+'</div><div style="font-size:10.5px;color:var(--M);font-weight:600">'+r.nb+' '+(fr?('vente'+(r.nb>1?'s':'')):('sale'+(r.nb>1?'s':'')))+'</div></div><div style="text-align:right"><div style="font-size:13px;font-weight:900;color:var(--A)">'+fmt(r.ca)+'</div><div style="font-size:10.5px;font-weight:700;color:var(--G)">'+(fr?'bén. ':'profit ')+fmt(r.ben)+'</div></div></div>';
     }).join('');
 }
+// ── Ce que CE téléphone a changé depuis son dernier échange avec le serveur ──
+// Sans ça, la fusion donnait TOUJOURS raison au serveur pour les articles.
+// Conséquence vue en vrai : on regroupe REAKTOR B et C dans REAKTOR A, un
+// rafraîchissement arrive une seconde après, la version du serveur (l'ancienne)
+// remplace le parent — le regroupement est annulé — MAIS les pierres tombales,
+// elles, survivent toujours à la fusion. Donc B et C restaient supprimés.
+// Les suppressions gagnaient, les modifications perdaient. C'est ça, « ça a
+// supprimé mes articles ».
+// On garde une empreinte de chaque article au moment du dernier échange réussi.
+// Ce qui a bougé depuis appartient à ce téléphone et n'est pas écrasé.
+var _artSnap=null;
+function _artEmpreinte(p){
+  try{
+    var s=JSON.stringify(p),h=5381;
+    for(var i=0;i<s.length;i++){h=((h*33)^s.charCodeAt(i))>>>0;}
+    return h;
+  }catch(e){return 0;}
+}
+function _artSnapPrendre(){
+  try{
+    var m={};
+    ((DB&&DB.articles)||[]).forEach(function(p){if(p&&p.id!=null)m[p.id]=_artEmpreinte(p);});
+    _artSnap=m;
+    localStorage.setItem('myboutiq_artsnap',JSON.stringify(m));
+  }catch(e){}
+}
+function _artSnapLire(){
+  if(_artSnap)return _artSnap;
+  try{var raw=localStorage.getItem('myboutiq_artsnap');if(raw)_artSnap=JSON.parse(raw);}catch(e){}
+  // Première fois (mise à jour depuis une ancienne version) : on suppose qu'on
+  // est à jour. C'est le choix prudent — on retombe sur le comportement d'avant
+  // pour ce tour-là, et la protection s'applique dès la modification suivante.
+  if(!_artSnap)_artSnapPrendre();
+  return _artSnap||{};
+}
+// Pour un article dont on vient d'ACCEPTER la version du serveur, l'empreinte
+// doit suivre. Sinon il paraîtrait « modifié ici » au tour suivant et bloquerait
+// le changement SUIVANT de l'autre téléphone : on aurait échangé un bug contre
+// un autre. À appeler APRÈS migrateDBData, qui retouche encore les articles —
+// sinon l'empreinte ne correspond pas à ce qui est réellement en mémoire.
+var _artGardeLocal=null;
+function _artSnapApresFusion(){
+  if(!_artGardeLocal)return;
+  var garde=_artGardeLocal;_artGardeLocal=null;
+  try{
+    var m=_artSnapLire();
+    ((DB&&DB.articles)||[]).forEach(function(p){if(p&&p.id!=null&&!garde[p.id])m[p.id]=_artEmpreinte(p);});
+    _artSnap=m;localStorage.setItem('myboutiq_artsnap',JSON.stringify(m));
+  }catch(e){}
+}
 function mergeDB(base,other){
   if(!base)return other;
   if(!other)return base;
@@ -8540,7 +8590,18 @@ function mergeDB(base,other){
   var artById={};
   (artWin.articles||[]).forEach(function(p){if(p&&p.id!=null)artById[p.id]=p;});       // articles rebasés gagnent
   (artSec.articles||[]).forEach(function(p){if(p&&p.id!=null&&!artById[p.id])artById[p.id]=p;});
+  // Ce que ce téléphone-ci vient de toucher garde le dernier mot. Le côté
+  // « local », c'est celui des deux qui EST la base de données ouverte à l'écran.
+  var _loc=(other===DB)?other:((base===DB)?base:null),_gardeLocal={},_snap=null;
+  if(_loc&&_loc.articles&&_loc.articles.length){
+    _snap=_artSnapLire();
+    _loc.articles.forEach(function(p){
+      if(!p||p.id==null)return;
+      if(_snap[p.id]===undefined||_snap[p.id]!==_artEmpreinte(p)){artById[p.id]=p;_gardeLocal[p.id]=1;}
+    });
+  }
   base.articles=Object.keys(artById).map(function(k){return artById[k];});
+  _artGardeLocal=_snap?_gardeLocal:null;
   // Résumé d'archive : union par mois (clé "AAAA-MM")
   var resById={};
   (base.arch&&base.arch.resume||[]).concat(other.arch&&other.arch.resume||[]).forEach(function(r){if(r&&r.mois&&!resById[r.mois])resById[r.mois]=r;});
