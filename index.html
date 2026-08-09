@@ -2601,7 +2601,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.58'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.59'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9664,7 +9664,7 @@ confirmerAnnulVente=function(){
 };
 function renderDashboard(){
   var c=document.getElementById('dash-cont');if(!c||!DB)return;var sales=getTodaySales(),total=sales.reduce(function(s,v){return s+Number(v.total||0);},0),ben=sales.reduce(function(s,v){return s+getSaleBenef(v);},0),count=sales.length,avg=count?Math.round(total/count):0;
-  var topMap={};sales.forEach(function(v){(v.lignes||[]).forEach(function(l){var base=saleArticleBaseName(l.nm),art=findArticleByLineName(l.nm),key=base||l.nm;if(!topMap[key])topMap[key]={nm:base||l.nm,e:art?art.e:'📦',amt:0,qte:0};topMap[key].amt+=(Number(l.px)||0)*(Number(l.qte||l.qty||1));topMap[key].qte+=Number(l.qte||l.qty||1);});});
+  var topMap={};sales.forEach(function(v){(v.lignes||[]).forEach(function(l){var base=saleArticleBaseName(l.nm),art=findArticleByLineName(l.nm),key=base||l.nm;if(!topMap[key])topMap[key]={nm:base||l.nm,e:art?art.e:'📦',art:art||null,amt:0,qte:0};topMap[key].amt+=(Number(l.px)||0)*(Number(l.qte||l.qty||1));topMap[key].qte+=Number(l.qte||l.qty||1);});});
   var top=Object.keys(topMap).map(function(k){return topMap[k];}).sort(function(a,b){return b.qte-a.qte;}).slice(0,5),maxTop=Math.max.apply(null,top.map(function(x){return x.qte;}).concat([1]));
   var hours=[];for(var i=0;i<24;i++)hours.push(0);sales.forEach(function(v){var hh=parseInt(getSaleHeure(v).split(':')[0],10)||0;hours[hh]+=Number(v.total||0);});var maxHour=Math.max.apply(null,hours.concat([1]));
   var now=new Date(),startWeek=new Date(now),day=(now.getDay()+6)%7;startWeek.setDate(now.getDate()-day);startWeek.setHours(0,0,0,0);var prevWeek=new Date(startWeek);prevWeek.setDate(startWeek.getDate()-7);
@@ -9673,7 +9673,7 @@ function renderDashboard(){
   var delta=lastWeek?Math.round(((thisWeek-lastWeek)/lastWeek)*100):(thisWeek>0?100:0);
   var sellers={};sales.forEach(function(v){var nm=v.vendeur||'Patron';if(!sellers[nm])sellers[nm]={nm:nm,count:0,amt:0};sellers[nm].count++;sellers[nm].amt+=Number(v.total||0);});
   c.innerHTML='<div class="dash-card"><div class="dash-title">Résumé du jour</div><div class="dash-kpis"><div class="dash-kpi"><div class="dash-kpi-l">Ventes totales</div><div class="dash-kpi-v a">'+fmt(total)+'</div></div><div class="dash-kpi"><div class="dash-kpi-l">Bénéfice</div><div class="dash-kpi-v g">'+fmt(ben)+'</div></div><div class="dash-kpi"><div class="dash-kpi-l">Transactions</div><div class="dash-kpi-v">'+count+'</div></div><div class="dash-kpi"><div class="dash-kpi-l">Panier moyen</div><div class="dash-kpi-v">'+fmt(avg)+'</div></div></div></div>'+
-    '<div class="dash-card"><div class="dash-title">Top 5 articles</div>'+(top.length?top.map(function(x){var pct=Math.max(8,Math.round(x.qte/maxTop*100));return '<div class="dash-top-row"><div class="dash-emo">'+x.e+'</div><div style="flex:1"><div class="dash-name">'+x.nm+'</div><div class="dash-sub">'+x.qte+' ventes · '+fmt(x.amt)+'</div><div class="dash-track"><div class="dash-fill" style="width:'+pct+'%"></div></div></div></div>';}).join(''):'<div class="dash-empty">Aucune vente aujourd\'hui</div>')+'</div>'+
+    '<div class="dash-card"><div class="dash-title">Top 5 articles</div>'+(top.length?top.map(function(x){var pct=Math.max(8,Math.round(x.qte/maxTop*100));return '<div class="dash-top-row">'+(x.art?vignetteArt(x.art,null,26):'<div class="dash-emo">'+x.e+'</div>')+'<div style="flex:1"><div class="dash-name">'+x.nm+'</div><div class="dash-sub">'+x.qte+' ventes · '+fmt(x.amt)+'</div><div class="dash-track"><div class="dash-fill" style="width:'+pct+'%"></div></div></div></div>';}).join(''):'<div class="dash-empty">Aucune vente aujourd\'hui</div>')+'</div>'+
     '<div class="dash-card"><div class="dash-title">Heures de pointe</div><div class="hour-chart">'+hours.map(function(v,i){var pct=Math.round(v/maxHour*100);return '<div class="hour-col"><div class="hour-val">'+(v>0?Math.round(v/1000)+'k':'')+'</div><div class="hour-bar" style="height:'+Math.max(4,pct)+'%"></div><div class="hour-lbl">'+i+'h</div></div>';}).join('')+'</div></div>'+
     '<div class="dash-card"><div class="dash-title">Comparaison semaine</div><div class="week-compare"><div class="week-pill"><div class="week-lbl">Cette semaine</div><div class="week-val">'+fmt(thisWeek)+'</div></div><div class="week-pill"><div class="week-lbl">Semaine dernière</div><div class="week-val">'+fmt(lastWeek)+'</div></div></div><div class="week-delta '+(delta>=0?'up':'down')+'" style="margin-top:10px">'+(delta>=0?'▲ ':'▼ ')+Math.abs(delta)+'%</div></div>'+
     '<div class="dash-card"><div class="dash-title">Mes vendeurs aujourd\'hui</div>'+(Object.keys(sellers).length?Object.keys(sellers).map(function(k){var s=sellers[k];return '<div class="seller-row"><div><div class="seller-name">'+s.nm+'</div><div class="seller-meta">'+s.count+' vente(s)</div></div><div class="seller-amt">'+fmt(s.amt)+'</div></div>';}).join(''):'<div class="dash-empty">Aucune activité vendeur</div>')+'</div>';
