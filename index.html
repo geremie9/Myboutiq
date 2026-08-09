@@ -2601,7 +2601,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.57'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.58'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7099,7 +7099,7 @@ function _decouperLigne(ligne){
   // Les mesures partent au coffre : elles font partie du nom, pas des colonnes.
   var coffre=[];
   l=l.replace(/(\d+(?:[.,]\d+)?)\s*([A-Za-zÀ-ÿ]+)\b/g,function(tout,n,mot){
-    if(_MESURE_RX.test(mot)){coffre.push(n+mot);return ''+(coffre.length-1)+'';}
+    if(_MESURE_RX.test(mot)){coffre.push({t:parseFloat(String(n).replace(',','.')),u:mot.toLowerCase(),txt:n+mot});return ''+(coffre.length-1)+'';}
     return tout;
   });
 
@@ -7140,11 +7140,15 @@ function _decouperLigne(ligne){
     }
   }
 
-  nm=nm.replace(/(\d+)/g,function(t,i){return coffre[+i]||'';});
+  nm=nm.replace(/(\d+)/g,function(t,i){return (coffre[+i]&&coffre[+i].txt)||'';});
   nm=nm.replace(/\s+/g,' ').replace(/^[\s\-–:;,]+|[\s\-–:;,]+$/g,'').trim();
   if(!nm||nm.length<2||!vals.length)return null;
   if(_PARASITE_RX.test(nm))return null;
-  return {nm:nm,qte:qte,qteSure:qteSure,vals:vals,groupes:groupes};
+  var mesure=coffre.filter(function(c){return c.t>1;})[0]||null;
+  // La ligne nomme-t-elle un contenant (sac, carton, bidon, casier) ? C'est
+  // ce qui autorisera à lire un nombre en trop comme « nombre de pièces ».
+  var contenant=nm.split(/\s+/).some(function(w){return _CONTENANT_RX.test(w);});
+  return {nm:nm,qte:qte,qteSure:qteSure,vals:vals,groupes:groupes,mesure:mesure,contenant:contenant};
 }
 function _nombreSeul(s){
   var t=String(s||'').trim().replace(/\s*(?:f|fcfa|xaf|cfa)\s*$/i,'').replace(/\s/g,'');
@@ -7212,6 +7216,21 @@ function _vecteursPossibles(d){
 // Une marge de commerçant vit entre +2 % et +300 %. Au-delà, ce n'est plus
 // une marge : c'est qu'on a pris une quantité pour un prix.
 function _margePlausible(pa,px){var r=px/pa;return r>=1.02&&r<=4;}
+// ── Le prix du SAC ramené au prix du KILO ──────────────────────────
+// Le commerçant a lui-même écrit son conditionnement : « Sac de riz 50kg »,
+// « Bidon huile 20L », « Carton savon 48 ». Si diviser par cette taille rend
+// la marge crédible, alors ce n'était pas une erreur d'ordre : c'est du gros.
+// Renvoie le prix unitaire, ou 0 si le conditionnement n'explique rien.
+function _achatRameneALUnite(d,pa,px,n){
+  var taille=(d&&d.mesure&&d.mesure.t>1)?d.mesure.t:0;
+  if(!taille&&d&&d.contenant){
+    var vl=_vecteursPossibles(d).sort(function(x,y){return y.length-x.length;})[0];
+    if(vl&&vl.length===n+1&&vl[0]>1&&vl[0]<=1000)taille=vl[0];
+  }
+  if(!taille)return 0;
+  var u=Math.round(pa/taille);
+  return (u>0&&_margePlausible(u,px))?u:0;
+}
 function _coefVariation(t){
   if(t.length<2)return 9;
   var m=t.reduce(function(a,b){return a+b;},0)/t.length;
@@ -7220,14 +7239,28 @@ function _coefVariation(t){
   return Math.sqrt(v)/m;
 }
 // Note une hypothèse de rôles sur TOUTE la liste.
-function _noterRoles(vecs,roles){
+function _noterRoles(vecs,roles,decs,n){
   var ipa=roles.indexOf('pa'),ipx=roles.indexOf('px'),istk=roles.indexOf('stk');
   var score=0,ratios=[];
-  vecs.forEach(function(v){
+  vecs.forEach(function(v,i){
+    var d=decs&&decs[i];
     if(ipa>=0&&ipx>=0){
       var pa=v[ipa],px=v[ipx],r=px/pa;
       if(_margePlausible(pa,px)){score+=1;ratios.push(r);}
-      else if(r>8||r<1)score-=2;                 // marge absurde, ou vente à perte
+      else{
+        // Acheté en gros ? Le conditionnement écrit dans le nom (« 50kg »,
+        // « 20L », « carton de 48 ») peut rendre la marge crédible — et c'est
+        // alors une PREUVE que ces deux nombres sont bien deux prix.
+        // Sans ça, une liste entière d'achats en gros basculait en
+        // « quantité · prix » : le sac à 25 000 devenait un stock de 25 000.
+        var u=_achatRameneALUnite(d,pa,px,n);
+        if(u>0){score+=1;ratios.push(px/u);}
+        // Et si on les échange, la marge devient-elle crédible ? Alors ce
+        // sont bien DEUX PRIX, simplement dans le mauvais ordre — pas une
+        // quantité suivie d'un prix. C'est une preuve pour cette hypothèse.
+        else if(_margePlausible(px,pa)){score+=1;ratios.push(pa/px);}
+        else if(r>8||r<1)score-=2;               // marge absurde, ou vente à perte
+      }
     }
     if(istk>=0){
       var q=v[istk];
@@ -7239,6 +7272,11 @@ function _noterRoles(vecs,roles){
       var aussiUnPrix=(ipx>=0&&_margePlausible(q,v[ipx]));
       if(q===Math.round(q)&&q<=2000&&!aussiUnPrix)score+=1;
       if(q>5000)score-=2;
+      // Un nombre ROND et GROS a la tête d'un prix, pas d'un comptage : on
+      // compte 24 bouteilles ou 120 sardines, on ne compte pas 4 500 pièces
+      // pile. Sans ça, « Savon Azur 500 300 » (prix inversés) passait pour
+      // 500 savons à 300 F — et il vendait à 300 au lieu de 500.
+      if(q>=500&&q%100===0)score-=1;
     }
   });
   // Le signal décisif : un commerçant applique une marge RÉGULIÈRE. Des
@@ -7269,12 +7307,12 @@ function _choisirForme(decoupes){
   });
   if(!n)return {n:1,roles:['px'],confiance:0,ecart:0};
   // 2) Quels rôles ? On note chaque hypothèse sur toute la liste.
-  var vecs=[];
+  var vecs=[],decs=[];
   decoupes.forEach(function(d){
     var c=_vecteursPossibles(d).filter(function(v){return v.length===n;})[0];
-    if(c)vecs.push(c);
+    if(c){vecs.push(c);decs.push(d);}   // les deux tableaux restent alignés
   });
-  var notes=_FORMES[n].map(function(r){return {roles:r,score:_noterRoles(vecs,r)};})
+  var notes=_FORMES[n].map(function(r){return {roles:r,score:_noterRoles(vecs,r,decs,n)};})
                       .sort(function(a,b){return b.score-a.score;});
   var ecart=notes.length>1?(notes[0].score-notes[1].score):99;
   // Une seule ligne explicite (« x50 », « 24 bouteilles ») prouve la forme.
@@ -7302,9 +7340,31 @@ function _appliquerForme(d,forme){
   // La quantité écrite noir sur blanc l'emporte sur toute déduction.
   if(d.qteSure&&d.qte>0)a.stk=d.qte;
   if(!(a.px>0))return null;
-  // Prix inversés : on ne devine pas, on REDRESSE et on le signale. Une
-  // marge négative n'est jamais voulue — l'ancien analyseur la laissait passer.
-  if(a.pa>0&&a.pa>a.px){var t=a.pa;a.pa=a.px;a.px=t;a.inverse=true;}
+  // ── Quand le prix d'achat dépasse le prix de vente ─────────────────
+  // Deux explications, qui n'ont rien à voir, et qu'il ne faut JAMAIS
+  // confondre :
+  //   • « Savon 500 300 »            → il a inversé l'ordre. Écart modeste.
+  //   • « Sac de riz 50kg 25000 600 » → il ACHÈTE EN GROS et VEND AU DÉTAIL.
+  //     Le sac coûte 25 000, le kilo se vend 600. Rien n'est inversé.
+  // La première version échangeait les deux dans tous les cas : elle annonçait
+  // un riz acheté 600 F et revendu 25 000 F — pire que le bug d'origine.
+  // Le départage : le CONDITIONNEMENT, qu'il a lui-même écrit dans le nom.
+  if(a.pa>0&&a.px>0&&a.pa>a.px){
+    var paUnit=_achatRameneALUnite(d,a.pa,a.px,forme.n);
+    if(paUnit>0){
+      a.paPaquet=a.pa;
+      a.parPaquet=Math.round(a.pa/paUnit);
+      if(d.mesure)a.um=d.mesure.u;
+      a.pa=paUnit;a.gros=true;
+    }else if(a.pa<a.px*3){
+      var t=a.pa;a.pa=a.px;a.px=t;a.inverse=true;
+    }else{
+      // Ni l'un ni l'autre n'explique l'écart. On ne devine pas : mieux vaut
+      // un prix d'achat vide qu'un prix d'achat faux — un mauvais prix
+      // d'achat ne se voit jamais, il empoisonne le bénéfice en silence.
+      a.pa=0;a.paDouteux=true;
+    }
+  }
   return a;
 }
 // ── Point d'entrée : une liste entière, une seule décision ──────────
