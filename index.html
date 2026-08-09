@@ -2534,7 +2534,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.54'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.55'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9328,7 +9328,25 @@ if('serviceWorker' in navigator){
           if(nw.state==='installed'&&navigator.serviceWorker.controller)montrerBandeauMaj(nw);
         });
       });
-      setInterval(function(){reg.update().catch(function(){});},60*60*1000); // vérifie 1×/h
+      // ── Quand chercher une nouvelle version ──
+      // Avant : une seule fois par heure, et seulement si l'écran restait
+      // ouvert. Un commerçant qui ouvre l'app, vend vingt minutes et la ferme
+      // ne tombait jamais sur le contrôle : il pouvait rester des jours sur une
+      // version corrigée depuis longtemps. On regarde aussi quand il REVIENT
+      // sur l'app et quand le réseau REVIENT — les deux moments où il y a
+      // quelque chose de neuf à trouver. Bridé à une fois toutes les 2 minutes
+      // pour ne pas harceler un forfait data compté au mégaoctet.
+      var _derniereVerif=0;
+      function chercherMaj(){
+        var t=Date.now();
+        if(t-_derniereVerif<120000)return;
+        _derniereVerif=t;
+        reg.update().catch(function(){});
+      }
+      setInterval(chercherMaj,15*60*1000);
+      document.addEventListener('visibilitychange',function(){if(!document.hidden)chercherMaj();});
+      window.addEventListener('online',chercherMaj);
+      window.addEventListener('focus',chercherMaj);
     }).catch(function(e){console.warn('SW:',e);});
     var _swReloaded=false;
     navigator.serviceWorker.addEventListener('controllerchange',function(){
