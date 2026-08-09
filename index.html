@@ -1039,6 +1039,17 @@ body{max-width:min(100%,1200px)}
     <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800" id="upd-t">Nouvelle version disponible</div><div style="font-size:11px;font-weight:600;opacity:.85" id="upd-s">Touche pour charger les dernières améliorations</div></div>
     <button id="update-reload" style="background:#fff;color:#4A6CF7;border:none;border-radius:9px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;flex-shrink:0">Recharger</button>
   </div>
+  <!-- Le mot du patron de MyBoutiQ à ses commerçants. Placé SOUS le bandeau de
+       mise à jour (top:78px) pour que les deux puissent cohabiter, et jamais
+       affiché pendant une vente. -->
+  <div id="annonce-banner" style="display:none;position:fixed;left:12px;right:12px;top:78px;max-width:440px;margin:0 auto;background:#fff;border-left:5px solid #4A6CF7;border-radius:12px;padding:12px 14px;align-items:flex-start;gap:11px;z-index:199;box-shadow:0 6px 22px rgba(0,0,0,.20)">
+    <span style="font-size:19px;flex-shrink:0" id="annonce-ico">📣</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:800;color:var(--T)" id="annonce-titre"></div>
+      <div style="font-size:12px;font-weight:600;color:var(--M);margin-top:3px;line-height:1.45" id="annonce-msg"></div>
+    </div>
+    <button class="bcl" style="width:34px;height:34px;font-size:15px;background:transparent" onclick="fermerAnnonce()" aria-label="Fermer">✕</button>
+  </div>
   <div class="mcont">
     <div class="ssec">
       <div class="sbar2">
@@ -1330,6 +1341,10 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" id="row-savestate" onclick="montrerEtatSauvegarde()"><div class="stico" id="savestate-ico" style="background:#E8F5E9">☁️</div><div class="stii"><div class="stitl" id="savestate-tit">Sauvegarde en ligne</div><div class="stisub" id="savestate-sub">—</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirLiaison()"><div class="stico" style="background:#E3F2FD">📡</div><div class="stii"><div class="stitl" id="st-liaison">État de la liaison</div><div class="stisub" id="st-liaison-s">Voir si les ventes circulent entre les téléphones</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirJournal()"><div class="stico" style="background:#F3E5F5">📋</div><div class="stii"><div class="stitl">Journal des modifications</div><div class="stisub">Prix, stock, suppressions — qui &amp; quand</div></div><span class="starr">›</span></div>
+        <!-- Caché à tout le monde sauf aux administrateurs de MyBoutiQ.
+             Le serveur décide (table app_admins) : cacher l'entrée n'est que du
+             confort, c'est la règle RLS qui protège vraiment. -->
+        <div class="stit2" id="row-annonce" style="display:none" onclick="ouvrirEcrireAnnonce()"><div class="stico" style="background:#E8EAF6">📣</div><div class="stii"><div class="stitl">Écrire une annonce</div><div class="stisub">Un message à tous les commerçants</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirArchivage()"><div class="stico" style="background:#E1F5FE">📦</div><div class="stii"><div class="stitl">Ranger les vieilles ventes</div><div class="stisub" id="st-archive-s">Elles sortent du détail, tes totaux ne bougent pas</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirSupprBoutique()"><div class="stico" style="background:#FFEBEE">⛔</div><div class="stii"><div class="stitl" id="st-sup" style="color:var(--R)">Supprimer ma boutique</div><div class="stisub" id="st-sup-s">Tout effacer de nos serveurs, définitivement</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirRaz()"><div class="stico" style="background:#FFEBEE">🗑️</div><div class="stii"><div class="stitl" id="st-raz" style="color:var(--R)">Effacer toutes mes ventes</div><div class="stisub" id="st-raz-s">Sans retour. Ton stock et tes articles restent intacts.</div></div><span class="starr">›</span></div>
@@ -2085,6 +2100,33 @@ body{max-width:min(100%,1200px)}
 </div>
 
 <!-- DEPENSES -->
+<!-- ÉCRIRE UNE ANNONCE (administrateurs MyBoutiQ seulement) -->
+<div class="ov" id="ov-annonce" onclick="closeOv(event,'ov-annonce')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">📣 Écrire une annonce</div><button class="bcl" onclick="closeSheet('ov-annonce')">✕</button></div>
+    <div style="padding:15px 19px">
+      <div id="ann-encours"></div>
+      <div style="border-top:1px solid var(--BD);padding-top:14px;margin-top:7px">
+        <div class="sth">➕ Nouveau message</div>
+        <div class="pig"><label class="pl">Titre (court)</label><input class="pi sm" type="text" id="ann-titre" maxlength="80" style="font-size:14px" placeholder="Mise à jour disponible"></div>
+        <div class="pig"><label class="pl">Message</label><textarea class="pi sm" id="ann-msg" maxlength="500" rows="3" style="font-size:14px;font-family:Outfit,sans-serif;resize:vertical" placeholder="Ferme et rouvre l'application pour recevoir les corrections."></textarea></div>
+        <div class="pl" style="margin:12px 0 6px">Pour qui ?</div>
+        <div class="cgrd" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+          <div class="cbtn on" id="ann-c-tous" onclick="selAnnCible('tous',this)">👥 Tous</div>
+          <div class="cbtn" id="ann-c-patron" onclick="selAnnCible('patron',this)">👑 Patrons</div>
+          <div class="cbtn" id="ann-c-vendeur" onclick="selAnnCible('vendeur',this)">🧑‍💼 Vendeurs</div>
+        </div>
+        <div class="pl" style="margin:12px 0 6px">Ton</div>
+        <div class="cgrd" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+          <div class="cbtn on" id="ann-n-info" onclick="selAnnNiveau('info',this)">💬 Information</div>
+          <div class="cbtn" id="ann-n-imp" onclick="selAnnNiveau('important',this)">❗ Important</div>
+        </div>
+        <button class="bnxt" onclick="publierAnnonce()" id="btn-pub-ann">📣 Publier</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="ov-dep" onclick="closeOv(event,'ov-dep')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="ov-dep-t">💸 Dépenses</div><button class="bcl" onclick="closeSheet('ov-dep')">✕</button></div>
@@ -2534,7 +2576,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.55'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.56'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9312,6 +9354,128 @@ renderFourn=function(){var c=document.getElementById('fourn-lst');if(!c)return;c
 
 </script>
 <script>
+// ═══════════════════════════════════════════
+// ANNONCES — le mot du patron de MyBoutiQ à ses commerçants
+// ═══════════════════════════════════════════
+// Pourquoi pas des notifications push : à 34 boutiques, elles coûtent des clés
+// VAPID, une fonction serveur, un abonnement par appareil — et sur iPhone elles
+// n'arrivent que si l'app est installée sur l'écran d'accueil AVEC permission
+// accordée. Ici : une table lue par tous, un bandeau, zéro permission.
+var _annonceCourante=null,_annonceDerniereVerif=0;
+function _annoncesVues(){
+  try{return JSON.parse(localStorage.getItem('myboutiq_annonces_vues')||'[]');}catch(e){return [];}
+}
+function fermerAnnonce(){
+  var b=document.getElementById('annonce-banner');if(b)b.style.display='none';
+  if(!_annonceCourante)return;
+  try{
+    var v=_annoncesVues();
+    if(v.indexOf(_annonceCourante.id)<0)v.push(_annonceCourante.id);
+    localStorage.setItem('myboutiq_annonces_vues',JSON.stringify(v.slice(-50)));
+  }catch(e){}
+  _annonceCourante=null;
+}
+function afficherAnnonce(a){
+  var b=document.getElementById('annonce-banner');if(!b||!a)return;
+  // Jamais par-dessus une vente en cours : on la remontrera au prochain passage.
+  if(typeof _venteEnCours==='function'&&_venteEnCours())return;
+  _annonceCourante=a;
+  document.getElementById('annonce-titre').textContent=a.titre||'';
+  document.getElementById('annonce-msg').textContent=a.message||'';
+  var imp=a.niveau==='important';
+  document.getElementById('annonce-ico').textContent=imp?'❗':'📣';
+  b.style.borderLeftColor=imp?'#E74C3C':'#4A6CF7';
+  b.style.display='flex';
+}
+async function chercherAnnonces(force){
+  try{
+    var t=Date.now();
+    if(!force&&t-_annonceDerniereVerif<120000)return;
+    _annonceDerniereVerif=t;
+    if(typeof assurerConnexionSupa==='function')assurerConnexionSupa();
+    if(!supa||!navigator.onLine)return;
+    var r=await supa.from('annonces').select('id,titre,message,niveau,cible,debut')
+             .order('debut',{ascending:false}).limit(10);
+    if(r.error||!r.data||!r.data.length)return;
+    var moi=(typeof role!=='undefined'&&role)||'patron',vues=_annoncesVues();
+    var a=r.data.filter(function(x){
+      if(x.cible&&x.cible!=='tous'&&x.cible!==moi)return false;
+      return vues.indexOf(x.id)<0;
+    })[0];
+    if(a)afficherAnnonce(a);
+  }catch(e){}
+}
+// L'entrée « Écrire une annonce » n'apparaît que si le SERVEUR reconnaît ce
+// compte comme administrateur. Cacher le bouton n'est que du confort : même
+// affiché, la règle RLS refuserait l'écriture.
+async function verifierAdmin(){
+  try{
+    if(typeof assurerConnexionSupa==='function')assurerConnexionSupa();
+    if(!supa||!navigator.onLine)return false;
+    var u=(typeof getAuthUser==='function')?await getAuthUser():null;
+    if(!u)return false;
+    var r=await supa.from('app_admins').select('user_id').eq('user_id',u.id).limit(1);
+    var ok=!r.error&&r.data&&r.data.length>0;
+    var row=document.getElementById('row-annonce');
+    if(row)row.style.display=ok?'':'none';
+    return ok;
+  }catch(e){return false;}
+}
+var _annCible='tous',_annNiveau='info';
+function selAnnCible(c,btn){_annCible=c;(btn.parentNode||document).querySelectorAll('.cbtn').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');}
+function selAnnNiveau(n,btn){_annNiveau=n;(btn.parentNode||document).querySelectorAll('.cbtn').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');}
+async function ouvrirEcrireAnnonce(){
+  if(!(await verifierAdmin())){showToast('⛔ '+(lang==='fr'?'Réservé à MyBoutiQ':'MyBoutiQ staff only'));return;}
+  document.getElementById('ov-annonce').classList.add('show');
+  renderAnnoncesEnCours();
+}
+async function renderAnnoncesEnCours(){
+  var c=document.getElementById('ann-encours');if(!c)return;
+  var fr=lang==='fr';
+  c.innerHTML='<div style="font-size:11.5px;color:var(--M);font-weight:700">'+(fr?'Chargement…':'Loading…')+'</div>';
+  try{
+    var r=await supa.from('annonces').select('id,titre,message,niveau,cible,actif,debut')
+             .order('debut',{ascending:false}).limit(8);
+    if(r.error){c.innerHTML='';return;}
+    var l=(r.data||[]).filter(function(x){return x.actif;});
+    if(!l.length){c.innerHTML='<div style="font-size:12px;color:var(--M);font-weight:600;padding:4px 0 10px">'+(fr?'Aucune annonce en cours.':'No live announcement.')+'</div>';return;}
+    c.innerHTML='<div class="sth" style="margin-bottom:8px">'+(fr?'En cours':'Live')+'</div>'+l.map(function(x){
+      return '<div style="display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--BD)">'
+        +'<span style="font-size:15px">'+(x.niveau==='important'?'❗':'📣')+'</span>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:800;color:var(--T)">'+x.titre+'</div>'
+        +'<div style="font-size:11px;color:var(--M);font-weight:600;margin-top:2px">'+x.message+'</div></div>'
+        +'<button class="shct" style="flex-shrink:0;min-height:36px" onclick="retirerAnnonce(\''+x.id+'\')">'+(fr?'Retirer':'Remove')+'</button></div>';
+    }).join('');
+  }catch(e){c.innerHTML='';}
+}
+async function retirerAnnonce(id){
+  var fr=lang==='fr';
+  if(!confirm(fr?'Retirer cette annonce ? Elle disparaîtra chez tous les commerçants.':'Remove this announcement?'))return;
+  try{
+    var r=await supa.from('annonces').update({actif:false}).eq('id',id);
+    if(r.error){showToast('❌ '+(fr?'Refusé par le serveur':'Refused by server'));return;}
+    showToast('✅ '+(fr?'Annonce retirée':'Removed'));
+    renderAnnoncesEnCours();
+  }catch(e){showToast('❌ '+(fr?'Échec':'Failed'));}
+}
+async function publierAnnonce(){
+  var fr=lang==='fr';
+  var titre=(document.getElementById('ann-titre').value||'').trim();
+  var msg=(document.getElementById('ann-msg').value||'').trim();
+  if(!titre||!msg){showToast('✍️ '+(fr?'Titre et message obligatoires':'Title and message required'));return;}
+  var btn=document.getElementById('btn-pub-ann');btn.disabled=true;btn.textContent=fr?'Envoi…':'Sending…';
+  try{
+    var u=await getAuthUser();
+    var r=await supa.from('annonces').insert({titre:titre,message:msg,niveau:_annNiveau,cible:_annCible,created_by:u?u.id:null});
+    if(r.error){showToast('❌ '+(fr?'Refusé : ':'Refused: ')+(r.error.message||''));}
+    else{
+      showToast('📣 '+(fr?'Annonce publiée':'Published'));
+      document.getElementById('ann-titre').value='';document.getElementById('ann-msg').value='';
+      renderAnnoncesEnCours();
+    }
+  }catch(e){showToast('❌ '+(fr?'Échec de l\'envoi':'Send failed'));}
+  btn.disabled=false;btn.textContent='📣 '+(fr?'Publier':'Publish');
+}
 function montrerBandeauMaj(worker){
   var b=document.getElementById('update-banner');if(!b)return;
   b.style.display='flex';
@@ -9347,6 +9511,12 @@ if('serviceWorker' in navigator){
       document.addEventListener('visibilitychange',function(){if(!document.hidden)chercherMaj();});
       window.addEventListener('online',chercherMaj);
       window.addEventListener('focus',chercherMaj);
+      // Les annonces suivent le même rythme : au retour sur l'app et au retour
+      // du réseau. Même bridage de 2 minutes, côté chercherAnnonces().
+      setTimeout(function(){chercherAnnonces(true);verifierAdmin();},4000);
+      setInterval(function(){chercherAnnonces();},15*60*1000);
+      document.addEventListener('visibilitychange',function(){if(!document.hidden)chercherAnnonces();});
+      window.addEventListener('online',function(){chercherAnnonces();});
     }).catch(function(e){console.warn('SW:',e);});
     var _swReloaded=false;
     navigator.serviceWorker.addEventListener('controllerchange',function(){
