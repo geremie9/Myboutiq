@@ -1,4 +1,4 @@
-const CACHE_NAME='myboutiq-v35';
+const CACHE_NAME='myboutiq-v36';
 const IMG_CACHE='myboutiq-images-v1';
 const APP_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 const SUPABASE_STORAGE_HOST='bbncilovxzkcvlxvoqtg.supabase.co';

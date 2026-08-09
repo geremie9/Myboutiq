@@ -1326,6 +1326,7 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" onclick="ouvrirLiaison()"><div class="stico" style="background:#E3F2FD">📡</div><div class="stii"><div class="stitl" id="st-liaison">État de la liaison</div><div class="stisub" id="st-liaison-s">Voir si les ventes circulent entre les téléphones</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirJournal()"><div class="stico" style="background:#F3E5F5">📋</div><div class="stii"><div class="stitl">Journal des modifications</div><div class="stisub">Prix, stock, suppressions — qui &amp; quand</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirArchivage()"><div class="stico" style="background:#E1F5FE">🧹</div><div class="stii"><div class="stitl">Alléger l'application</div><div class="stisub" id="st-archive-s">Garde l'app rapide pour des années</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirRaz()"><div class="stico" style="background:#FFEBEE">🔄</div><div class="stii"><div class="stitl" id="st-raz" style="color:var(--R)">Repartir de zéro</div><div class="stisub" id="st-raz-s">Effacer les ventes après les tests — le stock reste</div></div><span class="starr">›</span></div>
       </div>
     </div>
     <div class="stsc"><div class="stcd"><div class="stit2" onclick="logout()"><div class="stico" style="background:#FFEBEE">🚪</div><div class="stii"><div class="stitl" id="st-logout" style="color:var(--R)">Se déconnecter</div></div><span class="starr">›</span></div></div></div>
@@ -1892,6 +1893,24 @@ body{max-width:min(100%,1200px)}
       <div class="pstps">
         <div id="cb-sous" style="font-size:12px;font-weight:700;color:var(--M);margin-bottom:13px;line-height:1.5"></div>
         <div id="cb-lst" style="max-height:56vh;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPARTIR DE ZÉRO -->
+  <div class="ov" id="ov-raz" onclick="closeOv(event,'ov-raz')">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">🔄 <span id="raz-tit">Repartir de zéro</span></div><button class="bcl" onclick="closeSheet('ov-raz')">✕</button></div>
+      <div class="pstps">
+        <div id="raz-quoi" style="margin-bottom:13px"></div>
+        <label style="display:flex;gap:10px;align-items:flex-start;padding:11px;background:#FFF8E1;border:1.4px solid #FFD79A;border-radius:11px;margin-bottom:13px;cursor:pointer">
+          <input type="checkbox" id="raz-dettes" style="width:20px;height:20px;flex-shrink:0;margin-top:1px;accent-color:var(--R)">
+          <span style="flex:1;font-size:12px;font-weight:700;color:#B45309" id="raz-dettes-l">Effacer aussi ce que mes clients me doivent</span>
+        </label>
+        <button class="bvid" style="margin-bottom:13px" onclick="exporterSauvegardeComplete()">💾 <span id="raz-sauv">Sauvegarder d'abord (recommandé)</span></button>
+        <div class="pig"><label class="pl" id="raz-pin-l">Ton PIN pour confirmer</label>
+          <input class="pi" type="password" id="raz-pin" maxlength="6" inputmode="numeric" placeholder="••••••" style="text-align:center;letter-spacing:8px;font-size:19px;font-weight:900"></div>
+        <button class="bnxt" style="background:var(--R)" onclick="lancerRaz()"><span id="raz-btn">Effacer les ventes</span></button>
       </div>
     </div>
   </div>
@@ -2483,7 +2502,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.46'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.47'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8279,6 +8298,72 @@ function tailleDonnees(){try{return Math.round((JSON.stringify(DB).length/1024)*
 var _archMois=6;
 function _cutoffMois(mois){var d=new Date();d.setMonth(d.getMonth()-mois);d.setHours(0,0,0,0);return d.getTime();}
 function _nbAArchiver(mois){var c=_cutoffMois(mois);return (DB.ventes||[]).filter(function(v){var e=_epochEvt(v);return e!=null&&e<c;}).length;}
+// ═══════════════════════════════════════════════════════════════════
+// REPARTIR DE ZÉRO — après les tests, on efface les ventes
+// ⚠️ LE PIÈGE : le stock n'est pas un nombre stocké, il se RECALCULE
+// (stock de départ + réceptions − ventes). Effacer les ventes sans rien
+// faire d'autre ferait REMONTER tout le stock : 184 ventes effacées et
+// le riz repasserait de 12 kg à 300 kg. On fige donc d'abord le stock
+// actuel comme nouveau point de départ, PUIS on efface les mouvements.
+// ═══════════════════════════════════════════════════════════════════
+function ouvrirRaz(){
+  if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  var fr=lang==='fr';
+  var nv=(DB.ventes||[]).filter(function(v){return !v.annulee;}).length;
+  var ca=(DB.ventes||[]).reduce(function(s,v){return s+(v.annulee?0:(Number(v.total)||0));},0);
+  var dettes=(DB.clients||[]).reduce(function(s,c){return s+(Number(c.credit)||0);},0);
+  var nbArt=(DB.articles||[]).length;
+  document.getElementById('raz-quoi').innerHTML=
+    '<div style="background:#FFEBEE;border:1.5px solid #FFCDD2;border-radius:12px;padding:12px 14px;margin-bottom:11px">'
+    +'<div style="font-size:12.5px;font-weight:900;color:var(--R);margin-bottom:7px">'+(fr?'CE QUI SERA EFFACÉ':'WILL BE ERASED')+'</div>'
+    +'<div style="font-size:12px;font-weight:700;color:var(--T);line-height:1.7">'
+    +'• '+nv+' '+(fr?'vente'+(nv>1?'s':'')+' ('+fmt(ca)+' de chiffre d\'affaires)':'sales')+'<br>'
+    +'• '+(DB.depenses||[]).length+' '+(fr?'dépense'+((DB.depenses||[]).length>1?'s':''):'expenses')+'<br>'
+    +'• '+(fr?'l\'historique et les rapports':'history and reports')
+    +'</div></div>'
+    +'<div style="background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:12px;padding:12px 14px">'
+    +'<div style="font-size:12.5px;font-weight:900;color:#1B5E20;margin-bottom:7px">'+(fr?'CE QUI RESTE':'WILL BE KEPT')+'</div>'
+    +'<div style="font-size:12px;font-weight:700;color:var(--T);line-height:1.7">'
+    +'• '+nbArt+' '+(fr?'articles, avec leurs prix':'items with prices')+'<br>'
+    +'• '+(fr?'<b>ton stock actuel, au chiffre près</b>':'<b>your current stock</b>')+'<br>'
+    +'• '+(DB.clients||[]).length+' '+(fr?'clients':'customers')+(dettes>0?(fr?' et leurs dettes ('+fmt(dettes)+')':''):'')+'<br>'
+    +'• '+(fr?'ton équipe et tes réglages':'your team and settings')
+    +'</div></div>';
+  document.getElementById('raz-dettes').checked=false;
+  document.getElementById('raz-dettes-l').textContent=dettes>0
+    ?(fr?'Effacer aussi les '+fmt(dettes)+' que mes clients me doivent':'Also erase the '+fmt(dettes)+' owed to me')
+    :(fr?'Effacer aussi les dettes des clients (aucune pour l\'instant)':'Also erase customer debts (none)');
+  document.getElementById('raz-pin').value='';
+  document.getElementById('ov-raz').classList.add('show');
+}
+function lancerRaz(){
+  var fr=lang==='fr';
+  if(role!=='patron')return;
+  var pin=(document.getElementById('raz-pin').value||'').trim();
+  if(!pin||pin!==String((DB.cfg&&DB.cfg.pin)||'')){showToast('❌ '+(fr?'PIN incorrect':'Wrong PIN'));return;}
+  var nv=(DB.ventes||[]).length;
+  if(!confirm(fr?('Effacer définitivement '+nv+' vente(s) ?\n\nTon stock et tes articles ne bougent pas.\nCette action ne peut PAS être annulée.')
+                :('Permanently erase '+nv+' sale(s)? This cannot be undone.')))return;
+  var effDettes=document.getElementById('raz-dettes').checked;
+  // 1) On fige le stock ACTUEL comme nouveau départ, avant d'effacer quoi que ce soit.
+  (DB.articles||[]).forEach(function(p){
+    var st=Number(getStk(p))||0;
+    p.stk0=st;p.stk=st;p.vd0=0;p.vd=0;
+    (p.vr||[]).forEach(function(v){var s=Number(v.stk)||0;v.stk0=s;v.stk=s;});
+  });
+  // 2) Puis seulement, on efface les mouvements.
+  DB.ventes=[];DB.appros=[];DB.depenses=[];
+  DB.arch={upTo:0,resume:[]};
+  if(effDettes){
+    (DB.clients||[]).forEach(function(c){c.credit=0;c.hist=[];c.points=0;});
+  }
+  journalAjouter('raz',fr?'Remise à zéro des ventes':'Sales reset',nv+(fr?' ventes':' sales'),'0');
+  save();
+  recalcTotaux();renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();
+  try{renderAgpx();renderAgstk();renderDashboard();updateObjBar();updateNotifBadge();}catch(e){}
+  closeSheet('ov-raz');
+  showToast('🔄 '+(fr?'Boutique remise à zéro — ton stock est intact':'Shop reset — stock untouched'));
+}
 function ouvrirArchivage(){
   if(!(role==='patron'||hasPerm('produits'))){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
   _archMois=6;archChoix(6);
