@@ -1326,6 +1326,7 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" onclick="ouvrirLiaison()"><div class="stico" style="background:#E3F2FD">📡</div><div class="stii"><div class="stitl" id="st-liaison">État de la liaison</div><div class="stisub" id="st-liaison-s">Voir si les ventes circulent entre les téléphones</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirJournal()"><div class="stico" style="background:#F3E5F5">📋</div><div class="stii"><div class="stitl">Journal des modifications</div><div class="stisub">Prix, stock, suppressions — qui &amp; quand</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirArchivage()"><div class="stico" style="background:#E1F5FE">📦</div><div class="stii"><div class="stitl">Ranger les vieilles ventes</div><div class="stisub" id="st-archive-s">Elles sortent du détail, tes totaux ne bougent pas</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirSupprBoutique()"><div class="stico" style="background:#FFEBEE">⛔</div><div class="stii"><div class="stitl" id="st-sup" style="color:var(--R)">Supprimer ma boutique</div><div class="stisub" id="st-sup-s">Tout effacer de nos serveurs, définitivement</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirRaz()"><div class="stico" style="background:#FFEBEE">🗑️</div><div class="stii"><div class="stitl" id="st-raz" style="color:var(--R)">Effacer toutes mes ventes</div><div class="stisub" id="st-raz-s">Sans retour. Ton stock et tes articles restent intacts.</div></div><span class="starr">›</span></div>
       </div>
     </div>
@@ -1911,6 +1912,22 @@ body{max-width:min(100%,1200px)}
         <div class="pig"><label class="pl" id="raz-pin-l">Ton PIN pour confirmer</label>
           <input class="pi" type="password" id="raz-pin" maxlength="6" inputmode="numeric" placeholder="••••••" style="text-align:center;letter-spacing:8px;font-size:19px;font-weight:900"></div>
         <button class="bnxt" style="background:var(--R)" onclick="lancerRaz()"><span id="raz-btn">Effacer les ventes</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUPPRIMER MA BOUTIQUE (exigence Google Play : suppression du compte) -->
+  <div class="ov" id="ov-suppr" onclick="closeOv(event,'ov-suppr')">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">⛔ <span id="sup-tit">Supprimer ma boutique</span></div><button class="bcl" onclick="closeSheet('ov-suppr')">✕</button></div>
+      <div class="pstps">
+        <div id="sup-quoi" style="margin-bottom:13px"></div>
+        <button class="bvid" style="margin-bottom:13px" onclick="exporterSauvegardeComplete()">💾 <span id="sup-sauv">Emporter mes données d'abord</span></button>
+        <div class="pig"><label class="pl" id="sup-nom-l">Écris le nom de ta boutique</label>
+          <input class="pi" type="text" id="sup-nom" placeholder="—"></div>
+        <div class="pig"><label class="pl" id="sup-pin-l">Ton PIN patron</label>
+          <input class="pi" type="password" id="sup-pin" maxlength="6" inputmode="numeric" placeholder="••••••" style="text-align:center;letter-spacing:8px;font-size:19px;font-weight:900"></div>
+        <button class="bnxt" style="background:var(--R)" onclick="confirmerSupprBoutique()"><span id="sup-btn">Supprimer définitivement</span></button>
       </div>
     </div>
   </div>
@@ -2502,7 +2519,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.48'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.50'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7382,8 +7399,11 @@ function saveStk(){
   }
   var paU=stkPaUnit(),paMsg='';
   if(paU>0){
-    paU=corrigerPrixGros(a.nm,paU,Number(a.px)||0,uniteArt(a));
-    if(paU===null)return;
+    // Si le commerçant annule la question du conditionnement, on garde son
+    // ancien prix d'achat — mais on n'annule PAS son entrée de stock, qui
+    // n'a rien à voir. Avant, tout était perdu : la marchandise reçue aussi.
+    var corr=corrigerPrixGros(a.nm,paU,Number(a.px)||0,uniteArt(a));
+    paU=(corr===null)?0:corr;
   }
   if(paU>0&&Number(a.pa)!==paU){
     journalAjouter('prix',a.nm+(fr?' (achat)':' (cost)'),fmt(a.pa||0),fmt(paU));
@@ -8309,6 +8329,99 @@ function _nbAArchiver(mois){var c=_cutoffMois(mois);return (DB.ventes||[]).filte
 // le riz repasserait de 12 kg à 300 kg. On fige donc d'abord le stock
 // actuel comme nouveau point de départ, PUIS on efface les mouvements.
 // ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// SUPPRIMER SA BOUTIQUE — exigence Google Play, et simple honnêteté.
+// Google demande qu'un utilisateur puisse supprimer son compte DEPUIS
+// l'application, pas seulement en écrivant au support. « Supprimer » doit
+// vouloir dire supprimer : la boutique, ses photos, sa copie de secours.
+// Deux verrous, parce que c'est sans retour : le PIN patron ET le nom de
+// la boutique écrit à la main. Un vendeur ne peut pas le faire.
+// ═══════════════════════════════════════════════════════════════════
+// Le PIN gardé sur le téléphone peut être absent ou périmé (connexion par
+// la porte rapide, données rafraîchies par un vendeur…). Pour une action
+// grave, on ne fait pas confiance à la copie locale : on demande au SERVEUR
+// qui répond aussi quel rôle porte ce PIN. C'est la cause du « accès refusé »
+// alors que le patron tapait le bon code.
+async function verifierPinPatron(pin){
+  if(!pin||String(pin).length<4)return false;
+  try{
+    assurerConnexionSupa();
+    if(supa&&navigator.onLine&&DB&&DB.cfg&&DB.cfg.code){
+      var d=await loadFromSupa(DB.cfg.code,pin);
+      if(d&&d.cfg)return d.cfg._pinRole==='patron';
+      return false;
+    }
+  }catch(e){}
+  // Hors réseau : on retombe sur la copie locale, faute de mieux.
+  return String(pin)===String((DB&&DB.cfg&&DB.cfg.pin)||'');
+}
+function ouvrirSupprBoutique(){
+  if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  var fr=lang==='fr';
+  var nv=(DB.ventes||[]).length,na=(DB.articles||[]).length;
+  var dettes=(DB.clients||[]).reduce(function(s,c){return s+(Number(c.credit)||0);},0);
+  document.getElementById('sup-quoi').innerHTML=
+    '<div style="background:#FFEBEE;border:1.5px solid #FFCDD2;border-radius:12px;padding:13px 15px">'
+    +'<div style="font-size:13px;font-weight:900;color:var(--R);margin-bottom:8px">'+(fr?'TOUT SERA EFFACÉ, SANS RETOUR':'EVERYTHING WILL BE ERASED')+'</div>'
+    +'<div style="font-size:12px;font-weight:700;color:var(--T);line-height:1.7">'
+    +'• '+na+' '+(fr?'articles et leurs photos':'items and photos')+'<br>'
+    +'• '+nv+' '+(fr?'vente'+(nv>1?'s':'')+' et tout l\'historique':'sales and history')+'<br>'
+    +'• '+(DB.clients||[]).length+' '+(fr?'clients':'customers')+(dettes>0?(fr?' — dont '+fmt(dettes)+' de dettes que tu perdras':''):'')+'<br>'
+    +'• '+(fr?'ton équipe et ses accès':'your team')+'<br>'
+    +'• '+(fr?'ton compte et ton code boutique':'your account and shop code')
+    +'</div>'
+    +'<div style="font-size:11.5px;font-weight:700;color:var(--R);margin-top:9px">'
+    +(fr?'Tes vendeurs ne pourront plus se connecter. Aucune copie n\'est gardée sur nos serveurs.'
+        :'Your sellers will lose access. No copy is kept.')+'</div></div>';
+  document.getElementById('sup-nom-l').textContent=fr?('Écris « '+(DB.cfg.nom||'')+' » pour confirmer'):('Type « '+(DB.cfg.nom||'')+' » to confirm');
+  document.getElementById('sup-nom').value='';
+  document.getElementById('sup-pin').value='';
+  document.getElementById('ov-suppr').classList.add('show');
+}
+async function confirmerSupprBoutique(){
+  var fr=lang==='fr';
+  if(role!=='patron')return;
+  var nm=(document.getElementById('sup-nom').value||'').trim();
+  var pin=(document.getElementById('sup-pin').value||'').trim();
+  if(txtNorm(nm)!==txtNorm(DB.cfg.nom||'')){showToast('✍️ '+(fr?'Écris exactement le nom de ta boutique':'Type the exact shop name'));return;}
+  if(!(await verifierPinPatron(pin))){showToast('❌ '+(fr?'PIN incorrect':'Wrong PIN'));return;}
+  if(!confirm(fr?('Dernière question.\n\nSupprimer « '+DB.cfg.nom+' » et TOUT ce qu\'elle contient ?\n\nC\'est définitif. Personne ne pourra la récupérer, moi non plus.')
+                :('Delete « '+DB.cfg.nom+' » and everything in it? This is final.')))return;
+  assurerConnexionSupa();
+  if(!supa||!navigator.onLine){showToast('📴 '+(fr?'Connecte-toi à internet : la boutique doit être effacée du serveur aussi.':'Go online first.'));return;}
+  showToast('🔄 '+(fr?'Suppression en cours…':'Deleting…'));
+  // 1) Les photos, via l'API Storage (le serveur interdit de les effacer en SQL)
+  try{
+    var chemins=(DB.articles||[]).reduce(function(acc,p){
+      [p.img].concat((p.vr||[]).map(function(v){return v.img;})).forEach(function(u){
+        if(!u)return;
+        var i=String(u).indexOf('/products/');
+        if(i>=0)acc.push('products/'+String(u).slice(i+10).split('?')[0]);
+      });
+      return acc;
+    },[]);
+    if(chemins.length)await supa.storage.from('APP').remove(chemins);
+  }catch(e){}
+  // 2) La boutique et tout ce qui s'y rattache, côté serveur
+  var res;
+  try{res=await supa.rpc('supprimer_ma_boutique',{p_code:DB.cfg.code,p_pin:pin});}
+  catch(e){showToast('❌ '+(fr?'Suppression impossible — réessaie':'Deletion failed'));return;}
+  if(res.error){
+    if(_signalerBlocagePin(res.error))return;
+    showToast('❌ '+(fr?'Suppression refusée par le serveur':'Refused by server'));return;
+  }
+  if(res.data!==true){showToast('❌ '+(fr?'Suppression refusée (PIN patron requis)':'Refused (owner PIN required)'));return;}
+  // 3) Le téléphone : on ne garde aucune trace
+  try{
+    localStorage.removeItem('myboutiq_v6');
+    localStorage.removeItem('myboutiq_entree');
+    localStorage.removeItem('myboutiq_mesboutiques');
+  }catch(e){}
+  _suppressSync=true;DB=null;
+  closeSheet('ov-suppr');
+  alert(fr?'Ta boutique a été supprimée. Merci d\'avoir utilisé MyBoutiQ.':'Your shop has been deleted.');
+  location.reload();
+}
 function ouvrirRaz(){
   if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
   var fr=lang==='fr';
@@ -8339,11 +8452,11 @@ function ouvrirRaz(){
   document.getElementById('raz-pin').value='';
   document.getElementById('ov-raz').classList.add('show');
 }
-function lancerRaz(){
+async function lancerRaz(){
   var fr=lang==='fr';
   if(role!=='patron')return;
   var pin=(document.getElementById('raz-pin').value||'').trim();
-  if(!pin||pin!==String((DB.cfg&&DB.cfg.pin)||'')){showToast('❌ '+(fr?'PIN incorrect':'Wrong PIN'));return;}
+  if(!(await verifierPinPatron(pin))){showToast('❌ '+(fr?'PIN incorrect':'Wrong PIN'));return;}
   var nv=(DB.ventes||[]).length;
   if(!confirm(fr?('Effacer définitivement '+nv+' vente(s) ?\n\nTon stock et tes articles ne bougent pas.\nCette action ne peut PAS être annulée.')
                 :('Permanently erase '+nv+' sale(s)? This cannot be undone.')))return;
