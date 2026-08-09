@@ -2097,6 +2097,11 @@ body{max-width:min(100%,1200px)}
           <div class="cbtn" id="dep-c-tel" onclick="selDC('tel',this)">📱 <span id="lbl-tel-d">Téléphone</span></div>
           <div class="cbtn" id="dep-c-autre" onclick="selDC('autre',this)">📦 <span id="lbl-autre-d">Autre</span></div>
         </div>
+        <div class="pl" style="margin:13px 0 6px" id="lbl-dep-src">Cet argent est sorti d'où ?</div>
+        <div class="cgrd" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+          <div class="cbtn on" id="dep-src-caisse" onclick="selDCaisse(1)">💵 <span id="lbl-dep-caisse">De la caisse</span></div>
+          <div class="cbtn" id="dep-src-hors" onclick="selDCaisse(0)">📱 <span id="lbl-dep-hors">Hors caisse</span></div>
+        </div>
         <button class="bnxt" onclick="saveDep()" id="btn-save-dep">✅ <span id="lbl-save-dep">Ajouter</span></button>
       </div>
     </div>
@@ -2524,7 +2529,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.52'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.53'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2555,7 +2560,7 @@ function journalAjouter(act,art,av,ap){
   DB.journal.unshift({id:genVenteId(),ts:new Date().toISOString(),dev:_deviceId,who:_journalQui(),role:(typeof role!=='undefined'?role:'patron'),act:act,art:String(art||''),av:(av==null?'':String(av)),ap:(ap==null?'':String(ap))});
   DB.journal=DB.journal.slice(0,300);
 }
-function _journalIco(act){return act==='prix'?'💰':act==='stock'?'📦':act==='famille'?'🔗':act==='suppr'?'🗑️':'✏️';}
+function _journalIco(act){return act==='prix'?'💰':act==='stock'?'📦':act==='famille'?'🔗':act==='suppr'?'🗑️':act==='depense'?'💸':'✏️';}
 function _tempsEcoule(iso){
   var d=new Date(iso),diff=Math.max(0,Date.now()-d.getTime()),fr=lang==='fr';
   var mn=Math.floor(diff/60000);
@@ -7491,7 +7496,10 @@ function renderRpt(){
     return s+(v.lignes||[]).reduce(function(x,l){return x+(Number(l.pa)||0)*(Number(l.qte||l.qty)||0);},0);
   },0);
   var m=totalV>0?Math.round(totalB/totalV*100):0;
-  var totalDep=DB.depenses.reduce(function(s,d){return s+d.amt;},0);
+  // DU JOUR, et non depuis toujours. Avant, ça ne se voyait pas parce que la
+  // clôture vidait la liste ; maintenant qu'on garde l'historique, additionner
+  // tout retrancherait les dépenses de l'année au bénéfice d'aujourd'hui.
+  var totalDep=totalDepJour();
   var benNet=totalB-totalDep;
   // Donut CA = coût + bénéfice
   var coutPct=totalV>0?Math.round(ta/totalV*100):0;
@@ -7947,18 +7955,80 @@ function paiementBreakdownJour(){
   });
   return b;
 }
-function ouvrirClot(){var att=DB.fondsDepart+totalEspecesJour();document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div>'+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+'</span><span class="rval g">'+fmt(totalB)+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';document.getElementById('ov-clot').classList.add('show');}
-function calcEcart(){var compt=parseFloat(document.getElementById('inp-compt').value)||0,att=DB.fondsDepart+totalEspecesJour(),ec=compt-att,el=document.getElementById('ecart-cd');el.style.display='flex';el.className='bcard '+(Math.abs(ec)<100?'bon':'bad');document.getElementById('ecart-lbl').textContent=ec===0?'✅ '+(lang==='fr'?'Équilibrée':'Balanced'):ec>0?'📈 '+(lang==='fr'?'Excédent':'Surplus'):'⚠️ '+(lang==='fr'?'Déficit':'Deficit');document.getElementById('ecart-amt').textContent=(ec>=0?'+':'')+fmt(ec);}
-function validerClot(){closeSheet('ov-clot');showToast(t('clotureOk')+' '+t('benefice')+': '+fmt(totalB));(DB.ventes||[]).forEach(function(v){if(!v.annulee&&!v.cloturee&&isSaleToday(v))v.cloturee=true;});DB.depenses=[];save();recalcTotaux();updateObjBar();}
+// La caisse attendue OUBLIAIT les dépenses payées avec l'argent du tiroir.
+// Le patron sortait 5 000 F pour le transport, comptait sa caisse le soir, et
+// l'app lui annonçait un DÉFICIT de 5 000 F — de quoi soupçonner son vendeur
+// pour une dépense qu'il avait lui-même faite.
+function caisseAttendue(){return DB.fondsDepart+totalEspecesJour()-totalDepCaisseJour();}
+function ouvrirClot(){var att=caisseAttendue(),_dc=totalDepCaisseJour(),_dh=totalDepJour()-_dc;document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div>'+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+((_dc>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Dépenses payées de la caisse':'Expenses paid from till')+'</span><span class="rval r">-'+fmt(_dc)+'</span></div>'):'')+((_dh>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'dépenses hors caisse (le tiroir n\'y touche pas)':'expenses not from till')+'</span><span class="rval" style="color:var(--M)">-'+fmt(_dh)+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+(totalDepJour()>0?(lang==='fr'?' NET (dépenses déduites)':' NET'):'')+'</span><span class="rval '+((totalB-totalDepJour())<0?'r':'g')+'">'+fmt(totalB-totalDepJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';document.getElementById('ov-clot').classList.add('show');}
+function calcEcart(){var compt=parseFloat(document.getElementById('inp-compt').value)||0,att=caisseAttendue(),ec=compt-att,el=document.getElementById('ecart-cd');el.style.display='flex';el.className='bcard '+(Math.abs(ec)<100?'bon':'bad');document.getElementById('ecart-lbl').textContent=ec===0?'✅ '+(lang==='fr'?'Équilibrée':'Balanced'):ec>0?'📈 '+(lang==='fr'?'Excédent':'Surplus'):'⚠️ '+(lang==='fr'?'Déficit':'Deficit');document.getElementById('ecart-amt').textContent=(ec>=0?'+':'')+fmt(ec);}
+function validerClot(){
+  closeSheet('ov-clot');
+  showToast(t('clotureOk')+' '+t('benefice')+': '+fmt(totalB-totalDepJour()));
+  (DB.ventes||[]).forEach(function(v){if(!v.annulee&&!v.cloturee&&isSaleToday(v))v.cloturee=true;});
+  // Avant : DB.depenses=[] — la clôture EFFAÇAIT toutes les dépenses. Aucun
+  // historique, donc aucun total du mois possible, et une dépense saisie par
+  // le vendeur pendant que le patron clôturait partait avec. On les marque
+  // clôturées, exactement comme les ventes.
+  depensesDuJour().forEach(function(d){d.cloturee=true;});
+  save();recalcTotaux();updateObjBar();
+}
+// Les dépenses du jour, encore ouvertes — mêmes règles que getCaisseSales().
+function depensesDuJour(){
+  var auj=isoJour(new Date());
+  return (DB.depenses||[]).filter(function(d){
+    if(!d||d.cloturee)return false;
+    var j=d.ts?isoJour(new Date(d.ts)):null;
+    if(j)return j===auj;
+    return d.date===new Date().toLocaleDateString('fr-FR'); // anciennes dépenses, sans horodatage
+  });
+}
+function totalDepJour(){return depensesDuJour().reduce(function(s,d){return s+(Number(d.amt)||0);},0);}
+// Ce qui est réellement sorti du tiroir aujourd'hui.
+function totalDepCaisseJour(){
+  return depensesDuJour().reduce(function(s,d){return s+((d.caisse===false)?0:(Number(d.amt)||0));},0);
+}
 
 // ═══════════════════════════════════════════
 // DÉPENSES
 // ═══════════════════════════════════════════
 var selDCur='loyer';
-function selDC(cat,btn){selDCur=cat;document.querySelectorAll('.cgrd .cbtn').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');}
-function ouvrirDep(){if(!(role==='patron'||hasPerm('depenses'))){showToast('⛔ '+(lang==='fr'?'Non autorisé':'Not allowed'));return;}renderDepLst();document.getElementById('ov-dep').classList.add('show');}
-function saveDep(){if(!(role==='patron'||hasPerm('depenses'))){showToast('⛔ '+(lang==='fr'?'Non autorisé':'Not allowed'));return;}var nm=document.getElementById('dep-nm').value.trim(),amt=parseFloat(document.getElementById('dep-amt').value)||0;if(!nm||!amt){showToast(t('errMontant'));return;}DB.depenses.push({id:DB.depenses.length+1,nm,amt,cat:selDCur,date:new Date().toLocaleDateString('fr-FR'),vendeur:role==='vendeur'?(nomVendeur||'Vendeur'):'Patron'});save();renderDepLst();document.getElementById('dep-nm').value='';document.getElementById('dep-amt').value='';showToast(t('depOk'));}
-function renderDepLst(){var c=document.getElementById('dep-lst-cont');var tot=DB.depenses.reduce(function(s,d){return s+d.amt;},0);c.innerHTML=DB.depenses.length?'<div class="rcd" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px"><div><div style="font-size:11px;font-weight:700;color:var(--M)">'+(lang==='fr'?'Total dépenses':'Total expenses')+'</div><div style="font-size:20px;font-weight:900;color:var(--R)">'+fmt(tot)+'</div></div></div>'+DB.depenses.map(function(d){return '<div class="dep-it"><div class="dep-ico">💸</div><div class="dep-inf"><div class="dep-nm">'+d.nm+(d.vendeur&&d.vendeur!=='Patron'?' · '+d.vendeur:'')+'</div><div class="dep-dt">'+d.cat+' · '+d.date+'</div></div><div class="dep-amt">-'+fmt(d.amt)+'</div></div>';}).join(''):'';}
+// Par défaut l'argent sort du tiroir : c'est le cas courant dans une boutique
+// de quartier (on paie le porteur d'eau, le taxi, la ration avec la recette).
+// Le patron peut dire le contraire d'un doigt quand il a payé par mobile money
+// ou de sa poche.
+var _depCaisse=true;
+function selDCaisse(v){
+  _depCaisse=!!v;
+  var a=document.getElementById('dep-src-caisse'),b=document.getElementById('dep-src-hors');
+  if(a)a.classList.toggle('on',_depCaisse);
+  if(b)b.classList.toggle('on',!_depCaisse);
+}
+// Ne décocher que SA grille : il y a maintenant une 2e grille (l'origine de
+// l'argent) juste en dessous, et « tous les .cbtn de la page » l'éteignait.
+function selDC(cat,btn){selDCur=cat;(btn.parentNode||document).querySelectorAll('.cbtn').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');}
+function ouvrirDep(){if(!(role==='patron'||hasPerm('depenses'))){showToast('⛔ '+(lang==='fr'?'Non autorisé':'Not allowed'));return;}// On repart TOUJOURS de « de la caisse ». Sans ça, un patron qui a coché
+// « hors caisse » une fois le garderait pour toutes ses dépenses suivantes,
+// et le tiroir ne serait plus jamais débité — l'erreur ne se verrait nulle part.
+selDCaisse(1);renderDepLst();document.getElementById('ov-dep').classList.add('show');}
+function saveDep(){if(!(role==='patron'||hasPerm('depenses'))){showToast('⛔ '+(lang==='fr'?'Non autorisé':'Not allowed'));return;}var nm=document.getElementById('dep-nm').value.trim(),amt=parseFloat(document.getElementById('dep-amt').value)||0;if(!nm||!amt){showToast(t('errMontant'));return;}// L'identifiant était DB.depenses.length+1 : deux téléphones donnaient le
+// MÊME numéro à deux dépenses différentes, et la fusion n'en gardait qu'une.
+// Le même générateur que les ventes, qui porte l'appareil et l'heure.
+// `caisse` : cet argent est-il sorti du tiroir ? Sans ça, la caisse attendue à
+// la clôture était toujours trop haute, et le patron voyait un déficit là où
+// il n'avait fait que payer son électricité.
+DB.depenses.push({id:genVenteId(),nm:nm,amt:amt,cat:selDCur,date:new Date().toLocaleDateString('fr-FR'),ts:new Date().toISOString(),caisse:_depCaisse,vendeur:role==='vendeur'?(nomVendeur||'Vendeur'):'Patron'});journalAjouter('depense',nm,'',fmt(amt)+(_depCaisse?'':' ('+(lang==='fr'?'hors caisse':'not from till')+')'));save();renderDepLst();document.getElementById('dep-nm').value='';document.getElementById('dep-amt').value='';showToast(t('depOk'));}
+function renderDepLst(){
+  var c=document.getElementById('dep-lst-cont'),fr=lang==='fr';
+  // Le jour en cours, comme la clôture. Le total du mois est rappelé à côté,
+  // sinon l'historique qu'on vient d'arrêter de détruire resterait invisible.
+  var duJour=depensesDuJour(),tot=totalDepJour();
+  var mois=(new Date()).toISOString().slice(0,7);
+  var totMois=(DB.depenses||[]).reduce(function(s,d){
+    var j=d&&d.ts?String(d.ts).slice(0,7):null;
+    return s+((j===mois)?(Number(d.amt)||0):0);
+  },0);
+  c.innerHTML=duJour.length?'<div class="rcd" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px"><div><div style="font-size:11px;font-weight:700;color:var(--M)">'+(fr?'Dépenses du jour':'Today\'s expenses')+'</div><div style="font-size:20px;font-weight:900;color:var(--R)">'+fmt(tot)+'</div></div>'+(totMois>tot?('<div style="text-align:right"><div style="font-size:11px;font-weight:700;color:var(--M)">'+(fr?'Ce mois-ci':'This month')+'</div><div style="font-size:14px;font-weight:800;color:var(--M)">'+fmt(totMois)+'</div></div>'):'')+'</div>'+duJour.map(function(d){return '<div class="dep-it"><div class="dep-ico">💸</div><div class="dep-inf"><div class="dep-nm">'+d.nm+(d.vendeur&&d.vendeur!=='Patron'?' · '+d.vendeur:'')+'</div><div class="dep-dt">'+d.cat+' · '+d.date+' — '+((d.caisse===false)?(fr?'hors caisse':'not from till'):(fr?'de la caisse':'from till'))+'</div></div><div class="dep-amt">-'+fmt(d.amt)+'</div></div>';}).join(''):'';}
 
 // ═══════════════════════════════════════════
 // OBJECTIF
@@ -8567,6 +8637,12 @@ function renderResumeArchive(){
 // supprimé mes articles ».
 // On garde une empreinte de chaque article au moment du dernier échange réussi.
 // Ce qui a bougé depuis appartient à ce téléphone et n'est pas écrasé.
+// ⚠️ Clé v2 : en 19.51 les empreintes étaient rangées sous l'identifiant nu.
+// Maintenant elles sont préfixées (« a » article, « c » client). Relire l'ancien
+// relevé ferait passer TOUS les articles pour « modifiés ici » — le téléphone
+// gagnerait tout, et on retrouverait la boutique qui écrase l'autre. Nouvelle
+// clé = relevé neuf = on repart du postulat prudent « on est à jour ».
+var _SNAP_CLE='myboutiq_artsnap2';
 var _artSnap=null;
 function _artEmpreinte(p){
   try{
@@ -8575,17 +8651,27 @@ function _artEmpreinte(p){
     return h;
   }catch(e){return 0;}
 }
+// Les CLIENTS courent le même risque, et il porte sur de l'argent dû : la
+// dette vit dans `c.credit`, modifiée sur place. Un remboursement encaissé ici
+// pouvait être annulé par un rafraîchissement arrivé avant l'écriture — la
+// dette du client remontait toute seule. Même protection, un seul relevé
+// d'empreintes, clés préfixées « a » pour article et « c » pour client.
+function _empreintesCourantes(){
+  var m={};
+  ((DB&&DB.articles)||[]).forEach(function(p){if(p&&p.id!=null)m['a'+p.id]=_artEmpreinte(p);});
+  ((DB&&DB.clients)||[]).forEach(function(c){if(c&&c.id!=null)m['c'+c.id]=_artEmpreinte(c);});
+  return m;
+}
 function _artSnapPrendre(){
   try{
-    var m={};
-    ((DB&&DB.articles)||[]).forEach(function(p){if(p&&p.id!=null)m[p.id]=_artEmpreinte(p);});
+    var m=_empreintesCourantes();
     _artSnap=m;
-    localStorage.setItem('myboutiq_artsnap',JSON.stringify(m));
+    localStorage.setItem(_SNAP_CLE,JSON.stringify(m));
   }catch(e){}
 }
 function _artSnapLire(){
   if(_artSnap)return _artSnap;
-  try{var raw=localStorage.getItem('myboutiq_artsnap');if(raw)_artSnap=JSON.parse(raw);}catch(e){}
+  try{var raw=localStorage.getItem(_SNAP_CLE);if(raw)_artSnap=JSON.parse(raw);}catch(e){}
   // Première fois (mise à jour depuis une ancienne version) : on suppose qu'on
   // est à jour. C'est le choix prudent — on retombe sur le comportement d'avant
   // pour ce tour-là, et la protection s'applique dès la modification suivante.
@@ -8602,9 +8688,9 @@ function _artSnapApresFusion(){
   if(!_artGardeLocal)return;
   var garde=_artGardeLocal;_artGardeLocal=null;
   try{
-    var m=_artSnapLire();
-    ((DB&&DB.articles)||[]).forEach(function(p){if(p&&p.id!=null&&!garde[p.id])m[p.id]=_artEmpreinte(p);});
-    _artSnap=m;localStorage.setItem('myboutiq_artsnap',JSON.stringify(m));
+    var m=_artSnapLire(),frais=_empreintesCourantes();
+    Object.keys(frais).forEach(function(k){if(!garde[k])m[k]=frais[k];});
+    _artSnap=m;localStorage.setItem(_SNAP_CLE,JSON.stringify(m));
   }catch(e){}
 }
 function mergeDB(base,other){
@@ -8628,15 +8714,14 @@ function mergeDB(base,other){
   // Ce que ce téléphone-ci vient de toucher garde le dernier mot. Le côté
   // « local », c'est celui des deux qui EST la base de données ouverte à l'écran.
   var _loc=(other===DB)?other:((base===DB)?base:null),_gardeLocal={},_snap=null;
-  if(_loc&&_loc.articles&&_loc.articles.length){
-    _snap=_artSnapLire();
+  if(_loc)_snap=_artSnapLire();   // relevé lu même sans article : les clients aussi sont protégés
+  if(_loc&&_loc.articles){
     _loc.articles.forEach(function(p){
       if(!p||p.id==null)return;
-      if(_snap[p.id]===undefined||_snap[p.id]!==_artEmpreinte(p)){artById[p.id]=p;_gardeLocal[p.id]=1;}
+      if(_snap['a'+p.id]===undefined||_snap['a'+p.id]!==_artEmpreinte(p)){artById[p.id]=p;_gardeLocal['a'+p.id]=1;}
     });
   }
   base.articles=Object.keys(artById).map(function(k){return artById[k];});
-  _artGardeLocal=_snap?_gardeLocal:null;
   // Résumé d'archive : union par mois (clé "AAAA-MM")
   var resById={};
   (base.arch&&base.arch.resume||[]).concat(other.arch&&other.arch.resume||[]).forEach(function(r){if(r&&r.mois&&!resById[r.mois])resById[r.mois]=r;});
@@ -8649,7 +8734,26 @@ function mergeDB(base,other){
   var cById={};
   (base.clients||[]).forEach(function(c){if(c&&c.id!=null)cById[c.id]=c;});
   (other.clients||[]).forEach(function(c){if(c&&c.id!=null&&!cById[c.id])cById[c.id]=c;});
+  // Même règle que pour les articles, et ici il s'agit d'argent dû : un
+  // remboursement encaissé sur ce téléphone ne doit pas être annulé par le
+  // serveur, sinon la dette du client remonte toute seule.
+  if(_loc&&_loc.clients&&_snap){
+    _loc.clients.forEach(function(c){
+      if(!c||c.id==null)return;
+      if(_snap['c'+c.id]===undefined||_snap['c'+c.id]!==_artEmpreinte(c)){cById[c.id]=c;_gardeLocal['c'+c.id]=1;}
+    });
+  }
   base.clients=Object.keys(cById).map(function(k){return cById[k];});
+  // Les DÉPENSES ne fusionnaient pas du tout : la copie du serveur remplaçait
+  // la liste entière, donc une dépense notée ici disparaissait au premier
+  // rafraîchissement. Union par identifiant, comme les ventes.
+  var depById={};
+  (base.depenses||[]).forEach(function(d){if(d&&d.id!=null)depById[d.id]=d;});
+  (other.depenses||[]).forEach(function(d){if(d&&d.id!=null&&!depById[d.id])depById[d.id]=d;});
+  base.depenses=Object.keys(depById).map(function(k){return depById[k];});
+  // Fixé APRÈS les articles ET les clients : c'est la liste complète de ce que
+  // ce téléphone garde, que `_artSnapApresFusion()` relira juste après.
+  _artGardeLocal=_snap?_gardeLocal:null;
   // Journal (S4) : union par id, tri antéchronologique, borné
   var jById={};
   (base.journal||[]).concat(other.journal||[]).forEach(function(j){if(j&&j.id!=null&&!jById[j.id])jById[j.id]=j;});
