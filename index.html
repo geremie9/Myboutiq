@@ -2601,7 +2601,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.59'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.60'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5839,6 +5839,96 @@ function categorieDepuisNomProduit(nm){
 // Le commerçant tape 2 lettres, l'app reconnaît l'article, SA FAMILLE, son
 // unité, sa catégorie et un prix de départ. Objectif : passer d'une minute
 // par article à quelques secondes. Aucun article n'est créé sans un geste.
+// ═══════════════════════════════════════════════════════════════════
+//  BIBLIOTHÈQUE DE PHOTOS PARTAGÉE
+// ═══════════════════════════════════════════════════════════════════
+// Chaque boutique photographiait ses propres articles, dans son coin
+// (`products/<code boutique>-<horodatage>.jpg`). Un Savon Azur photographié
+// à Douala ne servait jamais à celui de Yaoundé.
+// Ici : UNE photo par article du catalogue, nommée d'après son libellé,
+// servie à toutes les boutiques. À 11 Ko la photo (l'app compresse à 300 px,
+// qualité 0,6), deux mille articles pèsent 22 Mo — rien du tout.
+// Le manifeste dit CE QUI EXISTE, pour ne pas demander au serveur une image
+// par article et ramener 300 erreurs 404 sur un forfait compté.
+var _photoManif=null,_photoIdx=null;
+function _slugPhoto(nom){
+  return txtNorm(nom).replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);
+}
+// Nom d'article ➜ libellé canonique du catalogue ➜ slug.
+// « Savon azur », « SAVON AZUR barre », « azur » mènent tous au même fichier.
+// ⚠️ Un nom peut désigner PLUSIEURS articles : « Coca-Cola » existe en 60 cl
+// ET en canette 33 cl. Ranger un seul slug par clé faisait écraser le premier
+// par le dernier, et « Coca-Cola » ne trouvait plus rien. On garde donc une
+// LISTE de candidats, et on retient le premier dont la photo existe vraiment.
+function _indexPhotos(){
+  if(_photoIdx)return _photoIdx;
+  _photoIdx={cles:{},entrees:[]};
+  try{
+    catalogueIndex().forEach(function(e){
+      var s=_slugPhoto(e.plein);
+      _photoIdx.entrees.push({s:s,k:txtNorm(e.plein+' '+e.nm+' '+(e.fam||''))});
+      [e.plein,e.nm,(e.fam?e.nm+' '+e.fam:''),(e.fam?e.fam+' '+e.nm:'')].forEach(function(v){
+        if(!v)return;
+        var c=txtNorm(v).replace(/\s+/g,' ').trim();
+        (_photoIdx.cles[c]=_photoIdx.cles[c]||[]).push(s);
+      });
+    });
+  }catch(e){}
+  return _photoIdx;
+}
+async function chargerManifestePhotos(){
+  if(_photoManif)return _photoManif;
+  try{
+    var r=await fetch('photos-catalogue.json',{cache:'no-cache'});
+    if(r.ok)_photoManif=await r.json();
+  }catch(e){}
+  if(!_photoManif)_photoManif={base:'',ext:'.jpg',slugs:[]};
+  _photoManif._set={};
+  (_photoManif.slugs||[]).forEach(function(s){_photoManif._set[s]=1;});
+  return _photoManif;
+}
+// Renvoie l'URL de la photo partagée, ou '' si personne ne l'a encore prise.
+function photoCatalogue(nom){
+  if(!_photoManif||!_photoManif.base)return '';
+  var cle=txtNorm(nom).replace(/\s+/g,' ').trim();
+  if(!cle)return '';
+  var idx=_indexPhotos();
+  var cands=(idx.cles[cle]||[]).slice();
+  cands.push(_slugPhoto(nom));
+  // Rien d'exact. Le commerçant écrit « Savon Azur » là où le catalogue dit
+  // « Savon Azur (barre) », ou juste « Nido » pour « Lait Nido 400 g ».
+  // On cherche alors l'entrée qui contient TOUS ses mots — et seulement
+  // parmi celles dont la photo existe : jamais une URL qui finirait en 404.
+  if(!cands.some(function(s){return _photoManif._set[s];})){
+    // Il écrit « 400g », « 1kg », « 50cl » collés ; le catalogue écrit
+    // « 400 g ». On décolle chiffres et lettres avant de comparer.
+    var mots=cle.replace(/(\d)([a-z])/g,'$1 $2').replace(/([a-z])(\d)/g,'$1 $2')
+                .split(' ').filter(function(m){return m.length>=3;});
+    if(mots.length)idx.entrees.forEach(function(e){
+      if(!_photoManif._set[e.s])return;
+      if(mots.every(function(m){return e.k.indexOf(m)>=0;}))cands.push(e.s);
+    });
+  }
+  for(var i=0;i<cands.length;i++)
+    if(_photoManif._set[cands[i]])return _photoManif.base+cands[i]+(_photoManif.ext||'.jpg');
+  return '';
+}
+// Pose la photo partagée sur les articles qui n'en ont pas. Ne REMPLACE
+// jamais une photo prise par le commerçant : la sienne est la vérité.
+function appliquerPhotosCatalogue(liste){
+  var n=0;
+  (liste||[]).forEach(function(p){
+    if(!p||p.img)return;
+    var u=photoCatalogue(p.nm);
+    if(u){p.img=u;p._imgCat=true;n++;}
+    (p.vr||[]).forEach(function(v){
+      if(v.img)return;
+      var uv=photoCatalogue(p.nm+' '+(v.nm||''))||photoCatalogue(v.nm||'');
+      if(uv){v.img=uv;n++;}
+    });
+  });
+  return n;
+}
 var _catIdx=null;
 function catalogueIndex(){
   if(_catIdx)return _catIdx;
@@ -6852,7 +6942,9 @@ function importerSelectionCatalogue(){
     var m=_catalogModeles[parseInt(c.dataset.idx,10)];
     if(!m)return;
     var newId=DB.nextId++;
-    DB.articles.push({id:newId,nm:m.nm,e:m.e||'📦',img:m.img,cat:m.cat||(lang==='fr'?'Alimentation':'Food'),px:0,pa:0,stk:0,al:5,vd:0,vr:[],rt:true});
+    var art={id:newId,nm:m.nm,e:m.e||'📦',img:m.img,cat:m.cat||(lang==='fr'?'Alimentation':'Food'),px:0,pa:0,stk:0,al:5,vd:0,vr:[],rt:true};
+    appliquerPhotosCatalogue([art]);
+    DB.articles.push(art);
     newIds.push(newId);
   });
   save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();
@@ -7016,6 +7108,7 @@ function expCreerTous(){
     var art={id:DB.nextId++,nm:a.nm,e:emojiDepuisNomProduit(a.nm),cat:categorieDepuisNomProduit(a.nm),
       px:a.px,pa:paU,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,
       um:a.um||null,umSac:(a.um&&a.gros>0)?a.gros:null};
+    appliquerPhotosCatalogue([art]);   // sa photo, si quelqu'un l'a déjà prise
     DB.articles.push(art);
     if(a.stk>0)definirStock(art,null,a.stk);
     if(!(paU>0))sansPa++;
@@ -9911,6 +10004,18 @@ if('serviceWorker' in navigator){
       // Les annonces suivent le même rythme : au retour sur l'app et au retour
       // du réseau. Même bridage de 2 minutes, côté chercherAnnonces().
       setTimeout(function(){chercherAnnonces(true);verifierAdmin();},4000);
+      // Le manifeste des photos : un seul fichier, servi avec l'app et gardé
+      // par le service worker. Ensuite tout se décide hors ligne.
+      setTimeout(function(){chargerManifestePhotos().then(function(m){
+        if(!m||!m.slugs||!m.slugs.length||!DB||!DB.articles)return;
+        var n=appliquerPhotosCatalogue(DB.articles);
+        if(!n)return;
+        save();
+        try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+        // Rien ne change en silence dans sa boutique, même une photo.
+        try{showToast('📷 '+n+' '+(lang==='fr'?(n>1?'articles ont reçu leur photo':'article a reçu sa photo')
+                                             :(n>1?'items got their photo':'item got its photo')));}catch(e){}
+      });},2000);
       setInterval(function(){chercherAnnonces();},15*60*1000);
       document.addEventListener('visibilitychange',function(){if(!document.hidden)chercherAnnonces();});
       window.addEventListener('online',function(){chercherAnnonces();});
