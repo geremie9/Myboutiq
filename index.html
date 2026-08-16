@@ -1345,6 +1345,7 @@ body{max-width:min(100%,1200px)}
              Le serveur décide (table app_admins) : cacher l'entrée n'est que du
              confort, c'est la règle RLS qui protège vraiment. -->
         <div class="stit2" id="row-annonce" style="display:none" onclick="ouvrirEcrireAnnonce()"><div class="stico" style="background:#E8EAF6">📣</div><div class="stii"><div class="stitl">Écrire une annonce</div><div class="stisub">Un message à tous les commerçants</div></div><span class="starr">›</span></div>
+        <div class="stit2" id="row-photos-prop" style="display:none" onclick="ouvrirPhotosProposees()"><div class="stico" style="background:#E0F2F1">📷</div><div class="stii"><div class="stitl">Photos proposées</div><div class="stisub" id="pp-sub">Ce que les commerçants offrent à tous</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirArchivage()"><div class="stico" style="background:#E1F5FE">📦</div><div class="stii"><div class="stitl">Ranger les vieilles ventes</div><div class="stisub" id="st-archive-s">Elles sortent du détail, tes totaux ne bougent pas</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirSupprBoutique()"><div class="stico" style="background:#FFEBEE">⛔</div><div class="stii"><div class="stitl" id="st-sup" style="color:var(--R)">Supprimer ma boutique</div><div class="stisub" id="st-sup-s">Tout effacer de nos serveurs, définitivement</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirRaz()"><div class="stico" style="background:#FFEBEE">🗑️</div><div class="stii"><div class="stitl" id="st-raz" style="color:var(--R)">Effacer toutes mes ventes</div><div class="stisub" id="st-raz-s">Sans retour. Ton stock et tes articles restent intacts.</div></div><span class="starr">›</span></div>
@@ -2125,6 +2126,17 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- PHOTOS OFFERTES PAR LES COMMERÇANTS (administrateurs seulement) -->
+<div class="ov" id="ov-photos-prop" onclick="closeOv(event,'ov-photos-prop')">
+  <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">📷 <span id="pp-tit">Photos proposées</span></div><button class="bcl" onclick="closeSheet('ov-photos-prop')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px" id="pp-aide">Une photo approuvée part dans toutes les boutiques pour cet article. Vérifie que c'est bien le bon produit.</div>
+      <div id="pp-lst"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ÉCRIRE UNE ANNONCE (administrateurs MyBoutiQ seulement) -->
 <div class="ov" id="ov-annonce" onclick="closeOv(event,'ov-annonce')">
   <div class="bsht"><div class="shndl"></div>
@@ -2606,7 +2618,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.61'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.62'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5746,6 +5758,9 @@ function uploadPhotoReelle(ev,mode){
         artCtx.img=publicUrl;save();renderProd(DB.articles);renderStock(DB.articles);
       }
       showToast('✅ '+(lang==='fr'?'Photo ajoutée !':'Photo added!')+' ('+sizeKo+' Ko)');
+      // Sa photo peut servir à tous les autres. On lui demande — jamais tout seul.
+      var _nomPhoto=(mode==='ctx'&&artCtx)?artCtx.nm:((document.getElementById('art-nm')||{}).value||'');
+      setTimeout(function(){proposerPhotoPartagee(_nomPhoto,publicUrl);},700);
     }).catch(function(e){
       showToast('❌ '+(e&&e.message?e.message:(lang==='fr'?'Échec de l\'envoi':'Upload failed')));
     }).finally(function(){
@@ -5881,6 +5896,36 @@ function _indexPhotos(){
   }catch(e){}
   return _photoIdx;
 }
+// ── Offrir sa photo aux autres commerçants ──────────────────────────
+// Le travail se divise : personne ne photographie mille articles, chacun
+// photographie les siens et tout le monde en profite. On ne peut pas deviner
+// à l'avance ce que les vraies boutiques vendent — la bibliothèque se remplit
+// donc par l'usage, pas par une liste écrite d'avance.
+// Elle ne part JAMAIS toute seule : le patron de MyBoutiQ approuve d'abord.
+async function proposerPhotoPartagee(nomArticle,url){
+  try{
+    if(!nomArticle||!url)return;
+    var fr=(lang==='fr');
+    // Rien à proposer si la photo de cet article existe déjà pour tous.
+    if(photoCatalogue(nomArticle))return;
+    // Il faut que l'article soit reconnu au catalogue : sinon on ne saurait
+    // pas à QUEL produit rattacher la photo, et elle ne servirait à personne.
+    var idx=_indexPhotos(),cle=txtNorm(nomArticle).replace(/\s+/g,' ').trim();
+    var slug=(idx.cles[cle]||[])[0];
+    if(!slug)return;
+    if(!confirm(fr
+      ?('📷 Partager cette photo de « '+nomArticle+' » avec les autres commerçants ?\n\nElle sera vérifiée avant d\'être publiée. Ta boutique n\'est pas nommée.')
+      :('Share this photo of "'+nomArticle+'" with other shops?')))return;
+    assurerConnexionSupa();
+    if(!supa||!navigator.onLine){showToast('📡 '+(fr?'Réseau requis':'Network required'));return;}
+    var r=await supa.from('photos_partagees').insert({
+      slug:slug,url:url,article_nm:String(nomArticle).slice(0,80),
+      code_source:(DB&&DB.cfg&&DB.cfg.code)||null
+    });
+    if(r.error){showToast('❌ '+(fr?'Envoi refusé':'Refused'));return;}
+    showToast('🙏 '+(fr?'Merci ! Ta photo est proposée à toutes les boutiques.':'Thanks! Your photo is proposed to all shops.'));
+  }catch(e){}
+}
 async function chargerManifestePhotos(){
   if(_photoManif)return _photoManif;
   try{
@@ -5890,6 +5935,22 @@ async function chargerManifestePhotos(){
   if(!_photoManif)_photoManif={base:'',ext:'.jpg',slugs:[]};
   _photoManif._set={};
   (_photoManif.slugs||[]).forEach(function(s){_photoManif._set[s]=1;});
+  // Deux sources, et la seconde compte plus : le fichier livré avec l'app,
+  // PUIS les photos que des commerçants ont offertes et que le patron a
+  // approuvées. Celles-ci portent leur URL complète — elles ne suivent pas
+  // le nom de fichier du catalogue. Sans réseau, on garde ce qu'on avait.
+  _photoManif._url={};
+  try{
+    assurerConnexionSupa();
+    if(supa&&navigator.onLine){
+      var q=await supa.from('photos_partagees').select('slug,url').eq('etat','approuvee').limit(2000);
+      if(!q.error&&q.data)q.data.forEach(function(p){
+        if(!p.slug||!p.url)return;
+        _photoManif._set[p.slug]=1;
+        _photoManif._url[p.slug]=p.url;
+      });
+    }
+  }catch(e){}
   return _photoManif;
 }
 // Renvoie l'URL de la photo partagée, ou '' si personne ne l'a encore prise.
@@ -5914,8 +5975,12 @@ function photoCatalogue(nom){
       if(mots.every(function(m){return e.k.indexOf(m)>=0;}))cands.push(e.s);
     });
   }
-  for(var i=0;i<cands.length;i++)
-    if(_photoManif._set[cands[i]])return _photoManif.base+cands[i]+(_photoManif.ext||'.jpg');
+  for(var i=0;i<cands.length;i++){
+    if(!_photoManif._set[cands[i]])continue;
+    // Photo offerte par un commerçant : elle a sa propre adresse.
+    if(_photoManif._url&&_photoManif._url[cands[i]])return _photoManif._url[cands[i]];
+    return _photoManif.base+cands[i]+(_photoManif.ext||'.jpg');
+  }
   return '';
 }
 // Pose la photo partagée sur les articles qui n'en ont pas. Ne REMPLACE
@@ -6590,7 +6655,14 @@ function importerPhotosMasse(ev){
   function step(){
     if(idx>=total){finalizeImport();return;}
     var file=files[idx++];
-    var nm=nettoyerNomFichierProduit(file.name)||('Article '+DB.nextId);
+    // ⚠️ Un nom de fichier d'appareil photo n'est PAS un nom d'article.
+    // « Screenshot_20260709_112325.jpg » devenait un article nommé
+    // « Screenshot 20260709 112325 » — et il se vendait tel quel : ça
+    // ressemble assez à un nom pour qu'on n'y touche plus. On met à la place
+    // un mot qui RÉCLAME d'être corrigé. La détection existait déjà mais ne
+    // servait que dans l'écran de revue, que le commerçant peut sauter.
+    var _aNommer=(lang==='fr'?'À nommer ':'Name me ')+idx;
+    var nm=nomFichierGenerique(file.name)?_aNommer:(nettoyerNomFichierProduit(file.name)||_aNommer);
     var emoji=emojiDepuisNomProduit(nm);
     var cat=categorieDepuisNomProduit(nm);
     function tenterUpload(){return compresserImage(file,300,0.6).then(function(blob){return uploadBlobProduit(blob);});}
@@ -9959,8 +10031,59 @@ async function verifierAdmin(){
     var ok=!r.error&&r.data&&r.data.length>0;
     var row=document.getElementById('row-annonce');
     if(row)row.style.display=ok?'':'none';
+    var rowP=document.getElementById('row-photos-prop');
+    if(rowP)rowP.style.display=ok?'':'none';
+    // Combien attendent son avis ? Le dire ici lui évite d'ouvrir pour rien.
+    if(ok)try{
+      var q=await supa.from('photos_partagees').select('id').eq('etat','proposee').limit(60);
+      var n=(!q.error&&q.data)?q.data.length:0;
+      var sub=document.getElementById('pp-sub');
+      if(sub)sub.textContent=n?((lang==='fr')?(n+' photo'+(n>1?'s':'')+' en attente de ton avis'):(n+' waiting')):((lang==='fr')?'Ce que les commerçants offrent à tous':'What shops share');
+    }catch(e){}
     return ok;
   }catch(e){return false;}
+}
+// ── Approuver les photos offertes ───────────────────────────────────
+async function ouvrirPhotosProposees(){
+  if(!(await verifierAdmin())){showToast('⛔ '+(lang==='fr'?'Réservé à MyBoutiQ':'MyBoutiQ staff only'));return;}
+  document.getElementById('ov-photos-prop').classList.add('show');
+  renderPhotosProposees();
+}
+async function renderPhotosProposees(){
+  var c=document.getElementById('pp-lst');if(!c)return;var fr=(lang==='fr');
+  c.innerHTML='<div style="font-size:11.5px;color:var(--M);font-weight:700">'+(fr?'Chargement…':'Loading…')+'</div>';
+  try{
+    var r=await supa.from('photos_partagees').select('id,slug,url,article_nm,etat,cree_le')
+             .eq('etat','proposee').order('cree_le',{ascending:true}).limit(60);
+    if(r.error){c.innerHTML='<div style="font-size:12px;color:var(--R);font-weight:700">'+(fr?'Lecture refusée':'Read refused')+'</div>';return;}
+    var l=r.data||[];
+    if(!l.length){c.innerHTML='<div style="font-size:12.5px;color:var(--M);font-weight:600;padding:10px 0">'+(fr?'Aucune photo en attente. 🙂':'Nothing waiting.')+'</div>';return;}
+    c.innerHTML=l.map(function(p){
+      return '<div style="display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--BD)">'
+        +'<img src="'+p.url+'" style="width:56px;height:56px;object-fit:cover;border-radius:12px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.25">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:800;color:var(--T)">'+p.article_nm+'</div>'
+        +'<div style="font-size:10.5px;color:var(--M);font-weight:600;margin-top:2px">'+p.slug+'</div></div>'
+        +'<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">'
+        +'<button class="shct" style="min-height:36px;background:#E8F5E9;color:#2E7D32" onclick="deciderPhoto(\''+p.id+'\',\'approuvee\')">✓ '+(fr?'Publier':'Publish')+'</button>'
+        +'<button class="shct" style="min-height:36px" onclick="deciderPhoto(\''+p.id+'\',\'refusee\')">✕ '+(fr?'Refuser':'Reject')+'</button>'
+        +'</div></div>';
+    }).join('');
+  }catch(e){c.innerHTML='';}
+}
+async function deciderPhoto(id,etat){
+  var fr=(lang==='fr');
+  try{
+    var u=await getAuthUser();
+    var r=await supa.from('photos_partagees')
+             .update({etat:etat,decide_le:new Date().toISOString(),decide_par:u?u.id:null}).eq('id',id);
+    if(r.error){showToast('❌ '+(fr?'Refusé par le serveur':'Refused by server'));return;}
+    showToast(etat==='approuvee'
+      ?('📷 '+(fr?'Publiée dans toutes les boutiques':'Published to all shops'))
+      :('🗑️ '+(fr?'Refusée':'Rejected')));
+    _photoManif=null;                       // le manifeste doit être relu
+    renderPhotosProposees();
+  }catch(e){showToast('❌ '+(fr?'Échec':'Failed'));}
 }
 var _annCible='tous',_annNiveau='info';
 function selAnnCible(c,btn){_annCible=c;(btn.parentNode||document).querySelectorAll('.cbtn').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');}
