@@ -2618,7 +2618,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.62'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.63'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8727,7 +8727,7 @@ function renderPlansAbo(){
   var c=document.getElementById('plans-cont');c.innerHTML=plans.map(function(p){var isActive=DB.cfg.plan===p.id||(!DB.cfg.plan&&p.id==='gratuit');var suffix=durSel==='m'?(lang==='fr'?'/mois':'/month'):durSel==='s'?(lang==='fr'?'/6 mois':'/6 months'):(lang==='fr'?'/an':'/year');return '<div class="plan-cd'+(p.pop?' recommended':'')+'"><div class="plan-top"><div class="plan-nm">'+p.nm+(p.badge?'</div><div class="plan-badge'+(p.pop?' pop':'')+'">'+p.badge+'</div>':'</div><div></div>')+'</div><div class="plan-pr">'+(p.px===0?'0':'<span>'+DB.cfg.s+'</span>'+p.px.toLocaleString('fr-FR')+'<span>'+suffix+'</span>')+'</div><div class="plan-feats">'+p.feats.map(function(f){return '<div class="plan-feat">'+f+'</div>';}).join('')+'</div><button class="btn-plan'+(isActive?' active':'')+'" onclick="choisirPlan(\''+p.id+'\')">'+(isActive?(lang==='fr'?'✅ Plan actuel':'✅ Current plan'):(p.px===0?(lang==='fr'?'Démarrer gratuitement':'Start free'):(lang==='fr'?'Choisir ce plan':'Choose this plan')))+'</button></div>';}).join('');
 }
 function choisirPlan(planId){planSelAbo=planId;if(planId==='gratuit'){DB.cfg.plan='gratuit';save();showToast(lang==='fr'?'✅ Plan Gratuit activé !':'✅ Free plan activated!');renderPlansAbo();return;}document.getElementById('pmnt-sect').style.display='block';var el=document.getElementById('pmnt-sect');el.scrollIntoView({behavior:'smooth'});}
-function procederPaiementAbo(){if(!planSelAbo){showToast(lang==='fr'?'⚠️ Choisis un plan d\'abord !':'⚠️ Choose a plan first!');return;}var plansNm={pro:'Pro',business:'Business'};var mult=durSel==='m'?1:durSel==='s'?5.4:9.6;var px=planSelAbo==='pro'?Math.round(1000*mult):Math.round(2000*mult);var msg='💎 *MyBoutiQ — '+(lang==='fr'?'Paiement Abonnement':'Subscription Payment')+'*\n\n'+(lang==='fr'?'Plan':'Plan')+': '+plansNm[planSelAbo]+'\n'+(lang==='fr'?'Durée':'Duration')+': '+(durSel==='m'?(lang==='fr'?'Mensuel':'Monthly'):durSel==='s'?(lang==='fr'?'Semestriel':'6 months'):(lang==='fr'?'Annuel':'Annual'))+'\n'+(lang==='fr'?'Montant':'Amount')+': '+DB.cfg.s+' '+px.toLocaleString('fr-FR')+'\n\n'+(lang==='fr'?'Paiement via':'Payment via')+': '+pmntSel.toUpperCase()+'\n\n'+(lang==='fr'?'Boutique':'Store')+': '+DB.cfg.nom+'\nCode: '+DB.cfg.code;window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');showToast(lang==='fr'?'📱 Demande envoyée via WhatsApp !':'📱 Request sent via WhatsApp!');}
+function procederPaiementAbo(){if(!planSelAbo){showToast(lang==='fr'?'⚠️ Choisis un plan d\'abord !':'⚠️ Choose a plan first!');return;}var plansNm={pro:'Pro',business:'Business'};var mult=durSel==='m'?1:durSel==='s'?5.4:9.6;var px=planSelAbo==='pro'?Math.round(1000*mult):Math.round(2000*mult);var msg='💎 *MyBoutiQ — '+(lang==='fr'?'Paiement Abonnement':'Subscription Payment')+'*\n\n'+(lang==='fr'?'Plan':'Plan')+': '+plansNm[planSelAbo]+'\n'+(lang==='fr'?'Durée':'Duration')+': '+(durSel==='m'?(lang==='fr'?'Mensuel':'Monthly'):durSel==='s'?(lang==='fr'?'Semestriel':'6 months'):(lang==='fr'?'Annuel':'Annual'))+'\n'+(lang==='fr'?'Montant':'Amount')+': '+DB.cfg.s+' '+px.toLocaleString('fr-FR')+'\n\n'+(lang==='fr'?'Paiement via':'Payment via')+': '+pmntSel.toUpperCase()+'\n\n'+(lang==='fr'?'Boutique':'Store')+': '+DB.cfg.nom+'\nCode: '+DB.cfg.code;window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(msg),'_blank');showToast(lang==='fr'?'📱 Demande envoyée via WhatsApp !':'📱 Request sent via WhatsApp!');}
 
 // ═══════════════════════════════════════════
 // ASSISTANCE
@@ -9357,6 +9357,15 @@ function mergeDB(base,other){
   if(!base)return other;
   if(!other)return base;
   if(!base.cfg||!other.cfg||normalizeShopCode(base.cfg.code)!==normalizeShopCode(other.cfg.code))return base;
+  // ⚠️ LE CODE SECRET NE VIENT PLUS DU SERVEUR — il n'y sera bientôt plus
+  // stocké qu'en empreinte, jamais en clair. Or ce téléphone en a besoin :
+  // `_shopPin` s'en sert pour CHAQUE lecture et CHAQUE écriture, et la
+  // connexion hors réseau le compare. Sans cette ligne, la première synchro
+  // effacerait la copie locale et l'app ne pourrait plus parler au serveur.
+  // La copie de CE téléphone fait foi ; elle ne quitte jamais l'appareil.
+  ['pin','pinVendeur'].forEach(function(k){
+    if(!base.cfg[k]&&other.cfg[k])base.cfg[k]=other.cfg[k];
+  });
   // S3 : archivage. La borne = la plus avancée des deux. L'autorité sur les
   // articles (stk0/vd0 rebasés) revient au téléphone qui a archivé le plus loin.
   var baseUp=(base.arch&&base.arch.upTo)||0, otherUp=(other.arch&&other.arch.upTo)||0;
