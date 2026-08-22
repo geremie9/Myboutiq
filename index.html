@@ -2618,7 +2618,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.64'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.65'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -2897,7 +2897,20 @@ async function signUpOwnerAuth(phone,pin){
   return {user:user||(res.data&&res.data.user?res.data.user:null),error:null};
 }
 async function syncToSupa(){
-  if(!supa||!DB||!DB.cfg||!DB.cfg.code)return;
+  // ⚠️ CE GARDE-FOU SORTAIT SANS RIEN DIRE, ET DES VENTES RESTAIENT AU CHAUD.
+  // Le drapeau `_offlinePending` n'était posé que dans le `catch` plus bas.
+  // Or quand le commerçant OUVRE l'app sans réseau, `supa` n'existe même pas :
+  // on sortait ici, le drapeau restait faux, et au retour du réseau la
+  // resynchronisation ne partait jamais. Ses ventes attendaient la vente
+  // SUIVANTE pour monter — et si le téléphone se perd entre-temps, elles
+  // sont perdues avec lui. Elles sont en sécurité dans l'appareil ; elles
+  // n'étaient simplement pas mises à l'abri.
+  if(!DB||!DB.cfg||!DB.cfg.code)return;
+  if(!supa||!navigator.onLine){
+    _offlinePending=true;
+    try{assurerConnexionSupa();}catch(e){}
+    if(!supa||!navigator.onLine)return;
+  }
   try{
     var user=await getAuthUser();
     if(user)DB.cfg.ownerId=user.id;
