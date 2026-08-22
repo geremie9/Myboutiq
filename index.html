@@ -1369,7 +1369,7 @@ body{max-width:min(100%,1200px)}
   <div class="mcont" style="padding-bottom:30px">
     <div style="padding:14px 15px">
       <!-- Durée -->
-      <div style="margin-bottom:14px">
+      <div style="margin-bottom:14px" id="abo-duree-sect">
         <div class="stit" style="margin-bottom:10px" id="lbl-duree">📅 Durée</div>
         <div class="plan-dur">
           <div class="dur-btn on" id="dur-m" onclick="selDur('m',this)"><div class="dur-nm" id="lbl-mensuel">Mensuel</div><div class="dur-disc">Prix normal</div></div>
@@ -2618,7 +2618,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.63'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.64'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8717,7 +8717,55 @@ function saveLangDev(){if(DB){DB.cfg.lang=lang;if(obPays){DB.cfg.pays=obPays;DB.
 var durSel='m';
 function selDur(d,btn){durSel=d;document.querySelectorAll('.dur-btn').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');renderPlansAbo();}
 function selPmnt(p,btn){pmntSel=p;document.querySelectorAll('.pmnt-btn').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');}
+// ── La boutique est-elle dans la zone FCFA ? ──────────────────────
+// Les tarifs (1 000 / 2 000) sont écrits en FCFA, mais l'écran les affichait
+// avec le symbole du pays choisi. L'app propose 28 pays : le prix n'était
+// juste que dans les 10 de la zone franc. Un Kényan lisait « KSh 1 000 », un
+// Ghanéen « ₵ 1 000 » — des montants sans rapport avec ce qu'on encaisse.
+// Hors zone, on n'affiche plus de prix du tout : on invite à nous écrire.
+// Un prix faux affiché est pire qu'un pays absent.
+function renderAboHorsZone(){
+  var c=document.getElementById('plans-cont');if(!c)return;
+  var fr=(lang==='fr');
+  var pays=(DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.n)||'';
+  c.innerHTML='<div style="background:var(--C);border-radius:16px;padding:22px 18px;text-align:center">'
+    +'<div style="font-size:34px;margin-bottom:10px">🌍</div>'
+    +'<div style="font-size:15px;font-weight:800;color:var(--T);margin-bottom:8px">'
+    +(fr?('MyBoutiQ arrive'+(pays?(' au '+pays):'')):'MyBoutiQ is coming to your country')+'</div>'
+    +'<div style="font-size:12.5px;color:var(--M);font-weight:600;line-height:1.55;margin-bottom:16px">'
+    +(fr?'L\'application est entièrement utilisable, et elle le reste. Nous n\'avons simplement pas encore fixé le tarif dans ta monnaie — et nous préférons ne rien afficher plutôt qu\'un montant faux.'
+        :'The app stays fully usable. We just have not set a price in your currency yet, and we would rather show nothing than a wrong amount.')+'</div>'
+    +'<button class="bnxt" onclick="ecrireePourTarif()">💬 '+(fr?'Écris-nous pour ton pays':'Contact us for your country')+'</button>'
+    +'</div>';
+  // Le reste de l'écran (durée, moyen de paiement, bouton Payer) n'a plus de sens.
+  ['abo-duree-sect','pmnt-sect','btn-payer-abo'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.style.display='none';
+  });
+}
+function ecrireePourTarif(){
+  var fr=(lang==='fr');
+  var pays=(DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.n)||'?';
+  var msg='💎 *MyBoutiQ*\n\n'+(fr?'Bonjour, je voudrais m\'abonner.':'Hello, I would like to subscribe.')
+    +'\n'+(fr?'Pays':'Country')+' : '+pays
+    +'\n'+(fr?'Monnaie':'Currency')+' : '+((DB&&DB.cfg&&DB.cfg.d)||'?')
+    +'\n'+(fr?'Boutique':'Shop')+' : '+((DB&&DB.cfg&&DB.cfg.nom)||'')
+    +'\nCode : '+((DB&&DB.cfg&&DB.cfg.code)||'');
+  window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(msg),'_blank');
+}
+function _zoneFCFA(){
+  try{
+    var c=DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.c;
+    if(c)return c==='XOF'||c==='XAF';
+    // Boutiques anciennes, créées avant le choix du pays.
+    return String((DB&&DB.cfg&&DB.cfg.d)||'FCFA').toUpperCase()==='FCFA';
+  }catch(e){return true;}
+}
 function renderPlansAbo(){
+  if(!_zoneFCFA()){renderAboHorsZone();return;}
+  // Le commerçant a pu changer de pays : on rétablit ce qui avait été caché.
+  ['abo-duree-sect','pmnt-sect','btn-payer-abo'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.style.display='';
+  });
   var mult=durSel==='m'?1:durSel==='s'?5.4:9.6;
   var plans=[
     {id:'gratuit',nm:lang==='fr'?'Gratuit':'Free',px:0,badge:'',pop:false,feats:lang==='fr'?['1 boutique','50 articles max','1 vendeur','Fonctions basiques']:['1 store','50 items max','1 seller','Basic features']},
@@ -8727,7 +8775,11 @@ function renderPlansAbo(){
   var c=document.getElementById('plans-cont');c.innerHTML=plans.map(function(p){var isActive=DB.cfg.plan===p.id||(!DB.cfg.plan&&p.id==='gratuit');var suffix=durSel==='m'?(lang==='fr'?'/mois':'/month'):durSel==='s'?(lang==='fr'?'/6 mois':'/6 months'):(lang==='fr'?'/an':'/year');return '<div class="plan-cd'+(p.pop?' recommended':'')+'"><div class="plan-top"><div class="plan-nm">'+p.nm+(p.badge?'</div><div class="plan-badge'+(p.pop?' pop':'')+'">'+p.badge+'</div>':'</div><div></div>')+'</div><div class="plan-pr">'+(p.px===0?'0':'<span>'+DB.cfg.s+'</span>'+p.px.toLocaleString('fr-FR')+'<span>'+suffix+'</span>')+'</div><div class="plan-feats">'+p.feats.map(function(f){return '<div class="plan-feat">'+f+'</div>';}).join('')+'</div><button class="btn-plan'+(isActive?' active':'')+'" onclick="choisirPlan(\''+p.id+'\')">'+(isActive?(lang==='fr'?'✅ Plan actuel':'✅ Current plan'):(p.px===0?(lang==='fr'?'Démarrer gratuitement':'Start free'):(lang==='fr'?'Choisir ce plan':'Choose this plan')))+'</button></div>';}).join('');
 }
 function choisirPlan(planId){planSelAbo=planId;if(planId==='gratuit'){DB.cfg.plan='gratuit';save();showToast(lang==='fr'?'✅ Plan Gratuit activé !':'✅ Free plan activated!');renderPlansAbo();return;}document.getElementById('pmnt-sect').style.display='block';var el=document.getElementById('pmnt-sect');el.scrollIntoView({behavior:'smooth'});}
-function procederPaiementAbo(){if(!planSelAbo){showToast(lang==='fr'?'⚠️ Choisis un plan d\'abord !':'⚠️ Choose a plan first!');return;}var plansNm={pro:'Pro',business:'Business'};var mult=durSel==='m'?1:durSel==='s'?5.4:9.6;var px=planSelAbo==='pro'?Math.round(1000*mult):Math.round(2000*mult);var msg='💎 *MyBoutiQ — '+(lang==='fr'?'Paiement Abonnement':'Subscription Payment')+'*\n\n'+(lang==='fr'?'Plan':'Plan')+': '+plansNm[planSelAbo]+'\n'+(lang==='fr'?'Durée':'Duration')+': '+(durSel==='m'?(lang==='fr'?'Mensuel':'Monthly'):durSel==='s'?(lang==='fr'?'Semestriel':'6 months'):(lang==='fr'?'Annuel':'Annual'))+'\n'+(lang==='fr'?'Montant':'Amount')+': '+DB.cfg.s+' '+px.toLocaleString('fr-FR')+'\n\n'+(lang==='fr'?'Paiement via':'Payment via')+': '+pmntSel.toUpperCase()+'\n\n'+(lang==='fr'?'Boutique':'Store')+': '+DB.cfg.nom+'\nCode: '+DB.cfg.code;window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(msg),'_blank');showToast(lang==='fr'?'📱 Demande envoyée via WhatsApp !':'📱 Request sent via WhatsApp!');}
+function procederPaiementAbo(){
+  // Dernier filet : jamais de montant en FCFA envoyé depuis un pays qui ne
+  // l'emploie pas, même si l'écran a été laissé ouvert avant un changement de pays.
+  if(!_zoneFCFA()){ecrireePourTarif();return;}
+  if(!planSelAbo){showToast(lang==='fr'?'⚠️ Choisis un plan d\'abord !':'⚠️ Choose a plan first!');return;}var plansNm={pro:'Pro',business:'Business'};var mult=durSel==='m'?1:durSel==='s'?5.4:9.6;var px=planSelAbo==='pro'?Math.round(1000*mult):Math.round(2000*mult);var msg='💎 *MyBoutiQ — '+(lang==='fr'?'Paiement Abonnement':'Subscription Payment')+'*\n\n'+(lang==='fr'?'Plan':'Plan')+': '+plansNm[planSelAbo]+'\n'+(lang==='fr'?'Durée':'Duration')+': '+(durSel==='m'?(lang==='fr'?'Mensuel':'Monthly'):durSel==='s'?(lang==='fr'?'Semestriel':'6 months'):(lang==='fr'?'Annuel':'Annual'))+'\n'+(lang==='fr'?'Montant':'Amount')+': '+DB.cfg.s+' '+px.toLocaleString('fr-FR')+'\n\n'+(lang==='fr'?'Paiement via':'Payment via')+': '+pmntSel.toUpperCase()+'\n\n'+(lang==='fr'?'Boutique':'Store')+': '+DB.cfg.nom+'\nCode: '+DB.cfg.code;window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(msg),'_blank');showToast(lang==='fr'?'📱 Demande envoyée via WhatsApp !':'📱 Request sent via WhatsApp!');}
 
 // ═══════════════════════════════════════════
 // ASSISTANCE
