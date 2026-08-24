@@ -2618,7 +2618,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.65'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.66'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4434,7 +4434,110 @@ function initTabs(){
   });
   document.getElementById('sec-lbl').textContent=t('tousArticles');
 }
-function filtrC(q){renderProd(DB.articles.filter(function(p){return p.nm.toLowerCase().includes(q.toLowerCase());}));document.getElementById('sec-lbl').textContent=q?'🔍 "'+q+'"':t('tousArticles');}
+// Ce qu'il cherche, retenu pour que la grille puisse proposer le catalogue
+// quand sa boutique ne connaît pas encore l'article.
+var _rechCaisse='';
+function filtrC(q){_rechCaisse=String(q||'').trim();renderProd(DB.articles.filter(function(p){return p.nm.toLowerCase().includes(q.toLowerCase());}));document.getElementById('sec-lbl').textContent=q?'🔍 "'+q+'"':t('tousArticles');}
+
+// ═══════════════════════════════════════════════════════════════════
+//  VENDRE CRÉE L'ARTICLE
+// ═══════════════════════════════════════════════════════════════════
+// Le postulat de départ était faux : « il faut configurer la boutique, PUIS
+// vendre ». Un commerçant n'a jamais fait ça — le premier client arrive avant
+// qu'il ait tapé son dixième article. Alors on inverse : il vend, et le
+// catalogue de sa boutique s'écrit tout seul, dans l'ordre de ce qui se vend
+// vraiment. Plus rien à coller, plus rien à faire défiler, plus rien à
+// photographier : la photo, l'unité et le conditionnement arrivent avec
+// l'article. Tout existait déjà — il fallait le brancher là où il se trouve
+// vraiment : la caisse.
+function _peutCreerEnVendant(){
+  return role==='patron'||hasPerm('produits');
+}
+function _grilleCatalogueCaisse(q){
+  q=String(q||'').trim();
+  if(q.length<2)return '';
+  var fr=(lang==='fr');
+  if(!_peutCreerEnVendant()){
+    return '<div class="empty" style="grid-column:1/-1"><div class="empty-e">🔒</div>'
+      +'<div class="empty-t">'+(fr?'Aucun résultat':'No result')+'</div>'
+      +'<div style="font-size:11.5px;color:var(--M);font-weight:600;margin-top:6px">'
+      +(fr?'Demande au patron d\'ajouter cet article.':'Ask the owner to add this item.')+'</div></div>';
+  }
+  var cle=txtNorm(q),prop=[];
+  try{
+    var dejaLa={};
+    (DB.articles||[]).forEach(function(p){dejaLa[txtNorm(p.nm)]=1;});
+    catalogueIndex().forEach(function(e){
+      if(prop.length>=6)return;
+      if(e.k.indexOf(cle)<0)return;
+      if(dejaLa[txtNorm(e.plein)])return;
+      if(prop.some(function(x){return txtNorm(x.plein)===txtNorm(e.plein);}))return;
+      prop.push(e);
+    });
+  }catch(e){}
+  var h='<div style="grid-column:1/-1">';
+  if(prop.length){
+    h+='<div style="font-size:11.5px;font-weight:800;color:var(--M);margin:2px 0 9px">'
+      +(fr?'Pas encore dans ta boutique':'Not in your shop yet')+'</div>';
+    prop.forEach(function(e,i){
+      var img='';
+      try{img=photoCatalogue(e.plein)||'';}catch(x){}
+      var vign=img
+        ?('<img src="'+img+'" style="width:46px;height:46px;border-radius:12px;object-fit:cover;flex-shrink:0">')
+        :('<span style="width:46px;height:46px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--BG);font-size:22px">'+emojiDepuisNomProduit(e.plein)+'</span>');
+      var sous=[];
+      if(e.um&&e.um!=='pc')sous.push(fr?('au '+e.um):('per '+e.um));
+      if(e.cont&&e.sac)sous.push(e.cont+' de '+e.sac);
+      h+='<div onclick="creerEnVendant('+i+')" style="display:flex;gap:11px;align-items:center;padding:10px;margin-bottom:8px;background:var(--C);border:1.5px solid var(--BD);border-radius:14px;cursor:pointer">'
+        +vign
+        +'<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800;color:var(--T)">'+e.plein+'</div>'
+        +(sous.length?('<div style="font-size:11px;color:var(--M);font-weight:600;margin-top:2px">'+sous.join(' · ')+'</div>'):'')
+        +'</div><span style="font-size:20px;color:var(--B);font-weight:800;flex-shrink:0">+</span></div>';
+    });
+  }
+  _propCaisse=prop;
+  h+='<div onclick="creerEnVendant(-1)" style="display:flex;gap:11px;align-items:center;padding:12px;background:var(--BG);border-radius:14px;cursor:pointer;margin-top:2px">'
+    +'<span style="font-size:20px">➕</span>'
+    +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--T)">'
+    +(fr?'Créer « ':'Create "')+q+(fr?' » moi-même':'" myself')+'</div>'
+    +'<div style="font-size:11px;color:var(--M);font-weight:600;margin-top:2px">'
+    +(fr?'Ton propre article, avec ton nom à toi':'Your own item, your own name')+'</div></div></div>';
+  return h+'</div>';
+}
+var _propCaisse=[];
+// Un seul geste, une seule question : le prix de vente. Le reste vient du
+// catalogue. Le prix d'achat et le stock se rempliront à la réception de la
+// marchandise — c'est le moment naturel, pas devant un client qui attend.
+function creerEnVendant(i){
+  var fr=(lang==='fr');
+  if(!_peutCreerEnVendant()){showToast('🔒 '+(fr?'Réservé au patron':'Owner only'));return;}
+  var e=(i>=0)?_propCaisse[i]:null;
+  var nom=e?e.plein:_rechCaisse;
+  if(!nom||String(nom).trim().length<2)return;
+  nom=String(nom).trim();
+  var rep=prompt(fr?('💰 '+nom+'\n\nÀ combien tu le vends ?'):('💰 '+nom+'\n\nSelling price?'),'');
+  if(rep===null)return;
+  var px=parseFloat(String(rep).replace(',','.'))||0;
+  if(!(px>0)){showToast('⚠️ '+(fr?'Il faut un prix de vente':'A selling price is needed'));return;}
+  if(!DB.nextId)DB.nextId=100;
+  var art={id:DB.nextId++,nm:nom,e:emojiDepuisNomProduit(nom),cat:(e&&e.cat)||categorieDepuisNomProduit(nom),
+    px:px,pa:0,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,
+    um:(e&&e.um&&e.um!=='pc')?e.um:null,umSac:(e&&e.sac)||null,umCont:(e&&e.cont)||null};
+  try{appliquerPhotosCatalogue([art]);}catch(x){}
+  if(!art.um||!art.umSac){try{appliquerConditionnementCatalogue([art],true);}catch(x){}}
+  DB.articles.push(art);
+  journalAjouter('creation',nom,'',fr?('créé en vendant · '+fmt(px)):'created while selling');
+  save();
+  _rechCaisse='';
+  var champ=document.getElementById('src-c');if(champ)champ.value='';
+  renderProd(DB.articles);renderStock(DB.articles);
+  try{initTabs();}catch(x){}
+  // Et on le met tout de suite dans le panier : c'est pour ça qu'il l'a créé.
+  panier[art.id+'-0']=(panier[art.id+'-0']||0)+1;
+  updatePUI(art.id);
+  if(navigator.vibrate)navigator.vibrate(25);
+  showToast('✅ '+nom+' · '+fmt(px)+' — '+(fr?'ajouté au panier':'added to cart'));
+}
 function getQBase(v){var q=parseFloat(v&&v.qBase);return(q>0)?q:1;}
 function utiliseStockBase(p){return !!(p&&p.vr&&p.vr.length&&p.vr.some(function(v){return getQBase(v)>1;}));}
 function stockVarDispo(p,v){
@@ -4490,8 +4593,15 @@ function renderProd(lst){
       // Vendeur sur une boutique sans article
       g.innerHTML='<div class="empty-guide" style="grid-column:1/-1"><div class="eg-ico">📦</div><div class="eg-t">'+(fr?'Aucun article':'No items')+'</div><div class="eg-s">'+(fr?'Demande au patron d\'ajouter des articles.':'Ask the owner to add items.')+'</div></div>';
     }else{
-      // Recherche/filtre sans résultat
-      g.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-e">🔍</div><div class="empty-t">'+(fr?'Aucun résultat':'No result')+'</div></div>';
+      // ── Recherche sans résultat : LE MUR ──
+      // Le commerçant tapait « coca », voyait « Aucun résultat », et devait
+      // quitter la vente pour aller créer l'article — devant un client qui
+      // attend. C'est ce mur qui obligeait à tout configurer AVANT de vendre.
+      // Maintenant le catalogue prend le relais : il propose, un geste crée
+      // l'article AVEC sa photo, son unité et son conditionnement, et la vente
+      // continue. Le catalogue de la boutique s'écrit en vendant.
+      g.innerHTML=_grilleCatalogueCaisse(_rechCaisse)
+        ||('<div class="empty" style="grid-column:1/-1"><div class="empty-e">🔍</div><div class="empty-t">'+(fr?'Aucun résultat':'No result')+'</div></div>');
     }
     return;
   }
