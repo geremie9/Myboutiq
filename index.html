@@ -2618,7 +2618,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.66'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.67'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3426,21 +3426,13 @@ async function entreeEmpreinte(){
   if(!window.PublicKeyCredential){showToast('⛔ '+(fr?'Empreinte indisponible':'Biometrics unavailable'));return;}
   try{
     var ch=crypto.getRandomValues(new Uint8Array(32));
-    var ok=await navigator.credentials.get({publicKey:{challenge:ch,userVerification:'required',timeout:60000}});
+    var ok=await navigator.credentials.get({publicKey:{challenge:ch,userVerification:'required',
+      allowCredentials:_clesEmpreinte(),timeout:60000}});
     if(!ok)throw new Error('refus');
   }catch(x){showToast('⛔ '+(fr?'Empreinte non reconnue':'Not recognised'));return;}
   // L'empreinte remplace la SAISIE du PIN, pas la preuve donnée au serveur.
   // Sans session valide, elle ne peut rien ouvrir : on le dit franchement.
-  assurerConnexionSupa();
-  if(!supa||!supa.auth||!navigator.onLine){showToast('📴 '+(fr?'Entre ton PIN (pas de réseau)':'Enter your PIN (offline)'));return;}
-  var ses=null;
-  try{ses=await supa.auth.getSession();}catch(x){}
-  if(!ses||!ses.data||!ses.data.session){
-    showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));return;
-  }
-  var mes=await listerBoutiquesDuCompte();
-  if(!mes.length){showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));return;}
-  afficherBoutiquesDeverrouillees(mes);
+  await _ouvrirApresEmpreinte();
 }
 function prefillEntree(){
   if(majEntreeRapide())return;
@@ -8465,6 +8457,35 @@ function hasPerm(k){
 }
 // ── BIOMÉTRIE PATRON (WebAuthn) ──
 function b64(buf){return btoa(String.fromCharCode.apply(null,new Uint8Array(buf)));}
+// ⚠️ IL MANQUAIT LE CHEMIN DU RETOUR. On rangeait l'identifiant de la clé
+// (bioCredId) et on ne s'en servait JAMAIS : aucun `allowCredentials` dans
+// tout le fichier. Or la clé n'était pas créée « découvrable » non plus.
+// Résultat : le téléphone cherchait une clé qu'il ne pouvait pas retrouver,
+// et l'empreinte échouait sans qu'on comprenne pourquoi.
+function debase64(s){
+  try{
+    s=String(s||'');
+    // Un identifiant de clé WebAuthn fait 16 à 1024 octets. Tout le reste est
+    // une donnée abîmée : mieux vaut ne rien présenter au capteur qu'un
+    // identifiant de travers, qui le ferait échouer sans explication.
+    if(!/^[A-Za-z0-9+/]+={0,2}$/.test(s))return null;
+    var b=atob(s);
+    if(b.length<16||b.length>1024)return null;
+    var u=new Uint8Array(b.length);
+    for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
+    return u.buffer;
+  }catch(e){return null;}
+}
+// La clé de CETTE boutique, à présenter au capteur. Sans elle, le navigateur
+// ne sait pas quoi vérifier.
+function _clesEmpreinte(){
+  try{
+    var id=DB&&DB.cfg&&DB.cfg.bioCredId;
+    if(!id)return undefined;
+    var buf=debase64(id);
+    return buf?[{type:'public-key',id:buf}]:undefined;
+  }catch(e){return undefined;}
+}
 async function activerBiometrieFlow(){
   if(!window.PublicKeyCredential){showToast('⛔ '+(lang==='fr'?'Biométrie non supportée sur cet appareil':'Biometrics not supported on this device'));return false;}
   try{
@@ -8477,7 +8498,11 @@ async function activerBiometrieFlow(){
       rp:{name:'MyBoutiQ'},
       user:{id:userId,name:DB.cfg.nom||'patron',displayName:DB.cfg.nom||'Patron'},
       pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
-      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required'},
+      // « residentKey » rend la clé RETROUVABLE par le téléphone. Sans elle,
+      // et sans allowCredentials à la vérification, le navigateur cherchait
+      // une clé introuvable : l'empreinte échouait toujours.
+      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',
+                              residentKey:'preferred',requireResidentKey:false},
       timeout:60000
     }});
     if(cred){DB.cfg.bioCredId=b64(cred.rawId);DB.cfg.bioEnabled=true;save();return true;}
@@ -8504,13 +8529,35 @@ function toggleBiometrie(){
     showToast('🔓 '+(lang==='fr'?'Empreinte désactivée':'Biometrics disabled'));
   }
 }
+// ⚠️ CETTE FONCTION ÉTAIT DÉCORATIVE. Elle vérifiait l'empreinte puis
+// appelait loginP(), qui EXIGE le PIN : le commerçant posait son doigt et
+// devait quand même tout taper. Zéro bénéfice, et un bouton qui ment.
+// Elle fait maintenant le même travail qu'entreeEmpreinte : l'empreinte
+// remplace la SAISIE du PIN, jamais la preuve donnée au serveur — sans
+// session valide, on le dit franchement au lieu de faire semblant.
 async function loginBiometrique(){
-  if(!window.PublicKeyCredential||!DB||!DB.cfg.bioEnabled){showToast('⛔ '+(lang==='fr'?'Biométrie non configurée':'Biometrics not set up'));return;}
+  var fr=(lang==='fr');
+  if(!window.PublicKeyCredential||!DB||!DB.cfg.bioEnabled){showToast('⛔ '+(fr?'Biométrie non configurée':'Biometrics not set up'));return;}
   try{
     var challenge=crypto.getRandomValues(new Uint8Array(32));
-    var res=await navigator.credentials.get({publicKey:{challenge,userVerification:'required',timeout:60000}});
-    if(res){loginP();}
-  }catch(e){console.log('WebAuthn login:',e);showToast('⛔ '+(lang==='fr'?'Authentification échouée':'Authentication failed'));}
+    var res=await navigator.credentials.get({publicKey:{challenge,userVerification:'required',
+      allowCredentials:_clesEmpreinte(),timeout:60000}});
+    if(!res)throw new Error('refus');
+  }catch(e){console.log('WebAuthn login:',e);showToast('⛔ '+(fr?'Empreinte non reconnue':'Not recognised'));return;}
+  await _ouvrirApresEmpreinte();
+}
+// Le chemin commun aux deux boutons : l'empreinte est reconnue, reste à
+// savoir si le serveur nous connaît encore.
+async function _ouvrirApresEmpreinte(){
+  var fr=(lang==='fr');
+  assurerConnexionSupa();
+  if(!supa||!supa.auth||!navigator.onLine){showToast('📴 '+(fr?'Entre ton PIN (pas de réseau)':'Enter your PIN (offline)'));return;}
+  var ses=null;
+  try{ses=await supa.auth.getSession();}catch(x){}
+  if(!ses||!ses.data||!ses.data.session){showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));return;}
+  var mes=await listerBoutiquesDuCompte();
+  if(!mes.length){showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));return;}
+  afficherBoutiquesDeverrouillees(mes);
 }
 function togV(i){DB.equipe[i].actif=!DB.equipe[i].actif;save();renderEquipe();}
 // Combien de vendeurs le patron accepte. 0 = pas de limite (comportement
