@@ -599,6 +599,23 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 /* Rangée "Ventes rapides" : top articles vendus, accessibles en 1 tap */
 #topventes{padding:2px clamp(12px,3vw,18px) 2px}
 .tv-lbl{font-size:11px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.5px;margin:2px 0 7px}
+/* ── Le bouton « Ajouter » ne doit jamais être à chercher ──
+   Avant : un petit texte « + Ajouter » dans un en-tête de section, qui
+   partait vers le haut dès qu'il faisait défiler ses articles. Maintenant
+   il flotte au-dessus du pouce, toujours au même endroit. Il s'efface
+   pendant une vente : un client attend, on n'ajoute pas d'article. */
+.fab-add{position:fixed;right:14px;bottom:84px;width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,var(--B),var(--A));color:#fff;border:none;
+  font-size:28px;font-weight:300;line-height:1;display:none;align-items:center;justify-content:center;
+  box-shadow:0 6px 20px rgba(0,0,0,.28);z-index:58;cursor:pointer;font-family:Outfit,sans-serif;
+  transition:transform .18s ease,opacity .18s ease}
+.fab-add:active{transform:scale(.92)}
+/* Une rangée sur DEUX lignes coûtait cher sur un écran de 6 pouces :
+   l'étiquette prenait une ligne entière pour dire « ventes rapides ».
+   L'éclair suffit, et il tient sur la même ligne que les articles. */
+.tv-head{display:flex;align-items:center;gap:7px;margin:2px 0 6px}
+.tv-x{margin-left:auto;background:none;border:none;color:var(--M);font-size:15px;
+  padding:2px 6px;cursor:pointer;font-family:Outfit,sans-serif;opacity:.6}
 .tv-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:3px}
 .tv-row::-webkit-scrollbar{display:none}
 .tv-chip{flex:0 0 auto;width:78px;background:var(--C);border:1px solid var(--BD);border-radius:14px;padding:9px 6px 8px;
@@ -1065,6 +1082,7 @@ body{max-width:min(100%,1200px)}
     <div class="pgrid" id="pgrid"></div>
     <div style="height:20px"></div>
   </div>
+  <button class="fab-add" id="fab-add" onclick="ouvrirPorteArticles()" aria-label="Ajouter des articles" title="Ajouter des articles">+</button>
   <div class="fcart hide" id="fcart">
     <button class="cpill" onclick="ouvrirPanier()">
       <div style="display:flex;align-items:center"><div class="cbub" id="cc">0</div><div class="csum"><div class="csub" id="csb">articles</div><div class="ctot" id="ctot">0</div></div></div>
@@ -1281,6 +1299,7 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" onclick="ouvrirPorteArticles();goBack()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="st-art">Ajouter un article</div><div class="stisub" id="st-art-s">Nouvel article</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirPrix(null);goBack()"><div class="stico" style="background:#E3F2FD">💰</div><div class="stii"><div class="stitl" id="st-prix">Modifier les prix</div><div class="stisub" id="st-prix-s">Prix achat, vente, bénéfice</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirStk(null);goBack()"><div class="stico" style="background:#E8F5E9">📦</div><div class="stii"><div class="stitl" id="st-stk">Entrée de stock</div><div class="stisub" id="st-stk-s">Ajouter des quantités</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="afficherVentesRapides()"><div class="stico" style="background:#FFFDE7">⚡</div><div class="stii"><div class="stitl">Remettre les ventes rapides</div><div class="stisub">La rangée des articles qui partent le plus, en haut de la caisse</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirRafraichirPhotos()"><div class="stico" style="background:#FFF8E1">🖼️</div><div class="stii"><div class="stitl">Photos de mes articles</div><div class="stisub">Poser les photos du catalogue — tes chiffres ne bougent pas</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirRanger()"><div class="stico" style="background:#FFF3E0">🔗</div><div class="stii"><div class="stitl" id="st-rng">Regrouper mes articles</div><div class="stisub" id="st-rng-s">Mettre ensemble ce qui va ensemble (Savon Lux + Savon Protex)</div></div><span class="starr">›</span></div>
       </div>
@@ -2651,7 +2670,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.72'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.73'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3268,6 +3287,7 @@ function goScreen(id){
   document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('on');});
   var el=document.getElementById(id);
   if(el)el.classList.add('on');
+  try{majFabAjout();}catch(x){}
   if(id!=='s-splash')screenHist.push(id);
 }
 function goBack(){
@@ -4139,7 +4159,7 @@ function applyRolePerms(){
   var showStk=(role==='patron'||hasPerm('stock'));
   var showExp=(role==='patron'||hasPerm('depenses'));
   var showBen=(role==='patron'||hasPerm('rapports'));
-  var ba=document.getElementById('btn-add');if(ba)ba.style.display=showAdd?'block':'none';
+  var ba=document.getElementById('btn-add');if(ba)ba.style.display=showAdd?'block':'none';try{majFabAjout();}catch(x){}
   var bas=document.getElementById('btn-add-stk');if(bas)bas.style.display=showStk?'flex':'none';
   var bd=document.getElementById('btn-dep');if(bd)bd.style.display=showExp?'flex':'none';
   var cb=document.getElementById('card-ben');if(cb)cb.style.display=showBen?'':'none';
@@ -4735,14 +4755,43 @@ function renderProd(lst){
   });
 }
 // Rangée "Ventes rapides" : les 5-6 articles les plus vendus, en 1 tap
+// Masquée pour de bon, mais jamais perdue : elle revient depuis Réglages.
+function masquerVentesRapides(){
+  try{localStorage.setItem('myboutiq_tv_masque','1');}catch(e){}
+  var b=document.getElementById('topventes');if(b){b.style.display='none';b.innerHTML='';}
+  showToast('👍 '+(lang==='fr'?'Masqué. Tu peux le remettre dans Réglages.':'Hidden. You can bring it back in Settings.'));
+}
+function afficherVentesRapides(){
+  try{localStorage.removeItem('myboutiq_tv_masque');}catch(e){}
+  try{renderTopVentes();}catch(e){}
+  showToast('⚡ '+(lang==='fr'?'Ventes rapides remises':'Quick sell restored'));
+}
+// Le bouton flottant n'apparaît que pour qui a le droit d'ajouter, et
+// s'efface pendant une vente : le panier occupe déjà le bas de l'écran.
+function majFabAjout(){
+  var f=document.getElementById('fab-add');if(!f)return;
+  var droit=(role==='patron'||hasPerm('produits'));
+  var enVente=false;
+  try{var fc=document.getElementById('fcart');enVente=!!(fc&&!fc.classList.contains('hide'));}catch(e){}
+  var sc=document.getElementById('s-caisse');
+  var visible=droit&&!enVente&&!!(sc&&sc.classList.contains('on'));
+  f.style.display=visible?'flex':'none';
+}
 function renderTopVentes(){
   var box=document.getElementById('topventes');if(!box||!DB)return;
   var q=((document.getElementById('src-c')||{}).value||'').trim();
   var top=Array.from(DB.articles).filter(function(p){return (p.vd||0)>0;}).sort(function(a,b){return (b.vd||0)-(a.vd||0);}).slice(0,6);
-  if(q||top.length<2||DB.articles.length<=4){box.style.display='none';box.innerHTML='';return;}
+  // Il peut la masquer pour de bon : sur un écran de 6 pouces, chaque ligne
+  // compte, et tous les commerçants n'en ont pas l'usage.
+  var masque=false;try{masque=localStorage.getItem('myboutiq_tv_masque')==='1';}catch(e){}
+  if(masque||q||top.length<2||DB.articles.length<=4){box.style.display='none';box.innerHTML='';return;}
   var s=DB.cfg.s;
   box.style.display='block';
-  box.innerHTML='<div class="tv-lbl">⚡ '+(lang==='fr'?'Ventes rapides':'Quick sell')+'</div><div class="tv-row">'+top.map(function(p){
+  box.innerHTML='<div class="tv-head"><span style="font-size:13px">⚡</span>'
+    +'<span style="font-size:11px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.4px">'
+    +(lang==='fr'?'Ventes rapides':'Quick sell')+'</span>'
+    +'<button class="tv-x" onclick="masquerVentesRapides()" title="'+(lang==='fr'?'Masquer':'Hide')+'">✕</button></div>'
+    +'<div class="tv-row">'+top.map(function(p){
     var media=p.img?'<img src="'+p.img+'" loading="lazy">':
       (DB.cfg&&DB.cfg.noEmoji?'<span class="tv-mono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="tv-e" style="background:'+_m.bg+';color:'+_m.fg+';display:flex;align-items:center;justify-content:center">'+_m.svg+'</span>';})());
     return '<button class="tv-chip" onclick="venteRapide('+p.id+')">'+media+'<span class="tv-nm">'+p.nm+'</span><span class="tv-px">'+prixCarte(p)+'</span></button>';
@@ -5419,6 +5468,7 @@ function updatePUI(pid){
   var fc=document.getElementById('fcart');
   if(nb>0){fc.classList.remove('hide');document.getElementById('cc').textContent=nb;document.getElementById('csb').textContent=nb+' '+(lang==='fr'?'article'+(nb>1?'s':''):'item'+(nb>1?'s':''));document.getElementById('ctot').textContent=fmt(total);}
   else fc.classList.add('hide');
+  try{majFabAjout();}catch(e){}
 }
 function calcTotal(){return Object.entries(panier).reduce(function(s,e){var k=e[0],qty=e[1];var parts=k.split('-');var pid=parts[0],vid=parts[1];var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return s;if(vid&&vid!=='0'){var v=p.vr.find(function(x){return x.id==vid;});return s+(v?v.px*qty:0);}return s+p.px*qty;},0);}
 function calcBenTotal(){return Object.entries(panier).reduce(function(s,e){var k=e[0],qty=e[1];var parts=k.split('-');var pid=parts[0],vid=parts[1];var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return s;if(vid&&vid!=='0'){var v=p.vr.find(function(x){return x.id==vid;});return s+(v?(v.px-v.pa)*qty:0);}return s+(p.px-p.pa)*qty;},0);}
