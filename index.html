@@ -2651,7 +2651,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.71'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.72'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8915,16 +8915,46 @@ async function loginBiometrique(){
 }
 // Le chemin commun aux deux boutons : l'empreinte est reconnue, reste à
 // savoir si le serveur nous connaît encore.
+// ⚠️ L'EMPREINTE NE MARCHAIT QUE SI TOUT ÉTAIT PARFAIT : réseau présent ET
+// session serveur encore valide ET liste de boutiques non vide. Trois cas de
+// repli sur quatre — d'où l'impression qu'elle est cassée. Une porte qui
+// s'ouvre une fois sur trois, on cesse de s'en servir.
+//
+// Or LE PIN EST DÉJÀ STOCKÉ EN CLAIR DANS LE TÉLÉPHONE (DB.cfg.pin, et
+// cfg.pinVendeur pour le vendeur). Refuser de s'en servir après une empreinte
+// VÉRIFIÉE ne protégeait donc rien : n'importe qui pouvait déjà le lire.
+// Après l'empreinte, on l'emploie exactement comme s'il l'avait tapé — en
+// repassant par le chemin normal, qui gère déjà le hors-ligne.
 async function _ouvrirApresEmpreinte(){
   var fr=(lang==='fr');
-  assurerConnexionSupa();
-  if(!supa||!supa.auth||!navigator.onLine){showToast('📴 '+(fr?'Entre ton PIN (pas de réseau)':'Enter your PIN (offline)'));return;}
-  var ses=null;
-  try{ses=await supa.auth.getSession();}catch(x){}
-  if(!ses||!ses.data||!ses.data.session){showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));return;}
-  var mes=await listerBoutiquesDuCompte();
-  if(!mes.length){showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));return;}
-  afficherBoutiquesDeverrouillees(mes);
+  // Le chemin le plus court d'abord : session serveur encore ouverte.
+  try{
+    assurerConnexionSupa();
+    if(supa&&supa.auth&&navigator.onLine){
+      var ses=null;
+      try{ses=await supa.auth.getSession();}catch(x){}
+      if(ses&&ses.data&&ses.data.session){
+        var mes=await listerBoutiquesDuCompte();
+        if(mes&&mes.length){afficherBoutiquesDeverrouillees(mes);return;}
+      }
+    }
+  }catch(e){}
+  // Sinon : le code que ce téléphone garde déjà, saisi à sa place.
+  var garde=null;
+  try{
+    if(entreeRapideVendeur())garde=(DB&&DB.cfg&&DB.cfg.pinVendeur)||'';
+    else garde=(DB&&DB.cfg&&DB.cfg.pin)||'';
+  }catch(e){}
+  if(garde&&String(garde).length>=4){
+    var champ=document.getElementById('er-pin');
+    if(champ){
+      champ.value=String(garde);
+      try{await validerEntreeRapide();}catch(e){}
+      champ.value='';
+      return;
+    }
+  }
+  showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));
 }
 function togV(i){DB.equipe[i].actif=!DB.equipe[i].actif;save();renderEquipe();}
 // Combien de vendeurs le patron accepte. 0 = pas de limite (comportement

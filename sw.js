@@ -1,4 +1,4 @@
-const CACHE_NAME='myboutiq-v60';
+const CACHE_NAME='myboutiq-v61';
 const IMG_CACHE='myboutiq-images-v1';
 // photos-catalogue.json fait partie de la coquille : la boutique doit pouvoir
 // décider hors ligne quelle photo poser, sans redemander au serveur.
@@ -45,15 +45,30 @@ self.addEventListener('fetch',function(e){
 
   if(url.origin!==location.origin)return;
 
+  // ⚠️ AVANT : « réseau d'abord ». L'app attendait 216 Ko à CHAQUE ouverture
+  // avant d'afficher le moindre pixel — même pour un commerçant qui l'a
+  // installée depuis un mois. Une seconde sur une bonne connexion, cinq à
+  // quinze sur une connexion camerounaise. C'était ça, « ça dure ».
+  //
+  // MAINTENANT : on sert la copie gardée TOUT DE SUITE, et on va chercher la
+  // nouvelle version en arrière-plan pour la fois d'après. Exactement ce que
+  // fait déjà le cache des photos, quelques lignes plus haut.
+  // Il peut donc avoir une version de retard d'UNE ouverture — c'est pour ça
+  // que le bandeau « Recharger » existe, et qu'on cherche les mises à jour au
+  // retour sur l'app (19.55).
   e.respondWith(
-    fetch(e.request).then(function(res){
-      if(res&&res.status===200){
-        var resClone=res.clone();
-        caches.open(CACHE_NAME).then(function(c){c.put(e.request,resClone);});
-      }
-      return res;
-    }).catch(function(){
-      return caches.match(e.request).then(function(cached){return cached||caches.match('./index.html');});
+    caches.open(CACHE_NAME).then(function(c){
+      return c.match(e.request).then(function(garde){
+        var reseau=fetch(e.request).then(function(res){
+          if(res&&res.status===200)c.put(e.request,res.clone());
+          return res;
+        }).catch(function(){
+          // Hors ligne et rien en cache pour CETTE adresse : on retombe sur
+          // la page principale, qui elle est dans la coquille.
+          return garde||caches.match('./index.html');
+        });
+        return garde||reseau;
+      });
     })
   );
 });
