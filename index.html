@@ -1281,6 +1281,7 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" onclick="ouvrirPorteArticles();goBack()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="st-art">Ajouter un article</div><div class="stisub" id="st-art-s">Nouvel article</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirPrix(null);goBack()"><div class="stico" style="background:#E3F2FD">💰</div><div class="stii"><div class="stitl" id="st-prix">Modifier les prix</div><div class="stisub" id="st-prix-s">Prix achat, vente, bénéfice</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirStk(null);goBack()"><div class="stico" style="background:#E8F5E9">📦</div><div class="stii"><div class="stitl" id="st-stk">Entrée de stock</div><div class="stisub" id="st-stk-s">Ajouter des quantités</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirRafraichirPhotos()"><div class="stico" style="background:#FFF8E1">🖼️</div><div class="stii"><div class="stitl">Photos de mes articles</div><div class="stisub">Poser les photos du catalogue — tes chiffres ne bougent pas</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirRanger()"><div class="stico" style="background:#FFF3E0">🔗</div><div class="stii"><div class="stitl" id="st-rng">Regrouper mes articles</div><div class="stisub" id="st-rng-s">Mettre ensemble ce qui va ensemble (Savon Lux + Savon Protex)</div></div><span class="starr">›</span></div>
       </div>
       <div class="sttit">💼 Gestion boutique</div>
@@ -2101,6 +2102,18 @@ body{max-width:min(100%,1200px)}
 </div>
 
 <!-- DEPENSES -->
+<!-- METTRE LES NOUVELLES PHOTOS SUR UNE BOUTIQUE DÉJÀ REMPLIE -->
+<div class="ov" id="ov-raf" onclick="closeOv(event,'ov-raf')">
+  <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🖼️ <span id="raf-tit">Les photos de tes articles</span></div><button class="bcl" onclick="closeSheet('ov-raf')">✕</button></div>
+    <div style="padding:8px 19px 6px;overflow-y:auto;max-height:64vh" id="raf-cont"></div>
+    <div style="padding:11px 19px 22px;border-top:1px solid var(--BD);background:var(--C)">
+      <button class="bnxt" onclick="appliquerRafraichirPhotos()" id="raf-btn">✅ Mettre les photos</button>
+      <button class="bvid" style="margin-top:7px" onclick="refuserRafraichirPhotos()" id="raf-non">Non merci, laisse comme c'est</button>
+    </div>
+  </div>
+</div>
+
 <!-- CHOISIR SES ARTICLES DANS LE CATALOGUE VISUEL (600 photos) -->
 <div class="ov" id="ov-choixart" onclick="closeOv(event,'ov-choixart')">
   <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
@@ -2638,7 +2651,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.69'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.70'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6140,9 +6153,33 @@ async function chargerManifestePhotos(){
 }
 // Renvoie l'URL de la photo partagée, ou '' si personne ne l'a encore prise.
 function photoCatalogue(nom){
-  if(!_photoManif||!_photoManif.base)return '';
   var cle=txtNorm(nom).replace(/\s+/g,' ').trim();
   if(!cle)return '';
+  // ── Le catalogue visuel d'abord : 600 articles, chacun sa photo ──
+  // On cherche dans son index (nom, famille, mots-clés — donc aussi les
+  // fautes de frappe). C'est ce qui permet à une boutique DÉJÀ remplie de
+  // recevoir les nouvelles photos sur ses articles existants.
+  try{
+    if(_cat600&&_cat600.entrees){
+      var trouve=null;
+      catalogueIndex().some(function(e){
+        if(!e.img600)return false;
+        if(txtNorm(e.plein)===cle||txtNorm(e.nm)===cle){trouve=e;return true;}
+        return false;
+      });
+      if(!trouve){
+        var mots=cle.replace(/(\d)([a-z])/g,'$1 $2').replace(/([a-z])(\d)/g,'$1 $2')
+                    .split(' ').filter(function(m){return m.length>=3;});
+        if(mots.length)catalogueIndex().some(function(e){
+          if(!e.img600)return false;
+          if(mots.every(function(m){return e.k.indexOf(m)>=0;})){trouve=e;return true;}
+          return false;
+        });
+      }
+      if(trouve)return _photo600(trouve.img600);
+    }
+  }catch(e){}
+  if(!_photoManif||!_photoManif.base)return '';
   var idx=_indexPhotos();
   var cands=(idx.cles[cle]||[]).slice();
   cands.push(_slugPhoto(nom));
@@ -6170,6 +6207,102 @@ function photoCatalogue(nom){
 }
 // Pose la photo partagée sur les articles qui n'en ont pas. Ne REMPLACE
 // jamais une photo prise par le commerçant : la sienne est la vérité.
+// ═══════════════════════════════════════════════════════════════════
+//  METTRE LES NOUVELLES PHOTOS SUR UNE BOUTIQUE DÉJÀ REMPLIE
+// ═══════════════════════════════════════════════════════════════════
+// Sa demande : proposer aux commerçants DÉJÀ INSTALLÉS de profiter des 600
+// photos — VOLONTAIREMENT, et « sans toucher leurs ventes ni leur chiffre
+// d'affaires ». C'est la règle absolue ici :
+//
+//   ON NE TOUCHE QUE `img`, `e` (l'icône) ET `cat` (le rayon).
+//   Jamais le prix. Jamais le stock. Jamais une vente. Jamais un total.
+//
+// Et jamais une photo qu'il a prise lui-même : la sienne est la vérité.
+function _articlesARafraichir(){
+  var out=[];
+  ((DB&&DB.articles)||[]).forEach(function(p){
+    if(!p||!p.nm)return;
+    // Photo prise par le commerçant (pas venue du catalogue) : intouchable.
+    if(p.img&&!p._imgCat)return;
+    var u='';
+    try{u=photoCatalogue(p.nm)||'';}catch(e){}
+    if(!u||u===p.img)return;
+    out.push({p:p,url:u});
+  });
+  return out;
+}
+function proposerRafraichirPhotos(){
+  if(role!=='patron')return;
+  try{if(localStorage.getItem('myboutiq_photos_proposees')==='1')return;}catch(e){}
+  var l=_articlesARafraichir();
+  if(l.length<3)return;                    // pas la peine de déranger pour deux
+  var fr=(lang==='fr');
+  var b=document.getElementById('annonce-banner');
+  if(!b)return;
+  _annonceCourante=null;
+  document.getElementById('annonce-ico').textContent='🖼️';
+  document.getElementById('annonce-titre').textContent=fr
+    ?(l.length+' de tes articles peuvent avoir leur photo')
+    :(l.length+' of your items can get a photo');
+  document.getElementById('annonce-msg').textContent=fr
+    ?'Touche ici pour voir. Tes ventes et tes chiffres ne bougent pas.'
+    :'Tap to see. Your sales and totals stay untouched.';
+  b.style.borderLeftColor='#B8860B';
+  b.style.display='flex';
+  b.onclick=function(ev){
+    if(ev&&ev.target&&ev.target.closest&&ev.target.closest('button'))return;
+    b.style.display='none';b.onclick=null;
+    ouvrirRafraichirPhotos();
+  };
+}
+function ouvrirRafraichirPhotos(){
+  if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  var fr=(lang==='fr'),l=_articlesARafraichir();
+  var c=document.getElementById('raf-cont');if(!c)return;
+  if(!l.length){
+    c.innerHTML='<div style="text-align:center;padding:22px 0;font-size:13px;color:var(--M);font-weight:700">'
+      +(fr?'✅ Tous tes articles ont déjà ce qu\'il leur faut.':'✅ Nothing to add.')+'</div>';
+  }else{
+    c.innerHTML='<div style="background:#E8F5E9;border-radius:12px;padding:12px;margin-bottom:13px">'
+      +'<div style="font-size:12.5px;font-weight:800;color:#2E7D32;margin-bottom:5px">'+(fr?'Ce qui NE bougera PAS':'What will NOT change')+'</div>'
+      +'<div style="font-size:11.5px;color:#2E7D32;font-weight:600;line-height:1.55">'
+      +(fr?'Tes ventes · ton chiffre d\'affaires · tes bénéfices · tes prix · ton stock · tes clients et leurs dettes. Rien de tout cela n\'est touché.'
+          :'Your sales, revenue, profits, prices, stock, customers and debts stay untouched.')+'</div></div>'
+      +'<div style="font-size:12.5px;font-weight:800;color:var(--T);margin-bottom:9px">'
+      +(fr?(l.length+' article(s) recevront leur photo'):(l.length+' item(s) will get a photo'))+'</div>'
+      +l.slice(0,40).map(function(x){
+        return '<div style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--BD)">'
+          +'<img src="'+x.url+'" loading="lazy" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.2">'
+          +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:800;color:var(--T)">'+x.p.nm+'</div>'
+          +'<div style="font-size:10.5px;color:var(--M);font-weight:600">'+fmt(x.p.px||0)+' · '+(fr?'prix inchangé':'price unchanged')+'</div></div></div>';
+      }).join('')
+      +(l.length>40?('<div style="font-size:11px;color:var(--M);font-weight:700;padding-top:9px">+ '+(l.length-40)+(fr?' autres':' more')+'</div>'):'');
+  }
+  var btn=document.getElementById('raf-btn');
+  if(btn){
+    btn.style.display=l.length?'':'none';
+    btn.textContent=fr?('✅ Mettre les '+l.length+' photos'):('✅ Apply '+l.length+' photos');
+  }
+  document.getElementById('ov-raf').classList.add('show');
+}
+function appliquerRafraichirPhotos(){
+  var fr=(lang==='fr'),l=_articlesARafraichir(),n=0;
+  l.forEach(function(x){x.p.img=x.url;x.p._imgCat=true;n++;});
+  if(n){
+    save();
+    try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+    journalAjouter('photos',fr?'Photos du catalogue':'Catalogue photos','',n+(fr?' article(s)':' item(s)'));
+  }
+  try{localStorage.setItem('myboutiq_photos_proposees','1');}catch(e){}
+  closeSheet('ov-raf');
+  showToast('🖼️ '+n+' '+(fr?'photo(s) posée(s) — tes chiffres n\'ont pas bougé':'photo(s) applied — your figures unchanged'));
+}
+function refuserRafraichirPhotos(){
+  try{localStorage.setItem('myboutiq_photos_proposees','1');}catch(e){}
+  closeSheet('ov-raf');
+  showToast('👍 '+(lang==='fr'?'Rien n\'a été touché. C\'est dans Réglages si tu changes d\'avis.':'Nothing changed.'));
+}
+
 // ── Le conditionnement d'achat, posé sur les articles ──
 // `neuf` = article qu'on vient de créer : on peut tout renseigner.
 // Sinon on ne touche JAMAIS à `um` : changer un article de « à la pièce » à
@@ -10639,17 +10772,12 @@ if('serviceWorker' in navigator){
       // Le manifeste des photos : un seul fichier, servi avec l'app et gardé
       // par le service worker. Ensuite tout se décide hors ligne.
       setTimeout(function(){chargerCatalogue600();},1200);
-      setTimeout(function(){chargerManifestePhotos().then(function(m){
-        if(!m||!m.slugs||!m.slugs.length||!DB||!DB.articles)return;
-        appliquerConditionnementCatalogue(DB.articles,false);
-        var n=appliquerPhotosCatalogue(DB.articles);
-        if(!n)return;
-        save();
-        try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
-        // Rien ne change en silence dans sa boutique, même une photo.
-        try{showToast('📷 '+n+' '+(lang==='fr'?(n>1?'articles ont reçu leur photo':'article a reçu sa photo')
-                                             :(n>1?'items got their photo':'item got its photo')));}catch(e){}
-      });},2000);
+      // ⚠️ ON N'APPLIQUE PLUS RIEN TOUT SEUL. Sa boutique lui appartient :
+      // même une photo ne s'ajoute pas sans qu'il l'ait voulu. On se contente
+      // de compter ce qui pourrait changer et de le lui PROPOSER une fois.
+      setTimeout(function(){chargerManifestePhotos().then(function(){
+        try{proposerRafraichirPhotos();}catch(e){}
+      });},2500);
       setInterval(function(){chercherAnnonces();},15*60*1000);
       document.addEventListener('visibilitychange',function(){if(!document.hidden)chercherAnnonces();});
       window.addEventListener('online',function(){chercherAnnonces();});
