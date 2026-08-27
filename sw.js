@@ -1,8 +1,8 @@
-const CACHE_NAME='myboutiq-v57';
+const CACHE_NAME='myboutiq-v58';
 const IMG_CACHE='myboutiq-images-v1';
 // photos-catalogue.json fait partie de la coquille : la boutique doit pouvoir
 // décider hors ligne quelle photo poser, sans redemander au serveur.
-const APP_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png','./photos-catalogue.json'];
+const APP_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png','./photos-catalogue.json','./catalogue-600.json'];
 const SUPABASE_STORAGE_HOST='bbncilovxzkcvlxvoqtg.supabase.co';
 
 self.addEventListener('install',function(e){
