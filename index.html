@@ -2618,7 +2618,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.67'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.68'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3279,6 +3279,10 @@ function lireEntree(){
   try{return JSON.parse(localStorage.getItem('myboutiq_entree')||'null');}catch(e){return null;}
 }
 function oublierEntree(){
+  // Un vendeur qui change de vendeur doit retomber sur SON onglet, pas sur
+  // celui du patron — sinon il croit s'être trompé d'application.
+  var _etaitVendeur=false;
+  try{_etaitVendeur=(lireEntree()||{}).role==='vendeur';}catch(e){}
   try{localStorage.removeItem('myboutiq_entree');}catch(e){}
   ['p-tel','p-pin','v-code','v-nom','v-pin'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   var b=document.getElementById('conn-connu');if(b)b.style.display='none';
@@ -3286,9 +3290,14 @@ function oublierEntree(){
   _erCible=null;
   var er=document.getElementById('entree-rapide');if(er)er.style.display='none';
   var tb=document.getElementById('login-tabs');if(tb)tb.style.display='';
-  var t=document.getElementById('lt-p');if(t)swTab(t,'fp');
-  var p=document.getElementById('p-tel');if(p)p.focus();
-  showToast('↩️ '+(lang==='fr'?'Compte oublié sur ce téléphone':'Account forgotten on this phone'));
+  if(_etaitVendeur){
+    var tv=document.getElementById('lt-v');if(tv)swTab(tv,'fv');
+    var pv=document.getElementById('v-nom');if(pv)try{pv.focus();}catch(x){}
+  }else{
+    var t=document.getElementById('lt-p');if(t)swTab(t,'fp');
+    var p=document.getElementById('p-tel');if(p)p.focus();
+  }
+  showToast('↩️ '+(lang==='fr'?(_etaitVendeur?'Vendeur oublié sur ce téléphone':'Compte oublié sur ce téléphone'):'Forgotten on this phone'));
 }
 // ═══════════════════════════════════════════════════════════════════
 // PORTE D'ENTRÉE RAPIDE
@@ -3299,8 +3308,23 @@ function oublierEntree(){
 // de 4 chiffres ouvrirait n'importe quelle boutique.
 // ═══════════════════════════════════════════════════════════════════
 var _erCible=null;
+// ⚠️ L'ENTRÉE RAPIDE ÉTAIT RÉSERVÉE AU PATRON.
+// Le vendeur était pourtant mémorisé — son code de boutique et son prénom
+// sont enregistrés à chaque connexion réussie — mais cette mémoire ne
+// servait à RIEN. Chaque matin il devait : toucher l'onglet « Vendeur »,
+// retaper le code de la boutique, retaper son prénom, taper le PIN équipe.
+// Quatre gestes, tous les jours, pendant que le patron n'en fait qu'un.
+// Maintenant il retrouve son écran : « Bonjour Awa 👋 · Boutique G », et il
+// ne tape QUE le PIN équipe. Le PIN reste demandé — c'est le seul secret qui
+// prouve qu'il a le droit de vendre ; le garder sur le téléphone ouvrirait
+// la caisse à quiconque le ramasse.
+function entreeRapideVendeur(){
+  var e=lireEntree();
+  return !!(e&&e.role==='vendeur'&&e.code&&e.nom);
+}
 function entreeRapidePossible(){
   var e=lireEntree();
+  if(entreeRapideVendeur())return true;
   return !!(e&&e.role==='patron'&&e.tel&&e.boutiques&&e.boutiques.length);
 }
 // Le PIN d'abord, les boutiques ensuite. Le PIN n'appartient pas à UNE
@@ -3323,9 +3347,15 @@ function majEntreeRapide(){
   if(fp)fp.style.display='none';
   if(fv)fv.style.display='none';
   if(banniere)banniere.style.display='none';
-  document.getElementById('er-bonjour').textContent=fr?'Bonjour 👋':'Hello 👋';
-  document.getElementById('er-sous').textContent=fr?'Entre ton PIN pour ouvrir tes boutiques.':'Enter your PIN to open your shops.';
-  document.getElementById('er-chg').textContent=fr?'Ce n\'est pas toi ? Changer de compte':'Not you? Switch account';
+  var vend=entreeRapideVendeur();
+  // Il se reconnaît tout de suite : son prénom, sa boutique. Rien à retaper.
+  document.getElementById('er-bonjour').textContent=(fr?'Bonjour ':'Hello ')+(vend?(e.nom+' 👋'):'👋');
+  document.getElementById('er-sous').textContent=vend
+    ?((fr?'Entre le PIN équipe pour ouvrir ':'Enter the team PIN to open ')+(e.boutique||formatShopCode(e.code)))
+    :(fr?'Entre ton PIN pour ouvrir tes boutiques.':'Enter your PIN to open your shops.');
+  document.getElementById('er-chg').textContent=vend
+    ?(fr?'Ce n\'est pas toi ? Changer de vendeur':'Not you? Switch seller')
+    :(fr?'Ce n\'est pas toi ? Changer de compte':'Not you? Switch account');
   // Étape 1 : le PIN, rien d'autre.
   document.getElementById('er-lst').style.display='none';
   document.getElementById('er-lst').innerHTML='';
@@ -3383,6 +3413,22 @@ async function validerEntreeRapide(){
   var fr=lang==='fr';
   if(_refusePendantBlocage())return;
   var e=lireEntree();
+  // ── Le vendeur qui revient : son code et son prénom sont déjà connus ──
+  // On remplit ses champs et on laisse loginV faire tout son travail habituel
+  // (vérification serveur, permissions, purge du cache si autre boutique).
+  // Rien n'est contourné : il tape le même PIN équipe qu'avant, simplement il
+  // ne retape plus ce que le téléphone sait déjà.
+  if(entreeRapideVendeur()){
+    var pinV=(document.getElementById('er-pin').value||'').trim();
+    if(pinV.length<4){showToast('🔐 '+(fr?'Entre le PIN équipe':'Enter the team PIN'));return;}
+    document.getElementById('er-pin').value='';
+    var fc=document.getElementById('v-code');if(fc)fc.value=formatShopCode(e.code);
+    var fn2=document.getElementById('v-nom');if(fn2)fn2.value=e.nom||'';
+    var fp2=document.getElementById('v-pin');if(fp2)fp2.value=pinV;
+    try{await loginV();}catch(x){}
+    if(fp2)fp2.value='';
+    return;
+  }
   if(!e||!e.tel){majEntreeRapide();return;}
   var pin=(document.getElementById('er-pin').value||'').trim();
   if(pin.length<4){showToast('🔐 '+(fr?'Entre ton PIN':'Enter your PIN'));return;}
