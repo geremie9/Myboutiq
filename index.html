@@ -353,7 +353,9 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .calc-res.ok{background:rgba(0,200,83,.15);border:1.5px solid rgba(0,200,83,.3)}
 .calc-res.err{background:rgba(255,61,0,.15);border:1.5px solid rgba(255,61,0,.3)}
 .calc-res-lbl{font-size:12px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:3px}
-.calc-res-amt{font-size:30px;font-weight:900}
+/* Le chiffre le plus important de sa journee : la monnaie a rendre.
+   Meme un lecteur lent reconnait un nombre isole et enorme. */
+.calc-res-amt{font-size:46px;font-weight:900;line-height:1.05;letter-spacing:-1px}
 .calc-res.ok .calc-res-amt{color:var(--G)}
 .calc-res.err .calc-res-amt{color:var(--R)}
 
@@ -1539,6 +1541,7 @@ body{max-width:min(100%,1200px)}
         <div class="calc-res" id="calc-res" style="display:none">
           <div class="calc-res-lbl" id="calc-res-lbl">Monnaie à rendre</div>
           <div class="calc-res-amt" id="calc-res-amt">0</div>
+        <button id="btn-voix" onclick="basculerVoix()" style="background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:10px;padding:7px 13px;font-size:17px;cursor:pointer;margin-top:6px" title="Voix">🔊</button>
         </div>
       </div>
     </div>
@@ -2670,7 +2673,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.73'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.74'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5606,6 +5609,74 @@ function calcSplitVente(){
   el.textContent=(lang==='fr'?'Reste en mobile money : ':'Remaining via mobile money: ')+fmt(reste);
   el.style.color=esp>total?'var(--R)':'var(--T)';
 }
+// ═══════════════════════════════════════════════════════════════════
+//  L'APPLICATION PARLE
+// ═══════════════════════════════════════════════════════════════════
+// Elle savait ÉCOUTER (recherche vocale) mais jamais PARLER : zéro ligne de
+// synthèse vocale. Un commerçant qui ne lit pas ne pouvait donc pas savoir
+// combien rendre — au moment le plus fréquent de sa journée, un client
+// devant lui. C'est le mur le plus haut, et le moins cher à abattre : la
+// synthèse est dans le navigateur, gratuite, et hors ligne sur Android.
+//
+// La recherche (Microsoft Research, 700 h de terrain, 570 participants)
+// converge sur trois piliers pour qui ne lit pas : icônes + VOIX + langue.
+// L'app avait déjà les icônes et les photos. Il manquait la voix.
+var _voixOk=null;
+function voixActive(){
+  try{
+    if(DB&&DB.cfg&&DB.cfg.voix===false)return false;
+    return !!(window.speechSynthesis&&window.SpeechSynthesisUtterance);
+  }catch(e){return false;}
+}
+function _voixFr(){
+  if(_voixOk!==null)return _voixOk;
+  try{
+    var v=window.speechSynthesis.getVoices()||[];
+    _voixOk=v.filter(function(x){return /^fr/i.test(x.lang);})[0]||v[0]||null;
+  }catch(e){_voixOk=null;}
+  return _voixOk;
+}
+// Les nombres se disent, ils ne s'épellent pas : « 1 500 » doit s'entendre
+// « mille cinq cents », pas « un cinq zéro zéro ». On retire les espaces des
+// milliers avant de parler, sinon la voix lit chiffre par chiffre.
+function _nombreParlable(n){
+  var v=Math.round(Number(n)||0);
+  return String(v);
+}
+function parler(texte){
+  if(!voixActive()||!texte)return;
+  try{
+    window.speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance(String(texte));
+    u.lang=(lang==='fr')?'fr-FR':'en-US';
+    var v=_voixFr();if(v)u.voice=v;
+    u.rate=0.92;         // un peu plus lent : on parle à quelqu'un qui compte
+    u.volume=1;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+// Certains navigateurs ne chargent les voix qu'après un premier événement.
+try{if(window.speechSynthesis)window.speechSynthesis.onvoiceschanged=function(){_voixOk=null;};}catch(e){}
+
+function direMonnaie(){
+  var fr=(lang==='fr');
+  var total=calcAPayer(),recu=parseFloat((document.getElementById('calc-recu')||{}).value)||0;
+  var m=recu-total;
+  if(!recu){parler(fr?('À payer : '+_nombreParlable(total)+' francs'):('To pay: '+_nombreParlable(total)));return;}
+  if(m<0)parler(fr?('Il manque '+_nombreParlable(-m)+' francs'):('Missing '+_nombreParlable(-m)));
+  else if(m===0)parler(fr?'Compte juste. Rien à rendre.':'Exact. Nothing to give back.');
+  else parler(fr?('Rends '+_nombreParlable(m)+' francs'):('Give back '+_nombreParlable(m)));
+}
+function basculerVoix(){
+  if(!DB||!DB.cfg)return;
+  DB.cfg.voix=(DB.cfg.voix===false)?true:false;
+  save();
+  var on=(DB.cfg.voix!==false);
+  var b=document.getElementById('btn-voix');if(b)b.textContent=on?'🔊':'🔇';
+  showToast(on?('🔊 '+(lang==='fr'?'L\'app te parlera':'The app will speak'))
+              :('🔇 '+(lang==='fr'?'L\'app se tait':'The app is silent')));
+  if(on)parler(lang==='fr'?'Je te dirai la monnaie à rendre.':'I will tell you the change.');
+}
 function calcMonnaie(){
   // La monnaie se calcule sur ce qu'il DOIT payer, consigne comprise.
   var total=calcAPayer(),recu=parseFloat(document.getElementById('calc-recu').value)||0;
@@ -5614,7 +5685,12 @@ function calcMonnaie(){
   document.getElementById('calc-res-amt').textContent=monnaie>=0?fmt(monnaie):fmt(0);
   if(monnaie<0){res.className='calc-res err';document.getElementById('calc-res-lbl').textContent=t('insuffisant');}
   else{res.className='calc-res ok';document.getElementById('calc-res-lbl').textContent=t('monnaiea');}
+  // Elle se dit toute seule, dès qu'il a fini de taper ce qu'il a reçu :
+  // c'est le moment où il a un client devant lui et les mains occupées.
+  clearTimeout(_direMonnaieT);
+  if(recu>0)_direMonnaieT=setTimeout(direMonnaie,650);
 }
+var _direMonnaieT=null;
 function encaisser(){
   var total=calcTotal(),ben=calcBenTotal(),lignes=[];
   Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1];var parts=key.split('-');var pid=parts[0],vid=parts[1];var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;var qBase=v?getQBase(v):1;if(v){if(utiliseStockBase(p))p.stk-=qty*qBase;else v.stk-=qty;}else{p.stk-=qty;}p.vd+=qty;lignes.push({nm:p.nm+(v?' — '+v.nm:'')+' ×'+qty,px:(v?v.px:p.px)*qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qty:qty,qBase:qBase});});
