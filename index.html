@@ -306,7 +306,42 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 /* ── Variantes en CARREAUX : on touche pour vendre, comme la carte d'un
    article. Le − / + obligeait à viser un bouton de 38 px pendant qu'un
    client attend ; ici toute la tuile est la cible. ── */
+/* ⚠️ MESURÉ SUR LE VRAI SITE en 19.81, à quatre largeurs d'écran : la tuile
+   de variante ne ressemblait PAS à une carte d'article.
+     320 px : articles 143×169  ·  variantes 125×107   (−13 % / −36 %)
+     360 px : articles 106×125  ·  variantes 143×107   (+35 % / −14 %)
+     375 px : articles 111×131  ·  variantes 150×107   (+35 % / −18 %)
+     412 px : articles 123×145  ·  variantes 109×107   (−11 % / −26 %)
+   Deux causes. (1) .pgrid se calcule sur la LARGEUR DE L'ÉCRAN
+   (clamp(104px,21vw,168px)) et grandit avec lui ; .vgrid était FIGÉE à 104 px
+   dans un panneau 20 px plus étroit, d'où 2 colonnes contre 3 sur un
+   téléphone courant. (2) .pcard a un aspect-ratio, .vtile n'en avait aucun :
+   sa hauteur restait bloquée à 107 px sur TOUS les appareils.
+   Un panneau dont les proportions changent de signe selon le téléphone ne
+   peut pas avoir l'air fini — c'était ça, « pas de professionnalisme ».
+   Correctif : _placerVarBox COPIE la géométrie réelle de #pgrid (colonnes,
+   largeur intérieure, marges) au lieu de la redevenir de son côté. La règle
+   ci-dessous n'est plus qu'un repli pour l'ancienne feuille ov-var. */
 .vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
+
+/* ── LE VOILE ── Il ne FERME pas la grille, il la met en retrait : on
+   distingue encore les autres articles derrière, on ne peut plus les lire.
+   Sans lui, le panneau flottait sur un fond aussi net que lui et rien ne
+   disait où regarder. Toucher le voile referme. */
+.vscrim{position:fixed;inset:0;z-index:79;background:rgba(10,8,24,.46);
+  animation:vscIn .17s ease-out;-webkit-tap-highlight-color:transparent}
+@supports ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){
+  .vscrim{background:rgba(10,8,24,.34);backdrop-filter:blur(2.5px);-webkit-backdrop-filter:blur(2.5px)}
+}
+@keyframes vscIn{from{opacity:0}to{opacity:1}}
+/* Le choix de présentation, posé LÀ où les variantes sortent : un réglage
+   enterré dans un menu n'est jamais trouvé. */
+.vstyl-chip{position:fixed;top:13px;left:50%;transform:translateX(-50%);z-index:82;
+  background:rgba(255,255,255,.94);color:#1A1A2E;border:none;border-radius:22px;
+  padding:8px 15px;font-size:12px;font-weight:800;font-family:'Outfit',sans-serif;
+  cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;align-items:center;gap:6px;
+  animation:vscIn .17s ease-out;-webkit-tap-highlight-color:transparent}
+.vstyl-chip:active{transform:translateX(-50%) scale(.94)}
 /* Panneau des variantes, glissé juste sous la carte touchée */
 /* Le panneau FLOTTE par-dessus la grille : il ne pousse aucun article, donc
    rien ne bouge sous le doigt. Il se referme et tout est déjà en place. */
@@ -320,17 +355,95 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .vinline.vin-haut::before{top:auto;bottom:-8px;border-left:none;border-top:none;border-right:1.5px solid var(--BD);border-bottom:1.5px solid var(--BD);border-radius:0 0 3px 0}
 .vinline-t{font-size:12.5px;font-weight:800;color:var(--T);margin-bottom:9px}
 @keyframes vinOuvre{from{opacity:0;transform:translateY(-10px) scale(.94)}to{opacity:1;transform:none}}
-.vtile{position:relative;background:var(--BG);border:2px solid var(--BD);border-radius:15px;padding:11px 9px 9px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-family:'Outfit',sans-serif;text-align:center;transition:transform .08s,border-color .15s;-webkit-tap-highlight-color:transparent;user-select:none}
-.vtile:active{transform:scale(.95)}
-.vtile.hq{border-color:var(--G);background:#F0FFF8}
+/* ══ ⬛ CARRÉS ══ La tuile de variante est désormais une CARTE D'ARTICLE :
+   mêmes rayon, ombre, bordure, aspect et animation. Deux grilles qui se
+   ressemblent au pixel près, c'est tout ce que « professionnel » veut dire
+   ici. Valeurs recopiées de .pcard / .pcard.has-photo, pas réinventées. */
+.vtile{position:relative;background:var(--C);border:1px solid var(--BD);border-radius:16px;
+  padding:15px 8px 13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  cursor:pointer;font-family:'Outfit',sans-serif;text-align:center;overflow:hidden;
+  box-shadow:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04);
+  transition:all .15s cubic-bezier(.34,1.56,.64,1);-webkit-tap-highlight-color:transparent;user-select:none}
+.vtile:active{transform:scale(.91)}
+.vtile.hq{border-color:var(--G);background:#F0FFF8;box-shadow:0 4px 15px rgba(0,200,83,.2)}
 .vtile.out{opacity:.45}
-.vtile img{width:46px;height:46px;object-fit:cover;border-radius:11px}
-.vtile .vt-emo{font-size:34px;line-height:1}
-.vtile .vt-nm{font-size:12px;font-weight:800;color:var(--T);line-height:1.2;word-break:break-word}
-.vtile .vt-px{font-size:12px;font-weight:800;color:var(--B)}
-.vtile .vt-stk{font-size:9.5px;font-weight:700}
-.vt-badge{position:absolute;top:-7px;right:-7px;min-width:26px;height:26px;border-radius:13px;background:var(--G);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
-.vt-moins{position:absolute;top:-7px;left:-7px;width:26px;height:26px;border-radius:13px;background:#fff;border:1.5px solid var(--BD);color:var(--R);font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+/* Variante AVEC photo : la photo remplit la tuile, le texte passe sur le
+   dégradé — exactement .pcard.has-photo. */
+/* ⚠️ L'aspect fixe est porté par has-photo, PAS par .vtile : la carte
+   d'article fait pareil (aspect-ratio uniquement sur .pcard.has-photo). Mis
+   sur toutes les tuiles, un carreau sans photo devenait 131 px de haut là où
+   la carte voisine en faisait 153 — mesuré aux quatre largeurs. */
+.vtile.has-photo{padding:0;justify-content:flex-end;align-items:flex-end;aspect-ratio:1/1.18}
+.vtile.has-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:15px;transition:transform .15s}
+.vtile.has-photo:active img{transform:scale(1.06)}
+.vt-ov{display:flex;flex-direction:column;align-items:center;gap:1px;width:100%;min-width:0}
+.vtile.has-photo .vt-ov{position:relative;z-index:1;padding:8px 7px;text-align:left;align-items:flex-start;
+  background:linear-gradient(to top,rgba(0,0,0,.75) 8%,rgba(0,0,0,.4) 55%,transparent 100%);border-radius:0 0 15px 15px}
+/* Le panier reste NET au-dessus du voile : c'est le total qui monte à chaque
+   variante touchée, le voiler priverait le commerçant du seul chiffre utile.
+   Posé en JS (_panierAuDessus) plutôt qu'en règle de feuille : le panneau et
+   le voile sont eux aussi créés en JS, les trois z-index se lisent donc au
+   même endroit. */
+.vtile.has-photo .vt-nm,.vtile.has-photo .vt-px,.vtile.has-photo .vt-stk{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.vtile .vt-emo{font-size:40px;line-height:1;margin-bottom:2px}
+.vtile .vt-nm{font-size:10.5px;font-weight:800;color:var(--T);line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vtile .vt-px{font-size:12px;font-weight:900;color:var(--B)}
+.vtile .vt-stk{font-size:9px;font-weight:700}
+/* ⚠️ overflow:hidden sur la tuile — les pastilles devaient rentrer DEDANS,
+   sinon elles étaient coupées. Mêmes coins que .pcard.has-photo .qbdg. */
+.vt-badge{position:absolute;top:6px;right:6px;min-width:26px;height:26px;border-radius:13px;background:var(--G);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 2px 7px rgba(0,0,0,.3);z-index:3}
+.vt-moins{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:13px;background:#fff;border:1.5px solid var(--BD);color:var(--R);font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.22);z-index:3}
+
+/* ══ ☰ LISTE ══ Une variante par ligne, cible large. C'est la présentation
+   qui reste lisible quand une famille en compte dix ou plus. */
+.vgrid.v-liste{grid-template-columns:1fr!important;gap:8px}
+.v-liste .vtile{aspect-ratio:auto;flex-direction:row;align-items:center;justify-content:flex-start;
+  gap:11px;padding:9px 11px;min-height:62px;text-align:left}
+.v-liste .vtile.has-photo{padding:9px 11px;justify-content:flex-start;align-items:center}
+.v-liste .vtile.has-photo img{position:static;width:48px;height:48px;border-radius:12px;flex:none}
+.v-liste .vt-ov{background:none;position:static;padding:0;flex:1;min-width:0;border-radius:0;
+  align-items:flex-start;text-align:left}
+.v-liste .vtile.has-photo .vt-nm{color:var(--T);text-shadow:none}
+.v-liste .vtile.has-photo .vt-px{color:var(--B);text-shadow:none}
+.v-liste .vtile.has-photo .vt-stk{text-shadow:none}
+.v-liste .vt-emo{font-size:36px;flex:none;margin:0}
+.v-liste .pmedia{width:48px;height:48px;margin:0;font-size:26px;flex:none}
+.v-liste .pmedia.pmono{font-size:23px}
+.v-liste .vt-nm{font-size:13.5px}
+.v-liste .vt-px{font-size:14.5px}
+.v-liste .vt-stk{font-size:10.5px}
+.v-liste .vt-badge{position:static;margin-left:auto;flex:none}
+.v-liste .vt-moins{position:static;flex:none}
+
+/* ══ ⭕ CERCLE ══ Les variantes jaillissent autour de la carte touchée.
+   ⚠️ Limite de PLACE, pas de goût : chaque satellite occupe ~80 px d'arc.
+   Au-delà de 8 variantes le cercle ne tient plus sur un téléphone et on
+   revient aux carrés — c'est annoncé sur la pastille, pas subi. */
+.vcircle{position:fixed;inset:0;z-index:80;pointer-events:none}
+.vhub{position:absolute;transform:translate(-50%,-50%);width:98px;height:98px;border-radius:50%;
+  background:var(--C);border:2px solid var(--BD);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:1px;padding:8px;text-align:center;cursor:pointer;pointer-events:auto;
+  box-shadow:0 12px 34px rgba(0,0,0,.32);animation:vhubIn .24s cubic-bezier(.22,1.3,.36,1) both}
+.vhub-e{font-size:26px;line-height:1}
+.vhub-n{font-size:10.5px;font-weight:900;color:var(--T);line-height:1.15;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vhub-x{font-size:8.5px;font-weight:800;color:var(--M)}
+@keyframes vhubIn{from{opacity:0;transform:translate(-50%,-50%) scale(.5)}to{opacity:1}}
+.vsat{position:absolute;transform:translate(-50%,-50%);width:82px;display:flex;flex-direction:column;
+  align-items:center;gap:3px;cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent;
+  user-select:none;animation:vsatIn .32s cubic-bezier(.22,1.35,.36,1) both}
+.vsat:active{transform:translate(-50%,-50%) scale(.9)}
+.vsat-r{width:66px;height:66px;border-radius:50%;background:var(--C);border:2.5px solid var(--BD);
+  overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:31px;line-height:1;
+  position:relative;box-shadow:0 7px 20px rgba(0,0,0,.3)}
+.vsat-r img{width:100%;height:100%;object-fit:cover}
+.vsat.hq .vsat-r{border-color:var(--G);box-shadow:0 0 0 3.5px rgba(0,200,83,.35),0 7px 20px rgba(0,0,0,.3)}
+.vsat.out{opacity:.42}
+.vsat-b{position:absolute;top:-4px;right:-4px;min-width:24px;height:24px;border-radius:12px;background:var(--G);
+  color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;
+  box-shadow:0 2px 7px rgba(0,0,0,.3)}
+.vsat-px{font-size:11px;font-weight:900;color:#fff;background:rgba(10,8,24,.75);border-radius:9px;padding:1px 8px;white-space:nowrap}
+.vsat-nm{font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.85);max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@keyframes vsatIn{from{opacity:0;transform:translate(-50%,-50%) scale(.35)}to{opacity:1}}
 .vit{background:var(--BG);border:2px solid var(--BD);border-radius:15px;padding:13px;display:flex;align-items:center;gap:11px;transition:border-color .2s}
 .vit.hq{border-color:var(--G);background:#F0FFF8}
 .vemo{font-size:34px;flex-shrink:0}
@@ -2692,7 +2805,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.81'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.82'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5405,7 +5518,7 @@ function _dispoApresPanier(p,v){
 // Avant, elles remontaient toujours du bas de l'écran : on touchait une carte
 // en haut et il fallait aller chercher la suite tout en bas. L'œil et le doigt
 // restent maintenant au même endroit.
-var _varBox=null,_varCarteId=null;
+var _varBox=null,_varCarteId=null,_varScrim=null,_varChip=null;
 function fermerVarInline(){
   if(_varFermeAuto){
     window.removeEventListener('scroll',_varFermeAuto,true);
@@ -5414,7 +5527,11 @@ function fermerVarInline(){
   }
   document.removeEventListener('pointerdown',_varDehors,true);
   if(_varBox&&_varBox.parentNode)_varBox.parentNode.removeChild(_varBox);
-  _varBox=null;_varCarteId=null;_varCarteEl=null;
+  fermerVarCercle();
+  [_varScrim,_varChip].forEach(function(el){if(el&&el.parentNode)el.parentNode.removeChild(el);});
+  try{document.body.classList.remove('var-ouvert');}catch(e){}
+  _panierAuDessus(false);
+  _varBox=null;_varCarteId=null;_varCarteEl=null;_varScrim=null;_varChip=null;
 }
 function ouvrirVarInline(p,carte){
   var dejaOuvert=(_varCarteId===p.id);
@@ -5424,44 +5541,240 @@ function ouvrirVarInline(p,carte){
   varArtCours=p;varQtys={};
   p.vr.forEach(function(v){varQtys[v.id]=panier[p.id+'-'+v.id]||0;});
   if(!carte)return;
-  var box=document.createElement('div');
-  box.className='vinline';
-  box.innerHTML='<div class="vinline-t">'+(p.e||'')+' '+p.nm+'</div><div class="vgrid" id="vinline-lst"></div>';
-  document.body.appendChild(box);
-  _varBox=box;_varCarteId=p.id;_varCarteEl=carte;
-  renderVarLst(p);
-  _placerVarBox(carte);
-  // ⚠️ AVANT : le moindre défilement le REFERMAIT. Le commerçant effleurait
-  // l'écran en cherchant sa variante et tout disparaissait — c'est ça qui
-  // faisait « archaïque ». Maintenant il SUIT sa carte, et ne se referme que
-  // si la carte quitte vraiment l'écran.
-  _varFermeAuto=function(){
-    if(!_varBox||!_varCarteEl)return;
-    var r=_varCarteEl.getBoundingClientRect();
-    if(r.bottom<0||r.top>window.innerHeight){fermerVarInline();return;}
-    _placerVarBox(_varCarteEl);
-  };
-  window.addEventListener('scroll',_varFermeAuto,{passive:true,capture:true});
-  window.addEventListener('resize',_varFermeAuto);
+  _varCarteId=p.id;_varCarteEl=carte;
+  // ── LE VOILE ── Sa demande, mot pour mot : « ça ne ferme pas les articles,
+  // ça masque juste les autres articles... mais légèrement tu peux voir les
+  // autres articles ». Un voile translucide + 2,5 px de flou : les formes et
+  // les couleurs restent là, le texte n'est plus lisible. La grille n'est PAS
+  // démontée — elle est toujours derrière, à la même place, prête au retour.
+  var sc=document.createElement('div');sc.className='vscrim';
+  sc.onclick=function(){fermerVarInline();};
+  document.body.appendChild(sc);_varScrim=sc;
+  try{document.body.classList.add('var-ouvert');}catch(e){}
+  _panierAuDessus(true);
+  // ── La pastille de présentation : toujours au même endroit, quel que soit
+  // le style. Un réglage enterré dans un menu ne serait jamais trouvé. ──
+  var ch=document.createElement('button');ch.type='button';ch.className='vstyl-chip';
+  ch.onclick=function(ev){ev.stopPropagation();cyclerStyleVar();};
+  document.body.appendChild(ch);_varChip=ch;_majChipVar(p);
+  // ⭕ le cercle a son propre corps ; ⬛ carrés et ☰ liste partagent le panneau.
+  if(_styleVar()==='cercle'&&p.vr.length<=VAR_CERCLE_MAX){
+    ouvrirVarCercle(p,carte);
+  }else{
+    var box=document.createElement('div');
+    box.className='vinline';
+    box.innerHTML='<div class="vinline-t">'+(p.e||'')+' '+p.nm+'</div><div class="vgrid" id="vinline-lst"></div>';
+    document.body.appendChild(box);
+    _varBox=box;
+    renderVarLst(p);
+    _placerVarBox(carte);
+    // ⚠️ AVANT : le moindre défilement le REFERMAIT. Le commerçant effleurait
+    // l'écran en cherchant sa variante et tout disparaissait — c'est ça qui
+    // faisait « archaïque ». Maintenant il SUIT sa carte, et ne se referme que
+    // si la carte quitte vraiment l'écran.
+    _varFermeAuto=function(){
+      if(!_varBox||!_varCarteEl)return;
+      var r=_varCarteEl.getBoundingClientRect();
+      if(r.bottom<0||r.top>window.innerHeight){fermerVarInline();return;}
+      _placerVarBox(_varCarteEl);
+    };
+    window.addEventListener('scroll',_varFermeAuto,{passive:true,capture:true});
+    window.addEventListener('resize',_varFermeAuto);
+  }
   setTimeout(function(){document.addEventListener('pointerdown',_varDehors,true);},0);
 }
 var _varFermeAuto=null,_varJusteFerme=0,_varCarteEl=null;
 function _varDehors(ev){
-  if(!_varBox||_varBox.contains(ev.target))return;
+  if(!_varBox&&!_varCercle)return;
+  if(_varBox&&_varBox.contains(ev.target))return;
+  if(_varCercle&&_varCercle.contains(ev.target))return;
+  if(_varChip&&_varChip.contains(ev.target))return;
   // Toucher ailleurs referme. UNIQUEMENT si c'est la carte elle-même, on note
   // l'heure pour que son propre clic ne le rouvre pas dans la foulée — sinon
   // toucher un autre article empêcherait de rouvrir celui-ci tout de suite.
   if(_varCarteEl&&_varCarteEl.contains(ev.target))_varJusteFerme=Date.now();
   fermerVarInline();
 }
+
+// ══════════════════════════════════════════════════════════════════════
+//  TROIS FAÇONS DE VOIR LES VARIANTES  —  ⬛ carrés · ☰ liste · ⭕ cercle
+//  Le choix appartient au commerçant et se garde avec sa boutique
+//  (DB.cfg.varStyle), donc il le retrouve sur son autre téléphone.
+// ══════════════════════════════════════════════════════════════════════
+// Le total du panier doit rester LISIBLE pendant qu'il choisit ses variantes :
+// c'est le chiffre qui monte à chaque touche. Le voile est à 79, le panneau à
+// 80 ; le panier passe à 81 le temps du choix, et retrouve son 60 après.
+function _panierAuDessus(oui){
+  try{
+    var f=document.querySelector('.fcart');
+    if(f)f.style.zIndex=oui?'81':'';
+  }catch(e){}
+}
+var VAR_STYLES=['carre','liste','cercle'];
+// ⚠️ Limite de PLACE, pas de goût. Chaque satellite occupe ~82 px d'arc :
+// à 9 variantes le cercle déborde d'un téléphone. Au-delà on revient aux
+// carrés, et la pastille le DIT — une règle annoncée n'est pas une panne.
+var VAR_CERCLE_MAX=8;
+function _styleVar(){
+  var s=(DB&&DB.cfg&&DB.cfg.varStyle)||'carre';
+  return VAR_STYLES.indexOf(s)<0?'carre':s;
+}
+function _styleVarLbl(s){
+  var fr=lang==='fr';
+  return s==='cercle'?('⭕ '+(fr?'Cercle':'Circle'))
+       : s==='liste' ?('☰ '+(fr?'Liste':'List'))
+       :              ('⬛ '+(fr?'Carrés':'Squares'));
+}
+function _majChipVar(p){
+  if(!_varChip)return;
+  var fr=lang==='fr',s=_styleVar(),trop=(s==='cercle'&&p&&p.vr.length>VAR_CERCLE_MAX);
+  _varChip.innerHTML=_styleVarLbl(trop?'carre':s)
+    +'<span style="opacity:.5;font-weight:700">'
+    +(trop?(fr?'· cercle : 8 max':'· circle: 8 max'):(fr?'· changer':'· change'))+'</span>';
+}
+function cyclerStyleVar(){
+  var p=varArtCours,carte=_varCarteEl;
+  if(!p||!carte)return;
+  if(!DB.cfg)DB.cfg={};
+  DB.cfg.varStyle=VAR_STYLES[(VAR_STYLES.indexOf(_styleVar())+1)%VAR_STYLES.length];
+  try{persistDB();}catch(e){}
+  // On rouvre proprement dans la nouvelle présentation, sur la même carte.
+  _varCarteId=null;_varJusteFerme=0;
+  fermerVarInline();
+  ouvrirVarInline(p,carte);
+}
+// Ce que chaque variante doit dire, quelle que soit la présentation.
+function _infoVar(p,v){
+  var fr=lang==='fr',dispo=_dispoApresPanier(p,v);
+  return {q:varQtys[v.id]||0,dispo:dispo,
+    out:dispo<=0&&!v.rt&&!p.rt,
+    px:v.px>0?fmt(v.px):('💰 '+(fr?'prix ?':'price ?')),
+    coul:dispo<=0?'var(--R)':dispo<=3?'var(--O)':'var(--G)',
+    stk:(dispo<=0?(fr?'Épuisé':'Out'):(fmtQ(dispo)+' '+(fr?'restants':'left')))
+        +(utiliseStockBase(p)?(' · '+(fr?'conso ':'cons ')+getQBase(v)):'')};
+}
+// Toucher = +1 · la pastille en coin retire · appui long = la quantité d'un
+// coup (le carton de 12). Identique dans les trois présentations : changer de
+// style ne doit jamais changer les gestes.
+// ⚠️ Repli si la photo ne charge pas — la carte d'article l'avait déjà
+// (renderProd, onerror : on retire has-photo et on remet l'icône), la tuile de
+// variante ne l'avait pas : une photo manquante donnait un carreau BLANC, sans
+// nom lisible. Sur une connexion camerounaise ça arrive tous les jours.
+function _replierPhotoVar(d,html){
+  var im=d.querySelector('img');if(!im)return;
+  im.onerror=function(){
+    d.classList.remove('has-photo');
+    var s=document.createElement('span');s.innerHTML=html;
+    try{im.replaceWith(s.firstElementChild||s);}catch(e){}
+  };
+}
+// Variante SANS photo : exactement la pastille de la carte d'article
+// (.pmedia, 62 px). ⚠️ Une vignette de 44 px rendait la tuile 33 px plus
+// courte que la carte voisine — mesuré. C'est la même remarque que la
+// largeur, en vertical.
+function _mediaVar(p,v){
+  var nm=(v&&v.nm)||p.nm;
+  if(DB.cfg&&DB.cfg.noEmoji){
+    var h=couleurMono(nm);
+    return '<div class="pmedia pmono" style="background:hsl('+h+',55%,93%);color:hsl('+h+',42%,36%)">'+initialeArticle(nm)+'</div>';
+  }
+  var m=mediaArtInner(p,32);
+  return '<div class="pmedia" style="background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</div>';
+}
+function _brancherVar(d,p,v){
+  d.onclick=function(ev){
+    if(ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-moins')){
+      chgVQ(v.id,p.id,-1,!!p.rt);return;
+    }
+    chgVQ(v.id,p.id,1,!!p.rt);
+  };
+  var t=null;
+  d.addEventListener('touchstart',function(){t=setTimeout(function(){t=null;saisirQteVariante(p,v);},550);},{passive:true});
+  ['touchend','touchmove','touchcancel'].forEach(function(e){d.addEventListener(e,function(){if(t){clearTimeout(t);t=null;}},{passive:true});});
+  d.oncontextmenu=function(e){e.preventDefault();saisirQteVariante(p,v);return false;};
+}
+
+// ── ⭕ LE CERCLE ── Les variantes jaillissent autour de la carte touchée.
+var _varCercle=null,_varCercleGeo=null;
+function fermerVarCercle(){
+  if(_varCercle&&_varCercle.parentNode)_varCercle.parentNode.removeChild(_varCercle);
+  _varCercle=null;_varCercleGeo=null;
+}
+function ouvrirVarCercle(p,carte){
+  var r=carte.getBoundingClientRect(),W=window.innerWidth,H=window.innerHeight,n=p.vr.length;
+  // Rayon : assez grand pour que deux satellites ne se touchent pas
+  // (≈82 px d'arc chacun), assez petit pour tenir dans l'écran.
+  var marge=64,R=Math.max(102,Math.ceil(82*n/(2*Math.PI)));
+  R=Math.max(84,Math.min(R,Math.floor(Math.min(W,H)/2)-marge));
+  // Le centre suit la carte touchée, puis on le ramène pour que rien ne sorte.
+  var cx=Math.min(Math.max(R+marge,r.left+r.width/2),W-R-marge);
+  var cy=Math.min(Math.max(R+marge+16,r.top+r.height/2),H-R-marge-14);
+  var box=document.createElement('div');box.className='vcircle';
+  box.innerHTML='<div class="vhub" style="left:'+cx+'px;top:'+cy+'px">'
+    +'<span class="vhub-e">'+(p.e||'📦')+'</span>'
+    +'<span class="vhub-n">'+(p.nm||'')+'</span>'
+    +'<span class="vhub-x">'+(lang==='fr'?'fermer':'close')+'</span></div>'
+    +'<div id="vcirc-sat"></div>';
+  document.body.appendChild(box);
+  _varCercle=box;_varCercleGeo={cx:cx,cy:cy,R:R};
+  box.querySelector('.vhub').onclick=function(){fermerVarInline();};
+  renderVarCercle(p);
+}
+function renderVarCercle(p){
+  var l=_varCercle&&_varCercle.querySelector('#vcirc-sat');
+  if(!l||!_varCercleGeo)return;
+  var g=_varCercleGeo,n=p.vr.length;
+  l.innerHTML='';
+  p.vr.forEach(function(v,k){
+    var a=-Math.PI/2+2*Math.PI*k/n;   // on part du HAUT, sens de lecture
+    var i=_infoVar(p,v);
+    var d=document.createElement('div');
+    d.className='vsat'+(i.q>0?' hq':'')+(i.out?' out':'');
+    d.style.left=Math.round(g.cx+g.R*Math.cos(a))+'px';
+    d.style.top =Math.round(g.cy+g.R*Math.sin(a))+'px';
+    d.style.animationDelay=(k*26)+'ms';
+    d.innerHTML='<span class="vsat-r">'
+      +(v.img?'<img src="'+v.img+'" loading="lazy" alt="">':vignetteArt(p,v,62,31))
+      +'</span>'
+      +(i.q>0?'<span class="vsat-b" data-moins="1">'+fmtQ(i.q)+'</span>':'')
+      +'<span class="vsat-px">'+i.px+'</span>'
+      +'<span class="vsat-nm">'+(v.nm||'?')+'</span>';
+    _replierPhotoVar(d,vignetteArt(Object.assign({},p,{img:''}),Object.assign({},v,{img:'',_img:''}),62,31));
+    _brancherVar(d,p,v);
+    l.appendChild(d);
+  });
+}
 // On le pose juste sous la carte touchée, sans jamais sortir de l'écran.
 function _placerVarBox(carte){
   if(!_varBox||!carte)return;
   var r=carte.getBoundingClientRect();
-  var marge=10,largeur=Math.min(window.innerWidth-2*marge,430);
+  var marge=10,largeur=Math.min(window.innerWidth-2*marge,430),padx=12,cale=null;
+  // ⚠️ On COPIE la géométrie de #pgrid au lieu de la recalculer de notre côté.
+  // Deux formules séparées finissaient toujours par diverger : mesuré en
+  // 19.81, la grille des articles donnait 3 colonnes de 111 px là où celle
+  // des variantes en donnait 2 de 150. Même largeur intérieure + mêmes pistes
+  // de colonnes = tuiles identiques au pixel, sur n'importe quel téléphone.
+  var pg=document.getElementById('pgrid'),lst=document.getElementById('vinline-lst');
+  if(pg){
+    var pr=pg.getBoundingClientRect(),cs=getComputedStyle(pg);
+    if(pr.width>60){
+      largeur=pr.width;cale=pr.left;
+      padx=parseFloat(cs.paddingLeft)||12;
+    }
+    if(lst){
+      var col=cs.gridTemplateColumns||'';
+      if(_styleVar()!=='liste'&&col.indexOf('px')!==-1){
+        lst.style.gridTemplateColumns=col;
+        lst.style.gap=cs.gap||'9px';
+      }else{lst.style.gridTemplateColumns='';lst.style.gap='';}
+    }
+  }
   _varBox.style.width=largeur+'px';
+  _varBox.style.paddingLeft=padx+'px';
+  _varBox.style.paddingRight=padx+'px';
   var g=_varBox.getBoundingClientRect();
-  var gauche=Math.min(Math.max(marge,r.left+r.width/2-largeur/2),window.innerWidth-largeur-marge);
+  var gauche=cale!=null?cale
+    :Math.min(Math.max(marge,r.left+r.width/2-largeur/2),window.innerWidth-largeur-marge);
   var haut=r.bottom+10,auDessus=false;
   // Pas la place en dessous ? On le met au-dessus de la carte.
   if(haut+g.height>window.innerHeight-70){haut=Math.max(marge,r.top-g.height-10);auDessus=true;}
@@ -5482,38 +5795,30 @@ function _varVersPanier(p){
   updatePUI(p.id);
 }
 function renderVarLst(p){
+  if(_varCercle){renderVarCercle(p);return;}   // ⭕ : autre corps, même entrée
   var l=(_varBox&&document.getElementById('vinline-lst'))||document.getElementById('var-lst');
   if(!l)return;
-  l.innerHTML='';l.className='vgrid';
-  var fr=lang==='fr';
+  var liste=(!!_varBox&&_styleVar()==='liste');
+  l.innerHTML='';l.className='vgrid'+(liste?' v-liste':'');
   p.vr.forEach(function(v){
-    var dispo=_dispoApresPanier(p,v),qBase=getQBase(v),isOut=dispo<=0&&!v.rt&&!p.rt;
-    var q=varQtys[v.id]||0;
+    var i=_infoVar(p,v);
     var d=document.createElement('div');
-    d.className='vtile'+(q>0?' hq':'')+(isOut?' out':'');
-    var detBase=utiliseStockBase(p)?(' · '+(fr?'conso ':'cons ')+qBase):'';
-    d.innerHTML=(q>0?('<span class="vt-badge">'+fmtQ(q)+'</span><span class="vt-moins" data-moins="1">−</span>'):'')
+    // has-photo : la photo remplit la tuile et le texte passe sur le dégradé,
+    // exactement comme une carte d'article. C'est ce qui rend les deux grilles
+    // indiscernables — le reproche de fond.
+    d.className='vtile'+(i.q>0?' hq':'')+(i.out?' out':'')+(v.img?' has-photo':'');
+    d.innerHTML=(i.q>0?('<span class="vt-badge">'+fmtQ(i.q)+'</span><span class="vt-moins" data-moins="1">−</span>'):'')
       // ⚠️ Toutes les variantes sans photo affichaient l'émoji du PARENT :
       // six « Savon » donnaient six vignettes identiques, impossible de les
       // distinguer d'un coup d'œil. vignetteArt donne à chacune la sienne —
       // sa photo, sinon son icône de rayon, avec sa propre couleur.
-      +(v.img?'<img src="'+v.img+'" loading="lazy">':('<span class="vt-emo">'+vignetteArt(p,v,44)+'</span>'))
+      +(v.img?'<img src="'+v.img+'" loading="lazy" alt="">':_mediaVar(p,v))
+      +'<span class="vt-ov">'
       +'<span class="vt-nm">'+(v.nm||'?')+'</span>'
-      +'<span class="vt-px">'+(v.px>0?fmt(v.px):('💰 '+(fr?'prix ?':'price ?')))+'</span>'
-      +'<span class="vt-stk" style="color:'+(dispo<=0?'var(--R)':dispo<=3?'var(--O)':'var(--G)')+'">'
-      +(dispo<=0?(fr?'Épuisé':'Out'):(fmtQ(dispo)+' '+(fr?'restants':'left')))+detBase+'</span>';
-    // Toucher = +1. Le petit − en coin retire, sans jamais gêner la vente.
-    d.onclick=function(ev){
-      if(ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-moins')){
-        chgVQ(v.id,p.id,-1,!!p.rt);return;
-      }
-      chgVQ(v.id,p.id,1,!!p.rt);
-    };
-    // Appui long = saisir la quantité d'un coup (le carton de 12).
-    var t=null;
-    d.addEventListener('touchstart',function(){t=setTimeout(function(){t=null;saisirQteVariante(p,v);},550);},{passive:true});
-    ['touchend','touchmove','touchcancel'].forEach(function(e){d.addEventListener(e,function(){if(t){clearTimeout(t);t=null;}},{passive:true});});
-    d.oncontextmenu=function(e){e.preventDefault();saisirQteVariante(p,v);return false;};
+      +'<span class="vt-px">'+i.px+'</span>'
+      +'<span class="vt-stk" style="color:'+i.coul+'">'+i.stk+'</span></span>';
+    _replierPhotoVar(d,_mediaVar(p,v));
+    _brancherVar(d,p,v);
     l.appendChild(d);
   });
 }
@@ -5542,7 +5847,9 @@ function chgVQ(vid,pid,delta,rt){
   // On redessine la grille : le stock restant de chaque carreau change quand
   // les variantes puisent dans un stock commun (sac, carton).
   renderVarLst(p);
-  if(_varBox)_varVersPanier(p);   // sortie sous l'article : le panier suit tout de suite
+  // ⚠️ _varCercle aussi : en présentation ⭕ le panneau _varBox n'existe pas,
+  // et sans ce test le panier ne recevait RIEN de ce qui était touché.
+  if(_varBox||_varCercle)_varVersPanier(p);   // le panier suit tout de suite
   if(navigator.vibrate&&delta>0)navigator.vibrate(12);
 }
 function confirmerVar(){
