@@ -1937,7 +1937,8 @@ body{max-width:min(100%,1200px)}
       <div class="shhdr"><div class="shtit">🗺️ Modèles de la région</div><button class="bcl" onclick="closeSheet('ov-catalog')">✕</button></div>
       <div class="pstps">
         <div style="font-size:11px;font-weight:700;color:var(--M);margin-bottom:9px" id="catalog-cnt">Recherche...</div>
-        <div id="catalog-grid" style="max-height:52vh;overflow-y:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"></div>
+        <input class="sinp" id="cat-src" oninput="catFiltrer(this.value)" placeholder="🔍 Chercher…" style="width:100%;margin-bottom:9px">
+      <div id="catalog-grid" style="max-height:52vh;overflow-y:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"></div>
         <button class="bnxt" style="margin-top:9px" onclick="importerSelectionCatalogue()" id="btn-catalog-import">⬇️ <span id="lbl-catalog-import">Importer la sélection</span></button>
       </div>
     </div>
@@ -2157,6 +2158,17 @@ body{max-width:min(100%,1200px)}
     </div>
     <div id="cha-grid" style="padding:4px 15px 12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:9px;overflow-y:auto;max-height:52vh"></div>
     <div style="padding:10px 15px 20px;border-top:1px solid var(--BD);background:var(--C)">
+      <!-- Le panier : il coche au fil de sa navigation dans 600 articles, et
+           il VOIT ce qu'il a pris. Sans ça le compteur montait tout seul et
+           il ne pouvait ni vérifier ni retirer sans repartir chercher la
+           vignette au milieu de six cents autres. -->
+      <div id="cha-panier" style="display:none;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:800;color:var(--T)" id="cha-pn-lbl">Ton panier</span>
+          <button class="shct" style="margin-left:auto;min-height:30px;font-size:11px" onclick="chaViderPanier()" id="cha-pn-vider">Tout enlever</button>
+        </div>
+        <div id="cha-pn-lst" style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch"></div>
+      </div>
       <button class="bnxt" onclick="chaValider()" id="cha-btn">Continuer</button>
     </div>
   </div>
@@ -2680,7 +2692,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.78'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.79'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7640,23 +7652,69 @@ async function ouvrirCatalogueRegional(){
       return;
     }
     document.getElementById('catalog-cnt').textContent=_catalogModeles.length+' '+(lang==='fr'?'modèle(s) trouvé(s) — sélectionnez ceux à importer':'template(s) found — select the ones to import');
-    _catalogModeles.forEach(function(m,i){
-      var c=document.createElement('div');
-      c.className='pcard has-photo';
-      c.style.cursor='pointer';
-      c.dataset.idx=i;
-      c.innerHTML='<img class="pcard-img" src="'+m.img+'" loading="lazy"><div class="pcard-overlay"><div class="pnm-ov">'+m.nm+'</div></div>';
-      c.onclick=function(){c.classList.toggle('sel');};
-      g.appendChild(c);
+    // ── 200 ou 300 articles chez les voisins : il faut pouvoir s'y retrouver ──
+    // Avant : une grille brute, sans recherche, sans compteur, et rien ne
+    // disait ce qu'il avait DÉJÀ. Il rajoutait des doublons sans le voir.
+    _catalogModeles.forEach(function(m){
+      m._deja=DB.articles.some(function(p){return txtNorm(p.nm)===txtNorm(m.nm);});
     });
+    _catFiltre='';_catCacherDeja=true;
+    renderCatalogueRegional();
   }catch(e){
     console.warn('Catalogue régional:',e);
     document.getElementById('catalog-cnt').textContent='⚠️ '+(lang==='fr'?'Erreur de recherche':'Search error');
   }
 }
+// ── Se retrouver parmi 200 ou 300 articles de voisins ──────────────
+var _catFiltre='',_catCacherDeja=true;
+function catFiltrer(q){_catFiltre=txtNorm(q||'');renderCatalogueRegional();}
+function catBasculerDeja(){_catCacherDeja=!_catCacherDeja;renderCatalogueRegional();}
+function renderCatalogueRegional(){
+  var g=document.getElementById('catalog-grid');if(!g)return;
+  var fr=(lang==='fr');
+  var vus=_catalogModeles.filter(function(m){
+    if(_catCacherDeja&&m._deja)return false;
+    if(_catFiltre&&txtNorm(m.nm).indexOf(_catFiltre)<0)return false;
+    return true;
+  });
+  var pris=_catalogModeles.filter(function(m){return m._pris;}).length;
+  var deja=_catalogModeles.filter(function(m){return m._deja;}).length;
+  var c=document.getElementById('catalog-cnt');
+  if(c)c.innerHTML='<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">'
+    +'<span style="font-size:12px;font-weight:800;color:var(--T)">'+vus.length+' '+(fr?'à choisir':'to pick')+'</span>'
+    +(deja?('<button class="shct" style="min-height:30px;font-size:11px'+(_catCacherDeja?'':';background:var(--B);color:#fff')+'" onclick="catBasculerDeja()">'
+        +(_catCacherDeja?('👁️ '+(fr?'voir les ':'show ')+deja+(fr?' déjà chez toi':' already yours')):('🙈 '+(fr?'cacher les miens':'hide mine')))+'</button>'):'')
+    +(pris?('<span style="margin-left:auto;font-size:12px;font-weight:800;color:var(--B)">'+pris+(fr?' choisi'+(pris>1?'s':''):' picked')+'</span>'):'')
+    +'</div>';
+  g.innerHTML='';
+  if(!vus.length){
+    g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px 0;font-size:12.5px;color:var(--M);font-weight:700">'
+      +(fr?(_catFiltre?'Rien trouvé':'Tu as déjà tout ce qu\'ils proposent 👍'):'Nothing')+'</div>';
+    majBtnCatalogue();return;
+  }
+  vus.forEach(function(m){
+    var i=_catalogModeles.indexOf(m);
+    var c2=document.createElement('div');
+    c2.className='pcard has-photo'+(m._pris?' sel':'');
+    c2.style.cursor='pointer';
+    c2.dataset.idx=i;
+    c2.innerHTML='<img class="pcard-img" src="'+m.img+'" loading="lazy"><div class="pcard-overlay"><div class="pnm-ov">'+m.nm+'</div></div>'
+      +(m._deja?'<div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.6);color:#fff;font-size:9px;font-weight:800;border-radius:8px;padding:2px 6px">'+(fr?'déjà chez toi':'yours')+'</div>':'')
+      +(m._pris?'<div style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:var(--B);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900">✓</div>':'');
+    c2.onclick=function(){m._pris=!m._pris;renderCatalogueRegional();};
+    g.appendChild(c2);
+  });
+  majBtnCatalogue();
+}
+function majBtnCatalogue(){
+  var n=_catalogModeles.filter(function(m){return m._pris;}).length;
+  var b=document.getElementById('lbl-catalog-import'),fr=(lang==='fr');
+  if(b)b.textContent=n?((fr?'Importer ':'Import ')+n+(fr?(n>1?' articles':' article'):(n>1?' items':' item'))):(fr?'Choisis des articles':'Pick items');
+  var bt=document.getElementById('btn-catalog-import');
+  if(bt){bt.disabled=!n;bt.style.opacity=n?'1':'.5';}
+}
 function importerSelectionCatalogue(){
-  var g=document.getElementById('catalog-grid');
-  var sel=Array.from(g.querySelectorAll('.pcard.sel'));
+  var sel=(_catalogModeles||[]).filter(function(m){return m._pris;});
   if(!sel.length){showToast('⚠️ '+(lang==='fr'?'Sélectionnez au moins un modèle':'Select at least one template'));return;}
   // ⚠️ DEUX BUGS ICI, CORRIGÉS ENSEMBLE.
   //
@@ -7674,8 +7732,7 @@ function importerSelectionCatalogue(){
   var fr=(lang==='fr');
   if(!Array.isArray(_expListe))_expListe=[];
   var n=0,deja=0;
-  sel.forEach(function(c){
-    var m=_catalogModeles[parseInt(c.dataset.idx,10)];
+  sel.forEach(function(m){
     if(!m||!m.nm)return;
     if(DB.articles.some(function(p){return txtNorm(p.nm)===txtNorm(m.nm);})){deja++;return;}
     if(_expListe.some(function(x){return txtNorm(x.nm)===txtNorm(m.nm);}))return;
@@ -7951,10 +8008,43 @@ function chaRendre(){
   majChaBouton();
 }
 function majChaBouton(){
-  var n=Object.keys(_chaSel).length,b=document.getElementById('cha-btn'),fr=(lang==='fr');
-  if(!b)return;
-  b.textContent=n?((fr?'Continuer avec ':'Continue with ')+n+(fr?(n>1?' articles':' article'):(n>1?' items':' item'))):(fr?'Choisis tes articles':'Pick your items');
-  b.disabled=!n;b.style.opacity=n?'1':'.5';
+  var cles=Object.keys(_chaSel),n=cles.length,b=document.getElementById('cha-btn'),fr=(lang==='fr');
+  if(b){
+    b.textContent=n?((fr?'Continuer avec ':'Continue with ')+n+(fr?(n>1?' articles':' article'):(n>1?' items':' item'))):(fr?'Choisis tes articles':'Pick your items');
+    b.disabled=!n;b.style.opacity=n?'1':'.5';
+  }
+  // Le panier, toujours sous les yeux. Toucher une vignette la retire :
+  // c'est le geste qu'on essaie naturellement, il doit marcher.
+  var p=document.getElementById('cha-panier'),l=document.getElementById('cha-pn-lst');
+  if(!p||!l)return;
+  if(!n){p.style.display='none';l.innerHTML='';return;}
+  p.style.display='block';
+  var lbl=document.getElementById('cha-pn-lbl');
+  if(lbl)lbl.textContent=(fr?'Ton panier · ':'Your basket · ')+n;
+  var v=document.getElementById('cha-pn-vider');
+  if(v)v.textContent=fr?'Tout enlever':'Clear';
+  l.innerHTML=cles.map(function(k){
+    var s=_chaSel[k];
+    var media=s.img
+      ?('<img src="'+_photo600(s.img)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover">')
+      :('<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--BG)">'+(s.e||'📦')+'</span>');
+    return '<div onclick="chaRetirer(\''+k+'\')" title="'+String(s.nm).replace(/"/g,'')+'" '
+      +'style="position:relative;width:54px;height:54px;border-radius:12px;overflow:hidden;flex-shrink:0;cursor:pointer;border:2px solid var(--B)">'
+      +media
+      +'<span style="position:absolute;top:0;right:0;background:rgba(0,0,0,.62);color:#fff;width:19px;height:19px;'
+      +'display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;border-radius:0 10px 0 10px">✕</span>'
+      +'</div>';
+  }).join('');
+}
+function chaRetirer(cle){
+  if(_chaSel[cle])delete _chaSel[cle];
+  chaRendre();
+}
+function chaViderPanier(){
+  var fr=(lang==='fr');
+  if(!Object.keys(_chaSel).length)return;
+  _chaSel={};chaRendre();
+  showToast('🧺 '+(fr?'Panier vidé':'Basket cleared'));
 }
 // Les prix se mettent APRÈS, tous d'un coup : la liste express existe déjà
 // et sait le faire. On ne redemande pas au commerçant vingt fois de suite.
