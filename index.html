@@ -2692,7 +2692,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.80'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.81'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3508,7 +3508,14 @@ async function validerEntreeRapide(){
     if(fp2)fp2.value='';
     return;
   }
-  if(!e||!e.tel){majEntreeRapide();return;}
+  // ⚠️ SORTIE MUETTE : on renvoyait à l'écran sans un mot. Il tapait son PIN,
+  // touchait « Ouvrir », et rien ne se passait — ni ouverture, ni message.
+  // C'est exactement son « ça ne me dit pas, et aucun accès ».
+  if(!e||!e.tel){
+    showToast('📱 '+(fr?'Ce téléphone ne connaît pas encore ton numéro — entre-le une fois'
+                       :'This phone does not know your number yet — enter it once'));
+    majEntreeRapide();return;
+  }
   var pin=(document.getElementById('er-pin').value||'').trim();
   if(pin.length<4){showToast('🔐 '+(fr?'Entre ton PIN':'Enter your PIN'));return;}
   document.getElementById('er-pin').value='';
@@ -3533,6 +3540,7 @@ async function validerEntreeRapide(){
     }
   }
   if(res.error){showToast('❌ '+(fr?'PIN incorrect':'Wrong PIN'));return;}
+  _pinPatronValide=pin;   // accepte par le serveur : il fera foi hors reseau
   try{memoriserEntree({role:'patron',tel:e.tel,email:email});}catch(x){}
   var mes=await listerBoutiquesDuCompte();
   if(!mes.length){
@@ -4349,6 +4357,7 @@ async function loginP(){
       if(!altRes.error){authRes=altRes;email=altEmail;break;}
     }
   }
+  if(!authRes.error)_pinPatronValide=pin;   // accepte par le serveur : il fera foi hors reseau
   if(authRes.error){
     if(canMigrateOffline){
       var reg=await signUpOwnerAuth(tel,pin);
@@ -4389,6 +4398,9 @@ async function loginP(){
 }
 // Fin de connexion patron, partagée par tous les chemins (une seule boutique,
 // boutique choisie dans la liste, ou reprise des données locales).
+// Le PIN que le SERVEUR vient d accepter. On ne le garde que le temps de
+// la connexion, pour le poser ensuite sur cet appareil.
+var _pinPatronValide=null;
 function _terminerLoginPatron(remoteDB,tel,email){
   if(remoteDB){
     DB=migrateDBData(mergeDB(remoteDB,DB));_artSnapApresFusion();
@@ -4397,7 +4409,16 @@ function _terminerLoginPatron(remoteDB,tel,email){
     _suppressSync=false;
   }
   if(DB&&DB.cfg){DB.cfg.tel=tel;DB.cfg.ownerEmail=email;}
-  _shopPin=DB&&DB.cfg?String(DB.cfg.pin||''):null; // le patron parle au serveur avec SON pin
+  // ⚠️ LA CAUSE DU « HORS LIGNE QUI NE MARCHE PAS ».
+  // DB.cfg.pin n'était écrit QUE lors d'un changement de PIN. Jamais à la
+  // connexion. Donc un patron dont la boutique a été créée sur un AUTRE
+  // téléphone n'avait pas son PIN ici : hors réseau, la comparaison échouait
+  // toujours et il restait dehors sans comprendre.
+  // Pire : _shopPin partait vide, et _shopPin est ce qui authentifie CHAQUE
+  // lecture et CHAQUE écriture vers le serveur. Tout se cassait en silence.
+  // Le serveur vient de valider ce PIN : on le garde ici, sur SON appareil.
+  if(DB&&DB.cfg&&_pinPatronValide&&String(_pinPatronValide).length>=4)DB.cfg.pin=String(_pinPatronValide);
+  _shopPin=DB&&DB.cfg?String(DB.cfg.pin||_pinPatronValide||''):null; // le patron parle au serveur avec SON pin
   assurerPinVendeur();
   save(true);
   _finishLoginP();
