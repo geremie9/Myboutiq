@@ -2680,7 +2680,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.77'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.78'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7658,23 +7658,36 @@ function importerSelectionCatalogue(){
   var g=document.getElementById('catalog-grid');
   var sel=Array.from(g.querySelectorAll('.pcard.sel'));
   if(!sel.length){showToast('⚠️ '+(lang==='fr'?'Sélectionnez au moins un modèle':'Select at least one template'));return;}
-  if(!DB.nextId)DB.nextId=100;
-  var newIds=[];
+  // ⚠️ DEUX BUGS ICI, CORRIGÉS ENSEMBLE.
+  //
+  // 1. Ces lignes référençaient « a » — une variable qui n'existe pas dans
+  //    cette fonction (c'est « m »). Mon correctif des photos s'était
+  //    appliqué à DEUX fonctions au lieu d'une. Chaque import PLANTAIT.
+  //
+  // 2. L'import envoyait ensuite vers un assistant article par article, qui
+  //    redemandait le NOM de chacun. Ce parcours a été fait pour l'import de
+  //    PHOTOS, où les noms viennent de fichiers et doivent être corrigés.
+  //    Ici les noms viennent du catalogue : ils sont déjà justes. Le
+  //    commerçant retapait pour rien, article après article.
+  //    On rejoint donc le chemin des 600 : la liste express, où il voit tout
+  //    d'un coup et ne remplit que les prix.
+  var fr=(lang==='fr');
+  if(!Array.isArray(_expListe))_expListe=[];
+  var n=0,deja=0;
   sel.forEach(function(c){
     var m=_catalogModeles[parseInt(c.dataset.idx,10)];
-    if(!m)return;
-    var newId=DB.nextId++;
-    var art={id:newId,nm:m.nm,e:m.e||'📦',img:m.img,cat:m.cat||(lang==='fr'?'Alimentation':'Food'),px:0,pa:0,stk:0,al:5,vd:0,vr:[],rt:true};
-    if(a._img600){try{art.img=_photo600(a._img600);}catch(x){}}
-    if(a._e)art.e=a._e; if(a._cat)art.cat=a._cat;
-    appliquerPhotosCatalogue([art]);appliquerConditionnementCatalogue([art],true);
-    DB.articles.push(art);
-    newIds.push(newId);
+    if(!m||!m.nm)return;
+    if(DB.articles.some(function(p){return txtNorm(p.nm)===txtNorm(m.nm);})){deja++;return;}
+    if(_expListe.some(function(x){return txtNorm(x.nm)===txtNorm(m.nm);}))return;
+    _expListe.push({nm:m.nm,px:0,pa:0,stk:0,_imgUrl:m.img,_e:m.e,_cat:m.cat});
+    n++;
   });
-  save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();
   closeSheet('ov-catalog');
-  showToast('✅ '+newIds.length+' '+(lang==='fr'?'article(s) importé(s)':'item(s) imported'));
-  if(newIds.length)ouvrirGroupementImport(newIds);
+  if(!n){showToast('ℹ️ '+(deja?(fr?'Ces articles sont déjà chez toi':'Already in your shop')
+                              :(fr?'Rien à ajouter':'Nothing to add')));return;}
+  ouvrirAjoutExpress();
+  try{expRender();}catch(e){}
+  showToast('👍 '+n+' '+(fr?'article(s) — mets les prix maintenant':'item(s) — set the prices now'));
 }
 
 function initCatGrid(){var g=document.getElementById('cgrd');g.innerHTML='';var cats=lang==='fr'?CATS_FR:CATS_EN;cats.forEach(function(c){var b=document.createElement('button');b.className='cbtn'+(c===selCat?' on':'');b.textContent=(CE[c]||'📦')+' '+c;b.onclick=function(){selCat=c;_catManuel=true;document.querySelectorAll('#cgrd .cbtn').forEach(function(x){x.classList.remove('on');});b.classList.add('on');majCategorieAuto();};g.appendChild(b);});}
@@ -7832,6 +7845,13 @@ function expCreerTous(){
     var art={id:DB.nextId++,nm:a.nm,e:emojiDepuisNomProduit(a.nm),cat:categorieDepuisNomProduit(a.nm),
       px:a.px,pa:paU,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,
       um:a.um||null,umSac:(a.um&&a.gros>0)?a.gros:null};
+    // ⚠️ La photo qu'il a CHOISIE — dans les 600 images ou chez un voisin —
+    // se perdait ici : on ne la reportait pas sur l'article créé, et il
+    // repartait avec une icône alors qu'il avait touché une photo.
+    if(a._img600){try{art.img=_photo600(a._img600);}catch(x){}}
+    else if(a._imgUrl)art.img=a._imgUrl;
+    if(a._e)art.e=a._e;
+    if(a._cat)art.cat=a._cat;
     appliquerPhotosCatalogue([art]);appliquerConditionnementCatalogue([art],true);   // photo + conditionnement connus du catalogue
     DB.articles.push(art);
     if(a.stk>0)definirStock(art,null,a.stk);
