@@ -428,12 +428,15 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .vhub-n{font-size:10.5px;font-weight:900;color:var(--T);line-height:1.15;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vhub-x{font-size:8.5px;font-weight:800;color:var(--M)}
 @keyframes vhubIn{from{opacity:0;transform:translate(-50%,-50%) scale(.5)}to{opacity:1}}
-.vsat{position:absolute;transform:translate(-50%,-50%);width:82px;display:flex;flex-direction:column;
+.vsat{position:absolute;transform:translate(-50%,-50%);width:var(--vsat-w,82px);display:flex;flex-direction:column;
   align-items:center;gap:3px;cursor:pointer;pointer-events:auto;-webkit-tap-highlight-color:transparent;
   user-select:none;animation:vsatIn .32s cubic-bezier(.22,1.35,.36,1) both}
 .vsat:active{transform:translate(-50%,-50%) scale(.9)}
-.vsat-r{width:66px;height:66px;border-radius:50%;background:var(--C);border:2.5px solid var(--BD);
-  overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:31px;line-height:1;
+/* La pastille rétrécit quand la famille est nombreuse — c'est ce qui permet
+   à « Jus » (10 variantes) de tenir en cercle sur un téléphone ordinaire. */
+.vsat-r{width:var(--vsat-r,66px);height:var(--vsat-r,66px);border-radius:50%;background:var(--C);
+  border:2.5px solid var(--BD);overflow:hidden;display:flex;align-items:center;justify-content:center;
+  font-size:calc(var(--vsat-r,66px)*.47);line-height:1;
   position:relative;box-shadow:0 7px 20px rgba(0,0,0,.3)}
 .vsat-r img{width:100%;height:100%;object-fit:cover}
 .vsat.hq .vsat-r{border-color:var(--G);box-shadow:0 0 0 3.5px rgba(0,200,83,.35),0 7px 20px rgba(0,0,0,.3)}
@@ -441,8 +444,25 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .vsat-b{position:absolute;top:-4px;right:-4px;min-width:24px;height:24px;border-radius:12px;background:var(--G);
   color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;
   box-shadow:0 2px 7px rgba(0,0,0,.3)}
-.vsat-px{font-size:11px;font-weight:900;color:#fff;background:rgba(10,8,24,.75);border-radius:9px;padding:1px 8px;white-space:nowrap}
-.vsat-nm{font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.85);max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ⚠️ Le prix était une étiquette SOUS la pastille : à dix variantes, elle
+   dépassait sur le satellite voisin et devenait illisible (vu à l'écran —
+   mon premier test ne mesurait que les pastilles, pas les étiquettes).
+   Il est maintenant DANS la pastille, en bandeau, comme le prix sur une carte
+   d'article : plus rien ne dépasse, quel que soit le nombre. */
+.vsat-px{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;
+  background:linear-gradient(to top,rgba(0,0,0,.88) 42%,rgba(0,0,0,.4));padding:1px 2px 3px;
+  color:#fff;text-align:center;overflow:hidden}
+.vsat-px b{font-size:10.5px;font-weight:900;line-height:1.15;white-space:nowrap;letter-spacing:-.2px}
+/* Le nom PASSE DEDANS quand le cercle est serré : au-delà de 7 variantes il
+   n'y a plus assez de tour de cercle pour une étiquette extérieure, elle
+   mordait sur le satellite voisin (mesuré : jusqu'à 49 px de recouvrement). */
+.vsat-px i{font-size:8.5px;font-weight:800;font-style:normal;line-height:1.1;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.92}
+/* Le nom ne peut pas dépasser la place qui revient à SON satellite sur le
+   tour de cercle : au-delà il mordrait sur le voisin. */
+.vsat-nm{font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.9);
+  max-width:var(--vsat-arc,82px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  background:rgba(10,8,24,.55);border-radius:7px;padding:1px 6px}
 @keyframes vsatIn{from{opacity:0;transform:translate(-50%,-50%) scale(.35)}to{opacity:1}}
 .vit{background:var(--BG);border:2px solid var(--BD);border-radius:15px;padding:13px;display:flex;align-items:center;gap:11px;transition:border-color .2s}
 .vit.hq{border-color:var(--G);background:#F0FFF8}
@@ -1374,6 +1394,7 @@ body{max-width:min(100%,1200px)}
       <div class="stcd">
         <div class="stit2" onclick="ouvrirChangerPin()"><div class="stico" style="background:#FFEBEE">🔑</div><div class="stii"><div class="stitl" id="st-chpin">Changer mon PIN</div><div class="stisub" id="st-chpin-s">Le code qui ouvre ta caisse</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="toggleBiometrie()"><div class="stico" style="background:#E3F2FD">👆</div><div class="stii"><div class="stitl" id="st-bio2">Empreinte / Face ID</div><div class="stisub" id="st-bio2-s">Entrer sans taper le PIN</div></div><button class="tog off" id="tog-bio2" onclick="event.stopPropagation();toggleBiometrie()"></button></div>
+        <div class="stit2" onclick="ouvrirDiagBio()"><div class="stico" style="background:#E3F2FD">🩺</div><div class="stii"><div class="stitl" id="st-biodiag">L'empreinte ne marche pas ?</div><div class="stisub" id="st-biodiag-s">Voir où ça bloque, sur ce téléphone</div></div><span class="starr">›</span></div>
       </div>
     </div>
     <!-- Rythme de vente -->
@@ -2115,6 +2136,21 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>
 
+  <!-- ÉTAT DE L'EMPREINTE — même esprit que « État de la liaison » : quand
+       ça ne marche pas, c'est le téléphone qui dit pourquoi, pas nous qui
+       devinons. Trois tentatives de correction à l'aveugle ont suffi. -->
+  <div class="ov" id="ov-bio" onclick="closeOv(event,'ov-bio')">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">👆 <span id="bio-tit">État de l'empreinte</span></div><button class="bcl" onclick="closeSheet('ov-bio')">✕</button></div>
+      <div class="pstps">
+        <div id="bio-resume" style="border-radius:13px;padding:13px 15px;font-size:13.5px;font-weight:800;margin-bottom:13px;line-height:1.45"></div>
+        <div id="bio-lst"></div>
+        <button class="bnxt" style="margin-top:13px" onclick="reactiverEmpreinte()"><span id="bio-btn">Réactiver l'empreinte maintenant</span></button>
+        <div style="font-size:10.5px;font-weight:600;color:var(--M);margin-top:11px;line-height:1.5" id="bio-aide">Si une ligne est rouge, envoie cet écran au support : il dit exactement où ça bloque.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- CHANGER MON PIN -->
   <div class="ov" id="ov-chpin" onclick="closeOv(event,'ov-chpin')">
     <div class="bsht"><div class="shndl"></div>
@@ -2805,7 +2841,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.82'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.83'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3676,7 +3712,21 @@ async function validerEntreeRapide(){
 //  2. Sinon on déclenche la demande classique une seule fois à l'ouverture.
 // Dans les deux cas il pose son doigt, et c'est tout. Le bouton reste pour
 // qui veut le geste explicite, ou pour réessayer après un refus.
-var _guetteEmpreinte=false;
+var _guetteEmpreinte=false,_guetteAbort=null;
+// ⚠️ LA CAUSE LA PLUS PROBABLE DE « L'EMPREINTE NE DONNE TOUJOURS RIEN ».
+// Le guet en médiation conditionnelle lance un navigator.credentials.get()
+// qui NE SE RÉSOUT PAS : il attend que le commerçant choisisse une clé dans
+// l'autocomplétion du navigateur. Il reste donc EN ATTENTE tant que la page
+// est ouverte. Or le navigateur n'accepte qu'UNE demande WebAuthn à la fois :
+// quand il touchait ensuite le bouton 👆, sa demande était refusée d'entrée
+// (« a request is already pending ») — et le catch, muet, ne disait rien.
+// Le bouton semblait mort alors que le capteur allait très bien.
+// On garde donc de quoi ANNULER le guet, et on l'annule avant tout geste
+// explicite.
+function arreterGuetEmpreinte(){
+  try{if(_guetteAbort)_guetteAbort.abort();}catch(e){}
+  _guetteAbort=null;_guetteEmpreinte=false;
+}
 async function guetterEmpreinte(){
   if(_guetteEmpreinte)return;
   if(!window.PublicKeyCredential||!navigator.credentials)return;
@@ -3687,35 +3737,71 @@ async function guetterEmpreinte(){
       conditionnel=!!(PublicKeyCredential.isConditionalMediationAvailable
                       &&await PublicKeyCredential.isConditionalMediationAvailable());
     }catch(e){}
+    // Sans médiation conditionnelle, ce guet ouvrirait une fenêtre système
+    // en pleine figure à chaque lancement. On s'abstient : le bouton reste.
+    if(!conditionnel){_guetteEmpreinte=false;return;}
+    _guetteAbort=new AbortController();
     var ch=crypto.getRandomValues(new Uint8Array(32));
-    var dem={publicKey:{challenge:ch,userVerification:'required',
-             allowCredentials:_clesEmpreinte(),timeout:120000}};
-    if(conditionnel){
-      dem.mediation='conditional';
-      // En conditionnel le navigateur choisit lui-même la clé : lui en
-      // imposer une ferme la porte.
-      delete dem.publicKey.allowCredentials;
-    }
-    var ok=await navigator.credentials.get(dem);
+    // En conditionnel le navigateur choisit lui-même la clé : lui en imposer
+    // une ferme la porte.
+    var ok=await navigator.credentials.get({mediation:'conditional',signal:_guetteAbort.signal,
+      publicKey:{challenge:ch,userVerification:'required',timeout:120000}});
     if(ok)await _ouvrirApresEmpreinte();
   }catch(e){
-    // Refus, abandon, ou pas de clé : on ne dit rien. Il tape son PIN,
-    // comme d'habitude — l'empreinte est un raccourci, pas un passage obligé.
+    // Refus, abandon, ou pas de clé : on ne dit rien ICI. Il tape son PIN,
+    // comme d'habitude — le guet est un bonus, pas un passage obligé. Mais on
+    // NOTE la raison, pour que l'écran de diagnostic puisse la montrer.
+    _noterBio('guet',e);
   }
   _guetteEmpreinte=false;
 }
 async function entreeEmpreinte(){
   var fr=lang==='fr';
-  if(!window.PublicKeyCredential){showToast('⛔ '+(fr?'Empreinte indisponible':'Biometrics unavailable'));return;}
+  if(!window.PublicKeyCredential){showToast('⛔ '+(fr?'Ce téléphone ne gère pas l\'empreinte':'Biometrics unavailable'));return;}
+  // On libère la place : sinon le guet en arrière-plan tient le capteur et
+  // cette demande-ci est refusée avant même d'atteindre le doigt.
+  arreterGuetEmpreinte();
+  await new Promise(function(r){setTimeout(r,60);});
   try{
     var ch=crypto.getRandomValues(new Uint8Array(32));
-    var ok=await navigator.credentials.get({publicKey:{challenge:ch,userVerification:'required',
-      allowCredentials:_clesEmpreinte(),timeout:60000}});
+    var dem={publicKey:{challenge:ch,userVerification:'required',timeout:60000}};
+    var cles=_clesEmpreinte();
+    if(cles)dem.publicKey.allowCredentials=cles;
+    var ok=await navigator.credentials.get(dem);
     if(!ok)throw new Error('refus');
-  }catch(x){showToast('⛔ '+(fr?'Empreinte non reconnue':'Not recognised'));return;}
+  }catch(x){
+    _noterBio('bouton',x);
+    // ⚠️ « Empreinte non reconnue » était FAUX neuf fois sur dix : le doigt
+    // n'avait souvent même pas été demandé. On dit ce qui s'est réellement
+    // passé, sinon il réessaie dix fois un geste qui ne peut pas marcher.
+    showToast('⛔ '+_bioPourquoi(x));
+    return;
+  }
   // L'empreinte remplace la SAISIE du PIN, pas la preuve donnée au serveur.
   // Sans session valide, elle ne peut rien ouvrir : on le dit franchement.
   await _ouvrirApresEmpreinte();
+}
+// Ce que le navigateur a VRAIMENT répondu, dit en français.
+var _bioDernier=null;
+function _noterBio(quoi,e){
+  _bioDernier={quoi:quoi,nom:(e&&e.name)||'',msg:String((e&&e.message)||'').slice(0,200),quand:Date.now()};
+  try{localStorage.setItem('myboutiq_bio_diag',JSON.stringify(_bioDernier));}catch(x){}
+}
+function _bioLu(){
+  if(_bioDernier)return _bioDernier;
+  try{return JSON.parse(localStorage.getItem('myboutiq_bio_diag')||'null');}catch(e){return null;}
+}
+function _bioPourquoi(e){
+  var fr=lang==='fr',n=(e&&e.name)||'',m=String((e&&e.message)||'').toLowerCase();
+  if(m.indexOf('already pending')!==-1||n==='InvalidStateError')
+    return fr?'Une demande d\'empreinte était déjà en cours — réessaie tout de suite':'A request was already pending — try again';
+  if(n==='NotAllowedError')
+    return fr?'Empreinte annulée, ou aucune clé trouvée sur ce téléphone — réactive-la dans Réglages 👆':'Cancelled, or no key on this phone — re-enable it in Settings';
+  if(n==='SecurityError')
+    return fr?'Adresse non sécurisée : l\'empreinte n\'est possible qu\'en https':'Insecure origin: biometrics need https';
+  if(n==='NotSupportedError'||n==='AbortError')
+    return fr?'Ce téléphone a refusé ce type de clé — réactive l\'empreinte dans Réglages 👆':'This phone refused this key type';
+  return (fr?'Empreinte impossible':'Biometrics failed')+(n?' ('+n+')':'');
 }
 function prefillEntree(){
   if(majEntreeRapide())return;
@@ -5558,8 +5644,8 @@ function ouvrirVarInline(p,carte){
   ch.onclick=function(ev){ev.stopPropagation();cyclerStyleVar();};
   document.body.appendChild(ch);_varChip=ch;_majChipVar(p);
   // ⭕ le cercle a son propre corps ; ⬛ carrés et ☰ liste partagent le panneau.
-  if(_styleVar()==='cercle'&&p.vr.length<=VAR_CERCLE_MAX){
-    ouvrirVarCercle(p,carte);
+  if(_styleVar()==='cercle'&&ouvrirVarCercle(p,carte)){
+    /* le cercle a pris */
   }else{
     var box=document.createElement('div');
     box.className='vinline';
@@ -5611,13 +5697,35 @@ function _panierAuDessus(oui){
   }catch(e){}
 }
 var VAR_STYLES=['carre','liste','cercle'];
-// ⚠️ Limite de PLACE, pas de goût. Chaque satellite occupe ~82 px d'arc :
-// à 9 variantes le cercle déborde d'un téléphone. Au-delà on revient aux
-// carrés, et la pastille le DIT — une règle annoncée n'est pas une panne.
-var VAR_CERCLE_MAX=8;
+// ⭕ par défaut : son choix après essai (« concernant les expériences, le
+// cercle est mieux »). Les familles trop nombreuses pour l'écran retombent
+// toutes seules en carrés, et la pastille le dit.
 function _styleVar(){
-  var s=(DB&&DB.cfg&&DB.cfg.varStyle)||'carre';
-  return VAR_STYLES.indexOf(s)<0?'carre':s;
+  var s=(DB&&DB.cfg&&DB.cfg.varStyle)||'cercle';
+  return VAR_STYLES.indexOf(s)<0?'cercle':s;
+}
+// ⚠️ PLUS DE NOMBRE EN DUR. Avant : « 8 maximum », choisi au jugé — et
+// « Jus » (10 variantes) et « Bière » (9), les deux seules familles du
+// catalogue à dépasser 8, tombaient en carrés alors qu'elles TIENNENT.
+// Maintenant on cherche la plus grande pastille (66 → 52 px) dont le tour de
+// cercle suffit sans sortir de CET écran. Un grand téléphone en montre plus
+// qu'un petit, ce qui est la vérité. Renvoie null si ça ne rentre pas.
+function _geoCercle(n){
+  var court=Math.min(window.innerWidth,window.innerHeight);
+  for(var t=66;t>=52;t-=2){
+    var besoin=Math.max(96,Math.ceil((t+14)*n/(2*Math.PI)));  // pastille + respiration
+    var max=Math.floor(court/2)-(t/2+38);   // 38 : le prix et le nom pendent sous la pastille
+    if(besoin<=max){
+      // La part du tour qui revient à chaque satellite. En dessous de 92 px
+      // une étiquette extérieure mord sur le voisin : le nom rentre DEDANS.
+      // ⚠️ 84 px ne suffisait pas — à 7 variantes (arc 86) trois noms
+      // touchaient encore une pastille voisine. Chiffre relevé à l'écran,
+      // pas estimé.
+      var arc=2*Math.PI*besoin/n;
+      return {R:besoin,taille:t,large:t+16,arc:Math.floor(arc),serre:arc<92};
+    }
+  }
+  return null;
 }
 function _styleVarLbl(s){
   var fr=lang==='fr';
@@ -5627,10 +5735,11 @@ function _styleVarLbl(s){
 }
 function _majChipVar(p){
   if(!_varChip)return;
-  var fr=lang==='fr',s=_styleVar(),trop=(s==='cercle'&&p&&p.vr.length>VAR_CERCLE_MAX);
+  var fr=lang==='fr',s=_styleVar();
+  var trop=(s==='cercle'&&p&&!_geoCercle(p.vr.length));
   _varChip.innerHTML=_styleVarLbl(trop?'carre':s)
     +'<span style="opacity:.5;font-weight:700">'
-    +(trop?(fr?'· cercle : 8 max':'· circle: 8 max'):(fr?'· changer':'· change'))+'</span>';
+    +(trop?(fr?'· trop pour le cercle':'· too many for circle'):(fr?'· changer':'· change'))+'</span>';
 }
 function cyclerStyleVar(){
   var p=varArtCours,carte=_varCarteEl;
@@ -5649,6 +5758,11 @@ function _infoVar(p,v){
   return {q:varQtys[v.id]||0,dispo:dispo,
     out:dispo<=0&&!v.rt&&!p.rt,
     px:v.px>0?fmt(v.px):('💰 '+(fr?'prix ?':'price ?')),
+    // ⚠️ Dans une pastille de 56 px, « FCFA 950 » sortait du rond et se
+    // faisait couper en « FCFA 95 » — un prix tronqué est pire que pas de
+    // prix. Le symbole de monnaie est le même partout dans la boutique : on
+    // ne garde que le nombre.
+    pxCourt:v.px>0?(Math.round(v.px)||0).toLocaleString('fr-FR'):'💰 ?',
     coul:dispo<=0?'var(--R)':dispo<=3?'var(--O)':'var(--G)',
     stk:(dispo<=0?(fr?'Épuisé':'Out'):(fmtQ(dispo)+' '+(fr?'restants':'left')))
         +(utiliseStockBase(p)?(' · '+(fr?'conso ':'cons ')+getQBase(v)):'')};
@@ -5702,23 +5816,27 @@ function fermerVarCercle(){
 }
 function ouvrirVarCercle(p,carte){
   var r=carte.getBoundingClientRect(),W=window.innerWidth,H=window.innerHeight,n=p.vr.length;
-  // Rayon : assez grand pour que deux satellites ne se touchent pas
-  // (≈82 px d'arc chacun), assez petit pour tenir dans l'écran.
-  var marge=64,R=Math.max(102,Math.ceil(82*n/(2*Math.PI)));
-  R=Math.max(84,Math.min(R,Math.floor(Math.min(W,H)/2)-marge));
+  var g=_geoCercle(n);if(!g)return false;
+  var R=g.R,marge=g.taille/2+38;
   // Le centre suit la carte touchée, puis on le ramène pour que rien ne sorte.
   var cx=Math.min(Math.max(R+marge,r.left+r.width/2),W-R-marge);
   var cy=Math.min(Math.max(R+marge+16,r.top+r.height/2),H-R-marge-14);
   var box=document.createElement('div');box.className='vcircle';
+  box.style.setProperty('--vsat-r',g.taille+'px');
+  box.style.setProperty('--vsat-w',g.large+'px');
+  // La part du tour de cercle qui revient a CHAQUE satellite : le nom ne doit
+  // jamais la depasser, sinon il mord sur le voisin.
+  box.style.setProperty('--vsat-arc',Math.max(52,g.arc-6)+'px');
   box.innerHTML='<div class="vhub" style="left:'+cx+'px;top:'+cy+'px">'
     +'<span class="vhub-e">'+(p.e||'📦')+'</span>'
     +'<span class="vhub-n">'+(p.nm||'')+'</span>'
     +'<span class="vhub-x">'+(lang==='fr'?'fermer':'close')+'</span></div>'
     +'<div id="vcirc-sat"></div>';
   document.body.appendChild(box);
-  _varCercle=box;_varCercleGeo={cx:cx,cy:cy,R:R};
+  _varCercle=box;_varCercleGeo={cx:cx,cy:cy,R:R,taille:g.taille,serre:g.serre};
   box.querySelector('.vhub').onclick=function(){fermerVarInline();};
   renderVarCercle(p);
+  return true;
 }
 function renderVarCercle(p){
   var l=_varCercle&&_varCercle.querySelector('#vcirc-sat');
@@ -5734,11 +5852,10 @@ function renderVarCercle(p){
     d.style.top =Math.round(g.cy+g.R*Math.sin(a))+'px';
     d.style.animationDelay=(k*26)+'ms';
     d.innerHTML='<span class="vsat-r">'
-      +(v.img?'<img src="'+v.img+'" loading="lazy" alt="">':vignetteArt(p,v,62,31))
-      +'</span>'
+      +(v.img?'<img src="'+v.img+'" loading="lazy" alt="">':vignetteArt(p,v,g.taille-6,Math.round((g.taille-6)/2)))
+      +'<span class="vsat-px">'+(g.serre?('<i>'+(v.nm||'?')+'</i>'):'')+'<b>'+i.pxCourt+'</b></span></span>'
       +(i.q>0?'<span class="vsat-b" data-moins="1">'+fmtQ(i.q)+'</span>':'')
-      +'<span class="vsat-px">'+i.px+'</span>'
-      +'<span class="vsat-nm">'+(v.nm||'?')+'</span>';
+      +(g.serre?'':'<span class="vsat-nm">'+(v.nm||'?')+'</span>');
     _replierPhotoVar(d,vignetteArt(Object.assign({},p,{img:''}),Object.assign({},v,{img:'',_img:''}),62,31));
     _brancherVar(d,p,v);
     l.appendChild(d);
@@ -9556,7 +9673,13 @@ function debase64(s){
 // ne sait pas quoi vérifier.
 function _clesEmpreinte(){
   try{
-    var id=DB&&DB.cfg&&DB.cfg.bioCredId;
+    // ⚠️ DB n'existe PAS sur l'écran d'entrée — et encore moins après une
+    // réinstallation. L'identifiant de clé ne vivait que dans DB.cfg : au
+    // moment précis où l'empreinte doit servir, on ne savait donc PAS quelle
+    // clé présenter au capteur. On le garde maintenant aussi dans la mémoire
+    // d'appareil (myboutiq_entree), celle qui est faite pour survivre.
+    var id=(DB&&DB.cfg&&DB.cfg.bioCredId)||null;
+    if(!id){var e=lireEntree();id=e&&e.bioId;}
     if(!id)return undefined;
     var buf=debase64(id);
     return buf?[{type:'public-key',id:buf}]:undefined;
@@ -9564,32 +9687,138 @@ function _clesEmpreinte(){
 }
 async function activerBiometrieFlow(){
   if(!window.PublicKeyCredential){showToast('⛔ '+(lang==='fr'?'Biométrie non supportée sur cet appareil':'Biometrics not supported on this device'));return false;}
+  arreterGuetEmpreinte();           // libérer le capteur avant de créer
+  await new Promise(function(r){setTimeout(r,60);});
   try{
     var available=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
     if(!available){showToast('⛔ '+(lang==='fr'?'Aucun capteur biométrique détecté':'No biometric sensor detected'));return false;}
-    var challenge=crypto.getRandomValues(new Uint8Array(32));
     var userId=crypto.getRandomValues(new Uint8Array(16));
-    var cred=await navigator.credentials.create({publicKey:{
-      challenge,
-      rp:{name:'MyBoutiQ'},
-      user:{id:userId,name:DB.cfg.nom||'patron',displayName:DB.cfg.nom||'Patron'},
-      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
-      // « residentKey » rend la clé RETROUVABLE par le téléphone. Sans elle,
-      // et sans allowCredentials à la vérification, le navigateur cherchait
-      // une clé introuvable : l'empreinte échouait toujours.
-      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',
-                              residentKey:'preferred',requireResidentKey:false},
-      timeout:60000
-    }});
-    if(cred){DB.cfg.bioCredId=b64(cred.rawId);DB.cfg.bioEnabled=true;save();return true;}
-  }catch(e){console.log('WebAuthn:',e);showToast('⛔ '+(lang==='fr'?'Activation annulée ou échouée':'Activation cancelled or failed'));}
+    function demande(sel){
+      return {publicKey:{
+        challenge:crypto.getRandomValues(new Uint8Array(32)),
+        rp:{name:'MyBoutiQ'},
+        user:{id:userId,name:DB.cfg.nom||'patron',displayName:DB.cfg.nom||'Patron'},
+        pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+        authenticatorSelection:sel,timeout:60000}};
+    }
+    // ⚠️ 'preferred' NE SUFFIT PAS. Une clé seulement « préférée » n'est pas
+    // garantie DÉCOUVRABLE : après une réinstallation, le téléphone la
+    // possède encore mais ne sait pas la retrouver tout seul — c'est
+    // exactement « même après réinstallation, ça ne donne rien ».
+    // 'required' fabrique une vraie clé d'accès, rangée par le téléphone
+    // (Google) et retrouvable sans que l'app ait à s'en souvenir.
+    var cred=null,dur=null;
+    try{
+      cred=await navigator.credentials.create(demande({authenticatorAttachment:'platform',
+            userVerification:'required',residentKey:'required',requireResidentKey:true}));
+    }catch(e1){
+      dur=e1;
+      // Vieux téléphone sans rangement de clés : plutôt que de refuser
+      // l'empreinte, on retombe sur l'ancienne façon. Elle marche tant que
+      // l'app garde l'identifiant — d'où sa copie dans la mémoire d'appareil.
+      _noterBio('creation-decouvrable',e1);
+      try{
+        cred=await navigator.credentials.create(demande({authenticatorAttachment:'platform',
+              userVerification:'required',residentKey:'preferred',requireResidentKey:false}));
+      }catch(e2){throw e2;}
+    }
+    if(cred){
+      DB.cfg.bioCredId=b64(cred.rawId);DB.cfg.bioEnabled=true;
+      DB.cfg.bioDecouvrable=!dur;    // pour que le diagnostic puisse le dire
+      save();return true;
+    }
+  }catch(e){
+    _noterBio('activation',e);
+    showToast('⛔ '+_bioPourquoi(e));
+  }
   return false;
+}
+// ── 🩺 ÉTAT DE L'EMPREINTE ──────────────────────────────────────────
+// Après trois corrections à l'aveugle, on cesse de deviner : chaque condition
+// est affichée, en français, avec ce que le navigateur a réellement répondu.
+async function ouvrirDiagBio(){
+  var fr=(lang==='fr'),h='',ok=true;
+  var box=document.getElementById('bio-lst');if(!box)return;
+  box.innerHTML='<div style="text-align:center;color:var(--M);font-size:12px;font-weight:700;padding:14px">'+(fr?'Vérification…':'Checking…')+'</div>';
+  document.getElementById('ov-bio').classList.add('show');
+
+  var api=!!window.PublicKeyCredential;
+  h+=_liLigne(api,fr?'Ce téléphone sait faire l\'empreinte':'Phone supports biometrics',
+      api?(fr?'oui':'yes'):(fr?'non — il faudra taper le PIN':'no'));
+  if(!api)ok=false;
+
+  var capteur=null;
+  if(api){try{capteur=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();}catch(e){}}
+  h+=_liLigne(capteur===null?null:!!capteur,fr?'Un capteur utilisable (doigt ou visage)':'Usable sensor',
+      capteur===null?(fr?'impossible à vérifier':'unknown')
+      :capteur?(fr?'oui':'yes'):(fr?'aucun — vérifie que le déverrouillage par empreinte est actif dans Android':'none — enable fingerprint unlock in Android'));
+  if(capteur===false)ok=false;
+
+  var cond=null;
+  if(api){try{cond=!!(PublicKeyCredential.isConditionalMediationAvailable&&await PublicKeyCredential.isConditionalMediationAvailable());}catch(e){}}
+  h+=_liLigne(cond?true:null,fr?'Proposition automatique à l\'ouverture':'Automatic prompt',
+      cond?(fr?'oui — pas besoin de toucher le bouton':'yes'):(fr?'non — utilise le bouton 👆':'no — use the button'));
+
+  var sur=(location.protocol==='https:'||location.hostname==='localhost');
+  h+=_liLigne(sur,fr?'Adresse sécurisée':'Secure origin',location.protocol+'//'+location.hostname);
+  if(!sur)ok=false;
+
+  var mem=lireEntree()||{};
+  var actif=!!(DB&&DB.cfg&&DB.cfg.bioEnabled)||!!mem.bio;
+  h+=_liLigne(actif,fr?'L\'interrupteur est allumé':'Switch is on',
+      actif?(fr?'oui':'yes'):(fr?'NON — c\'est sans doute tout le problème : allume « Empreinte / Face ID » juste au-dessus':'NO — turn on the switch above'));
+  if(!actif)ok=false;
+
+  var idApp=(DB&&DB.cfg&&DB.cfg.bioCredId)||'',idMem=mem.bioId||'';
+  var aCle=!!(idApp||idMem);
+  // Vert seulement si la clé est AUSSI dans le téléphone : c'est elle qui
+  // sert avant la connexion. Un feu vert avec un ⚠️ dedans ne veut rien dire.
+  h+=_liLigne(aCle?(idMem?true:null):false,fr?'Une clé est enregistrée':'A key is registered',
+      !aCle?(fr?'aucune — désactive puis réactive l\'empreinte':'none — turn it off and on again')
+      :((fr?'oui · ':'yes · ')+(idApp?(fr?'dans la boutique':'in shop'):'')+(idApp&&idMem?' + ':'')
+        +(idMem?(fr?'dans ce téléphone':'on this phone'):'')
+        +(!idMem?(fr?' · ⚠️ PAS dans ce téléphone : réactive-la pour qu\'elle y soit aussi':''):'')));
+  if(!aCle)ok=false;
+
+  var dec=DB&&DB.cfg&&DB.cfg.bioDecouvrable;
+  h+=_liLigne(dec===undefined?null:!!dec,fr?'Clé retrouvable seule (survit à une réinstallation)':'Discoverable key',
+      dec===undefined?(fr?'clé créée avant cette version — désactive puis réactive pour la refaire':'created by an older version — re-enable it')
+      :dec?(fr?'oui':'yes'):(fr?'non — ce téléphone n\'a pas voulu, l\'app garde l\'identifiant à sa place':'no — the app keeps the id instead'));
+
+  var d=_bioLu();
+  h+=_liLigne(d?false:'info',fr?'Dernier essai':'Last attempt',
+      d?((d.quoi==='guet'?(fr?'proposition auto':'auto'):d.quoi==='activation'?(fr?'activation':'setup'):(fr?'bouton':'button'))
+         +' · '+(d.nom||'?')+(d.msg?' · '+d.msg:'')+' · '+_ilYA(d.quand))
+        :(fr?'aucun échec noté':'no failure recorded'));
+
+  box.innerHTML=h;
+  var r=document.getElementById('bio-resume');
+  if(ok&&!d){r.style.background='#E8F5E9';r.style.color='#1B5E20';
+    r.textContent='✅ '+(fr?'Tout est en place. Pose ton doigt à l\'ouverture.':'All set.');}
+  else if(ok){r.style.background='#FFF8E1';r.style.color='#B45309';
+    r.textContent='🟠 '+(fr?'Tout semble en place, mais un essai a échoué — la dernière ligne dit ce que le téléphone a répondu.':'Set up, but an attempt failed — see the last line.');}
+  else{r.style.background='#FFEBEE';r.style.color='#C62828';
+    r.textContent='⚠️ '+(fr?'Une ligne rouge ci-dessous explique pourquoi l\'empreinte ne peut pas marcher ici.':'A red line below says why.');}
+}
+// Refaire la clé proprement : c'est le geste qui répare le plus de cas.
+async function reactiverEmpreinte(){
+  var fr=(lang==='fr');
+  if(!DB||!DB.cfg){showToast('⛔ '+(fr?'Connecte-toi d\'abord, puis reviens ici':'Sign in first'));return;}
+  DB.cfg.bioEnabled=false;
+  var ok=await activerBiometrieFlow();
+  _majTogBio(ok);
+  showToast(ok?('✅ '+(fr?'Empreinte refaite — elle servira dès la prochaine ouverture':'Biometrics re-created'))
+              :('⛔ '+(fr?'Ça n\'a pas pris — regarde la dernière ligne':'Failed — see the last line')));
+  ouvrirDiagBio();
 }
 function _majTogBio(on){
   ['tog-bio','tog-bio2'].forEach(function(id){var e=document.getElementById(id);if(e)e.className='tog '+(on?'on':'off');});
   // L'écran d'entrée ne connaît pas DB : sans ce drapeau dans la mémoire de
-  // l'appareil, le bouton Empreinte ne s'affichait JAMAIS.
-  try{memoriserEntree({role:'patron',bio:!!on});}catch(e){}
+  // l'appareil, le bouton Empreinte ne s'affichait JAMAIS. On y range AUSSI
+  // l'identifiant de la clé — c'est ce qui permet de présenter la bonne clé
+  // au capteur avant toute connexion, et après une réinstallation.
+  try{memoriserEntree({role:'patron',bio:!!on,
+       bioId:(on&&DB&&DB.cfg&&DB.cfg.bioCredId)?DB.cfg.bioCredId:undefined});}catch(e){}
 }
 function toggleBiometrie(){
   if(!DB){showToast('⛔ '+(lang==='fr'?'Connecte-toi d\'abord':'Sign in first'));return;}
@@ -9613,13 +9842,25 @@ function toggleBiometrie(){
 // session valide, on le dit franchement au lieu de faire semblant.
 async function loginBiometrique(){
   var fr=(lang==='fr');
-  if(!window.PublicKeyCredential||!DB||!DB.cfg.bioEnabled){showToast('⛔ '+(fr?'Biométrie non configurée':'Biometrics not set up'));return;}
+  if(!window.PublicKeyCredential){showToast('⛔ '+(fr?'Ce téléphone ne gère pas l\'empreinte':'Biometrics unavailable'));return;}
+  // ⚠️ AVANT : on exigeait DB.cfg.bioEnabled. Sur l'écran d'entrée — et après
+  // une réinstallation — DB n'existe pas encore : ce bouton répondait donc
+  // « Biométrie non configurée » à quelqu'un qui l'avait bel et bien
+  // configurée. La mémoire d'appareil, elle, s'en souvient.
+  var mem=lireEntree();
+  if(!(DB&&DB.cfg&&DB.cfg.bioEnabled)&&!(mem&&mem.bio)){
+    showToast('⛔ '+(fr?'Empreinte pas encore activée — Réglages 👆 Empreinte':'Biometrics not set up yet'));return;
+  }
+  arreterGuetEmpreinte();
+  await new Promise(function(r){setTimeout(r,60);});
   try{
-    var challenge=crypto.getRandomValues(new Uint8Array(32));
-    var res=await navigator.credentials.get({publicKey:{challenge,userVerification:'required',
-      allowCredentials:_clesEmpreinte(),timeout:60000}});
+    var dem={publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
+             userVerification:'required',timeout:60000}};
+    var cles=_clesEmpreinte();
+    if(cles)dem.publicKey.allowCredentials=cles;
+    var res=await navigator.credentials.get(dem);
     if(!res)throw new Error('refus');
-  }catch(e){console.log('WebAuthn login:',e);showToast('⛔ '+(fr?'Empreinte non reconnue':'Not recognised'));return;}
+  }catch(e){_noterBio('bouton',e);showToast('⛔ '+_bioPourquoi(e));return;}
   await _ouvrirApresEmpreinte();
 }
 // Le chemin commun aux deux boutons : l'empreinte est reconnue, reste à
