@@ -2673,7 +2673,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.74'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.75'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6817,6 +6817,29 @@ function mesureCatalogue(fam){
     if(!e.fam&&txtNorm(e.nm)===f){r={um:e.um,sac:e.sac||0,cont:e.cont||null};return true;}
     return false;
   });
+  // ⚠️ Le nom EXACT ne suffit pas. Un commerçant ne dit jamais « Savon de
+  // lessive (barre) » : il dit « savon ». Sans ce rattrapage, le catalogue
+  // répondait « inconnu » et le prix d'achat du carton restait vide.
+  // On accepte donc la famille dont le nom COMMENCE par ce qu'il a écrit,
+  // et on prend la plus courte — la plus générale.
+  if(!r&&f.length>=3){
+    var cands=[];
+    catalogueIndex().forEach(function(e){
+      if(!e.sac)return;
+      // On cherche des DEUX côtés : la famille (« Savon de lessive ») ET la
+      // variante (« Coca-Cola »). Le commerçant dit « coca », pas
+      // « Sucrerie 60 cl » — le nom de la famille ne lui parle pas.
+      [txtNorm(e.fam||''),txtNorm(e.nm||'')].forEach(function(nf){
+        if(!nf)return;
+        if(nf===f||nf.indexOf(f+' ')===0||nf.indexOf(f+'-')===0||f.indexOf(nf+' ')===0)
+          cands.push({n:nf,um:e.um,sac:e.sac,cont:e.cont||null});
+      });
+    });
+    if(cands.length){
+      cands.sort(function(a,b){return a.n.length-b.n.length;});
+      r={um:cands[0].um,sac:cands[0].sac,cont:cands[0].cont};
+    }
+  }
   return r;
 }
 // ── Candidats de famille pour UN article (au moment de sa création) ──
@@ -7899,6 +7922,17 @@ function _decouperLigne(ligne){
   var m=l.match(/^(\d+)\s+([A-Za-zÀ-ÿ]+)\s+(?:de\s+|d'\s*)?(.+)$/i);
   if(m&&_CONTENANT_RX.test(m[2])){qte=parseInt(m[1],10);qteSure=true;l=m[3];}
 
+  // « Carton de 48 maggi » : le contenu est écrit APRÈS le contenant.
+  // C'est la façon la plus naturelle de le dire, et elle n'était pas lue :
+  // le prix d'achat restait vide alors que le 48 était sous nos yeux.
+  var _contenu=0;
+  l=l.replace(/\b([A-Za-zÀ-ÿ]+)\s+(?:de\s+|d')?(\d+)\b/i,function(tout,mot,n){
+    // Le mot du contenant part avec son nombre : « Carton de 48 maggi »
+    // désigne du maggi, pas un carton. Le laisser donnait un article
+    // nommé « Carton maggi ».
+    if(!_contenu&&_CONTENANT_RX.test(mot)){_contenu=parseInt(n,10);return ' ';}
+    return tout;
+  });
   // « Coca 24 bouteilles 600 » : quantité + contenant au milieu.
   l=l.replace(/(\d+)\s*([A-Za-zÀ-ÿ]+)/g,function(tout,n,mot){
     if(!qteSure&&_CONTENANT_RX.test(mot)){qte=parseInt(n,10);qteSure=true;return ' ';}
@@ -7963,7 +7997,7 @@ function _decouperLigne(ligne){
   // La ligne nomme-t-elle un contenant (sac, carton, bidon, casier) ? C'est
   // ce qui autorisera à lire un nombre en trop comme « nombre de pièces ».
   var contenant=nm.split(/\s+/).some(function(w){return _CONTENANT_RX.test(w);});
-  return {nm:nm,qte:qte,qteSure:qteSure,vals:vals,groupes:groupes,mesure:mesure,contenant:contenant};
+  return {nm:nm,qte:qte,qteSure:qteSure,vals:vals,groupes:groupes,contenu:_contenu,mesure:mesure,contenant:contenant};
 }
 function _nombreSeul(s){
   var t=String(s||'').trim().replace(/\s*(?:f|fcfa|xaf|cfa)\s*$/i,'').replace(/\s/g,'');
@@ -8037,13 +8071,33 @@ function _margePlausible(pa,px){var r=px/pa;return r>=1.02&&r<=4;}
 // la marge crédible, alors ce n'était pas une erreur d'ordre : c'est du gros.
 // Renvoie le prix unitaire, ou 0 si le conditionnement n'explique rien.
 function _achatRameneALUnite(d,pa,px,n){
-  var taille=(d&&d.mesure&&d.mesure.t>1)?d.mesure.t:0;
+  // Ce qu'il a écrit lui-même passe avant tout : « carton de 48 ».
+  var taille=(d&&d.contenu>1&&d.contenu<=1000)?d.contenu:0;
+  if(!taille)taille=(d&&d.mesure&&d.mesure.t>1)?d.mesure.t:0;
   if(!taille&&d&&d.contenant){
     var vl=_vecteursPossibles(d).sort(function(x,y){return y.length-x.length;})[0];
     if(vl&&vl.length===n+1&&vl[0]>1&&vl[0]<=1000)taille=vl[0];
   }
+  // ── LE CHAÎNON QUI MANQUAIT ──
+  // Il dit « 3 casiers de coca 9000 500 ». L'analyseur voit bien 3 casiers,
+  // deux prix, et le mot « coca ». Mais il ignorait combien de bouteilles il
+  // y a dans un casier — alors il renonçait, et le prix d'achat restait vide.
+  // Or LE CATALOGUE LE SAIT : casier de 12, carton de 24, sac de 25 kg.
+  // L'analyseur connaissait la structure, le catalogue le conditionnement,
+  // et personne ne les avait branchés ensemble.
+  if(!taille&&d&&d.nm){
+    try{
+      var m=mesureCatalogue(familleCatalogueDe(d.nm)||d.nm);
+      if(m&&m.sac>1&&m.sac<=1000)taille=m.sac;
+    }catch(e){}
+  }
   if(!taille)return 0;
-  var u=Math.round(pa/taille);
+  // ⚠️ « 3 casiers de coca 9000 » : il a payé 9000 pour TROIS casiers, soit
+  // 36 bouteilles — pas pour un seul. On divisait par la taille d'UN
+  // contenant et on obtenait 750 la bouteille au lieu de 250. Le garde-fou
+  // de marge rattrapait la sottise en refusant, mais le prix restait vide.
+  var lots=(d&&d.qteSure&&d.qte>1&&d.qte<=200)?d.qte:1;
+  var u=Math.round(pa/(taille*lots));
   return (u>0&&_margePlausible(u,px))?u:0;
 }
 function _coefVariation(t){
