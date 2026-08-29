@@ -914,7 +914,7 @@ body{max-width:min(100%,1200px)}
   <div class="ob-step" id="obs5">
     <button class="btn-bk" onclick="retourDepuisBoutique()">←</button>
     <div class="ob-step-h" id="ob5-h">🏪 Ta boutique</div>
-    <input class="ob-inp" type="text" id="ob-nom" placeholder="Nom de ta boutique...">
+    <div style="position:relative"><input class="ob-inp" type="text" id="ob-nom" placeholder="Nom de ta boutique..."><button type="button" id="mic-obnom" onclick="dicterDans('ob-nom','mic-obnom')" title="Dicter" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--BG);border:none;border-radius:9px;width:38px;height:38px;font-size:17px;cursor:pointer;font-family:Outfit,sans-serif;z-index:2">🎤</button></div>
     <input class="ob-inp" type="tel" id="ob-tel" placeholder="📱 Ton numéro de téléphone" inputmode="tel" oninput="apercuTelOb()">
     <div id="ob-tel-apercu" style="font-size:12.5px;font-weight:800;color:rgba(255,255,255,.85);margin:-6px 0 10px;min-height:16px"></div>
     <input class="ob-inp" type="password" id="ob-pin" placeholder="🔐 Code PIN (6 chiffres)" maxlength="6" inputmode="numeric">
@@ -1021,7 +1021,7 @@ body{max-width:min(100%,1200px)}
     </div>
     <div id="fv" style="width:100%;display:none">
       <div class="fg"><label class="fl" id="lbl-code">🏪 Code boutique</label><input class="fi" type="text" id="v-code" style="letter-spacing:3px;font-weight:800;text-transform:uppercase" placeholder="12345 67890"></div>
-      <div class="fg"><label class="fl" id="lbl-prenom">👤 Prénom</label><input class="fi" type="text" id="v-nom" placeholder="Amadou"></div>
+      <div class="fg"><label class="fl" id="lbl-prenom">👤 Prénom</label><div style="position:relative"><input class="fi" type="text" id="v-nom" placeholder="Amadou"><button type="button" id="mic-vnom" onclick="dicterDans('v-nom','mic-vnom')" title="Dicter" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--BG);border:none;border-radius:9px;width:38px;height:38px;font-size:17px;cursor:pointer;font-family:Outfit,sans-serif;z-index:2">🎤</button></div></div>
       <div class="fg"><label class="fl" id="lbl-vpin">🔐 PIN équipe</label><input class="fi" type="password" placeholder="••••" maxlength="4" id="v-pin" inputmode="numeric"><div style="font-size:10.5px;color:rgba(255,255,255,.55);font-weight:600;margin-top:4px" id="hint-vpin">Demande ce code à ton patron</div></div>
       <button class="btn-login" id="btn-lv" onclick="loginV()">Connexion 👦</button>
     </div>
@@ -2692,7 +2692,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.79'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.80'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9849,6 +9849,40 @@ function partagerLienInvitation(){
   var txt=(fr?'Rejoins ma boutique ':'Join my store ')+(DB&&DB.cfg?DB.cfg.nom:'')+' sur MyBoutiQ';
   if(navigator.share){navigator.share({title:'MyBoutiQ',text:txt,url:url}).catch(function(){});return;}
   if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){showToast('🔗 '+(fr?'Lien copié !':'Link copied!'));});
+}
+// ═══════════════════════════════════════════════════════════════════
+//  DICTER AU LIEU D'ÉCRIRE
+// ═══════════════════════════════════════════════════════════════════
+// Mesuré : sur 112 champs de saisie, DEUX seulement sont obligatoires pour
+// exister dans l'app — le nom de la boutique et le prénom du vendeur. Ce
+// sont exactement les deux murs pour un commerçant qui ne sait pas écrire.
+// Le micro était déjà là, mais il ne servait qu'à CHERCHER un article.
+// Il sert maintenant aussi à répondre.
+function dicterDans(idChamp,idBouton){
+  var fr=(lang==='fr');
+  if(!('SpeechRecognition' in window||'webkitSpeechRecognition' in window)){
+    showToast('🎤 '+(fr?'Ce téléphone ne comprend pas la dictée':'No dictation on this phone'));return;}
+  var champ=document.getElementById(idChamp);if(!champ)return;
+  var b=idBouton&&document.getElementById(idBouton);
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();
+  r.lang=fr?'fr-FR':'en-US';
+  r.interimResults=false;r.maxAlternatives=1;
+  if(b){b.textContent='🔴';b.disabled=true;}
+  var fini=function(){if(b){b.textContent='🎤';b.disabled=false;}};
+  r.onresult=function(e){
+    var t=String((e.results[0][0]||{}).transcript||'').trim();
+    if(!t){fini();return;}
+    // Un nom propre commence par une majuscule : il l'aurait mise s'il
+    // écrivait. La dictée rend tout en minuscules.
+    champ.value=t.charAt(0).toUpperCase()+t.slice(1);
+    try{champ.dispatchEvent(new Event('input',{bubbles:true}));}catch(x){}
+    fini();
+    // On lui relit ce qu'on a compris : il ne peut pas le vérifier des yeux.
+    try{parler((fr?'J\'ai écrit ':'I wrote ')+champ.value);}catch(x){}
+  };
+  r.onerror=function(){fini();showToast('🎤 '+(fr?'Je n\'ai pas entendu. Réessaie.':'Did not hear. Try again.'));};
+  r.onend=fini;
+  try{r.start();showToast('🎤 '+(fr?'Parle maintenant…':'Speak now…'));}catch(x){fini();}
 }
 function voiceSearch(){if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}var SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();r.lang=lang==='fr'?'fr-FR':'en-US';r.onresult=function(e){var q=e.results[0][0].transcript;document.getElementById('src-c').value=q;filtrC(q);};r.onerror=function(){showToast('🎤');};r.start();showToast(t('microParle'));}
 var ecouteContinue=false,recogContinue=null;
