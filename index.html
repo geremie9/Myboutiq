@@ -310,9 +310,16 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 /* Panneau des variantes, glissé juste sous la carte touchée */
 /* Le panneau FLOTTE par-dessus la grille : il ne pousse aucun article, donc
    rien ne bouge sous le doigt. Il se referme et tout est déjà en place. */
-.vinline{position:fixed;z-index:80;background:#fff;border:2px solid var(--B);border-radius:16px;padding:11px;box-shadow:0 10px 30px rgba(0,0,0,.22);animation:vinOuvre .14s ease-out;max-height:52vh;overflow-y:auto}
+/* Il flotte au-dessus de la carte touchee, sans jamais ecarter les
+   articles. Le fond respecte le theme : un panneau blanc en mode sombre
+   eblouissait. Ouverture depuis le point touche, pas depuis le neant. */
+.vinline{position:fixed;z-index:80;background:var(--C);border:1.5px solid var(--BD);border-radius:18px;padding:12px;box-shadow:0 14px 38px rgba(0,0,0,.26),0 2px 8px rgba(0,0,0,.10);animation:vinOuvre .22s cubic-bezier(.22,1.2,.36,1);max-height:52vh;overflow-y:auto;transform-origin:top center}
+/* La pointe qui le relie visuellement a la carte : sans elle on ne sait pas
+   de quel article ces variantes sortent. */
+.vinline::before{content:"";position:absolute;top:-8px;left:var(--fleche,calc(50% - 8px));width:14px;height:14px;background:var(--C);border-left:1.5px solid var(--BD);border-top:1.5px solid var(--BD);transform:rotate(45deg);border-radius:3px 0 0 0}
+.vinline.vin-haut::before{top:auto;bottom:-8px;border-left:none;border-top:none;border-right:1.5px solid var(--BD);border-bottom:1.5px solid var(--BD);border-radius:0 0 3px 0}
 .vinline-t{font-size:12.5px;font-weight:800;color:var(--T);margin-bottom:9px}
-@keyframes vinOuvre{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes vinOuvre{from{opacity:0;transform:translateY(-10px) scale(.94)}to{opacity:1;transform:none}}
 .vtile{position:relative;background:var(--BG);border:2px solid var(--BD);border-radius:15px;padding:11px 9px 9px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-family:'Outfit',sans-serif;text-align:center;transition:transform .08s,border-color .15s;-webkit-tap-highlight-color:transparent;user-select:none}
 .vtile:active{transform:scale(.95)}
 .vtile.hq{border-color:var(--G);background:#F0FFF8}
@@ -2673,7 +2680,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.76'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.77'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5391,9 +5398,16 @@ function ouvrirVarInline(p,carte){
   _varBox=box;_varCarteId=p.id;_varCarteEl=carte;
   renderVarLst(p);
   _placerVarBox(carte);
-  // Il flotte : s'il défile ou si l'écran tourne, on le referme plutôt que de
-  // le laisser posé au mauvais endroit.
-  _varFermeAuto=function(){fermerVarInline();};
+  // ⚠️ AVANT : le moindre défilement le REFERMAIT. Le commerçant effleurait
+  // l'écran en cherchant sa variante et tout disparaissait — c'est ça qui
+  // faisait « archaïque ». Maintenant il SUIT sa carte, et ne se referme que
+  // si la carte quitte vraiment l'écran.
+  _varFermeAuto=function(){
+    if(!_varBox||!_varCarteEl)return;
+    var r=_varCarteEl.getBoundingClientRect();
+    if(r.bottom<0||r.top>window.innerHeight){fermerVarInline();return;}
+    _placerVarBox(_varCarteEl);
+  };
   window.addEventListener('scroll',_varFermeAuto,{passive:true,capture:true});
   window.addEventListener('resize',_varFermeAuto);
   setTimeout(function(){document.addEventListener('pointerdown',_varDehors,true);},0);
@@ -5415,11 +5429,16 @@ function _placerVarBox(carte){
   _varBox.style.width=largeur+'px';
   var g=_varBox.getBoundingClientRect();
   var gauche=Math.min(Math.max(marge,r.left+r.width/2-largeur/2),window.innerWidth-largeur-marge);
-  var haut=r.bottom+6;
+  var haut=r.bottom+10,auDessus=false;
   // Pas la place en dessous ? On le met au-dessus de la carte.
-  if(haut+g.height>window.innerHeight-70)haut=Math.max(marge,r.top-g.height-6);
+  if(haut+g.height>window.innerHeight-70){haut=Math.max(marge,r.top-g.height-10);auDessus=true;}
   _varBox.style.left=gauche+'px';
   _varBox.style.top=haut+'px';
+  // La pointe doit viser LA carte touchée, pas le milieu du panneau — sinon
+  // elle désigne un article voisin, ce qui est pire que pas de pointe.
+  _varBox.classList.toggle('vin-haut',auDessus);
+  var cx=Math.min(Math.max(14,r.left+r.width/2-gauche-8),largeur-30);
+  _varBox.style.setProperty('--fleche',cx+'px');
 }
 // Ce qui est choisi part DIRECTEMENT au panier : plus de bouton à valider.
 function _varVersPanier(p){
@@ -5441,7 +5460,11 @@ function renderVarLst(p){
     d.className='vtile'+(q>0?' hq':'')+(isOut?' out':'');
     var detBase=utiliseStockBase(p)?(' · '+(fr?'conso ':'cons ')+qBase):'';
     d.innerHTML=(q>0?('<span class="vt-badge">'+fmtQ(q)+'</span><span class="vt-moins" data-moins="1">−</span>'):'')
-      +(v.img?'<img src="'+v.img+'" loading="lazy">':'<span class="vt-emo">'+p.e+'</span>')
+      // ⚠️ Toutes les variantes sans photo affichaient l'émoji du PARENT :
+      // six « Savon » donnaient six vignettes identiques, impossible de les
+      // distinguer d'un coup d'œil. vignetteArt donne à chacune la sienne —
+      // sa photo, sinon son icône de rayon, avec sa propre couleur.
+      +(v.img?'<img src="'+v.img+'" loading="lazy">':('<span class="vt-emo">'+vignetteArt(p,v,44)+'</span>'))
       +'<span class="vt-nm">'+(v.nm||'?')+'</span>'
       +'<span class="vt-px">'+(v.px>0?fmt(v.px):('💰 '+(fr?'prix ?':'price ?')))+'</span>'
       +'<span class="vt-stk" style="color:'+(dispo<=0?'var(--R)':dispo<=3?'var(--O)':'var(--G)')+'">'
