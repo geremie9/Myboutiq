@@ -1,0 +1,385 @@
+name: APK Android
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Construit l'APK signé de MyBoutiQ — application Android installable,
+# distribuable hors Play Store (envoi par WhatsApp, lien de téléchargement…).
+#
+# Ce fichier est AUTONOME : il fabrique lui-même le projet Android complet
+# (Gradle, manifeste, icônes, écran de démarrage) à partir des fichiers déjà
+# présents dans le dépôt. Il n'y a donc rien d'autre à committer que lui.
+#
+# Technique : Trusted Web Activity. L'app tourne dans le moteur de Chrome,
+# ce qui préserve la dictée vocale, la lecture vocale, l'export Excel et le
+# partage natif — tous absents d'une WebView. index.html n'est pas modifié.
+#
+# AVANT LE PREMIER BUILD, ajouter deux secrets au dépôt
+# (Settings > Secrets and variables > Actions > New repository secret) :
+#   • ANDROID_KEYSTORE_BASE64   → le contenu de keystore-base64.txt
+#   • ANDROID_KEYSTORE_PASSWORD → le mot de passe du keystore
+#
+# POUR LANCER : onglet Actions > "APK Android" > "Run workflow".
+# L'APK se télécharge en bas de la page du build, section "Artifacts".
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Numéro de version affiché dans l'app (laisser vide pour 1.0.<build>)"
+        required: false
+        default: ""
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  APP_ID: online.myboutiq.app
+  APP_NAME: MyBoutiQ
+  LAUNCH_URL: https://myboutiq.online/index.html
+  SITE_ORIGIN: https://myboutiq.online
+  THEME_COLOR: "#241257"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Installer le SDK Android
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0 platform-tools"
+
+      - name: Installer Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Déterminer la version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            NAME="${GITHUB_REF#refs/tags/v}"
+          elif [ -n "${{ github.event.inputs.version_name }}" ]; then
+            NAME="${{ github.event.inputs.version_name }}"
+          else
+            NAME="1.0.${{ github.run_number }}"
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "Version $NAME (code ${{ github.run_number }})"
+
+      - name: Générer le projet Android
+        run: |
+          python3 -m pip install --quiet --upgrade pillow
+          python3 - <<'PYEOF'
+          import os
+
+          APP_ID      = os.environ["APP_ID"]
+          APP_NAME    = os.environ["APP_NAME"]
+          LAUNCH_URL  = os.environ["LAUNCH_URL"]
+          SITE_ORIGIN = os.environ["SITE_ORIGIN"]
+          THEME       = os.environ["THEME_COLOR"]
+
+          FILES = {}
+
+          FILES["android/settings.gradle"] = """
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "MyBoutiQ"
+          include ':app'
+          """
+
+          FILES["android/build.gradle"] = """
+          plugins { id 'com.android.application' version '8.7.3' apply false }
+          """
+
+          FILES["android/gradle.properties"] = """
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          """
+
+          FILES["android/app/build.gradle"] = """
+          plugins { id 'com.android.application' }
+
+          def buildNum = (System.getenv("VERSION_CODE") ?: "1") as Integer
+          def versionLabel = System.getenv("VERSION_NAME") ?: ("1.0." + buildNum)
+
+          android {
+              namespace '%(app_id)s'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId "%(app_id)s"
+                  minSdk 21
+                  targetSdk 35
+                  versionCode buildNum
+                  versionName versionLabel
+              }
+
+              signingConfigs {
+                  release {
+                      def p = System.getenv("KEYSTORE_PATH")
+                      if (p) {
+                          storeFile file(p)
+                          storePassword System.getenv("KEYSTORE_PASSWORD")
+                          keyAlias System.getenv("KEY_ALIAS")
+                          keyPassword System.getenv("KEY_PASSWORD")
+                      }
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      shrinkResources false
+                      signingConfig System.getenv("KEYSTORE_PATH") ? signingConfigs.release : signingConfigs.debug
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+
+          dependencies {
+              implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.6.+'
+          }
+          """ % {"app_id": APP_ID}
+
+          FILES["android/app/src/main/AndroidManifest.xml"] = """<?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+              <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+              <application
+                  android:allowBackup="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher_round"
+                  android:label="@string/appName"
+                  android:supportsRtl="false"
+                  android:theme="@style/Theme.MyBoutiQ">
+
+                  <meta-data android:name="asset_statements" android:resource="@string/assetStatements" />
+
+                  <activity
+                      android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
+                      android:exported="true"
+                      android:label="@string/appName"
+                      android:screenOrientation="portrait">
+
+                      <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL" android:value="@string/launchUrl" />
+                      <meta-data android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR" android:resource="@color/colorPrimary" />
+                      <meta-data android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR" android:resource="@color/colorPrimary" />
+                      <meta-data android:name="android.support.customtabs.trusted.SPLASH_IMAGE_DRAWABLE" android:resource="@drawable/splash" />
+                      <meta-data android:name="android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND_COLOR" android:resource="@color/backgroundColor" />
+                      <meta-data android:name="android.support.customtabs.trusted.SPLASH_SCREEN_FADE_OUT_DURATION" android:value="300" />
+                      <meta-data android:name="android.support.customtabs.trusted.FILE_PROVIDER_AUTHORITY" android:value="%(app_id)s.fileprovider" />
+
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+
+                      <intent-filter android:autoVerify="true">
+                          <action android:name="android.intent.action.VIEW" />
+                          <category android:name="android.intent.category.DEFAULT" />
+                          <category android:name="android.intent.category.BROWSABLE" />
+                          <data android:scheme="https" android:host="%(host)s" />
+                      </intent-filter>
+                  </activity>
+
+                  <activity
+                      android:name="com.google.androidbrowserhelper.trusted.FocusActivity"
+                      android:exported="false"
+                      android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+                  <activity
+                      android:name="com.google.androidbrowserhelper.trusted.WebViewFallbackActivity"
+                      android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"
+                      android:exported="false" />
+
+                  <service
+                      android:name="com.google.androidbrowserhelper.trusted.DelegationService"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />
+                          <category android:name="android.intent.category.DEFAULT" />
+                      </intent-filter>
+                  </service>
+
+                  <provider
+                      android:name="androidx.core.content.FileProvider"
+                      android:authorities="%(app_id)s.fileprovider"
+                      android:exported="false"
+                      android:grantUriPermissions="true">
+                      <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/filepaths" />
+                  </provider>
+              </application>
+          </manifest>
+          """ % {"app_id": APP_ID, "host": SITE_ORIGIN.split("//")[1]}
+
+          FILES["android/app/src/main/res/values/strings.xml"] = r"""<?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="appName">%(app_name)s</string>
+              <string name="launchUrl">%(launch_url)s</string>
+              <string name="assetStatements">
+                  [{
+                      \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+                      \"target\": { \"namespace\": \"web\", \"site\": \"%(origin)s\" }
+                  }]
+              </string>
+          </resources>
+          """ % {"app_name": APP_NAME, "launch_url": LAUNCH_URL, "origin": SITE_ORIGIN}
+
+          FILES["android/app/src/main/res/values/colors.xml"] = """<?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="colorPrimary">%(t)s</color>
+              <color name="backgroundColor">%(t)s</color>
+              <color name="ic_launcher_background">%(t)s</color>
+          </resources>
+          """ % {"t": THEME}
+
+          FILES["android/app/src/main/res/values/styles.xml"] = """<?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="Theme.MyBoutiQ" parent="android:Theme.Material.Light.NoActionBar">
+                  <item name="android:windowBackground">@color/backgroundColor</item>
+              </style>
+          </resources>
+          """
+
+          FILES["android/app/src/main/res/xml/filepaths.xml"] = """<?xml version="1.0" encoding="utf-8"?>
+          <paths>
+              <files-path name="shared" path="shared/" />
+              <cache-path name="cache" path="/" />
+              <external-path name="external" path="." />
+          </paths>
+          """
+
+          adaptive = """<?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@color/ic_launcher_background" />
+              <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+          </adaptive-icon>
+          """
+          FILES["android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"] = adaptive
+          FILES["android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml"] = adaptive
+
+          import textwrap
+          for path, body in FILES.items():
+              os.makedirs(os.path.dirname(path), exist_ok=True)
+              with open(path, "w", encoding="utf-8") as fh:
+                  fh.write(textwrap.dedent(body).lstrip("\n"))
+              print("écrit", path)
+
+          # ── Icônes et écran de démarrage, dérivés des icônes du site ──
+          from PIL import Image
+
+          RES = "android/app/src/main/res"
+          src  = Image.open("icon-512.png").convert("RGBA")
+          mask = Image.open("icon-maskable-512.png").convert("RGBA")
+
+          legacy = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
+          fore   = {"mdpi": 108, "hdpi": 162, "xhdpi": 216, "xxhdpi": 324, "xxxhdpi": 432}
+
+          for d, size in legacy.items():
+              p = "%s/mipmap-%s" % (RES, d)
+              os.makedirs(p, exist_ok=True)
+              img = src.resize((size, size), Image.LANCZOS)
+              img.save(p + "/ic_launcher.png")
+              img.save(p + "/ic_launcher_round.png")
+
+          for d, size in fore.items():
+              p = "%s/mipmap-%s" % (RES, d)
+              os.makedirs(p, exist_ok=True)
+              mask.resize((size, size), Image.LANCZOS).save(p + "/ic_launcher_foreground.png")
+
+          os.makedirs(RES + "/drawable", exist_ok=True)
+          bg = tuple(int(THEME[i:i+2], 16) for i in (1, 3, 5)) + (255,)
+          splash = Image.new("RGBA", (1024, 1024), bg)
+          logo = src.resize((420, 420), Image.LANCZOS)
+          splash.paste(logo, (302, 302), logo)
+          splash.convert("RGB").save(RES + "/drawable/splash.png")
+
+          print("icônes et écran de démarrage générés")
+          PYEOF
+
+      - name: Reconstituer le keystore de signature
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secret ANDROID_KEYSTORE_BASE64 absent. Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/myboutiq-release.jks"
+          echo "Keystore reconstitué ($(stat -c%s "$RUNNER_TEMP/myboutiq-release.jks") octets)"
+
+      - name: Compiler l'APK signé
+        working-directory: android
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/myboutiq-release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: myboutiq
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+        run: gradle --no-daemon assembleRelease
+
+      - name: Vérifier la signature et renommer
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$APK" || { echo "::error::APK introuvable"; exit 1; }
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs "$APK"
+          FINAL="MyBoutiQ-${{ steps.version.outputs.name }}.apk"
+          cp "$APK" "$FINAL"
+          echo "APK_FILE=$FINAL" >> "$GITHUB_ENV"
+          ls -lh "$FINAL"
+
+      - name: Publier l'APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyBoutiQ-apk-${{ steps.version.outputs.name }}
+          path: ${{ env.APK_FILE }}
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Publier aussi le projet Android généré
+        uses: actions/upload-artifact@v4
+        with:
+          name: projet-android-genere
+          path: android
+          retention-days: 30
+
+      - name: Publier la Release (uniquement sur un tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.APK_FILE }}
+          name: MyBoutiQ ${{ steps.version.outputs.name }}
+          body: |
+            **MyBoutiQ ${{ steps.version.outputs.name }}** — application Android.
+
+            Téléchargez le fichier `.apk` ci-dessous, puis ouvrez-le sur votre
+            téléphone Android pour l'installer.
