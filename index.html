@@ -2852,7 +2852,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.84'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.85'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5335,7 +5335,12 @@ function validerCompleter(){
     // qu'il soit "parfumé" ou "local"). Il manquait totalement pour les familles.
     p.um=_cmpUmVal==='pc'?null:_cmpUmVal;
     var sacF=Math.round((parseFloat(String(document.getElementById('cmp-sac').value||'').replace(',','.'))||0)*100)/100;
-    p.umSac=(_cmpUmVal!=='pc'&&sacF>0)?sacF:null;
+    // ⚠️ LE CONDITIONNEMENT ÉTAIT JETÉ POUR TOUT ARTICLE VENDU À LA PIÈCE.
+    // `_cmpUmVal!=='pc'` : un casier de 12 Coca, un carton de 24 savons, une
+    // boîte de 100 cubes — rien n'était retenu, alors que c'est justement là
+    // que le commerçant a besoin qu'on s'en souvienne pour calculer son prix
+    // d'achat unitaire. Seuls le kilo et le litre en profitaient.
+    p.umSac=(sacF>0)?sacF:null;
     var i=1;
     p.vr.forEach(function(v){
       var e=vals[v.id];if(!e)return;
@@ -5367,7 +5372,12 @@ function validerCompleter(){
     p.pa=cmpPaUnit()||p.pa||0;
     p.um=_cmpUmVal==='pc'?null:_cmpUmVal;
     var sac=Math.round((parseFloat(String(document.getElementById('cmp-sac').value||'').replace(',','.'))||0)*100)/100;
-    p.umSac=(_cmpUmVal!=='pc'&&sac>0)?sac:null;
+    // ⚠️ LE CONDITIONNEMENT ÉTAIT JETÉ POUR TOUT ARTICLE VENDU À LA PIÈCE.
+    // `_cmpUmVal!=='pc'` : un casier de 12 Coca, un carton de 24 savons, une
+    // boîte de 100 cubes — rien n'était retenu, alors que c'est justement là
+    // que le commerçant a besoin qu'on s'en souvienne pour calculer son prix
+    // d'achat unitaire. Seuls le kilo et le litre en profitaient.
+    p.umSac=(sac>0)?sac:null;
     // Stock : c'est ICI qu'il manquait. definirStock passe par un événement,
     // donc le recalcul et la fusion multi-téléphones restent corrects.
     var champStk=document.getElementById('cmp-stk');
@@ -6993,12 +7003,54 @@ function refuserRafraichirPhotos(){
 // Sinon on ne touche JAMAIS à `um` : changer un article de « à la pièce » à
 // « au kilo » change sa façon de se vendre et son stock. On se contente
 // d'ajouter la taille du gros, qui ne fait qu'offrir des raccourcis.
+// ⭐ CE QUE SA PROPRE BOUTIQUE SAIT DÉJÀ.
+// Le catalogue ne renseigne que 25 % des articles à photo — et compléter le
+// reste voudrait dire INVENTER des nombres. Un « carton de 24 » inventé donne
+// un prix d'achat unitaire faux, et un mauvais prix d'achat ne se voit jamais.
+// Alors on ne devine pas : on regarde ce que CE commerçant a déjà saisi pour
+// un article voisin. S'il a dit une fois « casier de 12 » pour son Coca, son
+// Fanta le saura. C'est juste par construction, et ça s'enrichit tout seul.
+// ⚠️ Sa saisie l'emporte toujours : un carton fait 24 chez l'un, 12 chez
+// l'autre. La boutique passe donc AVANT le catalogue.
+function _condDeMaBoutique(nm){
+  try{
+    if(!DB||!DB.articles||!nm)return null;
+    var fam=null;try{fam=familleCatalogueDe(nm);}catch(e){}
+    var cle=txtNorm(fam||nm);
+    if(!cle||cle.length<3)return null;
+    var trouve=null;
+    DB.articles.some(function(a){
+      if(!a||!(a.umSac>0)||!a.nm)return false;
+      var af=null;try{af=familleCatalogueDe(a.nm);}catch(e){}
+      var ac=txtNorm(af||a.nm);
+      // Même famille de catalogue, ou même premier mot (« Savon Azur » et
+      // « Savon Premier » viennent du même carton chez lui).
+      if(ac===cle||ac.split(' ')[0]===cle.split(' ')[0]){
+        trouve={um:a.um||'pc',sac:a.umSac,cont:a.umCont||null,mien:true};return true;
+      }
+      return false;
+    });
+    return trouve;
+  }catch(e){return null;}
+}
 function appliquerConditionnementCatalogue(liste,neuf){
   var n=0;
   (liste||[]).forEach(function(p){
     if(!p||!p.nm)return;
+    // ⚠️ L'ORDRE COMPTE, et il était à l'envers. On demandait d'abord la
+    // FAMILLE : pour « Fanta orange », familleCatalogueDe renvoie « Fanta »,
+    // et il existe un article qui s'appelle exactement « Fanta » — la canette
+    // 33 cl, carton de 24. Le Fanta 60 cl héritait donc du carton des
+    // canettes. Le nom complet est plus précis que la famille : il passe
+    // devant. Puis sa boutique, qui est SA vérité. La famille en dernier.
     var m=null;
-    try{m=mesureCatalogue(familleCatalogueDe(p.nm)||p.nm);}catch(e){}
+    try{var m1=mesureCatalogue(p.nm); if(m1&&m1.sac>0)m=m1;}catch(e){}
+    if(!m)try{m=_condDeMaBoutique(p.nm);}catch(e){}
+    // ⚠️ PAS DE REPLI SUR LA FAMILLE. Les familles des 600 sont bâties sur le
+    // PREMIER MOT : « Djino » y désigne les bouteilles, mais la même clé
+    // désigne la canette dans le catalogue embarqué. Le repli fabriquait donc
+    // des conditionnements faux. Chaque entrée porte déjà celui de sa famille
+    // (catalogue-600.json, indices 7 et 8) : on n'a rien à aller chercher.
     if(!m)return;
     if(neuf&&!p.um&&m.um&&m.um!=='pc'){p.um=m.um;n++;}
     if(!(p.umSac>0)&&m.sac>0){p.umSac=m.sac;n++;}
@@ -7067,15 +7119,21 @@ function catalogueIndex(){
   try{
     if(_cat600&&_cat600.entrees)_cat600.entrees.forEach(function(e){
       var fam=e[0],cat=CAT_IDX_N[e[1]]||'Autre',emo=e[2],img=e[3],cont=e[4],mots=e[5],vr=e[6];
+      // ⚠️ sac:0 et cont:null étaient écrits EN DUR ici. Résultat mesuré :
+      // ZÉRO des 600 articles à photo ne connaissait son conditionnement —
+      // et ce sont eux que le commerçant choisit maintenant en priorité.
+      // Ils portent désormais leur vraie taille de gros (indices 7 et 8),
+      // recopiée du catalogue embarqué et de la liste de 964. Jamais devinée.
+      var fsac=e[7]||0,fcont=e[8]||null;
       if(Array.isArray(vr)&&vr.length){
         vr.forEach(function(v){
           var plein=fam+' '+v[0];
-          _catIdx.push({nm:v[0],plein:plein,fam:fam,cat:cat,um:'pc',sac:0,cont:null,
+          _catIdx.push({nm:v[0],plein:plein,fam:fam,cat:cat,um:'pc',sac:v[5]||fsac||0,cont:v[6]||fcont||null,
             e:v[1],img600:v[2],contenance:v[3],pa:0,px:0,
             k:txtNorm(v[0]+' '+fam+' '+plein+' '+(v[4]||''))});
         });
       }else{
-        _catIdx.push({nm:fam,plein:fam,fam:null,cat:cat,um:'pc',sac:0,cont:null,
+        _catIdx.push({nm:fam,plein:fam,fam:null,cat:cat,um:'pc',sac:fsac,cont:fcont,
           e:emo,img600:img,contenance:cont,pa:0,px:0,
           k:txtNorm(fam+' '+(mots||''))});
       }
@@ -7374,6 +7432,16 @@ function mesureCatalogue(fam){
     // étaient invisibles ici : leur nom vit dans `nm`, pas dans `fam`. Un
     // plateau de 30 œufs ne servait donc à personne.
     if(!e.fam&&txtNorm(e.nm)===f){r={um:e.um,sac:e.sac||0,cont:e.cont||null};return true;}
+    // ⚠️ ET les articles QUI ONT une famille. « Fanta orange » porte déjà
+    // casier:12 sur sa propre entrée, mais son nom n'était comparé que si
+    // l'entrée n'avait PAS de famille : on tenait la réponse et on allait
+    // la chercher ailleurs. « Coca-Cola » passait, « Fanta orange » non.
+    if(e.fam&&e.sac>0&&txtNorm(e.nm)===f){r={um:e.um,sac:e.sac,cont:e.cont||null};return true;}
+    // …et par son LIBELLÉ COMPLET (« Djino pamplemousse »), qui est le seul
+    // nom sous lequel le commerçant le connaît. Sans lui il fallait passer
+    // par la famille — et « Djino » désigne AUSSI la canette 33 cl en carton
+    // de 24, donc la bouteille héritait du carton des canettes.
+    if(e.sac>0&&e.plein&&txtNorm(e.plein)===f){r={um:e.um,sac:e.sac,cont:e.cont||null};return true;}
     return false;
   });
   // ⚠️ Le nom EXACT ne suffit pas. Un commerçant ne dit jamais « Savon de
@@ -9133,7 +9201,14 @@ document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='visible')try{majBoutonVeille();}catch(e){}
 });
 function saveArt(){var nm=document.getElementById('art-nm').value.trim(),pv=parseFloat(document.getElementById('ainp-pv').value)||0,stk=Math.round((parseFloat(String(document.getElementById('ainp-stk').value||'').replace(',','.'))||0)*100)/100,al=parseInt(document.getElementById('ainp-alerte').value)||5;if(!nm){showToast(t('errNom'));goAS(0);return;}if(!pv){showToast(t('errPrix'));return;}var _sac=Math.round((parseFloat(String((document.getElementById('ainp-sac')||{}).value||'').replace(',','.'))||0)*100)/100;
-DB.articles.push({id:DB.nextId++,nm,e:selEmo,img:selImg||null,cat:selCat||'Autre',px:pv,pa:pxAUA||0,stk,al,vd:0,vr:[],rt:ruptSel,um:umSel==='pc'?null:umSel,umSac:umSel!=='pc'&&_sac>0?_sac:null,umNom:(umSel==='pc'?((document.getElementById('ainp-umnom')||{}).value||'').trim().slice(0,12)||null:null)});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();closeSheet('ov-art');showToast(t('articleCree'));
+// ⚠️ « Unités par casier » (ainp-parcont) servait à CALCULER la quantité et
+// le prix unitaire, puis était JETÉ. Le commerçant disait à l'app « un casier
+// fait 24 » et elle l'oubliait aussitôt. On le garde, avec le mot qu'il a
+// choisi (carton, sac, casier…) — c'est sa vérité, pas celle du catalogue.
+var _parc=Math.round((parseFloat(String((document.getElementById('ainp-parcont')||{}).value||'').replace(',','.'))||0)*100)/100;
+var _sacRetenu=(_sac>0?_sac:_parc)||0;
+var _contRetenu=(_parc>0&&achatTypeA&&achatTypeA!=='unite')?String(achatTypeA):null;
+DB.articles.push({id:DB.nextId++,nm,e:selEmo,img:selImg||null,cat:selCat||'Autre',px:pv,pa:pxAUA||0,stk,al,vd:0,vr:[],rt:ruptSel,um:umSel==='pc'?null:umSel,umSac:_sacRetenu>0?_sacRetenu:null,umCont:_contRetenu,umNom:(umSel==='pc'?((document.getElementById('ainp-umnom')||{}).value||'').trim().slice(0,12)||null:null)});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();closeSheet('ov-art');showToast(t('articleCree'));
 // Le bon moment pour proposer une famille, c'est MAINTENANT : le nouvel
 // article n'a encore aucune vente, donc le regroupement est sans risque.
 try{proposerRegroupement(DB.articles[DB.articles.length-1]);}catch(e){}}
