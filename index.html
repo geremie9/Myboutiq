@@ -2876,7 +2876,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.89'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.90'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3215,12 +3215,16 @@ async function syncToSupa(){
       }
       if(!user){
         // Vendeur : écriture serveur = code + PIN équipe (vérifié serveur). Le PIN patron ne part jamais.
-        if(_shopPin==null||String(_shopPin).length<4)throw new Error(lang==='fr'?'🔐 Reconnecte-toi avec le PIN équipe':'🔐 Reconnect with the team PIN');
+        if(!_pinEncoreUtilisable())throw new Error(lang==='fr'?'🔐 Reconnecte-toi avec le PIN équipe':'🔐 Reconnect with the team PIN');
         var rpcSave=await supa.rpc('boutique_ecrire',{p_code:DB.cfg.code,p_pin:String(_shopPin),p_data:payload.data});
         if(!rpcSave.error&&rpcSave.data===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
         // Serveur temporairement fermé (trop de PIN faux) : les ventes restent
         // dans le téléphone et repartiront au prochain essai.
         if(rpcSave.error&&_signalerBlocagePin(rpcSave.error))throw new Error('PIN_BLOQUE');
+        // Même piège qu'à la lecture : pas d'erreur, juste un refus muet.
+        // Sans ce test, l'envoi était reprogrammé toutes les 800 ms et
+        // chaque tentative comptait comme un PIN faux.
+        if(!rpcSave.error)_signalerPinRefuse();
         throw new Error(lang==='fr'?'❌ Sync vendeur refusée (code ou PIN équipe)':'❌ Seller sync refused (code or team PIN)');
       }
       var byCode=await supa.from('boutiques').select('id,owner_id,code').eq('code',DB.cfg.code).limit(1);
@@ -3256,15 +3260,51 @@ async function syncToSupa(){
 // S1 : lecture serveur = code + PIN obligatoires (PIN patron ou code équipe).
 // Le PIN de session (_shopPin) est posé à la connexion. Sans lui, aucune donnée.
 var _shopPin=null;
+// ⚠️⚠️ LE SERVEUR NE DIT PAS « PIN FAUX » — IL RENVOIE « RIEN ».
+// boutique_lire compte un échec puis `return null`, SANS erreur. Un PIN
+// refusé était donc indistinguable de « rien à lire » : l'app ne l'apprenait
+// jamais et rappelait toutes les 800 ms après chaque vente. Le serveur
+// comptait chaque appel comme un PIN faux.
+// MESURÉ EN BASE : 10 échecs en 12 minutes sur une boutique qui avait déjà
+// réussi — puis blocage, et un message qui accusait le commerçant d'avoir
+// mal tapé alors qu'il n'avait rien tapé. Il était bloqué EN PLEINE VENTE.
+var _pinRefuse=false;
+function _signalerPinRefuse(){
+  if(_pinRefuse)return true;
+  _pinRefuse=true;
+  var fr=(lang==='fr');
+  // Le PIN gardé ici est périmé — typiquement changé depuis un autre
+  // téléphone. mergeDB protège la copie locale POUR TOUJOURS : sans cet
+  // effacement il repart indéfiniment et rebloque la boutique à chaque fois.
+  try{if(DB&&DB.cfg){DB.cfg.pin='';DB.cfg.pinVendeur='';}}catch(e){}
+  _shopPin=null;
+  showToast('🔐 '+(fr?'Ce téléphone n\'arrive plus à prouver qui tu es — retape ton PIN'
+                     :'This phone can no longer prove who you are — enter your PIN again'));
+  try{parler(fr?'Retape ton code.':'Enter your PIN again.');}catch(e){}
+  return true;
+}
+function _pinEncoreUtilisable(){
+  return !_pinRefuse && _shopPin!=null && String(_shopPin).length>=4;
+}
 async function loadFromSupa(code,pin){
   if(!supa)return null;
+  // Tant qu'il n'a pas retapé son PIN, on ne rappelle plus le serveur : c'est
+  // ce martèlement qui le faisait bloquer.
+  if(pin==null&&_pinRefuse)return null;
   try{
     code=formatShopCode(code);
     var p=(pin!=null?pin:_shopPin);
     if(p==null||String(p).length<4)return null;
     var res=await supa.rpc('boutique_lire',{p_code:code,p_pin:String(p)});
     if(res.error){_signalerBlocagePin(res.error);return null;}
-    if(!res.data)return null;
+    if(!res.data){
+      // pin fourni = il vient de le TAPER : l'écran de connexion s'en charge,
+      // on ne touche à rien. pin absent = c'est NOTRE PIN gardé qui est
+      // refusé, et là il faut s'arrêter au lieu de réessayer.
+      if(pin==null)_signalerPinRefuse();
+      return null;
+    }
+    _pinRefuse=false;                  // le serveur nous accepte à nouveau
     if(pin!=null)_shopPin=String(pin); // 1re lecture réussie -> on mémorise le PIN validé
     return res.data;
   }catch(e){_signalerBlocagePin(e);return null;}
@@ -4511,7 +4551,16 @@ function registerVendeurEquipe(nm){
 }
 function _finishLoginP(){
   role='patron';
-  if(DB&&DB.cfg){_shopPin=String(DB.cfg.pin||'');assurerPinVendeur();} // 2e facteur serveur du patron
+  // ⚠️ Il manquait le repli sur _pinPatronValide que j'avais ajouté en 19.81
+  // à l'AUTRE chemin de connexion (_terminerLoginPatron). Ici _shopPin
+  // devenait la chaîne vide dès que cfg.pin était absent — et il l'est
+  // toujours au retour du serveur, puisque le déclencheur efface le clair.
+  if(DB&&DB.cfg){
+    _shopPin=String(DB.cfg.pin||_pinPatronValide||'')||null;
+    if(_shopPin&&DB.cfg&&!DB.cfg.pin)DB.cfg.pin=_shopPin;   // pour le hors ligne
+    _pinRefuse=false;                                        // nouvelle connexion : on repart propre
+    assurerPinVendeur();
+  } // 2e facteur serveur du patron
   document.getElementById('u-nm').textContent=DB.cfg.nom.split(' ')[0];
   document.getElementById('u-role').textContent=t('patron')+' 👑';
   document.getElementById('u-role').className='rbdg rb-p';
@@ -4774,6 +4823,7 @@ async function loginV(){
   _finishLoginV(nm,code);
 }
 function _finishLoginV(nm,code){
+  _pinRefuse=false;   // il vient de prouver son PIN : on repart propre
   // On demande AVANT d'ouvrir la boutique : un vendeur écarté par le patron,
   // ou un vendeur de trop, ne doit pas entrer.
   var etat=registerVendeurEquipe(nm),fr=lang==='fr';
