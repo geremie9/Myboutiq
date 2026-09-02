@@ -2876,7 +2876,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.88'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.89'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3422,15 +3422,20 @@ document.addEventListener('DOMContentLoaded',function(){
   try{initPaysLogin();}catch(e){}
   // Le code d'invitation doit être lu AVANT le démarrage, il décide de l'écran.
   try{
-    var _c=new URLSearchParams(location.search).get('code');
+    var _p=new URLSearchParams(location.search);
+    var _c=_p.get('code');
+    // Le prénom voyage avec le lien quand le patron a invité quelqu'un de
+    // précis : le vendeur n'a plus que son PIN à taper, dès la première fois.
+    var _n=String(_p.get('nom')||'').trim().slice(0,24);
+    if(_n){var _fn=document.getElementById('v-nom'); if(_fn&&!_fn.value)_fn.value=_n;}
     if(_c){
       var _d=normalizeShopCode(_c);
       if(_d){
         var _f=document.getElementById('v-code'); if(_f)_f.value=formatShopCode(_d);
         _invitationCode=_d;
       }
-      history.replaceState(null,'',location.pathname); // URL propre
     }
+    if(_c||_n)history.replaceState(null,'',location.pathname); // URL propre
   }catch(e){}
   if(_connu){try{_demarrerApp();}catch(e){}}
   // Le reste (connexion serveur, icônes, version) se fait APRÈS l'affichage :
@@ -9908,7 +9913,7 @@ function appelCli(){if(cliCours&&cliCours.tel&&cliCours.tel!=='N/A')window.open(
 // ═══════════════════════════════════════════
 function renderEquipe(){var c=document.getElementById('equipe-lst');if(!c)return;
   var _mv=document.getElementById('inp-maxv');
-  if(_mv&&document.activeElement!==_mv)_mv.value=(DB&&DB.cfg&&DB.cfg.maxVendeurs)||0;var rl={patron:lang==='fr'?'👑 Patron':'👑 Owner',vendeur:lang==='fr'?'👦 Vendeur':'👦 Seller',gerant:lang==='fr'?'👨‍💼 Gérant':'👨‍💼 Manager'};var rc={patron:'var(--A)',vendeur:'var(--B)',gerant:'var(--PU)'};c.innerHTML=DB.equipe.map(function(v,i){return '<div class="vit3"><div class="vav" style="background:'+v.bg+';color:'+v.tc+'">'+v.nm[0]+'</div><div class="vinf3"><div class="vnm3">'+v.nm+'</div><div class="vrl" style="color:'+rc[v.role]+'">'+rl[v.role]+'</div></div>'+(v.role!=='patron'?'<button onclick="ouvrirPerm('+i+')" style="background:#F0F4FF;color:var(--B);border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:8px">🔐</button><button class="tog '+(v.actif?'on':'off')+'" onclick="togV('+i+')" style="width:38px;height:22px"></button>':'<span style="font-size:10px;font-weight:700;background:#E8F5E9;color:var(--G);padding:2px 8px;border-radius:20px">'+(lang==='fr'?'Actif':'Active')+'</span>')+'</div>';}).join('')+'<div class="stit2" style="justify-content:center;color:var(--B);font-weight:800;font-size:13px;cursor:pointer;padding:12px" onclick="inviterVendeur()">+ '+(lang==='fr'?'Inviter un vendeur':'Invite a seller')+'</div>';}
+  if(_mv&&document.activeElement!==_mv)_mv.value=(DB&&DB.cfg&&DB.cfg.maxVendeurs)||0;var rl={patron:lang==='fr'?'👑 Patron':'👑 Owner',vendeur:lang==='fr'?'👦 Vendeur':'👦 Seller',gerant:lang==='fr'?'👨‍💼 Gérant':'👨‍💼 Manager'};var rc={patron:'var(--A)',vendeur:'var(--B)',gerant:'var(--PU)'};c.innerHTML=DB.equipe.map(function(v,i){return '<div class="vit3"><div class="vav" style="background:'+v.bg+';color:'+v.tc+'">'+v.nm[0]+'</div><div class="vinf3"><div class="vnm3">'+v.nm+'</div><div class="vrl" style="color:'+rc[v.role]+'">'+rl[v.role]+'</div></div>'+(v.role!=='patron'?'<button onclick="inviterVendeur('+i+')" title="'+(lang==='fr'?'Envoyer son lien':'Send invite')+'" style="background:#E8F5E9;color:var(--G);border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:6px">📤</button><button onclick="ouvrirPerm('+i+')" style="background:#F0F4FF;color:var(--B);border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:8px">🔐</button><button class="tog '+(v.actif?'on':'off')+'" onclick="togV('+i+')" style="width:38px;height:22px"></button>':'<span style="font-size:10px;font-weight:700;background:#E8F5E9;color:var(--G);padding:2px 8px;border-radius:20px">'+(lang==='fr'?'Actif':'Active')+'</span>')+'</div>';}).join('')+'<div class="stit2" style="justify-content:center;color:var(--B);font-weight:800;font-size:13px;cursor:pointer;padding:12px" onclick="inviterVendeur()">+ '+(lang==='fr'?'Inviter un vendeur':'Invite a seller')+'</div>';}
 // ── PERMISSIONS VENDEUR ──
 var PERM_LIST=[
   {k:'vente',e:'🛒',fr:'Encaisser des ventes',en:'Process sales'},
@@ -10238,7 +10243,19 @@ function editNumFiscal(){
   DB.cfg.numFiscal=v.trim();save();
   showToast(DB.cfg.numFiscal?'✅ '+(lang==='fr'?'N° enregistré':'ID saved'):'🗑️ '+(lang==='fr'?'N° retiré':'ID removed'));
 }
-function inviterVendeur(){showToast('👤 '+(lang==='fr'?'Partage le code':'Share code')+' : '+DB.cfg.code);}
+// ⚠️ CETTE FONCTION NE FAISAIT RIEN D'UTILE. « + Inviter un vendeur »
+// affichait un message avec le code, et c'est tout — le patron devait ensuite
+// le dicter au téléphone, et le vendeur le retaper à la main.
+// Or le lien d'invitation EXISTE et FONCTIONNE (vérifié : /join/CODE répond,
+// affiche la boutique, et ouvre l'app code déjà rempli). Le seul bouton qui
+// s'en servait était enterré dans Réglages, sous « Code boutique ».
+// Le geste naturel envoie maintenant le vrai lien.
+function inviterVendeur(i){
+  if(!DB||!DB.cfg||!DB.cfg.code){showToast('⛔ '+(lang==='fr'?'Ta boutique n\'a pas encore de code':'No shop code yet'));return;}
+  var nom=null;
+  try{if(i!=null&&DB.equipe&&DB.equipe[i]&&DB.equipe[i].role!=='patron')nom=DB.equipe[i].nm;}catch(e){}
+  partagerCode(nom);
+}
 var SUPPORT_TEL='237689335389';
 var SUPPORT_MAIL='geremiekodji9@gmail.com';
 function _supportTexte(){
@@ -10706,15 +10723,26 @@ function revealTeamCode(){
 function genCode(){var n=String(Math.floor(Math.random()*9000000000+1000000000));return n.slice(0,5)+" "+n.slice(5);}
 // Lien d'invitation : basé sur l'origine courante, donc il suit automatiquement
 // le domaine utilisé (vercel.app aujourd'hui, myboutiq.online une fois branché).
-function lienInvitation(){
+// `nom` : quand le patron invite quelqu'un de PRÉCIS, son prénom voyage dans
+// le lien. Le vendeur n'a alors plus que son PIN à taper — le code et le
+// prénom sont déjà remplis. C'est deux champs de moins sur la seule fois où
+// la porte est vraiment difficile : la première.
+function lienInvitation(nom){
   var d=normalizeShopCode(DB&&DB.cfg&&DB.cfg.code||'');
-  return d?(location.origin+'/join/'+d):location.origin;
+  if(!d)return location.origin;
+  var u=location.origin+'/join/'+d;
+  if(nom)u+='?n='+encodeURIComponent(String(nom).trim().slice(0,24));
+  return u;
 }
-function partagerCode(){
+function partagerCode(nom){
   var fr=lang==='fr';
-  var msg='🏪 *MyBoutiQ*\n\n'+(fr?'Rejoins ma boutique :':'Join my store:')+' '+DB.cfg.nom+'\n\n'
+  var msg='🏪 *MyBoutiQ*\n\n'
+    +(nom?((fr?'Bonjour ':'Hello ')+nom+'. '):'')
+    +(fr?'Rejoins ma boutique :':'Join my store:')+' '+DB.cfg.nom+'\n\n'
     +(fr?'Code boutique :':'Store code:')+' *'+formatShopCode(DB.cfg.code)+'*\n\n'
-    +(fr?'👉 Ouvre ce lien, tout est pré-rempli :':'👉 Open this link, everything is pre-filled:')+'\n'+lienInvitation();
+    +(fr?(nom?'👉 Ouvre ce lien : ton prénom et le code sont déjà remplis, il ne te restera que le PIN.'
+             :'👉 Ouvre ce lien, le code est déjà rempli :')
+        :'👉 Open this link:')+'\n'+lienInvitation(nom);
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 // Partage natif (Android/iOS) si dispo, sinon copie du lien

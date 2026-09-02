@@ -95,8 +95,23 @@ body::before{content:'';position:absolute;width:340px;height:340px;border-radius
   // Le code est stocké formaté ("99900 01234" pour 10 chiffres)
   var formate=digits.length===10?digits.slice(0,5)+' '+digits.slice(5):digits;
 
+  // Le prénom, quand le patron a invité quelqu'un de précis (/join/CODE?n=Awa).
+  // Il traverse jusqu'à l'app : le vendeur n'aura plus que son PIN à taper.
+  var prenom=String(new URLSearchParams(location.search).get('n')||'').trim().slice(0,24);
+
   document.getElementById('code').textContent=formate||'—';
-  document.getElementById('open').href=digits?('./?code='+encodeURIComponent(digits)):'./';
+  var cible='./';
+  if(digits){
+    cible='./?code='+encodeURIComponent(digits);
+    if(prenom)cible+='&nom='+encodeURIComponent(prenom);
+  }
+  document.getElementById('open').href=cible;
+  if(prenom){
+    var b=document.getElementById('open');
+    if(b)b.textContent='📲 Ouvrir MyBoutiQ — '+prenom;
+    var li=document.querySelector('li');
+    if(li)li.textContent='Le code et ton prénom sont déjà remplis — entre le PIN équipe';
+  }
 
   function majWa(nomBoutique){
     var msg='Bonjour, je souhaite rejoindre la boutique '+(nomBoutique?('"'+nomBoutique+'" '):'')+
