@@ -2330,7 +2330,14 @@ body{max-width:min(100%,1200px)}
     </div>
     <div style="padding:4px 15px 0">
       <div style="font-size:12px;color:var(--M);font-weight:600;margin-bottom:10px" id="cha-aide">Touche tout ce que tu as. Tu mettras les prix juste après.</div>
-      <input class="sinp" id="cha-src" oninput="chaFiltrer(this.value)" placeholder="🔍 Chercher un article…" style="width:100%;margin-bottom:9px">
+      <!-- ⚠️ Il n'y avait AUCUN micro ici, alors que la dictée existe ailleurs
+           dans l'app. C'est pourtant le seul écran où quelqu'un qui ne sait
+           pas écrire doit chercher parmi 600 articles. -->
+      <div style="display:flex;gap:7px;margin-bottom:9px">
+        <input class="sinp" id="cha-src" oninput="chaFiltrer(this.value)" placeholder="🔍 Chercher un article…" style="flex:1;min-width:0">
+        <button type="button" id="cha-mic" onclick="dicterDans('cha-src','cha-mic')" title="Dire le nom"
+          style="flex:none;width:46px;border-radius:12px;border:1.5px solid var(--BD);background:var(--C);font-size:19px;cursor:pointer">🎤</button>
+      </div>
       <div id="cha-cats" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch"></div>
     </div>
     <div id="cha-grid" style="padding:4px 15px 12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:9px;overflow-y:auto;max-height:52vh"></div>
@@ -2869,7 +2876,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.87'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.88'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4973,6 +4980,9 @@ function mettreEnAvant(pid){
   ordrePrio.unshift(pid);
   if(ordrePrio.length>8)ordrePrio.length=8;
 }
+// Dit une seule fois par session : la question « qu'est-ce que tu vends ? »
+// posée à voix haute sur une boutique vide.
+var _ditQuoiVendre=false;
 function renderProd(lst){
   // La grille est reconstruite : le panneau des variantes n'y survivrait pas,
   // on le referme proprement plutôt que d'en garder une référence morte.
@@ -4984,17 +4994,27 @@ function renderProd(lst){
     var fr=lang==='fr';
     if(!DB.articles.length&&(role==='patron'||hasPerm('produits'))){
       // Nouvelle boutique vide -> on GUIDE vers la 1re action
+      // ⚠️ MESURÉ : 117 mots de français et DEUX décisions avant de pouvoir
+      // ajouter un seul article — trois boutons ici, puis cinq portes. On
+      // demandait à quelqu'un qui ne lit pas de CHOISIR COMMENT FAIRE avant
+      // de le laisser FAIRE. Une seule action maintenant : voir ses articles
+      // en photos. Les cinq portes restent, sous un lien discret.
       g.innerHTML='<div class="empty-guide" style="grid-column:1/-1">'+
         '<div class="eg-ico">🛍️</div>'+
-        '<div class="eg-t">'+(fr?'Ta caisse est prête !':'Your register is ready!')+'</div>'+
-        '<div class="eg-s">'+(fr?'Ajoute ton premier article pour commencer à vendre.':'Add your first item to start selling.')+'</div>'+
-        '<button class="eg-btn" onclick="ouvrirPorteArticles()">📦 '+(fr?'Ajouter mes articles':'Add my 1st item')+'</button>'+
-        '<div><button class="eg-btn2" onclick="ouvrirAjoutExpress()">⚡ '+(fr?'Ajouter plusieurs articles d\'un coup':'Add several items at once')+'</button></div>'+
-        '<div><button class="eg-btn2" onclick="importerModeleArticles()">📦 '+(fr?'Ou partir d\'un modèle d\'articles':'Or start from a template')+'</button></div>'+
-        '<div class="eg-step"><span class="eg-num">1</span><span>'+(fr?'<b>Ajoute</b> tes articles (nom + prix)':'<b>Add</b> your items (name + price)')+'</span></div>'+
-        '<div class="eg-step"><span class="eg-num">2</span><span>'+(fr?'<b>Touche</b> un article pour le vendre':'<b>Tap</b> an item to sell it')+'</span></div>'+
-        '<div class="eg-step"><span class="eg-num">3</span><span>'+(fr?'<b>Encaisse</b> et envoie le reçu':'<b>Cash in</b> and send the receipt')+'</span></div>'+
+        '<div class="eg-t">'+(fr?'Qu\'est-ce que tu vends ?':'What do you sell?')+'</div>'+
+        '<button class="eg-btn" onclick="ouvrirChoixArticles()">🖼️ '+(fr?'Choisir en photos':'Choose from photos')+'</button>'+
+        '<div><button class="eg-btn2" onclick="ouvrirPorteArticles()">'+(fr?'Autres façons d\'ajouter':'Other ways to add')+'</button></div>'+
       '</div>';
+      // L'app SAIT parler depuis la 19.74 et ne disait rien sur tout ce
+      // parcours. Elle pose la question à voix haute — c'est la seule chose
+      // qui atteint quelqu'un qui ne lit pas.
+      // ⚠️ UNE SEULE FOIS : renderProd est rappelée à chaque redessin, la
+      // phrase serait répétée sans fin et deviendrait insupportable.
+      if(!_ditQuoiVendre){
+        _ditQuoiVendre=true;
+        try{parler(fr?'Qu\'est-ce que tu vends ? Touche le bouton pour choisir en photos.'
+                     :'What do you sell? Tap the button to choose from photos.');}catch(e){}
+      }
     }else if(!DB.articles.length){
       // Vendeur sur une boutique sans article
       g.innerHTML='<div class="empty-guide" style="grid-column:1/-1"><div class="eg-ico">📦</div><div class="eg-t">'+(fr?'Aucun article':'No items')+'</div><div class="eg-s">'+(fr?'Demande au patron d\'ajouter des articles.':'Ask the owner to add items.')+'</div></div>';
@@ -8628,6 +8648,27 @@ function chaOuvrirFamille(i){_chaFam=(_chaFam===i)?null:i;chaRendre();}
 // Avant, on ne le transportait pas : il fallait le retrouver plus tard par le
 // nom, ce qui échoue dès que l'écriture diffère d'un tiret (« Coca Cola »
 // contre « Coca-Cola »). On tient la réponse au moment du choix — on la garde.
+// L'article qui n'est pas dans les 600 rejoint le panier comme les autres :
+// il garde le nom qu'il a écrit ou DIT, et suit exactement le même chemin.
+// Pas de menu, pas de détour — la sortie est là où il bute.
+function chaAjouterQuandMeme(){
+  var fr=(lang==='fr');
+  var champ=document.getElementById('cha-src');
+  var nm=String((champ&&champ.value)||'').trim().slice(0,60);
+  if(nm.length<2){showToast('✏️ '+(fr?'Écris ou dis le nom de l\'article':'Type or say the item name'));return;}
+  if(DB&&DB.articles&&DB.articles.some(function(p){return txtNorm(p.nm)===txtNorm(nm);})){
+    showToast('ℹ️ '+(fr?'« '+nm+' » est déjà dans ta boutique':'Already in your shop'));return;
+  }
+  var propre=_majuscule(nm);
+  _chaSel['libre_'+txtNorm(nm)]={nm:propre,img:'',
+    e:emojiDepuisNomProduit(nm),cat:categorieDepuisNomProduit(nm),sac:0,cont:''};
+  if(champ)champ.value='';
+  _chaQ='';_chaFam=null;
+  chaRendre();
+  try{parler((fr?'J\'ai gardé ':'Kept ')+propre);}catch(e){}
+  showToast('👍 '+propre+' '+(fr?'— continue, ou touche Continuer':'— keep going'));
+  if(champ)try{champ.focus();}catch(e){}
+}
 function chaBasculer(cle,nm,img,emo,cat,sac,cont){
   if(_chaSel[cle])delete _chaSel[cle];
   else _chaSel[cle]={nm:nm,img:img,e:emo,cat:cat,sac:(+sac||0),cont:cont||''};
@@ -8688,7 +8729,22 @@ function chaRendre(){
         'chaBasculer(\'a'+i+'\',\''+e[0].replace(/'/g,"\\'")+'\',\''+e[3]+'\',\''+e[2]+'\',\''+cat.replace(/'/g,"\\'")+'\','+(+e[7]||0)+',\''+String(e[8]||'').replace(/'/g,"\\'")+'\')');
     }
   });
-  g.innerHTML=h||('<div style="grid-column:1/-1;text-align:center;padding:22px 0;font-size:12.5px;color:var(--M);font-weight:700">'+(fr?'Rien trouvé':'Nothing found')+'</div>');
+  // ⚠️ « RIEN TROUVÉ » ÉTAIT UN CUL-DE-SAC, et c'est ce qui rendait ce
+  // parcours incohérent : mesuré, seuls 31 % des articles de son pays sont
+  // dans les 600 photos. Sept commerçants sur dix cherchaient leur article,
+  // lisaient « Rien trouvé », et n'avaient plus AUCUN bouton pour avancer.
+  // Le message devient donc une porte : ce qu'il vient d'écrire (ou de dire)
+  // devient l'article. C'est « vendre crée l'article » (19.66) appliqué ici.
+  var _brut=String((document.getElementById('cha-src')||{}).value||'').trim();
+  if(!h&&_brut.length>=2){
+    g.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:16px 6px">'
+      +'<div style="font-size:12.5px;color:var(--M);font-weight:700;margin-bottom:12px">'
+      +(fr?'Pas de photo pour ça — ce n\'est pas grave':'No photo for that — never mind')+'</div>'
+      +'<button type="button" class="bnxt" style="width:100%" onclick="chaAjouterQuandMeme()">➕ '
+      +(fr?'Ajouter « ':'Add “')+_brut.replace(/</g,'&lt;')+(fr?' » quand même':'” anyway')+'</button></div>';
+  }else{
+    g.innerHTML=h||('<div style="grid-column:1/-1;text-align:center;padding:22px 0;font-size:12.5px;color:var(--M);font-weight:700">'+(fr?'Rien trouvé':'Nothing found')+'</div>');
+  }
   majChaBouton();
 }
 function majChaBouton(){
