@@ -1902,9 +1902,26 @@ body{max-width:min(100%,1200px)}
       <button type="button" class="bvid" style="margin-bottom:12px" onclick="ouvrirCollageListe()">📋 <span id="exp-coller-l">Coller une liste (WhatsApp, fournisseur)</span></button>
 
       <div class="pig" style="margin-bottom:8px"><label class="pl" id="exp-nm-l">Nom de l'article</label>
-        <input class="pi sm" id="exp-nm" type="text" style="font-weight:700" placeholder="ex : Riz parfumé" autocomplete="off" onkeydown="expTouche(event,'exp-pv')"></div>
+        <input class="pi sm" id="exp-nm" type="text" style="font-weight:700" placeholder="ex : Riz parfumé" autocomplete="off" oninput="expNomChange()" onkeydown="expTouche(event,'exp-pv')"></div>
+
+      <!-- ⚠️ « L'ACHAT UNITAIRE, ÇA PERTURBE ». Sa remarque, et elle est juste :
+           un commerçant achète un CARTON à 12 000, pas un savon à 500. On lui
+           demandait un nombre qu'il n'a pas en tête, donc il divisait dans sa
+           tête, au milieu d'une liste — et une division fausse là, ça ne se
+           voit plus jamais. Il dit maintenant ce qu'il a payé POUR LE PAQUET,
+           et l'app divise devant lui. -->
+      <div style="display:flex;gap:7px;margin-bottom:9px">
+        <div class="abtn on" id="exp-m-u" onclick="expMode('u')" style="flex:1;padding:9px 6px"><span class="aemo" style="font-size:19px;margin-bottom:2px">🔢</span><span class="albl" id="exp-m-u-l">Prix à l'unité</span></div>
+        <div class="abtn" id="exp-m-g" onclick="expMode('g')" style="flex:1;padding:9px 6px"><span class="aemo" style="font-size:19px;margin-bottom:2px">📦</span><span class="albl" id="exp-m-g-l">Prix du carton</span></div>
+      </div>
+      <div id="exp-gros" style="display:none;margin-bottom:9px">
+        <div class="pig"><label class="pl" id="exp-parc-l">Combien d'unités dans 1 carton ?</label>
+          <input class="pi sm" id="exp-parc" type="number" inputmode="numeric" placeholder="ex : 24" oninput="expCalcGros()"></div>
+        <div id="exp-gros-res" style="display:none;background:#E8F5E9;border-radius:9px;padding:8px 11px;font-size:12px;font-weight:800;color:#1B5E20;margin-top:7px"></div>
+      </div>
+
       <div style="display:flex;gap:7px">
-        <div class="pig" style="flex:1"><label class="pl" id="exp-pa-l">Achat</label><input class="pi sm" id="exp-pa" type="number" inputmode="numeric" placeholder="—" onkeydown="expTouche(event,'exp-pv')"></div>
+        <div class="pig" style="flex:1"><label class="pl" id="exp-pa-l">Achat</label><input class="pi sm" id="exp-pa" type="number" inputmode="numeric" placeholder="—" oninput="expCalcGros()" onkeydown="expTouche(event,'exp-pv')"></div>
         <div class="pig" style="flex:1"><label class="pl" id="exp-pv-l">Vente *</label><input class="pi sm" id="exp-pv" type="number" inputmode="numeric" placeholder="1200" onkeydown="expTouche(event,'AJOUT')"></div>
         <div class="pig" style="flex:1"><label class="pl" id="exp-stk-l">Stock</label><input class="pi sm" id="exp-stk" type="number" inputmode="decimal" step="0.25" placeholder="—" onkeydown="expTouche(event,'AJOUT')"></div>
       </div>
@@ -2852,7 +2869,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.85'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.86'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8282,10 +8299,87 @@ var _expListe=[];
 function ouvrirAjoutExpress(){
   if(!(role==='patron'||hasPerm('produits')))return;
   _expListe=[];
-  ['exp-nm','exp-pa','exp-pv','exp-stk'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  ['exp-nm','exp-pa','exp-pv','exp-stk','exp-parc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  try{expMode('u');}catch(e){}
   expRender();
   document.getElementById('ov-express').classList.add('show');
   setTimeout(function(){try{document.getElementById('exp-nm').focus();}catch(e){}},250);
+}
+// ── ACHETER EN GROS, VENDRE À L'UNITÉ ───────────────────────────────
+// Sa remarque : « quand on importe, ça demande le prix d'achat unitaire… or
+// c'est l'ensemble des produits qui s'achètent en gros, en carton ou en sac.
+// Ça perturbe. » Exact : on lui réclamait un chiffre qu'il n'a pas en tête,
+// au milieu d'une liste. Il divisait mentalement, et une division fausse à ce
+// moment-là ne se voit plus JAMAIS — elle se contente de fausser sa marge.
+var _expMode='u';
+function expMode(m){
+  _expMode=(m==='g')?'g':'u';
+  var u=document.getElementById('exp-m-u'),g=document.getElementById('exp-m-g');
+  if(u)u.classList.toggle('on',_expMode==='u');
+  if(g)g.classList.toggle('on',_expMode==='g');
+  var bloc=document.getElementById('exp-gros');
+  if(bloc)bloc.style.display=(_expMode==='g')?'block':'none';
+  var lbl=document.getElementById('exp-pa-l');
+  if(lbl)lbl.textContent=(_expMode==='g')
+    ?((lang==='fr'?'Prix du ':'Price per ')+_expMotGros())
+    :(lang==='fr'?'Achat':'Buy');
+  expCalcGros();
+}
+// Le mot qu'il emploie vraiment : carton, sac, casier, bidon…
+function _expMotGros(){
+  var nm=(document.getElementById('exp-nm')||{}).value||'';
+  try{
+    var m=_condDeMaBoutique(nm)||mesureCatalogue(nm);
+    if(m&&m.cont)return m.cont;
+  }catch(e){}
+  return lang==='fr'?'carton':'box';
+}
+// Dès qu'il écrit le nom, on lui pose ce que la boutique et le catalogue
+// savent déjà : « un carton de savon Azur, c'est 24 ». C'est là que le
+// conditionnement de 19.85 sert vraiment.
+function expNomChange(){
+  var champ=document.getElementById('exp-parc');
+  if(!champ)return;
+  var nm=(document.getElementById('exp-nm')||{}).value||'';
+  var m=null;
+  try{m=_condDeMaBoutique(nm)||mesureCatalogue(nm);}catch(e){}
+  var mot=_expMotGros();
+  var lbl=document.getElementById('exp-parc-l');
+  if(lbl)lbl.textContent=(lang==='fr'?("Combien d'unités dans 1 "+mot+" ?"):('Units per '+mot+'?'));
+  var lg=document.getElementById('exp-m-g-l');
+  if(lg)lg.textContent=(lang==='fr'?'Prix du ':'Price per ')+mot;
+  if(_expMode==='g'){
+    var la=document.getElementById('exp-pa-l');
+    if(la)la.textContent=(lang==='fr'?'Prix du ':'Price per ')+mot;
+  }
+  // ⚠️ On ne remplit QUE si le champ est vide : ce qu'il a tapé ne doit
+  // jamais être remplacé par une proposition.
+  if(m&&m.sac>0&&!String(champ.value||'').trim())champ.value=m.sac;
+  expCalcGros();
+}
+function expCalcGros(){
+  var res=document.getElementById('exp-gros-res');if(!res)return;
+  if(_expMode!=='g'){res.style.display='none';return;}
+  var fr=(lang==='fr');
+  var total=parseFloat((document.getElementById('exp-pa')||{}).value)||0;
+  var parc=parseFloat((document.getElementById('exp-parc')||{}).value)||0;
+  if(!(total>0)||!(parc>0)){res.style.display='none';return;}
+  res.style.display='block';
+  // On montre la division ENTIÈRE, pas seulement son résultat : il doit
+  // pouvoir vérifier d'un coup d'œil que l'app a compris ce qu'il a payé.
+  res.innerHTML='📦 '+fmt(total)+' ÷ '+fmtQ(parc)+' = <b style="font-size:14px">'
+    +fmt(Math.round(total/parc))+'</b> '+(fr?"l'unité":'each');
+}
+// Ce que la ligne doit retenir comme prix d'achat unitaire.
+// Renvoie -1 si on ne peut pas conclure : mieux vaut refuser que diviser
+// par un nombre que personne n'a donné.
+function _expPaUnitaire(){
+  var total=parseFloat((document.getElementById('exp-pa')||{}).value)||0;
+  if(_expMode!=='g')return total;
+  if(!(total>0))return 0;
+  var parc=parseFloat((document.getElementById('exp-parc')||{}).value)||0;
+  if(!(parc>0))return -1;
+  return Math.round(total/parc);
 }
 // Entrée = passer au champ suivant, ou ajouter la ligne
 function expTouche(ev,suite){
@@ -8298,15 +8392,32 @@ function expAjouterLigne(){
   var fr=lang==='fr';
   var nm=(document.getElementById('exp-nm').value||'').trim();
   var pv=parseFloat(document.getElementById('exp-pv').value)||0;
-  var pa=parseFloat(document.getElementById('exp-pa').value)||0;
+  var pa=_expPaUnitaire();
+  // ⚠️ -1 = il a donné un prix de carton sans dire combien il y a dedans.
+  // Diviser par un nombre que personne n'a donné fabriquerait un prix d'achat
+  // faux, donc une marge fausse — et invisible pour toujours.
+  if(pa<0){
+    showToast('📦 '+(fr?('Combien d\'unités dans 1 '+_expMotGros()+' ? Sans ce nombre je ne peux pas calculer le prix à l\'unité')
+                       :'How many units per pack?'));
+    var _pcf=document.getElementById('exp-parc');if(_pcf)_pcf.focus();
+    return;
+  }
   var stk=Math.round((parseFloat(String(document.getElementById('exp-stk').value||'').replace(',','.'))||0)*100)/100;
   if(!nm){showToast('✏️ '+(fr?'Écris le nom de l\'article':'Type the item name'));document.getElementById('exp-nm').focus();return;}
   if(!pv){showToast('💰 '+(fr?'Entre le prix de vente':'Enter the sell price'));document.getElementById('exp-pv').focus();return;}
   var dejaApp=DB.articles.some(function(p){return txtNorm(p.nm)===txtNorm(nm);});
   var dejaListe=_expListe.some(function(x){return txtNorm(x.nm)===txtNorm(nm);});
   if(dejaApp||dejaListe){showToast('⚠️ '+(fr?'« '+nm+' » existe déjà':'"'+nm+'" already exists'));return;}
-  _expListe.push({nm:nm,pa:pa,px:pv,stk:stk});
-  ['exp-nm','exp-pa','exp-pv','exp-stk'].forEach(function(id){document.getElementById(id).value='';});
+  // Le conditionnement qu'il vient de donner est SA vérité : on le garde sur
+  // l'article, il resservira au prochain approvisionnement.
+  var _pc=parseFloat((document.getElementById('exp-parc')||{}).value)||0;
+  // `pa` sort déjà en prix PAR UNITÉ — soit il l'a tapé ainsi, soit on vient
+  // de diviser devant lui. Il ne doit plus jamais être redivisé.
+  var _lig={nm:nm,pa:pa,px:pv,stk:stk,paUnitaire:true};
+  if(_expMode==='g'&&_pc>0){_lig.umSac=_pc;_lig.umCont=_expMotGros();}
+  _expListe.push(_lig);
+  ['exp-nm','exp-pa','exp-pv','exp-stk','exp-parc'].forEach(function(id){var _e=document.getElementById(id);if(_e)_e.value='';});
+  var _r=document.getElementById('exp-gros-res');if(_r)_r.style.display='none';
   expRender();
   document.getElementById('exp-nm').focus();
 }
@@ -8332,7 +8443,16 @@ function _mesureDevinee(nm){
   return {um:null,sac:0};
 }
 function _expLigneComplete(a){
-  if(a.um===undefined){var d=_mesureDevinee(a.nm);a.um=d.um;a.gros=d.sac||0;}
+  // ⚠️ ON NE DEVINE PLUS QUE SON PRIX EST CELUI D'UN SAC.
+  // Avant : `a.gros = d.sac` — le catalogue disait « sucre : sac de 50 », donc
+  // la ligne partait sur « acheté par 50 », et _expPaUnit divisait. Un
+  // commerçant qui tapait 650 (son vrai prix au kilo) se retrouvait avec 13 F.
+  // Un prix d'achat divisé par 50 ne se voit JAMAIS : la marge paraît énorme
+  // et tout semble aller très bien.
+  // `gros` répond à « le prix saisi est-il celui du paquet ? » — c'est à LUI
+  // de le dire, sur l'écran de saisie ou sur la ligne. Le conditionnement
+  // connu, lui, sert seulement à proposer le nombre, jamais à l'appliquer.
+  if(a.um===undefined){var d=_mesureDevinee(a.nm);a.um=d.um;a.grosPropose=d.sac||0;}
   if(a.gros===undefined)a.gros=0;
   return a;
 }
@@ -8340,7 +8460,13 @@ function _expLigneComplete(a){
 function _expPaUnit(a){
   var pa=Number(a.pa)||0;
   if(pa<=0)return 0;
-  return (a.gros>0)?Math.round(pa/a.gros):pa;
+  // Le prix est DÉJÀ celui d'une unité de vente : soit il l'a saisi ainsi,
+  // soit l'écran express a fait la division devant lui. Diviser une seconde
+  // fois transformait 650 F le kilo en 13 F.
+  // (`gros === true` est l'ancienne façon de dire la même chose, côté
+  // analyseur de liste collée — on la respecte.)
+  if(a.paUnitaire||a.gros===true)return pa;
+  return (typeof a.gros==='number'&&a.gros>0)?Math.round(pa/a.gros):pa;
 }
 function _expUmLbl(a){return a.um==='kg'?'kg':(a.um==='L'?'L':(lang==='fr'?'pièce':'unit'));}
 function expSetUm(i,u){
@@ -8425,7 +8551,15 @@ function expCreerTous(){
     var paU=_expPaUnit(a);
     var art={id:DB.nextId++,nm:a.nm,e:emojiDepuisNomProduit(a.nm),cat:categorieDepuisNomProduit(a.nm),
       px:a.px,pa:paU,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,
-      um:a.um||null,umSac:(a.um&&a.gros>0)?a.gros:null};
+      // ⚠️ `a.um && a.gros` : le conditionnement n'était gardé que pour le kilo
+      // et le litre. Un carton de 24 savons, vendus à la pièce, était oublié —
+      // et c'est le cas le plus fréquent. On garde aussi ce qu'il vient de
+      // dire lui-même sur l'écran express (umSac / umCont).
+      um:a.um||null,
+      // ⚠️ `a.gros` peut valoir `true` (marqueur « déjà unitaire » de
+      // l'analyseur) : un test `>0` le prenait pour un nombre.
+      umSac:(a.umSac>0?a.umSac:((typeof a.gros==='number'&&a.gros>0)?a.gros:null)),
+      umCont:a.umCont||null};
     // ⚠️ La photo qu'il a CHOISIE — dans les 600 images ou chez un voisin —
     // se perdait ici : on ne la reportait pas sur l'article créé, et il
     // repartait avec une icône alors qu'il avait touché une photo.
