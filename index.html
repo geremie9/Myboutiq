@@ -2876,7 +2876,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.90'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.91'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5823,19 +5823,46 @@ function _styleVar(){
 // Maintenant on cherche la plus grande pastille (66 → 52 px) dont le tour de
 // cercle suffit sans sortir de CET écran. Un grand téléphone en montre plus
 // qu'un petit, ce qui est la vérité. Renvoie null si ça ne rentre pas.
+// La taille d'une carte d'article, lue sur la grille elle-même. Le cercle ne
+// doit jamais dépasser ce que les articles font dehors — ni être minuscule
+// à côté d'eux. Même principe que _placerVarBox : on COPIE, on ne recalcule pas.
+function _tailleCarteArticle(){
+  try{
+    var pg=document.getElementById('pgrid');
+    if(pg){
+      var w=parseFloat(String(getComputedStyle(pg).gridTemplateColumns).split(' ')[0]);
+      if(w>40&&w<300)return Math.round(w);
+    }
+  }catch(e){}
+  return 106;
+}
 function _geoCercle(n){
   var court=Math.min(window.innerWidth,window.innerHeight);
-  for(var t=66;t>=52;t-=2){
-    var besoin=Math.max(96,Math.ceil((t+14)*n/(2*Math.PI)));  // pastille + respiration
+  // ⚠️ LE PLAFOND ÉTAIT À 66 px, CHOISI AU JUGÉ — et c'était tout le
+  // problème : « ça sort petit petit, ça ne respecte pas les articles qui
+  // sont dehors ». Mesuré : 95 % de ses familles ont 6 variantes ou moins,
+  // et pour celles-là la place permet 106 px, quand une carte d'article en
+  // fait 111. On sortait donc 40 % trop petit sans aucune raison.
+  // On part maintenant de la taille d'une CARTE et on descend seulement si
+  // le tour de cercle l'exige.
+  var depart=Math.max(52,Math.min(_tailleCarteArticle(),Math.floor(court*0.30)));
+  for(var t=depart;t>=52;t-=2){
+    // ⚠️ DEUX contraintes, pas une. La seconde manquait, et elle ne se voyait
+    // pas tant que les pastilles étaient petites : en les agrandissant, les
+    // satellites se sont mis à mordre le CENTRE (le titre et la croix).
+    var besoin=Math.max(96,
+                        Math.ceil((t+14)*n/(2*Math.PI)),   // pastille + respiration
+                        Math.ceil(56+t/2));                // dégagement du centre
     var max=Math.floor(court/2)-(t/2+38);   // 38 : le prix et le nom pendent sous la pastille
     if(besoin<=max){
-      // La part du tour qui revient à chaque satellite. En dessous de 92 px
-      // une étiquette extérieure mord sur le voisin : le nom rentre DEDANS.
-      // ⚠️ 84 px ne suffisait pas — à 7 variantes (arc 86) trois noms
-      // touchaient encore une pastille voisine. Chiffre relevé à l'écran,
-      // pas estimé.
+      // La part du tour qui revient à chaque satellite. En dessous d'un
+      // certain arc, une étiquette extérieure mord sur le voisin : le nom
+      // rentre alors DEDANS la pastille, avec le prix.
+      // ⚠️ Ce seuil était FIGÉ à 92 px — calé sur des pastilles de 66. Dès
+      // que les pastilles ont grandi, les noms se sont remis à se toucher.
+      // Il se mesure donc PAR RAPPORT à la pastille, pas dans l'absolu.
       var arc=2*Math.PI*besoin/n;
-      return {R:besoin,taille:t,large:t+16,arc:Math.floor(arc),serre:arc<92};
+      return {R:besoin,taille:t,large:t+16,arc:Math.floor(arc),serre:arc<(t+34)};
     }
   }
   return null;
@@ -5963,7 +5990,9 @@ function renderVarCercle(p){
     d.className='vsat'+(i.q>0?' hq':'')+(i.out?' out':'');
     d.style.left=Math.round(g.cx+g.R*Math.cos(a))+'px';
     d.style.top =Math.round(g.cy+g.R*Math.sin(a))+'px';
-    d.style.animationDelay=(k*26)+'ms';
+    // ⚠️ Elles sortaient l'une APRÈS l'autre (26 ms d'écart, jusqu'à 286 ms
+    // pour onze) — « ça sort un genre un genre ». Elles arrivent ensemble :
+    // il voit sa famille d'un coup, pas un défilé.
     d.innerHTML='<span class="vsat-r">'
       +(v.img?'<img src="'+v.img+'" loading="lazy" alt="">':vignetteArt(p,v,g.taille-6,Math.round((g.taille-6)/2)))
       +'<span class="vsat-px">'+(g.serre?('<i>'+(v.nm||'?')+'</i>'):'')+'<b>'+i.pxCourt+'</b></span></span>'
