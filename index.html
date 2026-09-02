@@ -2869,7 +2869,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.86'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.87'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8283,7 +8283,7 @@ function importerSelectionCatalogue(){
   closeSheet('ov-catalog');
   if(!n){showToast('ℹ️ '+(deja?(fr?'Ces articles sont déjà chez toi':'Already in your shop')
                               :(fr?'Rien à ajouter':'Nothing to add')));return;}
-  ouvrirAjoutExpress();
+  ouvrirAjoutExpress(true);   // garder ce qu'on vient d'y mettre
   try{expRender();}catch(e){}
   showToast('👍 '+n+' '+(fr?'article(s) — mets les prix maintenant':'item(s) — set the prices now'));
 }
@@ -8296,9 +8296,19 @@ function initCatGrid(){var g=document.getElementById('cgrd');g.innerHTML='';var 
 // sont devinées, et l'article est vendable tout de suite.
 // ═══════════════════════════════════════════
 var _expListe=[];
-function ouvrirAjoutExpress(){
+// ⚠️⚠️ LE DÉFAUT LE PLUS GRAVE DE TOUT CE PARCOURS, ET IL ÉTAIT INVISIBLE.
+// `_expListe=[]` en première ligne. Or DEUX écrans remplissent cette liste
+// puis appellent cette fonction pour la montrer : le choix en images (600
+// photos) et les boutiques voisines. Ils rangeaient leurs articles… et cette
+// ligne les effaçait aussitôt.
+// Le commerçant touchait vingt photos, lisait « 👍 20 articles — mets les
+// prix maintenant », et tombait sur un écran VIDE qui lui demandait de taper
+// un nom. Pour quelqu'un qui ne sait pas écrire, le parcours en images ne
+// menait donc nulle part.
+// `garder` = la liste vient d'être remplie par l'appelant, on n'y touche pas.
+function ouvrirAjoutExpress(garder){
   if(!(role==='patron'||hasPerm('produits')))return;
-  _expListe=[];
+  if(!garder)_expListe=[];
   ['exp-nm','exp-pa','exp-pv','exp-stk','exp-parc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   try{expMode('u');}catch(e){}
   expRender();
@@ -8496,7 +8506,15 @@ function expRender(){
   c.textContent=_expListe.length+' '+(fr?('article'+(_expListe.length>1?'s':'')+' prêt'+(_expListe.length>1?'s':'')):('item'+(_expListe.length>1?'s':'')+' ready'));
   box.innerHTML=_expListe.map(function(a,i){
     _expLigneComplete(a);
+    // ⚠️ On fabriquait une icône générique à partir du NOM, alors que la
+    // photo qu'il vient de toucher est là, dans la ligne (_img600 pour le
+    // catalogue en images, _imgUrl pour les boutiques voisines).
+    // Mesuré avant correction : 0 photo affichée sur 3 lignes qui en avaient
+    // une. Il relisait des noms sans savoir de quel article il s'agissait —
+    // et pour quelqu'un qui ne lit pas, la ligne ne disait plus rien du tout.
     var m=mediaArtInner({nm:a.nm,cat:categorieDepuisNomProduit(a.nm)},18);
+    var _ph='';
+    try{_ph=a._img600?_photo600(a._img600):(a._imgUrl||'');}catch(e){_ph=a._imgUrl||'';}
     var u=_expUmLbl(a),paU=_expPaUnit(a);
     var sansPa=!(paU>0),ben=a.px-paU,perte=!sansPa&&ben<=0;
     var achat=a.gros>0
@@ -8505,7 +8523,10 @@ function expRender(){
     var ouvert=(_expOuvert===i);
     var h='<div style="border-bottom:1px solid var(--BD);padding:7px 4px">'+
       '<div style="display:flex;align-items:center;gap:9px">'+
-      '<span style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</span>'+
+      (_ph
+        ? ('<img src="'+_ph+'" loading="lazy" alt="" style="width:38px;height:38px;border-radius:9px;object-fit:cover;flex-shrink:0" '
+           +'onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{style:\'width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--BG)\',textContent:\'📦\'}))">')
+        : ('<span style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</span>'))+
       '<div style="flex:1;min-width:0;cursor:pointer" onclick="expBasculeDetail('+i+')">'+
         '<div style="font-size:12.5px;font-weight:800;color:var(--T)">'+a.nm+'</div>'+
         '<div style="font-size:10.5px;font-weight:700;color:'+(perte?'var(--R)':sansPa?'var(--O)':'var(--M)')+'">'+
@@ -8603,9 +8624,13 @@ function _chaEntrees(){
 function chaFiltrer(q){_chaQ=txtNorm(q||'');_chaFam=null;chaRendre();}
 function chaCat(c){_chaCat=(c===_chaCat)?'':c;_chaFam=null;_chaQ='';var s=document.getElementById('cha-src');if(s)s.value='';chaRendre();}
 function chaOuvrirFamille(i){_chaFam=(_chaFam===i)?null:i;chaRendre();}
-function chaBasculer(cle,nm,img,emo,cat){
+// `sac` / `cont` : le conditionnement que l'entrée du catalogue porte DÉJÀ.
+// Avant, on ne le transportait pas : il fallait le retrouver plus tard par le
+// nom, ce qui échoue dès que l'écriture diffère d'un tiret (« Coca Cola »
+// contre « Coca-Cola »). On tient la réponse au moment du choix — on la garde.
+function chaBasculer(cle,nm,img,emo,cat,sac,cont){
   if(_chaSel[cle])delete _chaSel[cle];
-  else _chaSel[cle]={nm:nm,img:img,e:emo,cat:cat};
+  else _chaSel[cle]={nm:nm,img:img,e:emo,cat:cat,sac:(+sac||0),cont:cont||''};
   chaRendre();
 }
 function _chaTuile(cle,nm,img,emo,cat,sous,onclick){
@@ -8639,8 +8664,9 @@ function chaRendre(){
       +'<span style="font-size:13.5px;font-weight:800;color:var(--T)">'+f[2]+' '+f[0]+'</span></div>';
     (f[6]||[]).forEach(function(v,j){
       var cle='v'+_chaFam+'_'+j, plein=f[0]+' '+v[0];
+      var vsac=(+v[5]||+f[7]||0), vcont=(v[6]||f[8]||'');
       h+=_chaTuile(cle,v[0],v[2],v[1],CAT_IDX_N[f[1]],v[3],
-        'chaBasculer(\''+cle+'\',\''+plein.replace(/'/g,"\\'")+'\',\''+v[2]+'\',\''+v[1]+'\',\''+(CAT_IDX_N[f[1]]||'').replace(/'/g,"\\'")+'\')');
+        'chaBasculer(\''+cle+'\',\''+plein.replace(/'/g,"\\'")+'\',\''+v[2]+'\',\''+v[1]+'\',\''+(CAT_IDX_N[f[1]]||'').replace(/'/g,"\\'")+'\','+vsac+',\''+String(vcont).replace(/'/g,"\\'")+'\')');
     });
     g.innerHTML=h;majChaBouton();return;
   }
@@ -8659,7 +8685,7 @@ function chaRendre(){
       h+=_chaTuile('f'+i,e[0],e[3],e[2],cat,vr.length+(fr?' sortes':' kinds'),'chaOuvrirFamille('+i+')');
     }else{
       h+=_chaTuile('a'+i,e[0],e[3],e[2],cat,e[4],
-        'chaBasculer(\'a'+i+'\',\''+e[0].replace(/'/g,"\\'")+'\',\''+e[3]+'\',\''+e[2]+'\',\''+cat.replace(/'/g,"\\'")+'\')');
+        'chaBasculer(\'a'+i+'\',\''+e[0].replace(/'/g,"\\'")+'\',\''+e[3]+'\',\''+e[2]+'\',\''+cat.replace(/'/g,"\\'")+'\','+(+e[7]||0)+',\''+String(e[8]||'').replace(/'/g,"\\'")+'\')');
     }
   });
   g.innerHTML=h||('<div style="grid-column:1/-1;text-align:center;padding:22px 0;font-size:12.5px;color:var(--M);font-weight:700">'+(fr?'Rien trouvé':'Nothing found')+'</div>');
@@ -8716,12 +8742,15 @@ function chaValider(){
     if(!s||!s.nm)return;
     if(DB.articles.some(function(p){return txtNorm(p.nm)===txtNorm(s.nm);}))return;
     if(_expListe.some(function(x){return txtNorm(x.nm)===txtNorm(s.nm);}))return;
-    _expListe.push({nm:s.nm,px:0,pa:0,stk:0,_img600:s.img,_e:s.e,_cat:s.cat});
+    var _l={nm:s.nm,px:0,pa:0,stk:0,_img600:s.img,_e:s.e,_cat:s.cat};
+    // Le conditionnement voyage avec l'article, au lieu d'être redemandé.
+    if(s.sac>0){_l.umSac=s.sac;_l.umCont=s.cont||null;}
+    _expListe.push(_l);
     n++;
   });
   closeSheet('ov-choixart');
   if(!n){showToast('ℹ️ '+(fr?'Ces articles sont déjà chez toi':'Already in your shop'));return;}
-  ouvrirAjoutExpress();
+  ouvrirAjoutExpress(true);   // garder ce qu'il vient de choisir en photos
   try{expRender();}catch(e){}
   showToast('👍 '+n+' '+(fr?'article(s) — mets les prix maintenant':'item(s) — set the prices now'));
 }
