@@ -94,6 +94,14 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .sec-btn.soon{opacity:.6}
 .sec-emoji{font-size:28px;display:block;margin-bottom:5px}
 .sec-nm{font-size:11px;font-weight:800;color:#fff;line-height:1.3}
+/* ⚠️ Ces tuiles ont été dessinées pour le fond SOMBRE de la création : texte
+   blanc, cadre translucide. Réutilisées telles quelles dans une feuille
+   blanche (Réglages), on ne voyait plus que les émojis — les noms étaient
+   blancs sur blanc. Elles reprennent ici les couleurs du thème. */
+#sect-grid .sec-btn{background:var(--BG);border-color:var(--BD)}
+#sect-grid .sec-btn.on{border-color:var(--A);background:#FFF8E1}
+#sect-grid .sec-nm{color:var(--T)}
+#sect-grid .sec-btn.soon{opacity:.62}
 .soon-badge{position:absolute;top:-6px;right:-6px;background:var(--O);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px}
 .reg-sel{width:100%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;color:#fff;font-size:14px;font-family:'Outfit',sans-serif;font-weight:600;outline:none;margin-bottom:12px}
 .reg-sel:focus{border-color:var(--A)}
@@ -1484,6 +1492,14 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" onclick="ouvrirFourn()"><div class="stico" style="background:#E3F2FD">🚚</div><div class="stii"><div class="stitl" id="st-fourn">Fournisseurs</div><div class="stisub" id="st-fourn-s">Gérer et commander</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirClot();goBack()"><div class="stico" style="background:#E8F5E9">🌙</div><div class="stii"><div class="stitl" id="st-clot">Clôture journée</div><div class="stisub" id="st-clot-s">Rapport du soir</div></div><span class="starr">›</span></div>
       </div>
+      <div class="sttit">🏪 Type de commerce</div>
+      <div class="stcd">
+        <!-- L'entrée ne pose plus la question (19.93 : 6 écrans → 2), mais il
+             veut que les autres métiers RESTENT VISIBLES, marqués « Bientôt ».
+             C'est ici qu'ils vivent : consultable, jamais bloquant. -->
+        <div class="stit2" onclick="ouvrirSecteur()"><div class="stico" style="background:#FFF3E0">🏪</div><div class="stii"><div class="stitl" id="st-secteur">Mon type de commerce</div><div class="stisub" id="st-secteur-s">Boutique — les autres métiers arrivent</div></div><span class="starr">›</span></div>
+      </div>
+
       <div class="sttit">🧾 Facturation</div>
       <div class="stcd">
         <div class="stit2" onclick="editNumFiscal()"><div class="stico" style="background:#EDE7F6">🧾</div><div class="stii"><div class="stitl" id="st-fiscal">N° d'identifiant boutique</div><div class="stisub" id="st-fiscal-s">Apparaît sur la facture</div></div><span class="starr">›</span></div>
@@ -2172,6 +2188,19 @@ body{max-width:min(100%,1200px)}
   </div>
 
   <!-- ÉTAT DE LA LIAISON -->
+  <!-- TYPE DE COMMERCE — visible, « Bientôt » sur ce qui n'est pas prêt -->
+  <div class="ov" id="ov-secteur" onclick="closeOv(event,'ov-secteur')">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">🏪 <span id="sect-tit">Ton type de commerce</span></div><button class="bcl" onclick="closeSheet('ov-secteur')">✕</button></div>
+      <div class="pstps">
+        <div style="font-size:12px;color:var(--M);font-weight:600;margin-bottom:12px" id="sect-aide">
+          MyBoutiQ est prêt pour la boutique. Les autres métiers arrivent — ils auront leurs propres écrans et leurs propres articles.
+        </div>
+        <div class="sec-grid" id="sect-grid"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="ov" id="ov-liaison" onclick="closeOv(event,'ov-liaison')">
     <div class="bsht"><div class="shndl"></div>
       <div class="shhdr"><div class="shtit">📡 <span id="li-tit">État de la liaison</span></div><button class="bcl" onclick="fermerLiaison()">✕</button></div>
@@ -2896,7 +2925,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.93'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.94'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4357,9 +4386,21 @@ function choisirPaysLogin(p){
   try{localStorage.setItem('mb_pays_cc',p.cc);}catch(e){}
   majChipPays(); closeSheet('ov-pays-login');
 }
+// Consultable depuis Réglages. Rien n'y bloque : « Boutique » est déjà coché,
+// les autres portent leur badge « Bientôt » et ne répondent pas au doigt.
+function ouvrirSecteur(){
+  try{renderSecGrid('sect-grid',(DB&&DB.cfg&&DB.cfg.secteur)||'boutique');}catch(e){}
+  document.getElementById('ov-secteur').classList.add('show');
+}
 function renderSecGrid(gridId,selId){
   var g=document.getElementById(gridId);if(!g)return;g.innerHTML='';
-  SECTEURS.filter(function(s){return s.ok;}).forEach(function(s){
+  // ⚠️ CE FILTRE TUAIT TOUT LE RESTE DE LA FONCTION. Le badge « Bientôt », le
+  // style `.soon` et le clic désactivé existaient déjà — mais aucun secteur
+  // non disponible n'arrivait jamais jusqu'à eux. Sa demande : « les autres
+  // types de commerce, VISIBLES, comme c'était avant, bientôt bientôt,
+  // c'est-à-dire quelqu'un ne peut pas entrer. » Ils s'affichent donc tous ;
+  // seul « Boutique » est choisissable.
+  SECTEURS.forEach(function(s){
     var d=document.createElement('div');
     d.className='sec-btn'+(s.id===selId?' on':'')+(s.ok?'':' soon');
     var nm=obLang==='fr'?s.n:s.ne;
