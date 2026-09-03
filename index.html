@@ -231,6 +231,24 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .pedit:hover{background:rgba(41,121,255,.12);color:var(--B)}
 .pcard.has-photo .pedit{top:7px;left:7px}
 .pedit:active{transform:scale(.92)}
+/* ── VENDRE PAR CARTON / CASIER / SAC ────────────────────────────────
+   Une tape sur la tuile = UNE unité. Vendre un casier de 12 réclamait
+   donc douze tapes. Ce repère en vend un d'un coup et dit ce qu'il
+   contient. Quand l'app ne connaît pas encore la taille, il est effacé
+   et se contente de poser la question — une seule fois. */
+/* ⚠️ Placé en ABSOLU au premier jet, il recouvrait le prix : « 500FC5A ».
+   Sur une tuile de 6 pouces il n'y a pas de coin libre — il prend donc sa
+   propre ligne, sous le prix, où rien ne le gêne. */
+.pgros{display:inline-flex;align-items:center;gap:2px;margin-top:3px;height:19px;padding:0 7px;
+  border-radius:6px;border:none;background:rgba(0,150,136,.13);color:#00695C;
+  font-size:10px;font-weight:800;line-height:1;cursor:pointer;position:relative;z-index:3}
+.pgros:active{transform:scale(.92)}
+.pgros.vide{background:rgba(26,26,46,.055);color:var(--M);font-weight:700;opacity:.75}
+.pcard.has-photo .pgros{background:rgba(255,255,255,.94);color:#00695C;margin-top:2px}
+.pcard.has-photo .pgros.vide{background:rgba(255,255,255,.82);color:#4a4a5a}
+.gros-mots{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.gros-mot{border:1.5px solid var(--BD);background:#fff;border-radius:9px;padding:6px 11px;font-size:12px;font-weight:700;color:var(--M);cursor:pointer}
+.gros-mot.on{border-color:var(--B);background:rgba(41,121,255,.08);color:var(--B)}
 
 /* ── Ergonomie tactile : cibles d'au moins 44px ── */
 .hbtn{width:44px;height:44px;font-size:19px}
@@ -1830,6 +1848,27 @@ body{max-width:min(100%,1200px)}
 </div>
 
 <!-- Choix du pays sur l'écran de connexion (l'indicatif n'est jamais tapé à la main) -->
+<!-- Dire une fois combien il y a dans un carton / casier / sac, puis en vendre un -->
+<div class="ov" id="ov-gros" onclick="closeOv(event,'ov-gros')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="gros-tit">📦 Vendre par carton</div><button class="bcl" onclick="closeSheet('ov-gros')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div id="gros-art" style="font-size:14px;font-weight:800;margin-bottom:4px">Article</div>
+      <div id="gros-q" style="font-size:13px;color:var(--M);margin-bottom:10px">Combien dedans ?</div>
+      <div class="gros-mots" id="gros-mots"></div>
+      <div class="qte-grid" style="margin-top:8px">
+        <button class="qte-b" onclick="grosRapide(6)">6</button>
+        <button class="qte-b" onclick="grosRapide(12)">12</button>
+        <button class="qte-b" onclick="grosRapide(24)">24</button>
+        <button class="qte-b" onclick="grosRapide(48)">48</button>
+      </div>
+      <div class="pig" style="margin-top:12px"><label class="pl" id="gros-lbl">Un autre nombre</label><input class="pi" type="number" step="1" min="2" id="gros-inp" inputmode="numeric" oninput="majApercuGros()"></div>
+      <div id="gros-apercu" style="font-size:13px;font-weight:800;color:var(--G);margin:2px 0 12px;min-height:17px"></div>
+      <button class="bnxt" onclick="validerGros()">🛒 <span id="gros-add">Ajouter au panier</span></button>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="ov-pays-login" onclick="closeOv(event,'ov-pays-login')">
   <div class="bsht">
     <div class="shndl"></div>
@@ -3011,7 +3050,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='20.8'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='20.9'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5464,7 +5503,7 @@ function renderProd(lst){
       '<div class="qbdg '+(pq>0?'show':'')+'" id="qb-'+p.id+'" onclick="retirerUn(event,'+p.id+')">'+'<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">✕</span></div>'+
       (p.img?
         '<img class="pcard-img" src="'+p.img+'" loading="lazy" onerror="this.parentElement.classList.remove(\'has-photo\');this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pemoji\',textContent:\''+p.e+'\'}))">'+
-        '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+prixTxt+'</div>'+(hasV?'<div class="pvbdg">'+p.vr.length+' var.</div>':'')+'</div>'
+        '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+prixTxt+'</div>'+_chipGros(p)+(hasV?'<div class="pvbdg">'+p.vr.length+' var.</div>':'')+'</div>'
         :
         (DB.cfg&&DB.cfg.noEmoji
           ?'<div class="pmedia pmono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)
@@ -5472,6 +5511,7 @@ function renderProd(lst){
         )+'</div>'+
         '<div class="pnm">'+p.nm+'</div>'+
         '<div class="ppr">'+prixTxt+'</div>'+
+        _chipGros(p)+
         (hasV?'<div class="pvbdg">'+p.vr.length+' var.</div>':'')
       )+
       (inc?'<div class="sinc">✏️ '+(lang==='fr'?'À compléter':'To complete')+'</div>':'')+
@@ -6590,6 +6630,124 @@ function addPanier(p,v){
     if(cur===maxS){ouvrirNeg(p,v);return;}
   }
   panier[key]=cur+1;updatePUI(p.id);if(navigator.vibrate)navigator.vibrate(25);
+}
+// ══════════════════════════════════════════════════════════════════
+//  VENDRE PAR CARTON / CASIER / SAC / PALETTE
+//  « Incorporez aussi les ventes par palette ou par casier.
+//    L'application doit connaître le conditionnement de chaque article. »
+//
+//  Une tape sur la tuile ajoute UNE unité : vendre un casier de 12 en
+//  réclamait douze. D'où le repère 📦 sur la tuile.
+//
+//  ⚠️ MESURÉ sur ses 661 articles réels : 19 seulement (3 %) portent une
+//  taille de gros. Un bouton qui ne s'affiche que lorsque l'app sait
+//  serait donc muet 97 fois sur 100. Le repère a deux états :
+//     · taille connue   → « 📦 ×12 », une tape vend le casier entier ;
+//     · taille inconnue → « 📦 » effacé, une tape POSE la question, une
+//       seule fois, et la réponse reste sur l'article.
+//  Aucun nombre n'est deviné : sans réponse du commerçant, rien n'est
+//  écrit. Un conditionnement faux donne un prix d'achat faux, et un
+//  mauvais prix d'achat ne se voit jamais.
+// ══════════════════════════════════════════════════════════════════
+var _grosArt=null,_grosMot='';
+function _uniteMot(p){
+  var fr=(lang==='fr');
+  if(p&&p.um==='kg')return 'kg';
+  if(p&&p.um==='L')return fr?'litres':'liters';
+  return fr?'pièces':'units';
+}
+function _chipGros(p){
+  // Pas sur les familles (la variante a son propre écran), ni sur un
+  // article encore incomplet (il n'est pas vendable).
+  if(!p||(p.vr&&p.vr.length)||articleIncomplet(p))return '';
+  var n=Number(p.umSac)||0;
+  var mot=_motContenant(p);
+  if(n>1)return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+mot+' de '+fmtQ(n)+'">📦<span>×'+fmtQ(n)+'</span></button>';
+  return '<button class="pgros vide" onclick="direTailleGros(event,'+p.id+')" title="'+(lang==='fr'?'Vendre par '+mot:'Sell by the '+mot)+'">📦</button>';
+}
+function _ajouterLot(p,n){
+  var fr=(lang==='fr');
+  var key=p.id+'-0',cur=panier[key]||0,dispo=getStk(p);
+  var place=Math.max(0,dispo-cur);
+  var ajout=p.rt?n:Math.min(n,place);
+  if(!(ajout>0)){showToast(t('stockInsuf'));return;}
+  panier[key]=cur+ajout;
+  updatePUI(p.id);
+  if(navigator.vibrate)navigator.vibrate(30);
+  // Le chiffre annoncé est celui réellement mis au panier, jamais celui
+  // demandé : s'il ne reste pas un carton entier, il faut le dire.
+  showToast('📦 '+fmtQ(ajout)+' '+p.nm+(ajout<n?(' — '+(fr?'c\'est tout ce qui reste':'that is all that is left')):''));
+  try{parler(fr?(fmtQ(ajout)+' '+p.nm):(fmtQ(ajout)+' '+p.nm));}catch(e){}
+}
+function vendreGros(e,pid){
+  if(e)e.stopPropagation();
+  var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
+  if(venteVerrouillee&&venteVerrouillee())return;
+  var n=Number(p.umSac)||0;
+  if(!(n>1)){direTailleGros(e,pid);return;}
+  _ajouterLot(p,n);
+}
+function _grosRenderMots(){
+  var box=document.getElementById('gros-mots');if(!box)return;
+  var fr=(lang==='fr');
+  var mots=fr?['carton','casier','sac','paquet','palette','plateau']
+             :['box','crate','bag','pack','pallet','tray'];
+  if(_grosMot&&mots.indexOf(_grosMot)<0)mots.unshift(_grosMot);
+  box.innerHTML=mots.map(function(m){
+    return '<button class="gros-mot'+(m===_grosMot?' on':'')+'" onclick="grosChoisirMot(\''+m+'\')">'+m+'</button>';
+  }).join('');
+}
+function grosChoisirMot(m){_grosMot=m;_grosRenderMots();majApercuGros();
+  var p=_grosArt;if(!p)return;
+  var fr=(lang==='fr');
+  var q=document.getElementById('gros-q');
+  if(q)q.textContent=fr?('Combien de '+_uniteMot(p)+' dans un '+m+' ?'):('How many '+_uniteMot(p)+' in one '+m+'?');
+}
+function direTailleGros(e,pid){
+  if(e)e.stopPropagation();
+  var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
+  if(venteVerrouillee&&venteVerrouillee())return;
+  var fr=(lang==='fr');
+  _grosArt=p;_grosMot=_motContenant(p);
+  document.getElementById('gros-tit').textContent='📦 '+(fr?'Vendre par '+_grosMot:'Sell by the '+_grosMot);
+  document.getElementById('gros-art').textContent=p.nm;
+  document.getElementById('gros-q').textContent=fr?('Combien de '+_uniteMot(p)+' dans un '+_grosMot+' ?')
+                                                  :('How many '+_uniteMot(p)+' in one '+_grosMot+'?');
+  document.getElementById('gros-inp').value='';
+  document.getElementById('gros-apercu').textContent='';
+  document.getElementById('gros-lbl').textContent=fr?'Un autre nombre':'Another number';
+  document.getElementById('gros-add').textContent=fr?'Ajouter au panier':'Add to cart';
+  _grosRenderMots();
+  document.getElementById('ov-gros').classList.add('show');
+  try{parler(fr?('Combien de '+_uniteMot(p)+' dans un '+_grosMot+' ?'):'');}catch(x){}
+}
+function grosRapide(n){
+  var i=document.getElementById('gros-inp');if(!i)return;
+  i.value=n;majApercuGros();
+}
+function majApercuGros(){
+  var p=_grosArt;if(!p)return;
+  var n=parseFloat(String((document.getElementById('gros-inp')||{}).value||'').replace(',','.'))||0;
+  var el=document.getElementById('gros-apercu');if(!el)return;
+  var fr=(lang==='fr');
+  // On montre le total pour qu'il vérifie de ses yeux avant de valider.
+  el.textContent=n>1?('1 '+(_grosMot||_motContenant(p))+' = '+fmtQ(n)+' '+_uniteMot(p)+' = '+fmt(p.px*n)):'';
+}
+function validerGros(){
+  var p=_grosArt;if(!p)return;
+  var fr=(lang==='fr');
+  var n=parseFloat(String(document.getElementById('gros-inp').value||'').replace(',','.'))||0;
+  // ⚠️ Rien n'est écrit sans sa réponse. Pas de repli, pas de nombre
+  // « probable » : mieux vaut redemander que retenir un chiffre faux.
+  if(!(n>1)){showToast('⚠️ '+(fr?'Dis combien il y en a dedans':'Say how many are inside'));return;}
+  n=Math.round(n*100)/100;
+  var mot=_grosMot||_motContenant(p);
+  p.umSac=n;p.umCont=mot;
+  journalAjouter('conditionnement',p.nm,'',mot+' de '+fmtQ(n));
+  save();
+  closeSheet('ov-gros');
+  try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+  _ajouterLot(p,n);
 }
 function updatePUI(pid){
   var total=calcTotal(),nb=Object.values(panier).reduce(function(a,b){return a+b;},0);
