@@ -1770,6 +1770,17 @@ body{max-width:min(100%,1200px)}
       <div class="pig" id="cmp-nm-row"><label class="pl" id="cmp-nm-lbl">Nom de l'article (obligatoire)</label><input class="pi sm" id="cmp-nm" type="text" style="font-weight:700"></div>
       <div id="cmp-vars" style="display:none"></div>
       <button type="button" id="cmp-fam-add" onclick="cmpAddVar()" style="display:none;width:100%;background:#F0F4FF;color:var(--B);border:1.5px dashed var(--B);border-radius:10px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:11px">➕ <span id="cmp-fam-add-l">Ajouter une variante</span></button>
+      <!-- ⚠️ « Le sucre se vend en kilogrammes, l'app le sait déjà. Pourquoi
+           me le demander encore ? » Il a raison : le catalogue porte
+           « Sucre — au kg, sac de 50 », « Riz — au kg, sac de 25 »,
+           « Huile — au litre, bidon de 20 ». On lui posait une question dont
+           on avait la réponse. Quand on sait, on ÉNONCE ; il corrige d'un
+           geste s'il vend autrement. -->
+      <div id="cmp-um-resume" style="display:none;background:#E8F5E9;border-radius:11px;padding:11px 13px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:800;color:#1B5E20" id="cmp-um-resume-t"></div>
+        <button type="button" onclick="cmpChangerMesure()" id="cmp-um-resume-b"
+          style="background:none;border:none;color:var(--B);font-size:11.5px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;padding:5px 0 0;text-decoration:underline">✎ Ce n'est pas ça</button>
+      </div>
       <div id="cmp-um-sec">
       <div class="sth2" id="cmp-um-h">Se vend comment ?</div>
       <div class="agrd" style="grid-template-columns:repeat(3,1fr)">
@@ -2955,7 +2966,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.97'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.98'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3896,15 +3907,30 @@ async function guetterEmpreinte(){
       conditionnel=!!(PublicKeyCredential.isConditionalMediationAvailable
                       &&await PublicKeyCredential.isConditionalMediationAvailable());
     }catch(e){}
-    // Sans médiation conditionnelle, ce guet ouvrirait une fenêtre système
-    // en pleine figure à chaque lancement. On s'abstient : le bouton reste.
-    if(!conditionnel){_guetteEmpreinte=false;return;}
+    // ⚠️ INVERSION DEMANDÉE : « l'entrée doit se faire D'ABORD par empreinte.
+    // C'est quand l'empreinte ne donne pas qu'on demande le mot de passe. Ce
+    // n'est pas le contraire. »
+    // En 19.83 j'avais refusé d'ouvrir la fenêtre système au lancement, pour
+    // ne pas l'imposer. Mais la médiation conditionnelle n'affiche la clé que
+    // dans l'autocomplétion du navigateur : il FALLAIT toucher le champ —
+    // « tu dois d'abord toucher un bouton avant d'aller chercher l'empreinte ».
+    // Sa décision, et elle se défend : pour quelqu'un qui ouvre sa caisse
+    // vingt fois par jour, un doigt posé bat quatre chiffres tapés.
+    // Le doigt est donc demandé DIRECTEMENT. S'il annule, l'écran du PIN est
+    // déjà là, dessous : rien n'est bloqué.
     _guetteAbort=new AbortController();
-    var ch=crypto.getRandomValues(new Uint8Array(32));
-    // En conditionnel le navigateur choisit lui-même la clé : lui en imposer
-    // une ferme la porte.
-    var ok=await navigator.credentials.get({mediation:'conditional',signal:_guetteAbort.signal,
-      publicKey:{challenge:ch,userVerification:'required',timeout:120000}});
+    var dem={signal:_guetteAbort.signal,
+             publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
+                        userVerification:'required',timeout:60000}};
+    if(conditionnel){
+      // Le navigateur sait faire les deux : on garde la façon douce ET on
+      // présente la clé, sinon il cherche une clé qu'il ne retrouve pas.
+      dem.mediation='conditional';
+    }else{
+      var cles=_clesEmpreinte();
+      if(cles)dem.publicKey.allowCredentials=cles;
+    }
+    var ok=await navigator.credentials.get(dem);
     if(ok)await _ouvrirApresEmpreinte();
   }catch(e){
     // Refus, abandon, ou pas de clé : on ne dit rien ICI. Il tape son PIN,
@@ -5374,6 +5400,17 @@ function articleIncomplet(p){
   if(!(p.px>0))return true;                                                   // article sans prix : rien ne se vend à 0 F
   return false;
 }
+// Il vend autrement que le catalogue ne le croit : les boutons reviennent.
+// On ne supprime jamais le choix, on le range tant qu'il est inutile.
+function cmpChangerMesure(){
+  var r=document.getElementById('cmp-um-resume');if(r)r.style.display='none';
+  var s=document.getElementById('cmp-um-sec');if(s)s.style.display='block';
+  // Le champ du conditionnement est caché par défaut pour les articles à la
+  // pièce : s'il vient justement le chercher, il doit le trouver ouvert.
+  var l=document.getElementById('cmp-sac-row');if(l)l.style.display='block';
+  var c=document.getElementById('cmp-sac');
+  if(c)try{c.focus();}catch(e){}
+}
 // Le nom reste modifiable — il est simplement rangé tant qu'il est juste.
 function cmpModifierNom(){
   var b=document.getElementById('cmp-nm-titre'),l=document.getElementById('cmp-nm-row');
@@ -5413,7 +5450,39 @@ function ouvrirCompleterArticle(p){
   document.getElementById('cmp-nm-lbl').textContent=fam?(fr?'Nom de la famille (ex : Savon Azur)':'Family name (ex: Azur soap)'):(fr?'Nom de l\'article (obligatoire)':'Item name (required)');
   // "Se vend comment ?" concerne AUSSI les familles (le kilo/litre est propre au produit,
   // pas à la variante) — il manquait, on ne pouvait pas vendre une famille au poids.
-  document.getElementById('cmp-um-sec').style.display='block';
+  // ── L'APP SAIT-ELLE DÉJÀ COMMENT CET ARTICLE SE VEND ? ──
+  // Si oui, on ne le demande pas : on l'annonce, et il corrige s'il le faut.
+  // Un commerçant qui choisit « Sucre » dans le catalogue ne devrait pas avoir
+  // à réapprendre à l'app que le sucre se vend au kilo.
+  var _su=null;
+  try{_su=_condDeMaBoutique(p.nm)||mesureCatalogue(p.nm);}catch(e){}
+  var _sait=!fam&&!!(_su&&((_su.um==='kg'||_su.um==='L')||_su.sac>0));
+  var _res=document.getElementById('cmp-um-resume');
+  if(_res){
+    _res.style.display=_sait?'block':'none';
+    if(_sait){
+      var _u=(p.um==='kg'||p.um==='L')?p.um:((_su.um==='kg'||_su.um==='L')?_su.um:'pc');
+      var _n=(p.umSac>0)?p.umSac:(_su.sac||0);
+      var _c=p.umCont||_su.cont||'';
+      var _txt=(fr?'Se vend ':'Sold ')+(_u==='kg'?(fr?'au kilo':'by the kilo')
+                                       :_u==='L'?(fr?'au litre':'by the litre')
+                                       :(fr?'à la pièce':'per unit'));
+      if(_n>0&&_c)_txt+='  ·  '+(fr?'s\'achète par ':'bought by the ')+_c+' '+(fr?'de ':'of ')+fmtQ(_n);
+      var _t=document.getElementById('cmp-um-resume-t');if(_t)_t.textContent=_txt;
+      // ⚠️ Sa remarque en cours de route : « il ne sait pas le conditionnement,
+      // ou même il peut se tromper. On peut mettre un bouton où on peut
+      // reconditionner. De façon facultative. »
+      // Le même bouton sert donc aux DEUX cas, et il dit lequel :
+      //   · le conditionnement manque  → « 📦 Dire comment tu l'achètes »
+      //   · il est là mais faux        → « ✎ Ce n'est pas ça »
+      // Facultatif dans les deux cas : rien n'oblige à y toucher.
+      var _b=document.getElementById('cmp-um-resume-b');
+      if(_b)_b.textContent=(_n>0)
+        ?(fr?'✎ Ce n\'est pas ça':'✎ Not right')
+        :(fr?'📦 Dire comment tu l\'achètes':'📦 Say how you buy it');
+    }
+  }
+  document.getElementById('cmp-um-sec').style.display=_sait?'none':'block';
   document.getElementById('cmp-prix-row').style.display=fam?'none':'flex';
   document.getElementById('cmp-ach-sec').style.display=fam?'none':'block';
   document.getElementById('cmp-stk-row').style.display=fam?'none':'block'; // famille : stock par variante
@@ -7481,16 +7550,16 @@ function catalogueIndex(){
       // et ce sont eux que le commerçant choisit maintenant en priorité.
       // Ils portent désormais leur vraie taille de gros (indices 7 et 8),
       // recopiée du catalogue embarqué et de la liste de 964. Jamais devinée.
-      var fsac=e[7]||0,fcont=e[8]||null;
+      var fsac=e[7]||0,fcont=e[8]||null,fum=e[9]||'pc';
       if(Array.isArray(vr)&&vr.length){
         vr.forEach(function(v){
           var plein=fam+' '+v[0];
-          _catIdx.push({nm:v[0],plein:plein,fam:fam,cat:cat,um:'pc',sac:v[5]||fsac||0,cont:v[6]||fcont||null,
+          _catIdx.push({nm:v[0],plein:plein,fam:fam,cat:cat,um:(v[7]||fum||'pc'),sac:v[5]||fsac||0,cont:v[6]||fcont||null,
             e:v[1],img600:v[2],contenance:v[3],pa:0,px:0,
             k:txtNorm(v[0]+' '+fam+' '+plein+' '+(v[4]||''))});
         });
       }else{
-        _catIdx.push({nm:fam,plein:fam,fam:null,cat:cat,um:'pc',sac:fsac,cont:fcont,
+        _catIdx.push({nm:fam,plein:fam,fam:null,cat:cat,um:fum,sac:fsac,cont:fcont,
           e:emo,img600:img,contenance:cont,pa:0,px:0,_ph:1,
           k:txtNorm(fam+' '+(mots||''))});
       }
