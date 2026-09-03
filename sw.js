@@ -1,4 +1,4 @@
-const CACHE_NAME='myboutiq-v87';
+const CACHE_NAME='myboutiq-v88';
 const IMG_CACHE='myboutiq-images-v1';
 // photos-catalogue.json fait partie de la coquille : la boutique doit pouvoir
 // décider hors ligne quelle photo poser, sans redemander au serveur.
