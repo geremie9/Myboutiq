@@ -3011,7 +3011,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='20.4'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='20.5'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5262,6 +5262,27 @@ var _propCaisse=[];
 // Un seul geste, une seule question : le prix de vente. Le reste vient du
 // catalogue. Le prix d'achat et le stock se rempliront à la réception de la
 // marchandise — c'est le moment naturel, pas devant un client qui attend.
+// ══ UN MÊME ARTICLE NE DOIT EXISTER QU'UNE FOIS ══
+// Sa remarque : « si cet article existe déjà dans la boutique, pourquoi
+// accepter de le mettre ? » Deux fois le même nom, c'est deux stocks, deux
+// prix, deux vérités — et un chiffre d'affaires qui ne veut plus rien dire.
+// Trois des cinq chemins de création ne vérifiaient rien.
+// ⚠️ On ne se contente pas de refuser : on l'emmène sur celui qui existe,
+// parce que ce qu'il veut, c'est presque toujours le réapprovisionner ou
+// corriger son prix.
+function _articleExistant(nm){
+  try{
+    if(!nm||!DB||!Array.isArray(DB.articles))return null;
+    var c=txtNorm(nm);
+    if(!c)return null;
+    return DB.articles.find(function(p){return p&&p.nm&&txtNorm(p.nm)===c;})||null;
+  }catch(e){return null;}
+}
+function _direDejaLa(p){
+  var fr=(lang==='fr');
+  showToast('ℹ️ « '+p.nm+' » '+(fr?'est déjà dans ta boutique — je te l\'ouvre':'is already in your shop'));
+  try{ouvrirCompleterArticle(p);document.getElementById('ov-completer').classList.add('show');}catch(e){}
+}
 function creerEnVendant(i){
   var fr=(lang==='fr');
   if(!_peutCreerEnVendant()){showToast('🔒 '+(fr?'Réservé au patron':'Owner only'));return;}
@@ -5269,6 +5290,9 @@ function creerEnVendant(i){
   var nom=e?e.plein:_rechCaisse;
   if(!nom||String(nom).trim().length<2)return;
   nom=String(nom).trim();
+  // Déjà chez lui : on ne le crée pas une deuxième fois, on l'ouvre.
+  var _dj=_articleExistant(nom);
+  if(_dj){_direDejaLa(_dj);return;}
   var rep=prompt(fr?('💰 '+nom+'\n\nÀ combien tu le vends ?'):('💰 '+nom+'\n\nSelling price?'),'');
   if(rep===null)return;
   var px=parseFloat(String(rep).replace(',','.'))||0;
@@ -7252,7 +7276,18 @@ function nettoyerNomFichierProduit(name){
   if(!base)return '';
   return base.charAt(0).toUpperCase()+base.slice(1);
 }
-function txtNorm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+// La normalisation que TOUTE l'app utilise pour dire \u00ab c'est le m\u00eame \u00bb \u2014
+// recherche, catalogue, doublons. 87 endroits en d\u00e9pendent.
+// \u26a0\ufe0f Deux trous trouv\u00e9s en testant la d\u00e9tection de doublons :
+//  \u00b7 NFD ne d\u00e9compose PAS les ligatures : \u00ab \u0152uf \u00bb ne devenait jamais \u00ab oeuf \u00bb,
+//    donc \u00ab \u0152uf \u00bb et \u00ab Oeuf \u00bb restaient deux articles diff\u00e9rents ;
+//  \u00b7 aucun trim : \u00ab  Coca-Cola  \u00bb, coll\u00e9 depuis WhatsApp, cr\u00e9ait un doublon.
+function txtNorm(s){
+  return String(s||'').toLowerCase()
+    .replace(/\u0153/g,'oe').replace(/\u00e6/g,'ae')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ').trim();
+}
 function emojiDepuisNomProduit(nm){
   // Contextuel commerce informel : chaque produit courant a SON image, pas un fourre-tout.
   var s=txtNorm(nm);
@@ -9178,8 +9213,14 @@ function expCreerTous(){
   var fr=lang==='fr';
   if(!_expListe.length)return;
   
-  var sansPa=0;
+  var sansPa=0,dejaLa=[];
   _expListe.forEach(function(a){
+    // ⚠️ Ce chemin ne vérifiait RIEN. L'ajout à la main et le choix en photos
+    // vérifiaient bien, mais une liste COLLÉE depuis WhatsApp arrivait
+    // directement dans _expListe — donc un fournisseur qui renvoie la même
+    // liste chaque semaine créait des doublons à chaque fois.
+    var _dj=_articleExistant(a.nm);
+    if(_dj){dejaLa.push(_dj.nm);return;}
     _expLigneComplete(a);
     // Le prix d'achat est TOUJOURS stocké par unité de VENTE : le bidon de
     // 20 L payé 12 000 F devient 600 F le litre.
@@ -9211,8 +9252,16 @@ function expCreerTous(){
   save();if(typeof initTabs==='function')initTabs();
   renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();
   closeSheet('ov-express');
-  showToast('✅ '+n+' '+(fr?('article'+(n>1?'s':'')+' créé'+(n>1?'s':'')+' !'):('item'+(n>1?'s':'')+' created!'))+
-    (sansPa?(' · '+sansPa+' '+(fr?'sans prix d\'achat':'without cost')):''));
+  // On lui DIT lesquels étaient déjà là — sinon il croit que l'app en a perdu.
+  var msgDeja=dejaLa.length?(' · '+dejaLa.length+' '+(fr?'déjà chez toi (':'already yours (')
+    +dejaLa.slice(0,3).join(', ')+(dejaLa.length>3?'…':'')+')'):'';
+  if(!n&&dejaLa.length){
+    showToast('ℹ️ '+(fr?'Tout était déjà dans ta boutique — rien n\'a été ajouté en double'
+                       :'All of these were already in your shop'));
+  }else{
+    showToast('✅ '+n+' '+(fr?('article'+(n>1?'s':'')+' créé'+(n>1?'s':'')+' !'):('item'+(n>1?'s':'')+' created!'))+
+      (sansPa?(' · '+sansPa+' '+(fr?'sans prix d\'achat':'without cost')):'')+msgDeja);
+  }
 }
 // ── Coller une liste (WhatsApp, fournisseur) ──
 // ═══════════════════════════════════════════════════════════════════
@@ -10032,7 +10081,11 @@ document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='visible'&&DB&&DB.cfg&&DB.cfg.veille)activerVeille();
   if(document.visibilityState==='visible')try{majBoutonVeille();}catch(e){}
 });
-function saveArt(){var nm=document.getElementById('art-nm').value.trim(),pv=parseFloat(document.getElementById('ainp-pv').value)||0,stk=Math.round((parseFloat(String(document.getElementById('ainp-stk').value||'').replace(',','.'))||0)*100)/100,al=parseInt(document.getElementById('ainp-alerte').value)||5;if(!nm){showToast(t('errNom'));goAS(0);return;}if(!pv){showToast(t('errPrix'));return;}var _sac=Math.round((parseFloat(String((document.getElementById('ainp-sac')||{}).value||'').replace(',','.'))||0)*100)/100;
+function saveArt(){var nm=document.getElementById('art-nm').value.trim(),pv=parseFloat(document.getElementById('ainp-pv').value)||0,stk=Math.round((parseFloat(String(document.getElementById('ainp-stk').value||'').replace(',','.'))||0)*100)/100,al=parseInt(document.getElementById('ainp-alerte').value)||5;if(!nm){showToast(t('errNom'));goAS(0);return;}
+// Déjà chez lui : on ferme cet écran et on lui ouvre l'article existant.
+var _dj=_articleExistant(nm);
+if(_dj){try{closeSheet('ov-art');}catch(e){}_direDejaLa(_dj);return;}
+if(!pv){showToast(t('errPrix'));return;}var _sac=Math.round((parseFloat(String((document.getElementById('ainp-sac')||{}).value||'').replace(',','.'))||0)*100)/100;
 // ⚠️ « Unités par casier » (ainp-parcont) servait à CALCULER la quantité et
 // le prix unitaire, puis était JETÉ. Le commerçant disait à l'app « un casier
 // fait 24 » et elle l'oubliait aussitôt. On le garde, avec le mot qu'il a
