@@ -2446,7 +2446,7 @@ body{max-width:min(100%,1200px)}
     <div class="shhdr"><div class="shtit">📦 <span id="porte-tit">Ajouter des articles</span></div><button class="bcl" onclick="closeSheet('ov-porte')">✕</button></div>
     <div style="padding:8px 19px 24px">
       <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px" id="porte-aide">Choisis ce qui te va le mieux. Tu peux mélanger les trois.</div>
-      <div class="stit2" onclick="closeSheet('ov-porte');ouvrirChoixArticles()"><div class="stico" style="background:#FFF8E1">🖼️</div><div class="stii"><div class="stitl">Choisir dans le catalogue</div><div class="stisub">600 articles du pays avec leur photo — marche sans internet</div></div><span class="starr">›</span></div>
+      <div class="stit2" onclick="closeSheet('ov-porte');ouvrirChoixArticles()"><div class="stico" style="background:#FFF8E1">🖼️</div><div class="stii"><div class="stitl">Choisir dans le catalogue</div><div class="stisub">Cherche ce que tu vends — marche sans internet</div></div><span class="starr">›</span></div>
       <div class="stit2" onclick="closeSheet('ov-porte');ouvrirCollageListe()"><div class="stico" style="background:#E8F5E9">📋</div><div class="stii"><div class="stitl" id="porte-coller">Coller une liste</div><div class="stisub" id="porte-coller-s">Depuis WhatsApp ou ton fournisseur — le plus rapide pour démarrer</div></div><span class="starr">›</span></div>
       <div class="stit2" onclick="closeSheet('ov-porte');ouvrirCatalogueRegional()"><div class="stico" style="background:#E3F2FD">🗺️</div><div class="stii"><div class="stitl" id="porte-cat">Voir chez les boutiques voisines</div><div class="stisub" id="porte-cat-s">Ce que vendent les commerçants autour de toi</div></div><span class="starr">›</span></div>
       <div class="stit2" onclick="closeSheet('ov-porte');ouvrirAjoutExpress()"><div class="stico" style="background:#FFF3E0">⚡</div><div class="stii"><div class="stitl" id="porte-exp">Taper à la suite</div><div class="stisub" id="porte-exp-s">Nom et prix, un article après l'autre, sans t'arrêter</div></div><span class="starr">›</span></div>
@@ -2955,7 +2955,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.96'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.97'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7491,9 +7491,23 @@ function catalogueIndex(){
         });
       }else{
         _catIdx.push({nm:fam,plein:fam,fam:null,cat:cat,um:'pc',sac:fsac,cont:fcont,
-          e:emo,img600:img,contenance:cont,pa:0,px:0,
+          e:emo,img600:img,contenance:cont,pa:0,px:0,_ph:1,
           k:txtNorm(fam+' '+(mots||''))});
       }
+    });
+    // ── UN SEUL BLOC ──
+    // Sa demande : « même les neuf cents, mélangez-les ensemble, il faut que
+    // ce soit tout le bloc ». Ces 408 articles n'ont pas de photo — ils
+    // portent l'icône de leur rayon — mais ils sont TROUVABLES, avec leur
+    // conditionnement quand on le connaît. C'est ce qui compte : avant, un
+    // commerçant cherchant « Pepsi 60 cl » ou « Djino ananas » tombait sur
+    // « rien trouvé » alors que l'article existait dans sa propre liste.
+    if(_cat600&&Array.isArray(_cat600.plus))_cat600.plus.forEach(function(e){
+      var nm=e[0];if(!nm)return;
+      _catIdx.push({nm:nm,plein:nm,fam:null,cat:CAT_IDX_N[e[1]]||'Autre',
+        um:e[4]||'pc',sac:e[2]||0,cont:e[3]||null,
+        e:null,img600:null,contenance:'',pa:0,px:0,
+        k:txtNorm(nm)});
     });
   }catch(e){}
   return _catIdx;
@@ -8529,7 +8543,7 @@ async function ouvrirCatalogueRegional(){
         '<div style="font-size:12.5px;font-weight:700;color:var(--M);margin-bottom:9px">'
         +(_fr?'Aucune boutique voisine n\'a encore partagé d\'articles.':'No nearby shop has shared items yet.')+'</div>'
         +'<button class="bnxt" onclick="closeSheet(\'ov-catalog\');ouvrirChoixArticles()">🖼️ '
-        +(_fr?'Choisir dans le catalogue (600 articles)':'Pick from the catalogue (600 items)')+'</button>';
+        +(_fr?'Chercher dans le catalogue':'Search the catalogue')+'</button>';
       return;
     }
     document.getElementById('catalog-cnt').textContent=_catalogModeles.length+' '+(lang==='fr'?'modèle(s) trouvé(s) — sélectionnez ceux à importer':'template(s) found — select the ones to import');
@@ -8958,8 +8972,27 @@ async function ouvrirChoixArticles(){
   await chargerCatalogue600();
   chaRendre();
 }
+// ── TOUT LE BLOC, EN UNE SEULE LISTE ──
+// Sa demande : « même les neuf cents, mélangez-les ensemble ». Les articles à
+// photo et ceux qui n'en ont pas se cherchent au même endroit, avec la même
+// barre. Ceux sans photo portent l'icône de leur rayon — ils sont trouvables,
+// c'est ce qui compte.
+// ⚠️ Assemblé UNE SEULE FOIS : cette fonction est appelée à chaque frappe
+// dans la recherche, et deviner 400 émojis à chaque lettre ferait ramer
+// l'écran sur un téléphone d'entrée de gamme.
+var _chaTout=null;
 function _chaEntrees(){
-  return (_cat600&&_cat600.entrees)?_cat600.entrees:[];
+  if(_chaTout)return _chaTout;
+  var base=(_cat600&&_cat600.entrees)?_cat600.entrees:[];
+  if(!_cat600||!Array.isArray(_cat600.plus)){return base;}   // pas encore chargé : on ne mémorise pas
+  var sup=_cat600.plus.map(function(p){
+    var nm=p[0];
+    // Même forme que les entrées à photo : [nom, cat, emoji, image,
+    // contenance, motsclés, variantes, sac, contenant]
+    return [nm,p[1],emojiDepuisNomProduit(nm),'','',txtNorm(nm),null,p[2]||0,p[3]||''];
+  });
+  _chaTout=base.concat(sup);
+  return _chaTout;
 }
 function chaFiltrer(q){_chaQ=txtNorm(q||'');_chaFam=null;chaRendre();}
 function chaCat(c){_chaCat=(c===_chaCat)?'':c;_chaFam=null;_chaQ='';var s=document.getElementById('cha-src');if(s)s.value='';chaRendre();}
