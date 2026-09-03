@@ -2015,6 +2015,13 @@ body{max-width:min(100%,1200px)}
       <button type="button" id="exp-ouvrir-saisie" onclick="expOuvrirSaisie()" style="display:none;width:100%;background:none;border:none;color:var(--B);font-size:12.5px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;padding:6px 0 14px;text-decoration:underline">➕ Ajouter un autre article à la main</button>
 
       <div id="exp-compte" style="font-size:12px;font-weight:800;color:var(--B);margin-bottom:8px"></div>
+      <!-- ⚠️ « Même au niveau de l'ajout express ou par WhatsApp, coller la
+           liste des articles, ces unitaires là-bas aussi, il faut le voir. »
+           Chaque ligne pouvait déjà être corrigée — mais il fallait l'ouvrir
+           une par une. Sur une liste de fournisseur collée depuis WhatsApp,
+           TOUS les prix sont des prix de gros : c'est 20 gestes pour dire une
+           seule chose. Ce bouton le dit pour toute la liste d'un coup. -->
+      <button type="button" id="exp-tout-gros" onclick="expToutEnGros()" style="display:none;width:100%;background:#FFF8E1;border:1.5px solid #FFD79A;border-radius:11px;padding:10px 12px;font-size:12.5px;font-weight:800;color:#B45309;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:10px">📦 Ces prix d'achat sont des prix de carton</button>
       <div id="exp-liste" style="max-height:34vh;overflow-y:auto;margin-bottom:13px"></div>
       <button class="bnxt" id="exp-valider" onclick="expCreerTous()" style="display:none">✅ <span id="exp-valider-l">Créer les articles</span></button>
     </div>
@@ -3004,7 +3011,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='20.2'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='20.3'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9014,6 +9021,33 @@ function expSetUm(i,u){
   if(!a.um)a.gros=a.gros||0;
   expRender();
 }
+// « Tous ces prix sont des prix de carton » — pour une liste entière.
+// ⚠️ On n'invente AUCUN nombre : on n'applique que les tailles de carton que
+// le catalogue ou sa propre boutique connaissent déjà. Les autres sont
+// comptées et signalées, et il les dira lui-même. Un carton deviné donnerait
+// un prix d'achat faux, et un mauvais prix d'achat ne se voit jamais.
+function expToutEnGros(){
+  var fr=(lang==='fr'),faits=0,manque=[],premier=-1;
+  (_expListe||[]).forEach(function(a,i){
+    _expLigneComplete(a);
+    if(!(Number(a.pa)>0))return;          // pas de prix d'achat : rien à convertir
+    if(typeof a.gros==='number'&&a.gros>0)return;  // déjà dit
+    var m=null;
+    try{m=mesureCatalogue(a.nm)||_condDeMaBoutique(a.nm);}catch(e){}
+    if(m&&m.sac>0){a.gros=m.sac;a.paUnitaire=false;faits++;}
+    else{manque.push(a.nm);if(premier<0)premier=i;}
+  });
+  expRender();
+  if(!faits&&!manque.length){showToast('ℹ️ '+(fr?'Rien à convertir : aucun prix d\'achat saisi':'Nothing to convert'));return;}
+  if(manque.length){
+    // On l'emmène directement sur le premier article dont on ignore le carton.
+    if(premier>=0){_expOuvert=premier;expRender();}
+    showToast('📦 '+faits+' '+(fr?'article(s) convertis — dis-moi combien dans le carton pour ':'converted — how many per box for ')
+      +manque.slice(0,2).join(', ')+(manque.length>2?(fr?' et '+(manque.length-2)+' autres':' and '+(manque.length-2)+' more'):''));
+  }else{
+    showToast('📦 '+faits+' '+(fr?'article(s) : le prix du carton est ramené à l\'unité':'converted to unit prices'));
+  }
+}
 function expSetGros(i,v){
   var a=_expListe[i];if(!a)return;
   a.gros=Math.max(0,Math.round(parseFloat(String(v).replace(',','.'))||0));
@@ -9088,6 +9122,17 @@ function expRender(){
     return h+'</div>';
   }).join('');
   if(btn){btn.style.display='block';lbl.textContent=(fr?'Créer les ':'Create the ')+_expListe.length+(fr?' articles':' items');}
+  // Le bouton « tout en carton » n'a de sens que sur plusieurs lignes qui ont
+  // un prix d'achat et qui ne sont pas déjà déclarées.
+  var tg=document.getElementById('exp-tout-gros');
+  if(tg){
+    var aConvertir=_expListe.filter(function(a){
+      return Number(a.pa)>0 && !(typeof a.gros==='number'&&a.gros>0);
+    }).length;
+    tg.style.display=(aConvertir>=2)?'block':'none';
+    tg.textContent=fr?('📦 Ces '+aConvertir+' prix d\'achat sont des prix de carton')
+                     :('📦 These '+aConvertir+' costs are pack prices');
+  }
 }
 function expCreerTous(){
   var fr=lang==='fr';
