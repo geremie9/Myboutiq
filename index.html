@@ -1821,6 +1821,24 @@ body{max-width:min(100%,1200px)}
 <div class="ov" id="ov-recu" onclick="closeOv(event,'ov-recu')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="ov-recu-t">🧾 Reçu</div><button class="bcl" onclick="closeSheet('ov-recu')">✕</button></div>
+    <!-- ⚠️ MA DETTE DE LA 19.93. J'ai rendu le nom de boutique facultatif à la
+         création — c'était le seul texte obligatoire de toute l'app et il
+         arrêtait net quelqu'un qui ne sait pas écrire. Mais je n'avais jamais
+         écrit l'autre moitié : le redemander LÀ OÙ IL SERT. C'est ici, sur
+         son premier reçu, quand il voit « Ma boutique » écrit en haut. -->
+    <div id="recu-nom-invite" style="display:none;margin:0 19px 14px;background:#FFF8E1;border:1.5px solid #FFD79A;border-radius:13px;padding:13px 15px">
+      <div style="font-size:13px;font-weight:800;color:#B45309;margin-bottom:3px" id="rni-t">Comment s'appelle ta boutique ?</div>
+      <div style="font-size:11.5px;font-weight:600;color:var(--M);margin-bottom:10px" id="rni-s">C'est ce que ton client lit en haut du reçu.</div>
+      <div style="display:flex;gap:7px;margin-bottom:9px">
+        <input class="pi sm" id="rni-nm" type="text" placeholder="Ex : Chez maman Rose" maxlength="40" style="flex:1;min-width:0;font-weight:700">
+        <button type="button" id="rni-mic" onclick="dicterDans('rni-nm','rni-mic')" title="Dire le nom"
+          style="flex:none;width:46px;border-radius:12px;border:1.5px solid var(--BD);background:var(--C);font-size:19px;cursor:pointer">🎤</button>
+      </div>
+      <div style="display:flex;gap:7px">
+        <button type="button" class="bnxt" style="flex:1;margin:0" onclick="enregistrerNomBoutique()" id="rni-ok">Enregistrer</button>
+        <button type="button" class="bvid" style="flex:none;width:110px;margin:0;padding:12px 6px" onclick="plusTardNomBoutique()" id="rni-plus-tard">Plus tard</button>
+      </div>
+    </div>
     <div id="recu-cont"></div>
     <div style="padding:0 19px"><button class="brecu" onclick="imprimerRecu()" id="btn-imprimer">🖨️ <span id="lbl-imprimer">Imprimer</span></button><button class="brecu" onclick="partagerRecu()">📱 WhatsApp</button><button class="bvid" onclick="closeSheet('ov-recu')" id="btn-fermer">Fermer</button></div>
   </div>
@@ -2925,7 +2943,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.94'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.95'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6608,8 +6626,43 @@ function toggleRecuAuto(){
   save();
   showToast(DB.cfg.recuAuto?('🧾 '+(lang==='fr'?'Le reçu s\'ouvrira après chaque vente':'Receipt opens after each sale')):('⚡ '+(lang==='fr'?'Vente rapide : le reçu reste optionnel':'Fast selling: receipt on demand')));
 }
+// La boutique porte-t-elle encore le nom que l'app lui a donné faute de mieux ?
+function _nomBoutiqueParDefaut(){
+  var n=txtNorm((DB&&DB.cfg&&DB.cfg.nom)||'');
+  return !n||n==='ma boutique'||n==='my shop';
+}
+var _nomDemandeCetteSession=false;
+function enregistrerNomBoutique(){
+  var fr=(lang==='fr');
+  var v=String((document.getElementById('rni-nm')||{}).value||'').trim().slice(0,40);
+  if(v.length<2){showToast('🏪 '+(fr?'Écris ou dis le nom de ta boutique':'Type or say your shop name'));return;}
+  DB.cfg.nom=_majuscule(v);
+  try{if(DB.boutiques&&DB.boutiques[0])DB.boutiques[0].nm=DB.cfg.nom;}catch(e){}
+  save();
+  // Le reçu affiché porte encore l'ancien nom : on le refait sous ses yeux,
+  // sinon il ne voit pas ce que son geste a changé.
+  if(dernierRecu)dernierRecu.boutique=DB.cfg.nom;
+  plusTardNomBoutique();
+  try{afficherRecu();}catch(e){}
+  showToast('🏪 '+DB.cfg.nom);
+  try{parler((fr?'Ta boutique s\'appelle ':'Your shop is called ')+DB.cfg.nom);}catch(e){}
+}
+function plusTardNomBoutique(){
+  _nomDemandeCetteSession=true;
+  var b=document.getElementById('recu-nom-invite');if(b)b.style.display='none';
+}
 function afficherRecu(){
   if(!dernierRecu)return;var r=dernierRecu;
+  // On ne demande QU'UNE FOIS par session, et jamais s'il a déjà nommé sa
+  // boutique. Un reçu qui redemande à chaque vente serait insupportable.
+  try{
+    var inv=document.getElementById('recu-nom-invite');
+    if(inv){
+      var aDemander=(_nomBoutiqueParDefaut()&&!_nomDemandeCetteSession&&(role==='patron'||hasPerm('produits')));
+      inv.style.display=aDemander?'block':'none';
+      if(aDemander){var c=document.getElementById('rni-nm');if(c)c.value='';}
+    }
+  }catch(e){}
   document.getElementById('recu-cont').innerHTML='<div class="recu-cd" id="recu-print"><div class="recu-h"><div class="recu-sh">🏪 '+r.boutique+'</div>'+(DB.cfg.numFiscal?'<div class="recu-dt">'+(lang==='fr'?'ID':'ID')+': '+DB.cfg.numFiscal+'</div>':'')+'<div class="recu-dt">'+r.date+' '+r.h+'</div></div>'+r.lignes.map(function(l){return '<div class="recu-rw"><span>'+l.nm+'</span><span>'+fmt(l.px)+'</span></div>';}).join('')+((r.remise||0)>0?'<div class="recu-rw"><span>🏷️ '+(lang==='fr'?'Remise':'Discount')+'</span><span>-'+fmt(r.remise)+'</span></div>':'')+'<div class="recu-tt"><span>TOTAL</span><span>'+fmt(r.total)+'</span></div>'+(r.client?'<div class="recu-rw" style="font-size:11px;opacity:.75"><span>'+(lang==='fr'?'Client':'Customer')+'</span><span>'+r.client+'</span></div>':'')+(r.paiement?'<div class="recu-rw" style="font-size:11px;opacity:.75"><span>'+(lang==='fr'?'Paiement':'Payment')+'</span><span>'+pmntLabel(r.paiement)+'</span></div>':'')+'<div class="recu-tk">'+t('merci')+'</div></div>';
   document.getElementById('ov-recu').classList.add('show');
 }
