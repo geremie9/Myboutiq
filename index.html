@@ -2146,7 +2146,23 @@ body{max-width:min(100%,1200px)}
           <div class="abtn on" id="stk-sens-in" onclick="stkSens('in')" style="flex:1;padding:10px"><span class="aemo">📥</span><span class="albl" id="lbl-sens-in">J'ai reçu</span></div>
           <div class="abtn" id="stk-sens-out" onclick="stkSens('out')" style="flex:1;padding:10px"><span class="aemo">📤</span><span class="albl" id="lbl-sens-out">J'ai perdu</span></div>
         </div>
-        <div class="pig"><label class="pl" id="lbl-qte-recu">Quantité reçue</label><input class="pi" type="number" id="inp-sqte" inputmode="decimal" step="0.25" oninput="majApercuStk()"><div class="shcts" id="stk-shcts"><button class="shct" onclick="setSQ(6)">6</button><button class="shct" onclick="setSQ(12)">12</button><button class="shct" onclick="setSQ(24)">24</button><button class="shct" onclick="setSQ(48)">48</button></div></div>
+        <div class="pig"><label class="pl" id="lbl-qte-recu">Quantité reçue</label><input class="pi" type="number" id="inp-sqte" inputmode="decimal" step="0.25" oninput="majApercuStk()"><div class="shcts" id="stk-shcts"><button class="shct" onclick="setSQ(6)">6</button><button class="shct" onclick="setSQ(12)">12</button><button class="shct" onclick="setSQ(24)">24</button><button class="shct" onclick="setSQ(48)">48</button></div>
+          <!-- ⚠️ « Les achats se font en gros, les ventes en détail. Si j'ai
+               acheté deux cartons de biscuits et que tu me demandes le prix
+               par biscuit, je ne peux pas m'en sortir. »
+               Quand l'app connaît la taille du carton, elle propose déjà
+               « 1 carton = 100 · 2 cartons = 200 ». Quand elle ne la connaît
+               PAS, elle proposait « 6 · 12 · 24 · 48 » — des nombres sans
+               signification, et aucun moyen de dire « deux cartons ».
+               Il peut maintenant la lui dire ici, une fois. -->
+          <button type="button" id="stk-dire-cart" onclick="stkDireCarton()" style="display:none;background:none;border:none;color:var(--B);font-size:12px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;padding:7px 0 0;text-decoration:underline">📦 J'ai acheté par carton — combien dedans ?</button>
+          <div id="stk-cart-row" style="display:none;margin-top:8px">
+            <div style="display:flex;gap:7px">
+              <input class="pi sm" type="number" id="inp-scart" inputmode="numeric" placeholder="ex : 24" style="flex:1;min-width:0">
+              <button type="button" class="bnxt" style="flex:none;width:110px;margin:0;padding:11px 6px" onclick="stkPoserCarton()" id="stk-cart-ok">Valider</button>
+            </div>
+            <div style="font-size:10.5px;font-weight:600;color:var(--M);margin-top:5px" id="stk-cart-aide">L'app s'en souviendra pour cet article.</div>
+          </div></div>
         <div class="pig" id="stk-motif-row" style="display:none"><label class="pl" id="lbl-motif">Pourquoi cette sortie ?</label>
           <div class="shcts" style="margin-top:0">
             <button class="shct" onclick="stkMotif('Casse')" id="mtf-casse">💔 Casse</button>
@@ -2649,7 +2665,19 @@ body{max-width:min(100%,1200px)}
       <button type="button" id="btn-photo-var" class="photo-upl-btn" onclick="document.getElementById('inp-photo-var').click()" style="width:100%;background:#E8F5E9;color:var(--G);border:none;border-radius:10px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:7px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-4.5-4.5L6 21"/></svg><span id="lbl-photo-var">Photo de la variante (optionnel)</span></button>
       <input type="file" id="inp-photo-var" accept="image/*" style="display:none" onchange="uploadPhotoVar(event)">
       <div id="sug-prix-v" style="display:none;background:#FFF8E1;border:1.4px solid #FFD79A;border-radius:9px;padding:8px 11px;font-size:11.5px;font-weight:700;color:#B45309;margin-bottom:10px"></div>
-      <div class="pig"><label class="pl" id="lbl-var-pa">Prix d'achat (la pièce)</label><input class="pi" type="number" id="var-pa" oninput="calcBenVar()" inputmode="numeric"></div>
+      <!-- ⚠️ Dernier écran qui réclamait l'unitaire seul. « Les achats se font en
+           gros, les ventes en détail » — ici aussi il achète son carton de
+           savons, pas un savon. Même mécanisme que l'ajout express. -->
+      <div style="display:flex;gap:7px;margin-bottom:9px">
+        <div class="abtn on" id="var-m-u" onclick="varMode('u')" style="flex:1;padding:9px 6px"><span class="albl" id="var-m-u-l">Prix à l'unité</span></div>
+        <div class="abtn" id="var-m-g" onclick="varMode('g')" style="flex:1;padding:9px 6px"><span class="albl" id="var-m-g-l">Prix du carton</span></div>
+      </div>
+      <div id="var-gros" style="display:none;margin-bottom:9px">
+        <div class="pig"><label class="pl" id="var-parc-l">Combien d'unités dans 1 carton ?</label>
+          <input class="pi sm" id="var-parc" type="number" inputmode="numeric" placeholder="ex : 24" oninput="varCalcGros()"></div>
+        <div id="var-gros-res" style="display:none;background:#E8F5E9;border-radius:9px;padding:8px 11px;font-size:12px;font-weight:800;color:#1B5E20;margin-top:7px"></div>
+      </div>
+      <div class="pig"><label class="pl" id="lbl-var-pa">Prix d'achat (la pièce)</label><input class="pi" type="number" id="var-pa" oninput="calcBenVar();varCalcGros()" inputmode="numeric"></div>
       <div class="pig"><label class="pl" id="lbl-var-pv">Prix de vente</label><input class="pi" type="number" id="var-pv" oninput="calcBenVar()" inputmode="numeric"></div>
       <div class="bcard bon" id="var-bc" style="display:none"><div><div class="blbl" id="var-bl">📈 Bénéfice</div></div><div class="bamt" id="var-ba">+0</div></div>
       <div class="pig"><label class="pl" id="lbl-var-stk">Stock initial</label><input class="pi" type="number" id="var-stk" placeholder="0" inputmode="numeric"></div>
@@ -2976,7 +3004,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='20.1'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='20.2'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5614,7 +5642,7 @@ function cmpAddVar(){
   var p=_cmpArt;if(!p||!(role==='patron'||hasPerm('produits')))return;
   varArtCours=p;
   document.getElementById('addvar-t').textContent=(lang==='fr'?'🔀 Variante de ':'🔀 Variant of ')+p.nm;
-  ['var-nm','var-pa','var-pv','var-stk'].forEach(function(id){document.getElementById(id).value='';});
+  ['var-nm','var-pa','var-pv','var-stk','var-parc'].forEach(function(id){var _e=document.getElementById(id);if(_e)_e.value='';});try{varMode('u');}catch(e){}
   document.getElementById('var-bc').style.display='none';
   selVarImg=null;var pv=document.getElementById('var-photo-preview');if(pv)pv.style.display='none';
   document.getElementById('ov-addvar').classList.add('show');
@@ -5927,7 +5955,7 @@ function ctxToggleRupt(){
   save();renderProd(DB.articles);renderStock(DB.articles);
   showToast((artCtx.rt?'✅ ':'⛔ ')+artCtx.nm+' — '+(lang==='fr'?'vente en rupture':'sell when out of stock')+' '+(artCtx.rt?(lang==='fr'?'activée':'on'):(lang==='fr'?'désactivée':'off')));
 }
-function ctxAV(){if(!artCtx)return;varArtCours=artCtx;document.getElementById('addvar-t').textContent=(lang==='fr'?'🔀 Variante de ':'🔀 Variant of ')+artCtx.nm;['var-nm','var-pa','var-pv','var-stk'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('var-bc').style.display='none';var _sv=document.getElementById('sug-prix-v');if(_sv)_sv.style.display='none';selVarImg=null;var _vp=document.getElementById('var-photo-preview');if(_vp)_vp.style.display='none';document.getElementById('ov-addvar').classList.add('show');}
+function ctxAV(){if(!artCtx)return;varArtCours=artCtx;document.getElementById('addvar-t').textContent=(lang==='fr'?'🔀 Variante de ':'🔀 Variant of ')+artCtx.nm;['var-nm','var-pa','var-pv','var-stk','var-parc'].forEach(function(id){var _e=document.getElementById(id);if(_e)_e.value='';});try{varMode('u');}catch(e){}document.getElementById('var-bc').style.display='none';var _sv=document.getElementById('sug-prix-v');if(_sv)_sv.style.display='none';selVarImg=null;var _vp=document.getElementById('var-photo-preview');if(_vp)_vp.style.display='none';document.getElementById('ov-addvar').classList.add('show');}
 // ── Photo d'une variante (upload direct, compressée) ──
 var selVarImg=null;
 function uploadPhotoVar(ev){
@@ -9932,7 +9960,39 @@ DB.articles.push({id:DB.nextId++,nm,e:selEmo,img:selImg||null,cat:selCat||'Autre
 // article n'a encore aucune vente, donc le regroupement est sans risque.
 try{proposerRegroupement(DB.articles[DB.articles.length-1]);}catch(e){}}
 function calcBenVar(){var pa=parseFloat(document.getElementById('var-pa').value)||0,pv=parseFloat(document.getElementById('var-pv').value)||0,bc=document.getElementById('var-bc');if(pa>0&&pv>0){bc.style.display='flex';var d=pv-pa;bc.className='bcard '+(d>=0?'bon':'bad');document.getElementById('var-bl').textContent=d>=0?t('beneficeUnit'):t('venteAPerte');document.getElementById('var-ba').textContent=(d>=0?'+':'')+fmt(d);}else bc.style.display='none';}
-function saveVar(){var nm=document.getElementById('var-nm').value.trim(),pa=parseFloat(document.getElementById('var-pa').value)||0,pv=parseFloat(document.getElementById('var-pv').value)||0,stk=parseInt(document.getElementById('var-stk').value)||0;if(!nm||!pv){showToast(t('errNom'));return;}if(!varArtCours)return;var nid=(varArtCours.vr.length?Math.max.apply(null,varArtCours.vr.map(function(v){return v.id;})):0)+1;var qBase=1;if(varArtCours.stk>0){var msg=lang==='fr'?'Quantité de stock de base consommée par cette variante ?\\n(1 pour unité simple, 100 pour 100g, 1000 pour 1kg, 0.5 pour une demi-unité, etc.)':'Base stock units consumed by this variant?\\n(1 for single unit, 100 for 100g, 1000 for 1kg, 0.5 for half a unit, etc.)';var rep=prompt(msg,'1');if(rep===null)return;qBase=Math.max(0.001,parseFloat((rep||'1').replace(',','.'))||1);}var nv={id:nid,nm,px:pv,pa,stk,rt:true,qBase:qBase};if(typeof selVarImg!=='undefined'&&selVarImg)nv.img=selVarImg;varArtCours.vr.push(nv);if(stk>0){nv.stk0=stk;}save();renderProd(DB.articles);renderStock(DB.articles);closeSheet('ov-addvar');
+// ── Le prix du carton, ramené à l'unité, ici aussi ──
+var _varMode='u';
+function varMode(m){
+  _varMode=(m==='g')?'g':'u';
+  var u=document.getElementById('var-m-u'),g=document.getElementById('var-m-g');
+  if(u)u.classList.toggle('on',_varMode==='u');
+  if(g)g.classList.toggle('on',_varMode==='g');
+  var b=document.getElementById('var-gros');if(b)b.style.display=(_varMode==='g')?'block':'none';
+  var l=document.getElementById('lbl-var-pa');
+  if(l)l.textContent=(_varMode==='g')?(lang==='fr'?'Prix du carton entier':'Price of the whole box')
+                                     :(lang==='fr'?"Prix d'achat (la pièce)":'Cost per unit');
+  varCalcGros();
+}
+function varCalcGros(){
+  var r=document.getElementById('var-gros-res');if(!r)return;
+  if(_varMode!=='g'){r.style.display='none';return;}
+  var t=parseFloat((document.getElementById('var-pa')||{}).value)||0;
+  var c=parseFloat((document.getElementById('var-parc')||{}).value)||0;
+  if(!(t>0)||!(c>0)){r.style.display='none';return;}
+  r.style.display='block';
+  r.innerHTML='📦 '+fmt(t)+' ÷ '+fmtQ(c)+' = <b style="font-size:14px">'+fmt(Math.round(t/c))+'</b> '+(lang==='fr'?"l'unité":'each');
+}
+// Ce que la variante doit retenir. -1 = il a donné un prix de carton sans
+// dire combien il y a dedans : on refuse plutôt que de diviser au hasard.
+function _varPaUnitaire(){
+  var t=parseFloat((document.getElementById('var-pa')||{}).value)||0;
+  if(_varMode!=='g')return t;
+  if(!(t>0))return 0;
+  var c=parseFloat((document.getElementById('var-parc')||{}).value)||0;
+  if(!(c>0))return -1;
+  return Math.round(t/c);
+}
+function saveVar(){var nm=document.getElementById('var-nm').value.trim(),pa=_varPaUnitaire(),pv=parseFloat(document.getElementById('var-pv').value)||0,stk=parseInt(document.getElementById('var-stk').value)||0;if(pa<0){showToast('📦 '+(lang==='fr'?"Combien d'unités dans 1 carton ? Sans ce nombre je ne peux pas calculer le prix à l'unité":'How many per box?'));var _c=document.getElementById('var-parc');if(_c)_c.focus();return;}if(!nm||!pv){showToast(t('errNom'));return;}if(!varArtCours)return;var nid=(varArtCours.vr.length?Math.max.apply(null,varArtCours.vr.map(function(v){return v.id;})):0)+1;var qBase=1;if(varArtCours.stk>0){var msg=lang==='fr'?'Quantité de stock de base consommée par cette variante ?\\n(1 pour unité simple, 100 pour 100g, 1000 pour 1kg, 0.5 pour une demi-unité, etc.)':'Base stock units consumed by this variant?\\n(1 for single unit, 100 for 100g, 1000 for 1kg, 0.5 for half a unit, etc.)';var rep=prompt(msg,'1');if(rep===null)return;qBase=Math.max(0.001,parseFloat((rep||'1').replace(',','.'))||1);}var nv={id:nid,nm,px:pv,pa,stk,rt:true,qBase:qBase};if(typeof selVarImg!=='undefined'&&selVarImg)nv.img=selVarImg;varArtCours.vr.push(nv);if(stk>0){nv.stk0=stk;}save();renderProd(DB.articles);renderStock(DB.articles);closeSheet('ov-addvar');
   // Si la fiche famille est ouverte derrière, on la rafraîchit avec la nouvelle variante
   if(typeof _cmpArt!=='undefined'&&_cmpArt===varArtCours&&document.getElementById('ov-completer').classList.contains('show'))cmpRenderFamRows();
   showToast(t('varianteAjoutee')+(qBase!==1?(lang==='fr'?' · stock base intelligent activé':' · smart base stock enabled'):''));}
@@ -10047,6 +10107,14 @@ function selArtStk(p){
     }else{
       chips.innerHTML=[6,12,24,48].map(function(n){return '<button class="shct" onclick="setSQ('+n+')">'+n+'</button>';}).join('');
     }
+    // Taille du carton inconnue : on lui propose de la dire, une fois.
+    var lienC=document.getElementById('stk-dire-cart');
+    if(lienC){
+      var fr2=(lang==='fr');
+      lienC.style.display=(sc>0||estMesure(p))?'none':'block';
+      lienC.textContent=fr2?('📦 J\'ai acheté par '+mot+' — combien dedans ?')
+                           :('📦 I bought by the '+mot+' — how many inside?');
+    }
   }
   // Prix d'achat : on le pré-remplit avec celui déjà connu. C'est ICI que le
   // patron croyait le saisir — le champ n'existait pas, donc le repère
@@ -10101,6 +10169,29 @@ function stkPaUnit(){
   return q>0?Math.round(v/q):0;
 }
 function setSQ(n){document.getElementById('inp-sqte').value=n;majApercuStk();}
+// Il dit une fois combien il y a dans son carton : l'app s'en souvient pour
+// cet article, et les raccourcis « 1 carton = 24 · 2 cartons = 48 » arrivent.
+// C'est le même principe que partout ailleurs — on n'invente pas ce nombre,
+// on le lui demande une seule fois et on le garde.
+function stkDireCarton(){
+  var r=document.getElementById('stk-cart-row');if(r)r.style.display='block';
+  var l=document.getElementById('stk-dire-cart');if(l)l.style.display='none';
+  var c=document.getElementById('inp-scart');if(c)try{c.focus();}catch(e){}
+}
+function stkPoserCarton(){
+  var fr=(lang==='fr');
+  var n=Math.round((parseFloat(String((document.getElementById('inp-scart')||{}).value||'').replace(',','.'))||0)*100)/100;
+  if(!(n>0)){showToast('📦 '+(fr?'Écris combien il y a dans un carton':'How many per box?'));return;}
+  var p=artStkCours;
+  if(!p){showToast('⛔ '+(fr?'Aucun article ouvert':'No item open'));return;}
+  p.umSac=n;
+  if(!p.umCont)p.umCont=_motContenant(p);
+  save();
+  var r=document.getElementById('stk-cart-row');if(r)r.style.display='none';
+  var c=document.getElementById('inp-scart');if(c)c.value='';
+  majApercuStk();
+  showToast('📦 1 '+(p.umCont||(fr?'carton':'box'))+' = '+fmtQ(n)+' '+(fr?'— je m\'en souviendrai':'— remembered'));
+}
 // ═══ Entrée OU sortie de stock (casse, vol, périmé, cadeau, retour) ═══
 // Avant, on ne pouvait qu'AJOUTER du stock : une bouteille cassée restait
 // comptée en rayon. La sortie est un événement d'appro négatif, donc le stock
