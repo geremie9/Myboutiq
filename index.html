@@ -3011,7 +3011,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='20.7'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='20.8'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3308,7 +3308,7 @@ async function syncToSupa(){
     var user=await getAuthUser();
     if(user)DB.cfg.ownerId=user.id;
     // Fusionner l'état serveur AVANT d'écrire : ne jamais écraser les ventes d'un autre vendeur hors-ligne
-    try{ if(navigator.onLine&&DB.cfg.code){ var _rem=await loadFromSupa(DB.cfg.code); if(_rem){ DB=migrateDBData(mergeDB(DB,_rem));_artSnapApresFusion(); } } }catch(e){}
+    try{ if(navigator.onLine&&DB.cfg.code){ var _rem=await loadFromSupa(DB.cfg.code,_pinPatronDispo()); if(_rem){ DB=migrateDBData(mergeDB(DB,_rem));_artSnapApresFusion(); } } }catch(e){}
     DB.cfg._dev=_deviceId;
     for(var attempt=0;attempt<3;attempt++){
       DB.cfg.code=formatShopCode(DB.cfg.code||genCode());
@@ -3420,6 +3420,25 @@ function _signalerPinRefuse(){
 }
 function _pinEncoreUtilisable(){
   return !_pinRefuse && _shopPin!=null && String(_shopPin).length>=4;
+}
+// ⚠️ « APRÈS LA CONNEXION, UNE VOIX DEMANDE DE RETAPER LE CODE. »
+// Deux lectures partaient SANS PIN. Sans PIN, `loadFromSupa` retombe sur
+// `_shopPin` — qui, pour un PATRON, est souvent vide ou périmé. Le serveur
+// refusait alors en silence, et trois choses s'enchaînaient :
+//   1. `_signalerPinRefuse()` EFFAÇAIT `DB.cfg.pin` et `pinVendeur` ;
+//   2. la voix réclamait le code, juste après une connexion réussie ;
+//   3. côté serveur, `boutique_lire` appelait `_pin_echec` — le compteur qui
+//      finit par BLOQUER la boutique. On comptait des fautes contre un
+//      commerçant qui n'avait rien tapé.
+// Ce téléphone détient pourtant un PIN patron valable : on le présente.
+// Renvoie null s'il n'y en a pas — et le vendeur garde alors exactement le
+// comportement d'avant (repli `_shopPin` + protection anti-martèlement).
+function _pinPatronDispo(){
+  try{
+    if(_pinPatronValide&&String(_pinPatronValide).length>=4)return String(_pinPatronValide);
+    if(DB&&DB.cfg&&String(DB.cfg.pin||'').length>=4)return String(DB.cfg.pin);
+  }catch(e){}
+  return null;
 }
 async function loadFromSupa(code,pin){
   if(!supa)return null;
@@ -3882,7 +3901,10 @@ async function _prouverPatronEnFond(tel,pin){
     // Rapatrier ce qui a changé ailleurs pendant ce temps.
     try{
       if(DB&&DB.cfg&&DB.cfg.code){
-        var rem=await loadFromSupa(DB.cfg.code);
+        // Le PIN vient d'être accepté par le serveur (signInWithPassword) :
+        // c'est la meilleure preuve qu'on ait. Le passer, au lieu de laisser
+        // la lecture retomber sur `_shopPin`.
+        var rem=await loadFromSupa(DB.cfg.code,pin);
         if(rem){DB=migrateDBData(mergeDB(DB,rem));_artSnapApresFusion();
           try{renderProd(DB.articles);renderStock(DB.articles);}catch(x){}}
       }
@@ -6074,6 +6096,17 @@ function _artVersVariante(cible,a){
   var vid=(cible.vr.length?Math.max.apply(null,cible.vr.map(function(v){return v.id;})):0)+1;
   var nv={id:vid,nm:a.nm,px:a.px||0,pa:a.pa||0,stk:a.stk||0,stk0:a.stk||0,rt:a.rt!==false,qBase:1};
   if(a.img)nv.img=a.img;
+  // Article ABSORBÉ dans une famille — pas la cible qui devient sa propre
+  // première variante, laquelle garde son fonctionnement d'avant (son
+  // histoire reste sur le parent, soldée par un mouvement inverse).
+  // On retient son identifiant d'origine et on repart de son stock de DÉPART
+  // au lieu du stock net : `recomputeStock` rejoue alors ses appros et ses
+  // ventes sur la variante. C'est ce qui rend l'annulation possible — avec le
+  // stock net, l'histoire était figée dedans et annuler ne changeait rien.
+  if(a.id!==cible.id){
+    nv.oid=a.id;
+    nv.stk0=Number(a.stk0)||0;
+  }
   cible.vr.push(nv);
   return nv;
 }
@@ -11728,10 +11761,31 @@ function _prochainIdArticle(){
 }
 function recomputeStock(d){
   if(!d||!Array.isArray(d.articles))return d;
+  // ⚠️ « ON NE PEUT PAS ANNULER UNE VENTE À L'INTÉRIEUR DES VARIANTES. »
+  // MESURÉ : vendre 2, regrouper, puis annuler → le stock ne bouge pas (5 au
+  // lieu de 7) pendant que l'app annonce « stock restitué ».
+  // Quand un article est absorbé dans une famille il passe sous pierre
+  // tombale, mais ses ventes gardent son ANCIEN `pid`. Les deux boucles
+  // ci-dessous ne le retrouvent plus (`if(!p)return;`) et l'ignorent : le
+  // mouvement devient invisible, donc inannulable.
+  // La variante porte maintenant `oid` — l'article dont elle vient — et on
+  // rend ces mouvements à leur variante au lieu de les jeter.
+  var parOid={},vivant={};
+  d.articles.forEach(function(p){
+    vivant[p.id]=true;
+    (p.vr||[]).forEach(function(v){if(v&&v.oid!=null)parOid[v.oid]={pid:p.id,vid:v.id};});
+  });
+  // Ne réattribue QUE les lignes orphelines : l'article d'origine n'existe
+  // plus et la ligne ne désigne pas déjà une variante. Le mouvement de solde
+  // du parent (pid encore vivant) n'est donc jamais touché.
+  var _rattacher=function(l){
+    if(!l||l.pid==null||l.vid!=null||vivant[l.pid])return null;
+    return parOid[l.pid]||null;
+  };
   var approBase={},approVar={};
-  (d.appros||[]).forEach(function(a){if(!a||a.pid==null)return;var qy=Number(a.qty)||0;if(a.vid==null)approBase[a.pid]=(approBase[a.pid]||0)+qy;else{var k=a.pid+'|'+a.vid;approVar[k]=(approVar[k]||0)+qy;}});
+  (d.appros||[]).forEach(function(a){if(!a||a.pid==null)return;var qy=Number(a.qty)||0;var _m=_rattacher(a),_p=_m?_m.pid:a.pid,_v=_m?_m.vid:a.vid;if(_v==null)approBase[_p]=(approBase[_p]||0)+qy;else{var k=_p+'|'+_v;approVar[k]=(approVar[k]||0)+qy;}});
   var soldBase={},soldVar={},vendu={};
-  (d.ventes||[]).forEach(function(v){if(!v||v.annulee)return;(v.lignes||[]).forEach(function(l){if(!l||l.pid==null)return;var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;vendu[l.pid]=(vendu[l.pid]||0)+qt;var p=d.articles.find(function(x){return x.id==l.pid;});if(!p)return;if(l.vid){if(utiliseStockBase(p))soldBase[l.pid]=(soldBase[l.pid]||0)+norm*(Number(l.qBase)||1);else{var k=l.pid+'|'+l.vid;soldVar[k]=(soldVar[k]||0)+norm;}}else soldBase[l.pid]=(soldBase[l.pid]||0)+norm;});});
+  (d.ventes||[]).forEach(function(v){if(!v||v.annulee)return;(v.lignes||[]).forEach(function(l){if(!l||l.pid==null)return;var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;var _m=_rattacher(l),_pi=_m?_m.pid:l.pid,_vi=_m?_m.vid:l.vid;vendu[_pi]=(vendu[_pi]||0)+qt;var p=d.articles.find(function(x){return x.id==_pi;});if(!p)return;if(_vi){if(utiliseStockBase(p))soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);else{var k=_pi+'|'+_vi;soldVar[k]=(soldVar[k]||0)+norm;}}else soldBase[_pi]=(soldBase[_pi]||0)+norm;});});
   d.articles.forEach(function(p){
     p.stk=(Number(p.stk0)||0)+(approBase[p.id]||0)-(soldBase[p.id]||0);
     p.vd=(Number(p.vd0)||0)+(vendu[p.id]||0); // vd0 = ventes déjà archivées (compteur "vendu" à vie préservé)
@@ -12085,7 +12139,36 @@ function mergeDB(base,other){
   // articles (stk0/vd0 rebasés) revient au téléphone qui a archivé le plus loin.
   var baseUp=(base.arch&&base.arch.upTo)||0, otherUp=(other.arch&&other.arch.upTo)||0;
   var archUp=Math.max(baseUp,otherUp);
-  var artWin=otherUp>baseUp?other:base, artSec=otherUp>baseUp?base:other;
+  // ⚠️⚠️ « QUAND ON REGROUPE DEUX TROIS ARTICLES, ILS DISPARAISSENT ET IL NE
+  // RESTE QU'UN SEUL ARTICLE. » MESURÉ : 3 articles, 22 unités → 1 article
+  // vide, 0 unité, dès que le regroupement arrive sur le SECOND téléphone.
+  //
+  // Un regroupement est DEUX choses à la fois : des suppressions (les articles
+  // absorbés) et une modification (la cible devient la famille). Or plus bas,
+  // les pierres tombales sont TOUJOURS unies et appliquées, tandis que la
+  // modification, elle, pouvait perdre. La fusion acceptait la moitié qui
+  // détruit et refusait la moitié qui reconstruit.
+  //
+  // Et le gagnant dépendait de l'ORDRE DES ARGUMENTS — alors que l'app appelle
+  // dans les deux sens : mergeDB(DB,distant) en synchro d'écriture, et
+  // mergeDB(distant,DB) à la connexion. La même fusion répondait donc le
+  // CONTRAIRE selon le chemin emprunté. On nomme les deux côtés explicitement.
+  var _locDB=(base===DB)?base:((other===DB)?other:null);
+  var _remDB=(_locDB===base)?other:base;
+  var artWin,artSec;
+  if(otherUp!==baseUp){
+    // Règle d'archivage inchangée : l'autorité va au téléphone qui a archivé
+    // le plus loin (c'est lui qui a rebasé stk0/vd0).
+    artWin=otherUp>baseUp?other:base; artSec=otherUp>baseUp?base:other;
+  }else if(_locDB){
+    // Égalité — le cas normal. Le distant est la vérité partagée ; le relevé
+    // (`_artSnapLire`) rend juste après la main à ce que CE téléphone a
+    // réellement modifié depuis le dernier échange. Sans relevé, il redonne
+    // tout au local : on retombe alors sur le comportement d'avant.
+    artWin=_remDB; artSec=_locDB;
+  }else{
+    artWin=base; artSec=other;
+  }
   var vById={};
   (base.ventes||[]).concat(other.ventes||[]).forEach(function(v){if(!v||v.id==null)return;var ex=vById[v.id];if(!ex)vById[v.id]=v;else if(v.annulee&&!ex.annulee)vById[v.id]=v;});
   base.ventes=Object.keys(vById).map(function(k){return vById[k];}).filter(function(v){var e=_epochEvt(v);return e==null||e>=archUp;}); // vieux évènements repliés -> retirés
@@ -12097,12 +12180,36 @@ function mergeDB(base,other){
   (artSec.articles||[]).forEach(function(p){if(p&&p.id!=null&&!artById[p.id])artById[p.id]=p;});
   // Ce que ce téléphone-ci vient de toucher garde le dernier mot. Le côté
   // « local », c'est celui des deux qui EST la base de données ouverte à l'écran.
-  var _loc=(other===DB)?other:((base===DB)?base:null),_gardeLocal={},_snap=null;
+  var _loc=_locDB,_gardeLocal={},_snap=null;
   if(_loc)_snap=_artSnapLire();   // relevé lu même sans article : les clients aussi sont protégés
+  // ⚠️ UN REGROUPEMENT EST INDIVISIBLE.
+  // MESURÉ : il suffisait que l'autre téléphone ait changé le PRIX de
+  // l'article devenu famille pour que sa retouche gagne — pendant que les
+  // pierres tombales, elles, tuaient quand même les membres. Résultat :
+  // « Savon bleu », zéro variante, zéro unité. Une modification d'un champ
+  // effaçait trois articles.
+  // On refuse donc de rendre la main au local sur un article que l'AUTRE côté
+  // a transformé en famille, reconnu de façon certaine : ses variantes portent
+  // `oid`, et cet `oid` est justement sous pierre tombale dans cette fusion.
+  // Condition volontairement étroite — le local doit n'avoir AUCUNE variante,
+  // ce qui est exactement la forme du dégât. Un détachement de variante
+  // (`cmpDetachVar`) en laisse au moins une et n'est donc jamais défait.
+  var _remArt={},_supTot={};
+  (base.suppr||[]).concat(other.suppr||[]).forEach(function(id){if(id!=null)_supTot[id]=true;});
+  if(_remDB&&_remDB.articles)_remDB.articles.forEach(function(p){if(p&&p.id!=null)_remArt[p.id]=p;});
+  var _familleIndivisible=function(p){
+    if(!p||(p.vr&&p.vr.length))return false;      // le local a déjà des variantes : on ne touche à rien
+    var r=_remArt[p.id];
+    if(!r||!r.vr||!r.vr.length)return false;
+    return r.vr.some(function(v){return v&&v.oid!=null&&_supTot[v.oid];});
+  };
   if(_loc&&_loc.articles){
     _loc.articles.forEach(function(p){
       if(!p||p.id==null)return;
-      if(_snap['a'+p.id]===undefined||_snap['a'+p.id]!==_artEmpreinte(p)){artById[p.id]=p;_gardeLocal['a'+p.id]=1;}
+      if(_snap['a'+p.id]===undefined||_snap['a'+p.id]!==_artEmpreinte(p)){
+        if(_familleIndivisible(p))return;   // le distant en a fait une famille : ne pas l'écraser
+        artById[p.id]=p;_gardeLocal['a'+p.id]=1;
+      }
     });
   }
   base.articles=Object.keys(artById).map(function(k){return artById[k];});
