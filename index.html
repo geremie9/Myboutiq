@@ -1803,7 +1803,7 @@ body{max-width:min(100%,1200px)}
         <div class="pig" style="flex:1"><label class="pl" id="cmp-pv-lbl">Prix de vente (obligatoire)</label><input class="pi sm" id="cmp-pv" type="number" inputmode="numeric" oninput="cmpMajAch()"></div>
       </div>
       <div id="cmp-ben" style="display:none;border-radius:9px;padding:8px 10px;font-size:11.5px;font-weight:800;margin-bottom:9px"></div>
-      <div class="pig" id="cmp-stk-row"><label class="pl" id="cmp-stk-lbl">Combien en as-tu maintenant ?</label><input class="pi sm" id="cmp-stk" type="number" inputmode="decimal" step="0.25" placeholder="0"><div class="shcts" id="cmp-stk-chips"></div></div>
+      <div class="pig" id="cmp-stk-row"><label class="pl" id="cmp-stk-lbl">Combien en as-tu maintenant ?</label><input class="pi sm" id="cmp-stk" type="number" inputmode="decimal" step="0.25" placeholder="0" oninput="cmpMajAch()"><div id="cmp-stk-conv" style="display:none;font-size:11.5px;font-weight:800;color:#1B5E20;margin-top:5px"></div><div class="shcts" id="cmp-stk-chips"></div></div>
       <button class="bnxt" onclick="validerCompleter()"><span id="cmp-ok">Enregistrer — prêt à vendre</span></button>
     </div>
   </div>
@@ -3011,7 +3011,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='20.3'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='20.4'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5273,8 +5273,8 @@ function creerEnVendant(i){
   if(rep===null)return;
   var px=parseFloat(String(rep).replace(',','.'))||0;
   if(!(px>0)){showToast('⚠️ '+(fr?'Il faut un prix de vente':'A selling price is needed'));return;}
-  if(!DB.nextId)DB.nextId=100;
-  var art={id:DB.nextId++,nm:nom,e:emojiDepuisNomProduit(nom),cat:(e&&e.cat)||categorieDepuisNomProduit(nom),
+  
+  var art={id:_prochainIdArticle(),nm:nom,e:emojiDepuisNomProduit(nom),cat:(e&&e.cat)||categorieDepuisNomProduit(nom),
     px:px,pa:0,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,
     um:(e&&e.um&&e.um!=='pc')?e.um:null,umSac:(e&&e.sac)||null,umCont:(e&&e.cont)||null};
   // Sa photo, tout de suite : celle du catalogue visuel si l'article en vient.
@@ -5668,8 +5668,8 @@ function cmpDetachVar(vid){
   var p=_cmpArt;if(!p)return;
   var v=p.vr.find(function(x){return x.id==vid;});if(!v)return;
   if(!confirm('"'+(v.nm||'?')+(lang==='fr'?'" devient un article indépendant ?':'" becomes its own item?')))return;
-  if(!DB.nextId)DB.nextId=100;
-  var na={id:DB.nextId++,nm:v.nm||p.nm,e:p.e,cat:p.cat,px:v.px||0,pa:v.pa||0,stk:v.stk||0,stk0:v.stk||0,al:5,vd:0,vr:[],rt:true};
+  
+  var na={id:_prochainIdArticle(),nm:v.nm||p.nm,e:p.e,cat:p.cat,px:v.px||0,pa:v.pa||0,stk:v.stk||0,stk0:v.stk||0,al:5,vd:0,vr:[],rt:true};
   if(v.img||v._img)na.img=v.img||v._img;
   DB.articles.push(na);
   p.vr=p.vr.filter(function(x){return x.id!=vid;});
@@ -5687,8 +5687,12 @@ function cmpUm(u){
 }
 // ── R5+ Achat malin : on tape le prix du GROS (sac/bidon/carton), l'app divise vers l'unité de VENTE ──
 var _cmpAchMode='u';
+// Il voudra parfois compter à la pièce même en achetant en gros — deux
+// cartons entamés, un fond de sac. On ne lui impose rien.
+var _cmpStkUnite=false;
+function cmpStkUnite(){_cmpStkUnite=true;cmpMajAch();}
 function cmpAch(mode){
-  _cmpAchMode=mode;
+  _cmpAchMode=mode;_cmpStkUnite=false;
   var u=document.getElementById('cach-u'),g=document.getElementById('cach-g');
   if(u)u.classList.toggle('on',mode==='u');
   if(g)g.classList.toggle('on',mode==='g');
@@ -5703,7 +5707,7 @@ function cmpGrosInfo(){
     :Math.round((parseFloat(String((document.getElementById('cmp-ach-n')||{}).value||'').replace(',','.'))||0)*100)/100;
   return {nomGros:nomGros,u:u,n:n,mesure:mesure};
 }
-function cmpSetStk(n){var el=document.getElementById('cmp-stk');if(el)el.value=n;}
+function cmpSetStk(n){var el=document.getElementById('cmp-stk');if(el)el.value=n;try{cmpMajAch();}catch(e){}}
 function cmpPaUnit(){
   var pa=parseFloat((document.getElementById('cmp-pa')||{}).value)||0;
   if(_cmpAchMode!=='g'||pa<=0)return pa;
@@ -5727,13 +5731,42 @@ function cmpMajAch(){
   if(pvl)pvl.textContent=(fr?'Prix de vente par ':'Sell per ')+gi.u+(fr?' (obligatoire)':' (required)');
   // Le stock ne se posait NULLE PART : un article configuré "carton de 12" restait
   // à 0 et affichait "Épuisé". On le demande, avec des raccourcis évidents.
+  // ⚠️ « Si je dis que j'ai acheté EN CARTON, je ne peux mettre que le nombre
+  // de cartons. Mais si je mets six, je trouve six UNITÉS, pas un carton. »
+  // Exact : l'étiquette annonçait toujours l'unité de VENTE, même après qu'il
+  // ait répondu « en gros ». Les raccourcis convertissaient, mais le nombre
+  // tapé à la main, lui, était pris pour des pièces. Un stock faux dès la
+  // création — et un stock faux ne se voit pas non plus.
+  // Quand il achète en gros ET qu'on connaît la taille, le champ compte
+  // désormais des CARTONS, et la conversion s'affiche sous ses yeux.
+  var enGros=(_cmpAchMode==='g'&&gi.n>0&&!_cmpStkUnite);
   var sl=document.getElementById('cmp-stk-lbl');
-  if(sl)sl.textContent=(fr?'Combien en as-tu maintenant ? ':'How many do you have now? ')+'('+gi.u+')';
+  if(sl)sl.textContent=enGros
+    ?((fr?'Combien de ':'How many ')+gi.nomGros+(fr?'s as-tu maintenant ?':'s do you have now?'))
+    :((fr?'Combien en as-tu maintenant ? ':'How many do you have now? ')+'('+gi.u+')');
+  var bas=document.getElementById('cmp-stk-conv');
+  if(bas){
+    var saisi=parseFloat(String((document.getElementById('cmp-stk')||{}).value||'').replace(',','.'))||0;
+    if(enGros&&saisi>0){
+      bas.style.display='block';
+      bas.innerHTML='= <b>'+fmtQ(Math.round(saisi*gi.n*100)/100)+' '+gi.u+'</b>'
+        +' &nbsp;·&nbsp; <span style="text-decoration:underline;cursor:pointer" onclick="cmpStkUnite()">'
+        +(fr?'compter à l\'unité':'count in units')+'</span>';
+    }else if(enGros){
+      bas.style.display='block';
+      bas.innerHTML='<span style="text-decoration:underline;cursor:pointer" onclick="cmpStkUnite()">'
+        +(fr?'compter à l\'unité plutôt':'count in units instead')+'</span>';
+    }else bas.style.display='none';
+  }
   var chips=document.getElementById('cmp-stk-chips');
   if(chips){
     if(gi.n>0){
       chips.innerHTML=[1,2,5,10].map(function(k){
-        return '<button type="button" class="shct" onclick="cmpSetStk('+(k*gi.n)+')">'+k+' '+gi.nomGros+(k>1?'s':'')+' = '+fmtQ(k*gi.n)+' '+gi.u+'</button>';
+        // ⚠️ Le champ compte des CARTONS quand il achète en gros. Le raccourci
+        // doit donc poser le NOMBRE DE CARTONS — sinon « 2 cartons » écrivait
+        // 48 dans un champ qui compte les cartons, soit 48 cartons.
+        var val=enGros?k:(k*gi.n);
+        return '<button type="button" class="shct" onclick="cmpSetStk('+val+')">'+k+' '+gi.nomGros+(k>1?'s':'')+' = '+fmtQ(k*gi.n)+' '+gi.u+'</button>';
       }).join('');
     }else if(gi.mesure){
       chips.innerHTML=[5,10,25,50].map(function(k){return '<button type="button" class="shct" onclick="cmpSetStk('+k+')">'+k+' '+gi.u+'</button>';}).join('');
@@ -5835,6 +5868,13 @@ function validerCompleter(){
     var champStk=document.getElementById('cmp-stk');
     if(champStk&&String(champStk.value).trim()!==''){
       var vStk=Math.round((parseFloat(String(champStk.value).replace(',','.'))||0)*100)/100;
+      // ⚠️ Le champ compte des CARTONS quand il a acheté en gros : il faut
+      // les convertir avant d'enregistrer. Sans ça, « 6 cartons » devenait
+      // « 6 pièces » — c'est exactement ce qu'il a signalé.
+      try{
+        var _gi=cmpGrosInfo();
+        if(_cmpAchMode==='g'&&_gi.n>0&&!_cmpStkUnite)vStk=Math.round(vStk*_gi.n*100)/100;
+      }catch(e){}
       if(vStk!==Number(getStk(p)))definirStock(p,null,vStk);
     }
     delete p._autoNm;delete p._srcName;
@@ -8307,7 +8347,7 @@ function importerPhotosMasse(ev){
   var btn=document.getElementById('btn-photo-bulk');if(btn)btn.classList.add('busy');
   ouvrirPanneauImport(files.length);
   var total=files.length,idx=0,ok=0,ko=0,importedIds=[];
-  if(!DB.nextId)DB.nextId=100;
+  
   function finalizeImport(){
     _bulkImportRunning=false;
     fermerPanneauImport();
@@ -8336,7 +8376,7 @@ function importerPhotosMasse(ev){
     var cat=categorieDepuisNomProduit(nm);
     function tenterUpload(){return compresserImage(file,300,0.6).then(function(blob){return uploadBlobProduit(blob);});}
     tenterUpload().catch(function(){return tenterUpload();}).then(function(publicUrl){
-      var newId=DB.nextId++;
+      var newId=_prochainIdArticle();
       DB.articles.push({id:newId,nm:nm,e:emoji,img:publicUrl,cat:cat,px:0,pa:0,stk:0,al:5,vd:0,vr:[],rt:true,_srcName:file.name,_autoNm:nm});
       importedIds.push(newId);
       ok++;
@@ -9137,14 +9177,14 @@ function expRender(){
 function expCreerTous(){
   var fr=lang==='fr';
   if(!_expListe.length)return;
-  if(!DB.nextId)DB.nextId=100;
+  
   var sansPa=0;
   _expListe.forEach(function(a){
     _expLigneComplete(a);
     // Le prix d'achat est TOUJOURS stocké par unité de VENTE : le bidon de
     // 20 L payé 12 000 F devient 600 F le litre.
     var paU=_expPaUnit(a);
-    var art={id:DB.nextId++,nm:a.nm,e:emojiDepuisNomProduit(a.nm),cat:categorieDepuisNomProduit(a.nm),
+    var art={id:_prochainIdArticle(),nm:a.nm,e:emojiDepuisNomProduit(a.nm),cat:categorieDepuisNomProduit(a.nm),
       px:a.px,pa:paU,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,
       // ⚠️ `a.um && a.gros` : le conditionnement n'était gardé que pour le kilo
       // et le litre. Un carton de 24 savons, vendus à la pièce, était oublié —
@@ -10000,7 +10040,13 @@ function saveArt(){var nm=document.getElementById('art-nm').value.trim(),pv=pars
 var _parc=Math.round((parseFloat(String((document.getElementById('ainp-parcont')||{}).value||'').replace(',','.'))||0)*100)/100;
 var _sacRetenu=(_sac>0?_sac:_parc)||0;
 var _contRetenu=(_parc>0&&achatTypeA&&achatTypeA!=='unite')?String(achatTypeA):null;
-DB.articles.push({id:DB.nextId++,nm,e:selEmo,img:selImg||null,cat:selCat||'Autre',px:pv,pa:pxAUA||0,stk,al,vd:0,vr:[],rt:ruptSel,um:umSel==='pc'?null:umSel,umSac:_sacRetenu>0?_sacRetenu:null,umCont:_contRetenu,umNom:(umSel==='pc'?((document.getElementById('ainp-umnom')||{}).value||'').trim().slice(0,12)||null:null)});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();closeSheet('ov-art');showToast(t('articleCree'));
+var _artNeuf={id:_prochainIdArticle(),nm,e:selEmo,img:selImg||null,cat:selCat||'Autre',px:pv,pa:pxAUA||0,stk:0,stk0:0,al,vd:0,vr:[],rt:ruptSel,um:umSel==='pc'?null:umSel,umSac:_sacRetenu>0?_sacRetenu:null,umCont:_contRetenu,umNom:(umSel==='pc'?((document.getElementById('ainp-umnom')||{}).value||'').trim().slice(0,12)||null:null)};
+DB.articles.push(_artNeuf);
+// ⚠️ Le stock saisi etait pose directement sur l'article, SANS stk0. Or le
+// stock se RECALCULE (stk0 + appros − ventes) : au premier recalcul il
+// retombait a zero. On enregistre donc un vrai mouvement d'entree, comme
+// partout ailleurs — l'historique est juste et le nombre tient.
+if(stk>0)definirStock(_artNeuf,null,stk);save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();initTabs();closeSheet('ov-art');showToast(t('articleCree'));
 // Le bon moment pour proposer une famille, c'est MAINTENANT : le nouvel
 // article n'a encore aucune vente, donc le regroupement est sans risque.
 try{proposerRegroupement(DB.articles[DB.articles.length-1]);}catch(e){}}
@@ -11583,6 +11629,35 @@ function pointsGagnesPour(total){return Math.floor((total||0)/100);}
 function clientProgressData(cl){var pts=cl&&cl.points||0;if(pts>=2000)return {pct:100,next:'Niveau maximum atteint',cur:pts+' pts',lvl:cl.niveau||niveauClient(pts)};var next=pts>=500?2000:500;var prev=pts>=500?500:0;var pct=Math.max(0,Math.min(100,Math.round(((pts-prev)/(next-prev))*100)));return {pct:pct,next:(next-pts)+' pts avant '+(pts>=500?'Or 🥇':'Argent 🥈'),cur:pts+' pts',lvl:cl.niveau||niveauClient(pts)};}
 function histClientHTML(cl){return (cl.hist||[]).slice().reverse().map(function(h){var type=h.type||'payment',ico='💵',lbl='Paiement',clr='var(--G)',val='';if(type==='credit'){ico='💳';lbl='Crédit';clr='var(--R)';val='+'+fmt(h.amt||0);}else if(type==='payment'){ico='💵';lbl='Paiement';clr='var(--G)';val='-'+fmt(h.amt||0);}else if(type==='achat'){ico='🛍️';lbl='Achat';clr='var(--B)';val=fmt(h.amt||0)+(h.pts?' · +'+h.pts+' pts':'');}else if(type==='points_use'){ico='⭐';lbl='Points utilisés';clr='var(--A)';val='-'+(h.pts||0)+' pts · '+fmt(h.amt||0);}return '<div class="hist-it"><span class="hist-dt">'+(h.date||'')+' · '+lbl+'</span><span class="hist-tp '+(type==='credit'?'cr':'pm')+'">'+ico+'</span><span class="hist-amt" style="color:'+clr+'">'+val+'</span></div>';}).join('')||'<div style="color:var(--M);font-size:12px;font-weight:600">N/A</div>';}
 // ═══ ÉTAPE 2 : stock calculé à partir des événements (base + appros − ventes normales) ═══
+// ⚠️⚠️ D'OÙ VENAIT LE STOCK NÉGATIF À LA CRÉATION D'UN ARTICLE.
+// Le stock n'est pas un nombre stocké : il se RECALCULE — stk0 + appros −
+// ventes. Un article neuf ne peut donc être négatif que si des VENTES
+// existantes portent déjà son identifiant.
+// Or `DB.nextId` était le seul garde-fou, et rien ne le protégeait :
+//   · mergeDB fusionne les articles par id mais NE TOUCHE PAS à nextId ;
+//   · migrateDBData non plus ;
+//   · et quand nextId manquait, on le remettait bêtement à 100 —
+//     `` — au milieu d'articles qui ont
+//     justement des ids ≥ 100, avec leur historique de ventes.
+// Deux téléphones qui créent un article en même temps, ou une boutique
+// restaurée sans nextId, et le nouvel article héritait des ventes d'un autre.
+// Le nombre affiché était FAUX, et en négatif il donne l'impression d'avoir
+// vendu ce qu'on n'a jamais eu.
+// On ne fait plus confiance au compteur : on regarde ce qui existe VRAIMENT,
+// y compris l'historique d'articles supprimés — leurs lignes de vente
+// restent dans le journal et suffisent à empoisonner un id réutilisé.
+function _prochainIdArticle(){
+  var max=99;
+  try{
+    ((DB&&DB.articles)||[]).forEach(function(p){var n=Number(p&&p.id);if(n>max)max=n;});
+    ((DB&&DB.appros)||[]).forEach(function(a){var n=Number(a&&a.pid);if(n>max)max=n;});
+    ((DB&&DB.ventes)||[]).forEach(function(v){
+      ((v&&v.lignes)||[]).forEach(function(l){var n=Number(l&&l.pid);if(n>max)max=n;});
+    });
+  }catch(e){}
+  if(!(Number(DB.nextId)>max))DB.nextId=max+1;
+  return DB.nextId++;
+}
 function recomputeStock(d){
   if(!d||!Array.isArray(d.articles))return d;
   var approBase={},approVar={};
