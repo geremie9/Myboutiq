@@ -3011,7 +3011,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='20.6'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='20.7'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3808,7 +3808,14 @@ function majEntreeRapide(){
   // Il ne devrait pas avoir à TOUCHER un bouton pour poser son doigt.
   // On demande au téléphone de guetter l'empreinte tout seul, dès que
   // l'écran s'ouvre. Le bouton reste, pour qui préfère le geste explicite.
-  if(window.PublicKeyCredential&&e.bio)setTimeout(guetterEmpreinte,350);
+  // ⚠️ 350 ms d'attente AVANT même de demander le doigt — un tiers de seconde
+  // perdu à chaque ouverture, sur un geste qu'il fait vingt fois par jour.
+  // Le délai n'existe que pour laisser l'écran se peindre : on attend donc la
+  // PEINTURE elle-même, plus un nombre choisi au jugé.
+  if(window.PublicKeyCredential&&e.bio){
+    try{requestAnimationFrame(function(){setTimeout(guetterEmpreinte,60);});}
+    catch(x){setTimeout(guetterEmpreinte,120);}
+  }
   var p=document.getElementById('er-pin');p.value='';
   // Le clavier doit être là tout de suite : il tape son PIN, il vend.
   try{p.focus();}catch(x){}
@@ -10922,7 +10929,30 @@ async function loginBiometrique(){
 // repassant par le chemin normal, qui gère déjà le hors-ligne.
 async function _ouvrirApresEmpreinte(){
   var fr=(lang==='fr');
-  // Le chemin le plus court d'abord : session serveur encore ouverte.
+  // ⚠️ « LE CAPTEUR D'EMPREINTE N'EST PAS TRÈS RAPIDE » — et ce n'était PAS le
+  // capteur. L'ORDRE ÉTAIT À L'ENVERS ici.
+  // Le commentaire annonçait « le chemin le plus court d'abord » : c'était le
+  // PLUS LONG. Après avoir posé le doigt, l'app faisait getSession(), puis un
+  // aller-retour réseau pour lister ses boutiques, puis lui affichait un écran
+  // de CHOIX à toucher. Deux attentes réseau et un geste de plus — alors que
+  // la boutique et le PIN étaient déjà sur le téléphone.
+  // Le vrai chemin court est LOCAL, et depuis la 20.1 il ouvre sans aucun
+  // appel serveur. Il passe donc devant.
+  var garde=null;
+  try{
+    if(entreeRapideVendeur())garde=(DB&&DB.cfg&&DB.cfg.pinVendeur)||'';
+    else garde=(DB&&DB.cfg&&DB.cfg.pin)||'';
+  }catch(e){}
+  if(garde&&String(garde).length>=4&&DB&&DB.cfg&&DB.cfg.code){
+    var champ=document.getElementById('er-pin');
+    if(champ){
+      champ.value=String(garde);
+      try{await validerEntreeRapide();}catch(e){}
+      champ.value='';
+      return;
+    }
+  }
+  // Aucune boutique sur cet appareil : là seulement, on interroge le serveur.
   try{
     assurerConnexionSupa();
     if(supa&&supa.auth&&navigator.onLine){
@@ -10934,21 +10964,6 @@ async function _ouvrirApresEmpreinte(){
       }
     }
   }catch(e){}
-  // Sinon : le code que ce téléphone garde déjà, saisi à sa place.
-  var garde=null;
-  try{
-    if(entreeRapideVendeur())garde=(DB&&DB.cfg&&DB.cfg.pinVendeur)||'';
-    else garde=(DB&&DB.cfg&&DB.cfg.pin)||'';
-  }catch(e){}
-  if(garde&&String(garde).length>=4){
-    var champ=document.getElementById('er-pin');
-    if(champ){
-      champ.value=String(garde);
-      try{await validerEntreeRapide();}catch(e){}
-      champ.value='';
-      return;
-    }
-  }
   showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));
 }
 function togV(i){DB.equipe[i].actif=!DB.equipe[i].actif;save();renderEquipe();}
