@@ -1973,6 +1973,14 @@ body{max-width:min(100%,1200px)}
   <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">⚡ <span id="exp-tit">Ajout express</span></div><button class="bcl" onclick="closeSheet('ov-express')">✕</button></div>
     <div style="padding:4px 19px 24px">
+      <!-- ⚠️ « Ça te met encore en haut Ajout express. Pourquoi ça mélange
+           deux choses ? » Il a raison : après avoir choisi ses articles en
+           photos, il tombait sur le formulaire pour en TAPER un nouveau —
+           nom, mode d'achat, prix, stock, « Coller une liste » — alors qu'il
+           venait justement de les choisir. Deux écrans différents collés en
+           un. Tout ce bloc de SAISIE se range quand la liste vient des
+           photos ; un lien discret le ramène. -->
+      <div id="exp-saisie">
       <div style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.45;margin-bottom:11px" id="exp-aide">
         Tape le nom et le prix de vente, valide, et enchaîne. L'icône et la catégorie se devinent toutes seules. Le reste se complète plus tard.
       </div>
@@ -2003,6 +2011,8 @@ body{max-width:min(100%,1200px)}
         <div class="pig" style="flex:1"><label class="pl" id="exp-stk-l">Stock</label><input class="pi sm" id="exp-stk" type="number" inputmode="decimal" step="0.25" placeholder="—" onkeydown="expTouche(event,'AJOUT')"></div>
       </div>
       <button class="bnxt" onclick="expAjouterLigne()" style="margin-bottom:14px">➕ <span id="exp-add-l">Ajouter à la liste</span></button>
+      </div>
+      <button type="button" id="exp-ouvrir-saisie" onclick="expOuvrirSaisie()" style="display:none;width:100%;background:none;border:none;color:var(--B);font-size:12.5px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;padding:6px 0 14px;text-decoration:underline">➕ Ajouter un autre article à la main</button>
 
       <div id="exp-compte" style="font-size:12px;font-weight:800;color:var(--B);margin-bottom:8px"></div>
       <div id="exp-liste" style="max-height:34vh;overflow-y:auto;margin-bottom:13px"></div>
@@ -2966,7 +2976,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='19.99'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='19.100'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8727,14 +8737,35 @@ var _expListe=[];
 // un nom. Pour quelqu'un qui ne sait pas écrire, le parcours en images ne
 // menait donc nulle part.
 // `garder` = la liste vient d'être remplie par l'appelant, on n'y touche pas.
+// Le formulaire de saisie revient quand il le demande.
+function expOuvrirSaisie(){
+  var s=document.getElementById('exp-saisie');if(s)s.style.display='block';
+  var b=document.getElementById('exp-ouvrir-saisie');if(b)b.style.display='none';
+  var c=document.getElementById('exp-nm');if(c)try{c.focus();}catch(e){}
+}
 function ouvrirAjoutExpress(garder){
   if(!(role==='patron'||hasPerm('produits')))return;
   if(!garder)_expListe=[];
   ['exp-nm','exp-pa','exp-pv','exp-stk','exp-parc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   try{expMode('u');}catch(e){}
+  // ⚠️ DEUX ÉCRANS DIFFÉRENTS, QU'ON COLLAIT EN UN.
+  // Venu des photos, il ne veut pas TAPER un article : il veut mettre les prix
+  // de ceux qu'il vient de choisir. On range donc tout le formulaire de saisie
+  // (nom, mode d'achat, prix, stock, « Coller une liste ») derrière un lien.
+  var fr=(lang==='fr');
+  var depuisChoix=!!(garder&&_expListe&&_expListe.length);
+  var sais=document.getElementById('exp-saisie');
+  if(sais)sais.style.display=depuisChoix?'none':'block';
+  var lien=document.getElementById('exp-ouvrir-saisie');
+  if(lien){lien.style.display=depuisChoix?'block':'none';
+    lien.textContent=fr?'➕ Ajouter un autre article à la main':'➕ Add another item by hand';}
+  var tit=document.getElementById('exp-tit');
+  if(tit)tit.textContent=depuisChoix?(fr?'Leurs prix':'Their prices'):(fr?'Ajout express':'Quick add');
   expRender();
   document.getElementById('ov-express').classList.add('show');
-  setTimeout(function(){try{document.getElementById('exp-nm').focus();}catch(e){}},250);
+  // On ne met le curseur dans le champ « Nom » que si ce champ est visible :
+  // sinon le clavier s'ouvrait sur un formulaire caché.
+  if(!depuisChoix)setTimeout(function(){try{document.getElementById('exp-nm').focus();}catch(e){}},250);
 }
 // ── ACHETER EN GROS, VENDRE À L'UNITÉ ───────────────────────────────
 // Sa remarque : « quand on importe, ça demande le prix d'achat unitaire… or
