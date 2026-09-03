@@ -2976,7 +2976,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='20.0'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='20.1'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3817,6 +3817,36 @@ function retourListeBoutiques(){
   else majEntreeRapide();
 }
 // Le PIN ouvre le COMPTE. Ensuite seulement on montre les boutiques.
+// La session serveur du patron, obtenue APRÈS qu'il soit déjà entré.
+// Elle lui donne le droit d'écrire par RLS ; sans elle il écrit quand même,
+// par le PIN, comme un vendeur. Rien ne l'attend, rien ne le bloque.
+async function _prouverPatronEnFond(tel,pin){
+  try{
+    if(!supa||!supa.auth||!navigator.onLine)return;
+    var email=authEmailFromPhone(tel);
+    var res=await supa.auth.signInWithPassword({email:email,password:pin});
+    if(res.error){
+      var alts=altPhoneDigits(tel);
+      for(var i=0;i<alts.length&&res.error;i++){
+        var r2=await supa.auth.signInWithPassword({email:'owner-'+alts[i]+'@myboutiq.app',password:pin});
+        if(!r2.error){res=r2;break;}
+      }
+    }
+    // Échec : on ne dit rien et on ne le sort pas. Il vend. Si le PIN est
+    // vraiment périmé, le premier refus serveur le signalera proprement.
+    if(res.error)return;
+    _pinPatronValide=pin;
+    if(DB&&DB.cfg&&!DB.cfg.pin)DB.cfg.pin=pin;
+    // Rapatrier ce qui a changé ailleurs pendant ce temps.
+    try{
+      if(DB&&DB.cfg&&DB.cfg.code){
+        var rem=await loadFromSupa(DB.cfg.code);
+        if(rem){DB=migrateDBData(mergeDB(DB,rem));_artSnapApresFusion();
+          try{renderProd(DB.articles);renderStock(DB.articles);}catch(x){}}
+      }
+    }catch(x){}
+  }catch(e){}
+}
 async function validerEntreeRapide(){
   var fr=lang==='fr';
   if(_refusePendantBlocage())return;
@@ -3856,6 +3886,25 @@ async function validerEntreeRapide(){
       _shopPin=pin;_finishLoginP();
       showToast('📴 '+(fr?'Hors ligne — seule '+(DB.cfg.nom||'ta boutique')+' est disponible':'Offline — only this shop is available'));
     }else showToast('📴 '+(fr?'Pas de réseau, et ce PIN ne correspond pas à la boutique gardée ici':'No network, and this PIN does not match the shop stored here'));
+    return;
+  }
+  // ══ ENTRÉE INSTANTANÉE DU PATRON ══
+  // Mesuré : le VENDEUR entre sans un seul appel serveur quand sa boutique
+  // est déjà sur le téléphone (loginV, chemin « même boutique en cache »).
+  // Le PATRON, lui, attendait 2 à 3 aller-retours — connexion Auth, liste de
+  // ses boutiques, puis chargement — soit ~400 ms chacun sur une bonne
+  // connexion, bien plus au Cameroun. Et cela alors qu'il a EXACTEMENT la
+  // même chose sous la main : sa boutique et son PIN, gardés depuis 19.81.
+  // Pire : sans réseau il entrait INSTANTANÉMENT, avec réseau il attendait.
+  // On ouvre donc tout de suite, et on prouve au serveur derrière.
+  if(DB&&DB.cfg&&DB.cfg.code&&String(pin).length>=4&&String(DB.cfg.pin||'')===pin){
+    _shopPin=pin;
+    _finishLoginP();
+    showToast('👋 '+(fr?'Te voilà':'Welcome back'));
+    // La preuve serveur part juste après, sans le faire attendre. Si elle
+    // échoue, on ne l'éjecte PAS en pleine vente : _signalerPinRefuse (19.90)
+    // prendra le relais au premier échange refusé et lui demandera de retaper.
+    setTimeout(function(){_prouverPatronEnFond(e.tel,pin);},60);
     return;
   }
   showToast('🔐 '+(fr?'Vérification…':'Checking…'));
