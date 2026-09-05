@@ -35,6 +35,53 @@
   "inLanguage": "fr"
 }
 </script>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   DEMANDER L'EMPREINTE AVANT MÊME D'AVOIR LU L'APPLICATION
+
+   « Dès qu'on ouvre, ça nous demande en moins de zéro seconde l'empreinte. »
+
+   MESURÉ (PC de bureau, serveur local, aucune latence réseau) :
+       1er octet          15 ms
+       HTML téléchargé    35 ms
+       JS lu et exécuté  335 ms   ← le mur
+   933 Ko de JavaScript mettent ~300 ms à être lus et exécutés, et la
+   demande d'empreinte partait APRÈS tout ça. Sur un téléphone bon marché,
+   comptez trois à cinq fois plus.
+
+   Or cette demande n'a besoin de RIEN de l'application : l'identifiant de
+   clé vit dans localStorage (`myboutiq_entree`), pas dans DB. Ce bloc
+   tient en quelques lignes, s'exécute avant le reste, et la fenêtre du
+   capteur s'ouvre PENDANT que l'app se charge derrière.
+
+   ⚠️ Le navigateur n'autorise qu'UNE demande WebAuthn à la fois :
+   guetterEmpreinte() récupère celle-ci au lieu d'en lancer une seconde.
+   ⚠️ On ne déclenche rien si l'empreinte n'a jamais été posée sur cet
+   appareil — pas de fenêtre système à quelqu'un qui n'a rien demandé.
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+  try{
+    if(!window.PublicKeyCredential||!navigator.credentials||!navigator.credentials.get)return;
+    var e=null;try{e=JSON.parse(localStorage.getItem('myboutiq_entree')||'null');}catch(x){}
+    if(!e||!e.bio||!e.bioId)return;
+    var s=String(e.bioId);
+    if(!/^[A-Za-z0-9+/]+={0,2}$/.test(s))return;
+    var b=atob(s);
+    if(b.length<16||b.length>1024)return;          // même garde que debase64
+    var u=new Uint8Array(b.length);
+    for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
+    window._bioTotAbort=new AbortController();
+    window._bioTotDebut=(performance&&performance.now)?performance.now():0;
+    window._bioTot=navigator.credentials.get({
+      signal:window._bioTotAbort.signal,
+      publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
+                 userVerification:'required',timeout:60000,
+                 allowCredentials:[{type:'public-key',id:u.buffer}]}
+    });
+    window._bioTot.catch(function(){});            // jamais d'erreur non rattrapée
+  }catch(x){}
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -1400,6 +1447,7 @@ body{max-width:min(100%,1200px)}
         <div style="display:flex;align-items:center;gap:9px;margin-top:4px">
           <div id="teamcode-val" style="font-size:24px;font-weight:900;letter-spacing:5px;color:#fff">••••</div>
           <button onclick="revealTeamCode()" id="btn-teamcode-eye" style="background:rgba(255,255,255,.14);border:none;border-radius:8px;padding:5px 10px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">👁️ Voir</button>
+          <button onclick="creerNouveauCodeEquipe()" id="btn-teamcode-new" style="background:rgba(255,255,255,.14);border:none;border-radius:8px;padding:5px 10px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">🔑 Nouveau</button>
         </div>
         <div style="font-size:10.5px;color:rgba(255,255,255,.6);font-weight:600;margin-top:5px" id="hint-teamcode">Dis-le de vive voix à tes vendeurs. Ne le mets JAMAIS dans le lien.</div>
       </div>
@@ -3062,7 +3110,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.0'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.1'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3466,7 +3514,26 @@ function _signalerPinRefuse(){
   // Le PIN gardé ici est périmé — typiquement changé depuis un autre
   // téléphone. mergeDB protège la copie locale POUR TOUJOURS : sans cet
   // effacement il repart indéfiniment et rebloque la boutique à chaque fois.
-  try{if(DB&&DB.cfg){DB.cfg.pin='';DB.cfg.pinVendeur='';}}catch(e){}
+  //
+  // ⚠️⚠️ MAIS PAS AVEC UNE CHAÎNE VIDE POUR LE CODE ÉQUIPE.
+  // Le déclencheur serveur `_maj_empreintes_pin` lit la valeur envoyée :
+  //     « Chaîne vide = le patron retire l'accès vendeur »
+  //     if length(trim(v_pv)) = 0 then new.pin_vendeur_hash := null;
+  // Un simple refus réseau révoquait donc l'accès de TOUS les vendeurs de la
+  // boutique, sans que personne ne l'ait demandé. Et c'était irrattrapable :
+  // le déclencheur retire aussi `cfg.pinVendeur` du blob, donc mergeDB ne
+  // peut JAMAIS le restaurer depuis le serveur.
+  // MESURÉ EN BASE : 21 boutiques sur 40, portant 40 vendeurs, sont
+  // aujourd'hui sans pin_vendeur_hash — et les deux groupes s'étalent de
+  // juillet à septembre, donc ce n'est pas une question d'ancienneté.
+  // On EFFACE la clé au lieu de la vider : absente, le déclencheur n'y
+  // touche pas et l'accès des vendeurs reste intact.
+  try{
+    if(DB&&DB.cfg){
+      DB.cfg.pin='';
+      delete DB.cfg.pinVendeur;
+    }
+  }catch(e){}
   _shopPin=null;
   showToast('🔐 '+(fr?'Ce téléphone n\'arrive plus à prouver qui tu es — retape ton PIN'
                      :'This phone can no longer prove who you are — enter your PIN again'));
@@ -4073,11 +4140,30 @@ var _guetteEmpreinte=false,_guetteAbort=null;
 // explicite.
 function arreterGuetEmpreinte(){
   try{if(_guetteAbort)_guetteAbort.abort();}catch(e){}
+  // Celle lancée en haut de page doit être arrêtée elle aussi, sinon elle
+  // reste ouverte et bloque toute nouvelle demande (une seule à la fois).
+  try{if(window._bioTotAbort)window._bioTotAbort.abort();}catch(e){}
+  window._bioTot=null;window._bioTotAbort=null;
   _guetteAbort=null;_guetteEmpreinte=false;
 }
 async function guetterEmpreinte(){
   if(_guetteEmpreinte)return;
   if(!window.PublicKeyCredential||!navigator.credentials)return;
+  // La demande a peut-être DÉJÀ été lancée par le petit bloc du haut de page,
+  // avant que ces 933 Ko ne soient lus. On la récupère : le navigateur
+  // n'accepte qu'une demande WebAuthn à la fois, en relancer une seconde
+  // annulerait la première et rallongerait précisément ce qu'on veut couper.
+  if(window._bioTot){
+    _guetteEmpreinte=true;
+    _guetteAbort=window._bioTotAbort||null;
+    var att=window._bioTot;window._bioTot=null;
+    try{
+      var dejaLa=await att;
+      if(dejaLa)await _ouvrirApresEmpreinte();
+    }catch(e){_noterBio('guet',e);}
+    _guetteEmpreinte=false;
+    return;
+  }
   _guetteEmpreinte=true;
   try{
     // (la détection de médiation conditionnelle a été retirée : elle ne sert
@@ -5161,10 +5247,44 @@ function memoriserSesBoutiques(liste){
 function assurerPinVendeur(){
   if(!DB||!DB.cfg)return;
   if(!DB.cfg.pinVendeur||String(DB.cfg.pinVendeur).length<4){
+    // ⚠️ NE JAMAIS EN INVENTER UN NOUVEAU EN SILENCE.
+    // Si un code a déjà été posé pour cette boutique, son absence ici veut
+    // dire qu'on l'a PERDU sur cet appareil — pas qu'il n'en faut pas. En
+    // tirer un autre au sort remplaçait le code que les vendeurs
+    // connaissaient par un code que PERSONNE ne connaît, et le poussait au
+    // serveur : tout le monde dehors, sans un mot.
+    // Le serveur ne peut pas nous le redonner (il n'en garde que l'empreinte).
+    // On le dit donc au patron, et c'est lui qui décide d'en créer un.
+    if(DB.cfg.pvPose){
+      var fr=(lang==='fr');
+      showToast('🔑 '+(fr?'Le code équipe n\'est plus sur ce téléphone — ouvre « Mon équipe » pour en créer un nouveau'
+                         :'The team code is no longer on this phone — open "My team" to create a new one'));
+      return;
+    }
     var n=String(Math.floor(1000+Math.random()*9000));
     if(String(n)===String(DB.cfg.pin))n=String((parseInt(n,10)+1)%10000).padStart(4,'0');
     DB.cfg.pinVendeur=n;
-  }
+    DB.cfg.pvPose=1;   // marque qu'un code a existé pour cette boutique
+  }else if(!DB.cfg.pvPose){DB.cfg.pvPose=1;}
+}
+// Le patron décide explicitement d'un nouveau code équipe. C'est le SEUL
+// chemin qui remplace un code que des vendeurs connaissent peut-être déjà —
+// il est donc annoncé, confirmé, et le nouveau code est montré tout de suite.
+function creerNouveauCodeEquipe(){
+  if(!DB||!DB.cfg)return;
+  var fr=(lang==='fr');
+  if(role!=='patron'){showToast('⛔ '+(fr?'Réservé au patron':'Patron only'));return;}
+  var nb=((DB.equipe||[]).length)||0;
+  if(!confirm((fr?'Créer un NOUVEAU code équipe ?':'Create a NEW team code?')+'\n\n'
+    +(fr?('Tes '+nb+' vendeurs devront apprendre le nouveau code. L\'ancien ne marchera plus.')
+        :('Your '+nb+' sellers will have to learn the new code. The old one stops working.'))))return;
+  var n=String(Math.floor(1000+Math.random()*9000));
+  if(String(n)===String(DB.cfg.pin))n=String((parseInt(n,10)+1)%10000).padStart(4,'0');
+  DB.cfg.pinVendeur=n;DB.cfg.pvPose=1;
+  journalAjouter('code equipe',DB.cfg.nom||'',(fr?'perdu ou remplacé':'lost or replaced'),(fr?'nouveau code':'new code'));
+  save();
+  try{_teamCodeShown=false;revealTeamCode();}catch(e){}
+  showToast('🔑 '+(fr?'Nouveau code équipe : ':'New team code: ')+n+' — '+(fr?'dis-le de vive voix':'say it out loud'));
 }
 async function loginV(){
   if(_refusePendantBlocage())return;
