@@ -1857,20 +1857,39 @@ body{max-width:min(100%,1200px)}
       </div>
       <div class="pig" id="cmp-sac-row" style="display:none"><label class="pl" id="cmp-sac-lbl">Taille du sac / bidon</label><input class="pi" type="number" id="cmp-sac" inputmode="decimal" step="0.5" placeholder="ex : 50" oninput="cmpMajAch()"></div>
       </div>
-      <div id="cmp-ach-sec">
-        <div class="sth2" id="cmp-ach-h">Acheté comment ?</div>
-        <div style="display:flex;gap:7px;margin-bottom:9px">
-          <div class="abtn on" id="cach-u" onclick="cmpAch('u')" style="flex:1;padding:8px"><span class="albl" id="cach-u-l">À l'unité</span></div>
-          <div class="abtn" id="cach-g" onclick="cmpAch('g')" style="flex:1;padding:8px"><span class="albl" id="cach-g-l">En gros (sac/carton)</span></div>
-        </div>
-        <div class="pig" id="cmp-achn-row" style="display:none"><label class="pl" id="cmp-achn-lbl">Combien d'unités dans le gros ?</label><input class="pi" type="number" id="cmp-ach-n" inputmode="decimal" step="0.5" placeholder="ex : 12" oninput="cmpMajAch()"></div>
-      </div>
+      <!-- ⚠️⚠️ 36 % DES BOUTIQUES N'ONT JAMAIS REÇU UN SEUL ARTICLE.
+           Mesuré en base : 16 sur 45, dont 8 créées dans le mois. Sa
+           remarque — « l'ajout des articles est vraiment stressant, ça peut
+           chasser un client » — se lit directement dans ce chiffre.
+           Or l'app n'exige que DEUX choses pour vendre (articleIncomplet) :
+           un nom et un prix de vente. Elle en AFFICHAIT six, toutes de la
+           même taille, et seul le mot « (obligatoire) » les distinguait —
+           il faut savoir lire pour le voir. Un commerçant non lettré voit
+           six cases à remplir et referme.
+           Le prix d'achat et le stock restent là, entiers, derrière une
+           ligne qui dit À QUOI ILS SERVENT : on ne demande jamais un
+           chiffre sans dire pourquoi. -->
       <div style="display:flex;gap:8px" id="cmp-prix-row">
-        <div class="pig" style="flex:1"><label class="pl" id="cmp-pa-lbl">Prix d'achat</label><input class="pi sm" id="cmp-pa" type="number" inputmode="numeric" oninput="cmpMajAch()"></div>
-        <div class="pig" style="flex:1"><label class="pl" id="cmp-pv-lbl">Prix de vente (obligatoire)</label><input class="pi sm" id="cmp-pv" type="number" inputmode="numeric" oninput="cmpMajAch()"></div>
+        <div class="pig" style="flex:1"><label class="pl" id="cmp-pv-lbl">Prix de vente</label><input class="pi sm" id="cmp-pv" type="number" inputmode="numeric" oninput="cmpMajAch()"></div>
       </div>
-      <div id="cmp-ben" style="display:none;border-radius:9px;padding:8px 10px;font-size:11.5px;font-weight:800;margin-bottom:9px"></div>
-      <div class="pig" id="cmp-stk-row"><label class="pl" id="cmp-stk-lbl">Combien en as-tu maintenant ?</label><input class="pi sm" id="cmp-stk" type="number" inputmode="decimal" step="0.25" placeholder="0" oninput="cmpMajAch()"><div id="cmp-stk-conv" style="display:none;font-size:11.5px;font-weight:800;color:#1B5E20;margin-top:5px"></div><div class="shcts" id="cmp-stk-chips"></div></div>
+      <button type="button" id="cmp-plus-btn" onclick="cmpPlus()"
+        style="width:100%;background:#F0F4FF;color:var(--B);border:1.5px dashed var(--B);border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:11px;text-align:left">
+        <span id="cmp-plus-l">➕ Prix d'achat et stock</span>
+        <span style="display:block;font-size:11px;font-weight:700;opacity:.75;margin-top:2px" id="cmp-plus-l2">Facultatif — c'est ce qui calcule ton bénéfice</span>
+      </button>
+      <div id="cmp-plus-sec" style="display:none">
+        <div id="cmp-ach-sec">
+          <div class="sth2" id="cmp-ach-h">Acheté comment ?</div>
+          <div style="display:flex;gap:7px;margin-bottom:9px">
+            <div class="abtn on" id="cach-u" onclick="cmpAch('u')" style="flex:1;padding:8px"><span class="albl" id="cach-u-l">À l'unité</span></div>
+            <div class="abtn" id="cach-g" onclick="cmpAch('g')" style="flex:1;padding:8px"><span class="albl" id="cach-g-l">En gros (sac/carton)</span></div>
+          </div>
+          <div class="pig" id="cmp-achn-row" style="display:none"><label class="pl" id="cmp-achn-lbl">Combien d'unités dans le gros ?</label><input class="pi" type="number" id="cmp-ach-n" inputmode="decimal" step="0.5" placeholder="ex : 12" oninput="cmpMajAch()"></div>
+        </div>
+        <div class="pig"><label class="pl" id="cmp-pa-lbl">Prix d'achat</label><input class="pi sm" id="cmp-pa" type="number" inputmode="numeric" oninput="cmpMajAch()"></div>
+        <div id="cmp-ben" style="display:none;border-radius:9px;padding:8px 10px;font-size:11.5px;font-weight:800;margin-bottom:9px"></div>
+        <div class="pig" id="cmp-stk-row"><label class="pl" id="cmp-stk-lbl">Combien en as-tu maintenant ?</label><input class="pi sm" id="cmp-stk" type="number" inputmode="decimal" step="0.25" placeholder="0" oninput="cmpMajAch()"><div id="cmp-stk-conv" style="display:none;font-size:11.5px;font-weight:800;color:#1B5E20;margin-top:5px"></div><div class="shcts" id="cmp-stk-chips"></div></div>
+      </div>
       <button class="bnxt" onclick="validerCompleter()"><span id="cmp-ok">Enregistrer — prêt à vendre</span></button>
     </div>
   </div>
@@ -3110,7 +3129,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.3'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.4'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5785,6 +5804,16 @@ function venteRapide(pid){
 // ── Article incomplet : nom jamais personnalisé -> INTERDIT de vente, la caisse
 //    propose de le compléter (nom + mesure + prix) en une seule fiche ──
 var _cmpArt=null,_cmpUmVal='pc';
+// Reste vrai pour toute la séance : celui qui saisit ses prix d'achat les
+// saisit tous, on ne lui redemande pas d'ouvrir le bloc à chaque article.
+var _cmpPlusOuvert=false;
+function cmpPlus(){
+  _cmpPlusOuvert=true;
+  var b=document.getElementById('cmp-plus-btn'),s=document.getElementById('cmp-plus-sec');
+  if(b)b.style.display='none';
+  if(s)s.style.display='block';
+  try{document.getElementById('cmp-pa').focus();}catch(e){}
+}
 function articleIncomplet(p){
   if(!p)return false;
   if(p._autoNm&&txtNorm(p.nm)===txtNorm(p._autoNm))return true;               // nom jamais personnalisé
@@ -5878,6 +5907,14 @@ function ouvrirCompleterArticle(p){
   document.getElementById('cmp-prix-row').style.display=fam?'none':'flex';
   document.getElementById('cmp-ach-sec').style.display=fam?'none':'block';
   document.getElementById('cmp-stk-row').style.display=fam?'none':'block'; // famille : stock par variante
+  // Le bloc facultatif suit le même sort qu'une famille (stock par variante),
+  // et repart FERMÉ à chaque article : c'est ce repli qui fait passer l'écran
+  // de six cases à deux. S'il l'a ouvert une fois dans la séance, on le lui
+  // laisse ouvert — quelqu'un qui saisit ses prix d'achat les saisit tous.
+  var _pb=document.getElementById('cmp-plus-btn'),_ps=document.getElementById('cmp-plus-sec');
+  if(_pb)_pb.style.display=fam?'none':'block';
+  if(_ps)_ps.style.display=(!fam&&_cmpPlusOuvert)?'block':'none';
+  if(_pb&&_cmpPlusOuvert)_pb.style.display='none';
   document.getElementById('cmp-ben').style.display='none';
   document.getElementById('cmp-fam-add').style.display=fam&&(role==='patron'||hasPerm('produits'))?'block':'none';
   var vbox=document.getElementById('cmp-vars');
@@ -6028,7 +6065,9 @@ function cmpMajAch(){
   if(pal)pal.textContent=_cmpAchMode==='g'?((fr?'Prix du ':'Price of the ')+gi.nomGros+(fr?' entier':''))
     :((fr?'Prix d\'achat par ':'Cost per ')+gi.u);
   var pvl=document.getElementById('cmp-pv-lbl');
-  if(pvl)pvl.textContent=(fr?'Prix de vente par ':'Sell per ')+gi.u+(fr?' (obligatoire)':' (required)');
+  // « (obligatoire) » ne sert plus à rien : tout ce qui reste à l'écran l'est.
+  // Le mot n'aidait que ceux qui savent lire, et alourdissait pour les autres.
+  if(pvl)pvl.textContent=(fr?'Prix de vente par ':'Sell per ')+gi.u;
   // Le stock ne se posait NULLE PART : un article configuré "carton de 12" restait
   // à 0 et affichait "Épuisé". On le demande, avec des raccourcis évidents.
   // ⚠️ « Si je dis que j'ai acheté EN CARTON, je ne peux mettre que le nombre
