@@ -3142,7 +3142,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.5'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.6'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5738,7 +5738,7 @@ function renderProd(lst){
         else showToast('⏳ '+(lang==='fr'?'Article en préparation — demande au patron':'Item being prepared — ask the owner'));
         return;
       }
-      if(isOut&&!p.rt){showToast('⚠️ Stock épuisé !');return;}
+      if(isOut&&!p.rt){_direPourquoiVide(p);return;}
       if(hasV){ouvrirVarInline(p,d);return;} // famille -> les variantes sortent SOUS la carte
       if(estMesure(p)){ouvrirQteMesure(p);return;}
       if(isOut&&p.rt&&livePq===0){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
@@ -5820,11 +5820,48 @@ function renderTopVentes(){
     return '<button class="tv-chip" onclick="venteRapide('+p.id+')">'+media+'<span class="tv-nm">'+p.nm+'</span><span class="tv-px">'+prixCarte(p)+'</span></button>';
   }).join('')+'</div>';
 }
+// ⚠️ « JE CONFIGURE LE STOCK, MAIS QUAND JE VENDS IL ME DIT VIDE. »
+// MESURÉ dans sa boutique 64972 08757 : Allumettes stk0=89, vendues 89 →
+// 0. Farine 34/34. Sardine 16/16. Lessive 12/12. Riz 88, vendues 106.
+// L'app avait RAISON à chaque fois — mais elle disait « Stock épuisé ! »
+// sans jamais dire POURQUOI, et il en a conclu que sa configuration avait
+// été perdue. Un vrai commerçant en conclurait que l'app est cassée.
+// Un chiffre juste que personne ne comprend vaut un chiffre faux.
+function _direPourquoiVide(p){
+  var fr=(lang==='fr');
+  var vendu=0;
+  try{
+    (DB.ventes||[]).forEach(function(v){
+      if(!v||v.annulee)return;
+      (v.lignes||[]).forEach(function(l){
+        if(!l||String(l.pid)!==String(p.id))return;
+        vendu+=Number(l.qty||l.qte)||0;
+      });
+    });
+  }catch(e){}
+  var msg,dit;
+  if(vendu>0){
+    msg='📦 '+p.nm+' — '+(fr?('tu en as vendu '+fmtQ(vendu)+', il n\'en reste plus')
+                            :('you sold '+fmtQ(vendu)+', none left'));
+    dit=fr?('Tu as vendu '+fmtQ(vendu)+' '+p.nm+'. Il n\'en reste plus.'):'';
+  }else{
+    msg='📦 '+p.nm+' — '+(fr?'aucun stock n\'a encore été saisi':'no stock entered yet');
+    dit=fr?('Tu n\'as pas encore dit combien tu as de '+p.nm+'.'):'';
+  }
+  showToast(msg);
+  try{parler(dit);}catch(e){}
+  // Le geste utile est juste derrière : on ouvre l'entrée de stock.
+  if(role==='patron'||hasPerm('stock')){
+    setTimeout(function(){
+      try{selArtStk(p);document.getElementById('ov-stk').classList.add('show');}catch(e){}
+    },650);
+  }
+}
 function venteRapide(pid){
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
   var ts=getStk(p);
   if(articleIncomplet(p)){if(role==='patron'||hasPerm('produits'))ouvrirCompleterArticle(p);return;}
-  if(ts<=0&&!p.rt){showToast('⚠️ '+(lang==='fr'?'Stock épuisé !':'Out of stock!'));return;}
+  if(ts<=0&&!p.rt){_direPourquoiVide(p);return;}
   if(p.vr.length){ouvrirVar(p);return;}
   if(estMesure(p)){ouvrirQteMesure(p);return;}
   var livePq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
