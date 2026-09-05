@@ -1563,6 +1563,7 @@ body{max-width:min(100%,1200px)}
     <div class="stsc" id="sec-patron-backup" style="display:none">
       <div class="sttit">🗄️ Sauvegarde</div>
       <div class="stcd">
+        <div class="stit2" onclick="ouvrirSauvegardes()"><div class="stico" style="background:#E0F2F1">🛟</div><div class="stii"><div class="stitl" id="st-retour">Revenir en arrière</div><div class="stisub" id="st-retour-s">Les copies prises avant chaque effacement</div></div><div class="star">›</div></div>
         <div class="stit2" onclick="exporterSauvegardeComplete()"><div class="stico" style="background:#E8F5E9">💾</div><div class="stii"><div class="stitl">Exporter une sauvegarde complète</div><div class="stisub">Toutes tes données, en un fichier</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="document.getElementById('inp-restore-backup').click()"><div class="stico" style="background:#FFEBEE">♻️</div><div class="stii"><div class="stitl">Restaurer une sauvegarde</div><div class="stisub">Remplace toutes les données actuelles</div></div><span class="starr">›</span></div>
         <input type="file" id="inp-restore-backup" accept="application/json" style="display:none" onchange="restaurerSauvegarde(this.files[0])">
@@ -1848,6 +1849,17 @@ body{max-width:min(100%,1200px)}
 </div>
 
 <!-- Choix du pays sur l'écran de connexion (l'indicatif n'est jamais tapé à la main) -->
+<!-- Revenir en arrière : les copies prises avant chaque geste destructeur -->
+<div class="ov" id="ov-sauv" onclick="closeOv(event,'ov-sauv')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="sauv-tit">🛟 Revenir en arrière</div><button class="bcl" onclick="closeSheet('ov-sauv')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div id="sauv-intro" style="font-size:12.5px;color:var(--M);margin-bottom:12px;line-height:1.45"></div>
+      <div id="sauv-liste"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Dire une fois combien il y a dans un carton / casier / sac, puis en vendre un -->
 <div class="ov" id="ov-gros" onclick="closeOv(event,'ov-gros')">
   <div class="bsht"><div class="shndl"></div>
@@ -3050,7 +3062,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='20.9'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.0'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3135,6 +3147,10 @@ function _venteEnCours(){
 }
 function _applyRemoteDB(data,silent){
   _rtDerniereMaj=Date.now();
+  // Des données arrivent d'un AUTRE téléphone et se mélangent aux siennes.
+  // La fusion a déjà effacé des modifications d'articles par le passé : on
+  // garde l'état d'avant, c'est le seul moyen de comparer si ça tourne mal.
+  sauvegarderAvant(lang==='fr'?'avant une arrivée de données':'before incoming data');
   _suppressSync=true;
   DB=migrateDBData(mergeDB(data,DB));_artSnapApresFusion();
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
@@ -6154,6 +6170,10 @@ function mettreDansFamille(artId,cibleId){
   var a=DB.articles.find(function(x){return x.id===artId;});
   var t=DB.articles.find(function(x){return x.id===cibleId;});
   if(!a||!t)return;
+  // Le regroupement est le geste qui a DÉJÀ détruit des articles (20.8).
+  // La copie se prend AVANT la moindre modification : une copie prise
+  // après l'effacement ne sert à rien.
+  sauvegarderAvant((lang==='fr'?'avant de regrouper ':'before grouping ')+a.nm);
   var fr=lang==='fr';
   if(!t.vr.length){
     // La cible est un article seul : elle devient d'abord SA propre 1re variante
@@ -6192,7 +6212,7 @@ function mettreDansFamille(artId,cibleId){
   showToast('🔗 '+a.nm+' → '+t.nm+' ('+t.vr.length+' '+(fr?'variantes':'variants')+')');
 }
 function ctxST(){if(!artCtx)return;selArtStk(artCtx);document.getElementById('ov-stk').classList.add('show');}
-function ctxDL(){if(!artCtx)return;if(confirm((lang==='fr'?'Supprimer ':'Delete ')+'"'+artCtx.nm+'" ?')){if(!Array.isArray(DB.suppr))DB.suppr=[];DB.suppr.push(artCtx.id);journalAjouter('suppr',artCtx.nm,(lang==='fr'?'stock '+fmtQ(getStk(artCtx)):'stock '+fmtQ(getStk(artCtx))),'');DB.articles=DB.articles.filter(function(a){return a.id!==artCtx.id;});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();showToast('🗑️ '+artCtx.nm);}}
+function ctxDL(){if(!artCtx)return;if(confirm((lang==='fr'?'Supprimer ':'Delete ')+'"'+artCtx.nm+'" ?')){sauvegarderAvant((lang==='fr'?'avant de supprimer ':'before deleting ')+artCtx.nm);if(!Array.isArray(DB.suppr))DB.suppr=[];DB.suppr.push(artCtx.id);journalAjouter('suppr',artCtx.nm,(lang==='fr'?'stock '+fmtQ(getStk(artCtx)):'stock '+fmtQ(getStk(artCtx))),'');DB.articles=DB.articles.filter(function(a){return a.id!==artCtx.id;});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();showToast('🗑️ '+artCtx.nm);}}
 function ouvrirNeg(p,v){negEnCours={p,v};
   // Sa photo, pas un émoji : il doit reconnaître ce qu'il s'apprête à vendre à découvert.
   var _ne=document.getElementById('neg-emo');
@@ -12478,7 +12498,124 @@ var _loadFromSupaBase=loadFromSupa;loadFromSupa=async function(code,pin){var dat
 // reprogrammait un autre 800 ms plus tard, qui réussissait, qui en
 // reprogrammait un autre… une boucle d'écriture sans fin sur chaque
 // appareil connecté, jour et nuit.
+// ══════════════════════════════════════════════════════════════════
+//  SAUVEGARDES LOCALES — REVENIR EN ARRIÈRE
+//
+//  ⚠️ POURQUOI. L'app a détruit des données DEUX FOIS pour de vrai :
+//  en 19.51 (Reaktor B et C effacés par un rangement) et en 20.8 (le
+//  regroupement gardait 1 article sur 3 et perdait 22 unités). Chaque
+//  fois, la réponse honnête à « rends-moi mes articles » était : il n'y
+//  a rien à restaurer. C'est le seul défaut qui puisse coûter un
+//  commerçant DÉFINITIVEMENT — tout le reste se répare.
+//
+//  MESURÉ sur ses 40 boutiques réelles : JSON moyen 38 Ko, le plus gros
+//  236 Ko, et AUCUNE image embarquée (les photos sont des liens). Une
+//  poignée de copies tient donc sans risque dans le téléphone.
+//
+//  On copie AVANT chaque geste qui détruit, et une fois par jour. Le
+//  budget prime sur le nombre : une grosse boutique en garde moins,
+//  mais on n'écrit jamais au-delà de ce que le téléphone accepte.
+// ══════════════════════════════════════════════════════════════════
+var _SAUV_CLE='myboutiq_sauv',_SAUV_BUDGET=1500000,_SAUV_MIN=3;
+function _sauvListe(){try{return JSON.parse(localStorage.getItem(_SAUV_CLE)||'[]');}catch(e){return [];}}
+function _sauvEcrire(l){try{localStorage.setItem(_SAUV_CLE,JSON.stringify(l));return true;}catch(e){return false;}}
+function sauvegarderAvant(motif){
+  try{
+    if(!DB||!DB.cfg||!DB.cfg.code)return;
+    var txt=JSON.stringify(DB);
+    var l=_sauvListe();
+    // Deux copies identiques à une minute d'intervalle ne servent à rien.
+    // ⚠️ Le motif fait partie de la comparaison : sans lui, deux gestes
+    // destructeurs différents à moins d'une minute d'écart ne donnaient
+    // qu'UNE copie — et le second geste devenait irrattrapable.
+    if(l.length&&l[0].n===txt.length&&l[0].a===((DB.articles||[]).length)
+       &&l[0].m===(motif||'')&&(Date.now()-l[0].t)<60000)return;
+    l.unshift({t:Date.now(),m:motif||'',c:DB.cfg.code,nom:DB.cfg.nom||'',
+               a:(DB.articles||[]).length,v:(DB.ventes||[]).length,n:txt.length,d:txt});
+    var tot=0,g=[];
+    for(var i=0;i<l.length;i++){tot+=l[i].n;if(i<_SAUV_MIN||tot<=_SAUV_BUDGET)g.push(l[i]);else break;}
+    // Si le téléphone refuse malgré tout, on rend la place au lieu d'échouer.
+    while(g.length>1&&!_sauvEcrire(g))g.pop();
+    if(g.length===1)_sauvEcrire(g);
+  }catch(e){}
+}
+function _sauvQuand(ts){
+  var fr=(lang==='fr');
+  var d=new Date(ts),n=new Date();
+  var min=Math.round((n-d)/60000);
+  if(min<1)return fr?'à l\'instant':'just now';
+  if(min<60)return (fr?'il y a ':'')+min+(fr?' min':' min ago');
+  var mj=d.toDateString()===n.toDateString();
+  var h=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+  if(mj)return (fr?'aujourd\'hui à ':'today at ')+h;
+  var hier=new Date(n.getTime()-86400000);
+  if(d.toDateString()===hier.toDateString())return (fr?'hier à ':'yesterday at ')+h;
+  return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' · '+h;
+}
+function ouvrirSauvegardes(){
+  var fr=(lang==='fr');
+  var l=_sauvListe().filter(function(s){return !DB||!DB.cfg||s.c===DB.cfg.code;});
+  var intro=document.getElementById('sauv-intro');
+  var box=document.getElementById('sauv-liste');
+  document.getElementById('sauv-tit').textContent='🛟 '+(fr?'Revenir en arrière':'Go back');
+  if(!l.length){
+    intro.textContent=fr?'Aucune copie pour le moment. L\'app en garde une avant chaque geste qui efface, et une par jour.'
+                        :'No copy yet. The app keeps one before anything that erases, and one a day.';
+    box.innerHTML='';
+    document.getElementById('ov-sauv').classList.add('show');return;
+  }
+  intro.textContent=fr?'Chaque copie est l\'état exact de ta boutique AVANT un geste. Revenir remplace ce qu\'il y a maintenant.'
+                      :'Each copy is your shop exactly BEFORE an action. Going back replaces what you have now.';
+  // On annonce ce que la copie CONTIENT, pas seulement son heure : c'est le
+  // nombre d'articles qui lui dira laquelle reprendre.
+  box.innerHTML=l.map(function(s,i){
+    var diffA=(DB&&DB.articles?s.a-DB.articles.length:0);
+    var sig=diffA>0?('<span style="color:var(--G);font-weight:800"> · +'+diffA+' '+(fr?'articles qu\'elle a en plus':'more items')+'</span>'):'';
+    return '<div style="border:1.5px solid var(--BD);border-radius:12px;padding:11px 13px;margin-bottom:9px">'
+      +'<div style="font-size:13px;font-weight:800">'+_sauvQuand(s.t)+(s.m?(' <span style="font-weight:600;color:var(--M)">— '+s.m+'</span>'):'')+'</div>'
+      +'<div style="font-size:12px;color:var(--M);margin-top:3px">'+s.a+' '+(fr?'articles':'items')+' · '+s.v+' '+(fr?'ventes':'sales')+' · '+Math.round(s.n/1024)+' Ko'+sig+'</div>'
+      +'<button class="bnxt" style="margin-top:9px;padding:9px" onclick="revenirEnArriere('+i+')">↩️ '+(fr?'Revenir à cet état':'Restore this')+'</button>'
+      +'</div>';
+  }).join('');
+  document.getElementById('ov-sauv').classList.add('show');
+}
+function revenirEnArriere(i){
+  var fr=(lang==='fr');
+  var l=_sauvListe().filter(function(s){return !DB||!DB.cfg||s.c===DB.cfg.code;});
+  var s=l[i];if(!s)return;
+  if(!confirm((fr?'Revenir à l\'état de ':'Restore the state of ')+_sauvQuand(s.t)+' ?\n'
+             +s.a+(fr?' articles · ':' items · ')+s.v+(fr?' ventes':' sales')+'\n\n'
+             +(fr?'Ce que tu as maintenant sera remplacé — mais une copie en sera gardée.'
+                 :'What you have now will be replaced — a copy of it is kept.')))return;
+  // ⚠️ On copie l'état ACTUEL avant de le remplacer : revenir en arrière ne
+  // doit jamais devenir à son tour une façon de perdre quelque chose.
+  sauvegarderAvant(fr?'avant un retour en arrière':'before a restore');
+  var d=null;
+  try{d=JSON.parse(s.d);}catch(e){showToast('⚠️ '+(fr?'Copie illisible':'Unreadable copy'));return;}
+  DB=migrateDBData(d);
+  DB=recomputeStock(DB);
+  save();
+  closeSheet('ov-sauv');
+  try{renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();updateStats&&updateStats();}catch(e){}
+  showToast('🛟 '+(fr?'Revenu à l\'état de ':'Restored to ')+_sauvQuand(s.t));
+  try{parler(fr?'C\'est revenu.':'Restored.');}catch(e){}
+}
+function _sauvJour(){
+  try{
+    var j=new Date().toISOString().slice(0,10);
+    if(localStorage.getItem('myboutiq_sauv_jour')===j)return;
+    // ⚠️ La copie du jour ne doit pas se glisser JUSTE APRÈS un geste
+    // destructeur : elle se posait alors en tête de liste avec l'état
+    // d'APRÈS l'effacement, et repoussait en second la seule copie utile.
+    // S'il vient d'y en avoir une, la promesse « une par jour » est tenue.
+    var l=_sauvListe();
+    if(l.length&&(Date.now()-l[0].t)<120000){localStorage.setItem('myboutiq_sauv_jour',j);return;}
+    localStorage.setItem('myboutiq_sauv_jour',j);
+    sauvegarderAvant(lang==='fr'?'copie du jour':'daily copy');
+  }catch(e){}
+}
 function persistDB(delaiMs){
+  _sauvJour();
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
   if(delaiMs===false)return;
   if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){
