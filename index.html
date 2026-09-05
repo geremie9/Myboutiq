@@ -1010,6 +1010,19 @@ body{max-width:min(100%,1200px)}
 </style>
 </head>
 <body>
+<!-- ⚠️ RÈGLE 1 DE LA BOUTIQUE D'EXEMPLE : impossible à confondre avec la
+     sienne. Toujours visible, en haut, sur TOUS les écrans. Il s'est déjà
+     retrouvé dans la boutique d'un client sans s'en rendre compte ; ici les
+     chiffres sont faux, alors on le dit tout le temps, pas une seule fois. -->
+<div id="bandeau-demo" style="display:none;position:sticky;top:0;z-index:900;align-items:center;gap:9px;
+     background:#F5A623;color:#241257;padding:7px 12px;font-family:'Outfit',sans-serif;
+     font-size:11.5px;font-weight:900;box-shadow:0 2px 8px rgba(0,0,0,.18)">
+  <span style="font-size:14px">👀</span>
+  <span id="bandeau-demo-t" style="flex:1;line-height:1.25">BOUTIQUE D'EXEMPLE — rien n'est réel</span>
+  <button onclick="quitterDemo()" id="bandeau-demo-q"
+    style="background:#241257;color:#fff;border:none;border-radius:8px;padding:6px 11px;
+           font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">Créer ma boutique</button>
+</div>
 <div class="toast" id="toast"></div>
 <div class="ctxm" id="ctxm">
   <div class="ctxi" onclick="ctxPV()">✏️ <span id="cx1">Modifier prix vente</span></div>
@@ -3129,7 +3142,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.4'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.5'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3412,6 +3425,11 @@ async function signUpOwnerAuth(phone,pin){
   return {user:user||(res.data&&res.data.user?res.data.user:null),error:null};
 }
 async function syncToSupa(){
+  // ⚠️ RÈGLE 2 DE LA BOUTIQUE D'EXEMPLE : elle ne quitte JAMAIS le téléphone.
+  // Sans cette ligne, 170 faux articles et leurs faux stocks partiraient au
+  // serveur sous son compte — et se mélangeraient à sa vraie boutique à la
+  // première fusion. C'est le défaut du jour, en pire.
+  if(estDemo())return;
   // ⚠️ CE GARDE-FOU SORTAIT SANS RIEN DIRE, ET DES VENTES RESTAIENT AU CHAUD.
   // Le drapeau `_offlinePending` n'était posé que dans le `catch` plus bas.
   // Or quand le commerçant OUVRE l'app sans réseau, `supa` n'existe même pas :
@@ -5436,6 +5454,7 @@ function lancerApp(){
   screenHist=['s-caisse'];
   goScreen('s-caisse');
   initTabs();
+  try{majBandeauDemo();}catch(e){}
   if(DB.cfg.veille)activerVeille();
   renderProd(DB.articles);
   renderStock(DB.articles);
@@ -5665,6 +5684,17 @@ function renderProd(lst){
         '<div class="eg-t">'+(fr?'Qu\'est-ce que tu vends ?':'What do you sell?')+'</div>'+
         '<button class="eg-btn" onclick="ouvrirChoixArticles()">🖼️ '+(fr?'Choisir en photos':'Choose from photos')+'</button>'+
         '<div><button class="eg-btn2" onclick="ouvrirPorteArticles()">'+(fr?'Autres façons d\'ajouter':'Other ways to add')+'</button></div>'+
+        // ⚠️ 36 % DES BOUTIQUES N'ONT JAMAIS REÇU UN ARTICLE (16 sur 45).
+        // Elles se sont toutes arrêtées ICI, sur cet écran vide. Lui demander
+        // ce qu'il vend suppose qu'il ait déjà compris à quoi sert l'app —
+        // or il n'a encore RIEN vu fonctionner. On lui montre d'abord une
+        // boutique qui marche ; le travail vient après l'envie.
+        '<div style="margin-top:16px;padding-top:15px;border-top:1px solid var(--BD)">'+
+          '<div style="font-size:12px;font-weight:700;color:var(--M);margin-bottom:9px">'+
+            (fr?'Tu veux d\'abord voir comment ça marche ?':'Want to see how it works first?')+'</div>'+
+          '<button class="eg-btn2" onclick="entrerDemo()" style="border-color:var(--B);color:var(--B)">'+
+            '👀 '+(fr?'Essayer une boutique d\'exemple':'Try an example shop')+'</button>'+
+        '</div>'+
       '</div>';
       // L'app SAIT parler depuis la 19.74 et ne disait rien sur tout ce
       // parcours. Elle pose la question à voix haute — c'est la seule chose
@@ -12755,6 +12785,121 @@ var _loadFromSupaBase=loadFromSupa;loadFromSupa=async function(code,pin,discret)
 var _SAUV_CLE='myboutiq_sauv',_SAUV_BUDGET=1500000,_SAUV_MIN=3;
 function _sauvListe(){try{return JSON.parse(localStorage.getItem(_SAUV_CLE)||'[]');}catch(e){return [];}}
 function _sauvEcrire(l){try{localStorage.setItem(_SAUV_CLE,JSON.stringify(l));return true;}catch(e){return false;}}
+// ══════════════════════════════════════════════════════════════════
+//  LA BOUTIQUE D'EXEMPLE
+//
+//  « Proposer une boutique test avec quelques cent articles tout mélangés,
+//    avec des stocks déjà et avec des prix, pour que les clients quand ils
+//    viennent trouvent quelque chose à tester. »
+//
+//  MESURE QUI LA JUSTIFIE : 16 boutiques sur 45 (36 %) n'ont JAMAIS reçu un
+//  seul article. Elles se sont toutes arrêtées sur l'écran vide. On lui
+//  montre donc une boutique qui marche AVANT de lui demander du travail.
+//
+//  ⚠️ AUCUN CHIFFRE N'EST INVENTÉ. Les 170 articles, leurs prix d'achat,
+//  leurs prix de vente et leurs conditionnements viennent tous de
+//  CATALOGUE_CM, déjà embarqué et déjà renseigné. Je ne sais pas ce que
+//  coûte un savon à Douala et je ne fais pas semblant.
+//
+//  ⚠️ TROIS RÈGLES DE SÉCURITÉ, nées du défaut du jour — il s'est retrouvé
+//  dans la boutique d'un client parce que deux commerces cohabitaient sur
+//  un téléphone. Une démonstration mal séparée referait exactement ça,
+//  avec de faux stocks mélangés à ses vraies ventes :
+//    1. elle est MARQUÉE en permanence (bandeau, impossible à confondre) ;
+//    2. elle ne part JAMAIS au serveur (garde dans syncToSupa) ;
+//    3. on n'en sort qu'en l'EFFAÇANT — jamais de conversion en vraie
+//       boutique, jamais un faux prix qui devient un vrai.
+// ══════════════════════════════════════════════════════════════════
+var DEMO_CODE='00000 00000';
+function estDemo(){try{return !!(DB&&DB.cfg&&DB.cfg.demo);}catch(e){return false;}}
+
+function _articlesDemo(){
+  var idx=[];try{idx=catalogueIndex()||[];}catch(e){}
+  // On ne garde que ce qui porte DÉJÀ ses deux prix : rien à inventer.
+  var src=idx.filter(function(x){return x&&x.pa>0&&x.px>0&&x.plein;});
+  var vus={},arts=[],id=100;
+  src.forEach(function(x){
+    var k=txtNorm(x.plein);
+    if(vus[k])return;vus[k]=1;
+    // Le stock n'est pas de l'argent : un nombre d'unités en rayon ne peut
+    // pas tromper sur une marge. Il suit le conditionnement quand on le
+    // connaît (2 casiers de 12 = 24), sinon il reste rond et lisible.
+    var stk=(x.sac>1)?(x.sac*2):((x.um==='kg'||x.um==='L')?20:24);
+    var a={id:id++,nm:x.plein,e:'📦',cat:CAT_IDX_N.indexOf(x.cat),
+           px:x.px,pa:x.pa,stk:stk,stk0:stk,vr:[],rt:false,vd:0};
+    if(a.cat<0)a.cat=0;
+    if(x.um&&x.um!=='pc')a.um=x.um;
+    if(x.sac>0){a.umSac=x.sac;a.umCont=x.cont||null;}
+    // La photo n'est posée que si le catalogue 600 la connaît vraiment.
+    // photoCatalogue() cherche par nom complet, par nom, puis par mots —
+    // s'il ne trouve pas, l'emoji suffit : on ne met pas la photo d'un
+    // autre produit pour faire joli.
+    try{var ph=photoCatalogue(x.plein);if(ph)a.img=ph;}catch(e){}
+    arts.push(a);
+  });
+  return arts;
+}
+
+async function entrerDemo(){
+  var fr=(lang==='fr');
+  // ⚠️ Sans ce chargement, ZÉRO photo sur 170 articles : photoCatalogue() a
+  // besoin de catalogue-600.json, qui n'arrive qu'à la demande. Une boutique
+  // d'exemple sans images ne montre pas ce que l'app sait faire.
+  showToast('⏳ '+(fr?'Préparation…':'Preparing…'));
+  try{await chargerCatalogue600();}catch(e){}
+  var arts=_articlesDemo();
+  if(!arts.length){showToast('⚠️ '+(fr?'Catalogue indisponible':'Catalogue unavailable'));return;}
+  // Sa boutique à lui est mise de côté avant tout — la règle de la 21.0.
+  try{sauvegarderAvant(fr?'avant la boutique d\'exemple':'before the example shop');}catch(e){}
+  var reel=null;try{reel=localStorage.getItem('myboutiq_v6');}catch(e){}
+  try{if(reel)localStorage.setItem('myboutiq_v6_avant_demo',reel);}catch(e){}
+  var anc=DB&&DB.cfg?DB.cfg:{};
+  DB=migrateDBData({
+    cfg:{nom:(fr?'Boutique d\'exemple':'Example shop'),code:DEMO_CODE,pin:'0000',
+         d:anc.d||'FCFA',s:anc.s||'FCFA',pays:anc.pays||'CM',lang:anc.lang||lang,
+         secteur:anc.secteur||'boutique',venteDeverrouillee:true,demo:true},
+    articles:arts,ventes:[],appros:[],depenses:[],clients:[],equipe:[],suppr:[],
+    nextId:100+arts.length+1
+  });
+  DB=recomputeStock(DB);
+  try{persistDB(false);}catch(e){}
+  try{lancerApp();}catch(e){}
+  majBandeauDemo();
+  showToast('👀 '+(fr?arts.length+' articles — vends, tout est faux !':arts.length+' items — sell away, it is all fake!'));
+  try{parler(fr?'Voici une boutique d\'exemple. Touche un article pour le vendre.'
+                :'Here is an example shop. Tap an item to sell it.');}catch(e){}
+}
+
+function quitterDemo(){
+  var fr=(lang==='fr');
+  if(!estDemo())return;
+  if(!confirm(fr?'Fermer la boutique d\'exemple ?\n\nTout ce que tu as fait dedans sera effacé — c\'était pour essayer.\n\nTu retrouveras ta vraie boutique.'
+                :'Close the example shop?\n\nEverything you did in it will be erased — it was only a trial.\n\nYour real shop comes back.'))return;
+  // ⚠️ On EFFACE, on ne convertit pas. Un faux prix ne doit jamais devenir
+  // un vrai prix : c'est exactement ce qui rend un mauvais prix d'achat
+  // invisible, et un mauvais prix d'achat ne se voit jamais.
+  var reel=null;try{reel=localStorage.getItem('myboutiq_v6_avant_demo');}catch(e){}
+  try{
+    if(reel)localStorage.setItem('myboutiq_v6',reel);
+    else localStorage.removeItem('myboutiq_v6');
+    localStorage.removeItem('myboutiq_v6_avant_demo');
+  }catch(e){}
+  showToast('🧹 '+(fr?'Exemple fermé':'Example closed'));
+  setTimeout(function(){location.reload();},700);
+}
+
+function majBandeauDemo(){
+  var b=document.getElementById('bandeau-demo');
+  if(!b)return;
+  var fr=(lang==='fr');
+  if(!estDemo()){b.style.display='none';return;}
+  b.style.display='flex';
+  var t=document.getElementById('bandeau-demo-t');
+  if(t)t.textContent=fr?'BOUTIQUE D\'EXEMPLE — rien n\'est réel':'EXAMPLE SHOP — nothing is real';
+  var q=document.getElementById('bandeau-demo-q');
+  if(q)q.textContent=fr?'Créer ma boutique':'Create my shop';
+}
+
 function sauvegarderAvant(motif){
   try{
     if(!DB||!DB.cfg||!DB.cfg.code)return;
