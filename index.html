@@ -3110,7 +3110,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.1'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.2'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3411,7 +3411,10 @@ async function syncToSupa(){
     var user=await getAuthUser();
     if(user)DB.cfg.ownerId=user.id;
     // Fusionner l'état serveur AVANT d'écrire : ne jamais écraser les ventes d'un autre vendeur hors-ligne
-    try{ if(navigator.onLine&&DB.cfg.code){ var _rem=await loadFromSupa(DB.cfg.code,_pinPatronDispo()); if(_rem){ DB=migrateDBData(mergeDB(DB,_rem));_artSnapApresFusion(); } } }catch(e){}
+    // ⚠️ `discret` : cette lecture tourne en fond APRÈS chaque vente. Sans
+    // elle, un refus faisait effacer le code et PARLER à voix haute — au
+    // milieu d'une vente, à quelqu'un qui venait justement d'entrer.
+    try{ if(navigator.onLine&&DB.cfg.code){ var _rem=await loadFromSupa(DB.cfg.code,_pinPatronDispo(),true); if(_rem){ DB=migrateDBData(mergeDB(DB,_rem));_artSnapApresFusion(); } } }catch(e){}
     DB.cfg._dev=_deviceId;
     for(var attempt=0;attempt<3;attempt++){
       DB.cfg.code=formatShopCode(DB.cfg.code||genCode());
@@ -3507,6 +3510,19 @@ var _shopPin=null;
 // réussi — puis blocage, et un message qui accusait le commerçant d'avoir
 // mal tapé alors qu'il n'avait rien tapé. Il était bloqué EN PLEINE VENTE.
 var _pinRefuse=false;
+// ⚠️ « Et la voix qui dit tape ton code APRÈS être dans la boutique. »
+// Le signal servait à DEUX choses à la fois, et l'une abîmait l'autre :
+//   1. arrêter de marteler le serveur toutes les 800 ms (indispensable) ;
+//   2. effacer le code gardé et DIRE À VOIX HAUTE de le retaper.
+// La synchro de fond, qui tourne pendant qu'il vend, déclenchait les deux.
+// Elle n'a besoin que du premier : il est déjà entré, il travaille, et lui
+// annoncer que son code est mort au milieu d'une vente est faux et
+// inquiétant. On garde donc le frein, sans la voix ni l'effacement.
+function _marquerPinRefuse(){
+  if(_pinRefuse)return true;
+  _pinRefuse=true;
+  return true;
+}
 function _signalerPinRefuse(){
   if(_pinRefuse)return true;
   _pinRefuse=true;
@@ -3562,7 +3578,10 @@ function _pinPatronDispo(){
   }catch(e){}
   return null;
 }
-async function loadFromSupa(code,pin){
+// `discret` : la lecture vient d'une synchro de fond, pas d'une action de
+// l'utilisateur. Un refus doit alors freiner les rappels au serveur, mais
+// SANS effacer le code gardé ni lui parler — il est déjà dans sa boutique.
+async function loadFromSupa(code,pin,discret){
   if(!supa)return null;
   // Tant qu'il n'a pas retapé son PIN, on ne rappelle plus le serveur : c'est
   // ce martèlement qui le faisait bloquer.
@@ -3577,7 +3596,7 @@ async function loadFromSupa(code,pin){
       // pin fourni = il vient de le TAPER : l'écran de connexion s'en charge,
       // on ne touche à rien. pin absent = c'est NOTRE PIN gardé qui est
       // refusé, et là il faut s'arrêter au lieu de réessayer.
-      if(pin==null)_signalerPinRefuse();
+      if(pin==null){if(discret)_marquerPinRefuse();else _signalerPinRefuse();}
       return null;
     }
     _pinRefuse=false;                  // le serveur nous accepte à nouveau
@@ -12612,7 +12631,13 @@ function migrateDBData(d){
   return d;
 }
 loadDB=function(){var d=localStorage.getItem('myboutiq_v6');return d?migrateDBData(JSON.parse(d)):null;};
-var _loadFromSupaBase=loadFromSupa;loadFromSupa=async function(code,pin){var data=await _loadFromSupaBase(code,pin);return data?migrateDBData(data):null;};
+// ⚠️ CET ENROBAGE TARDIF DOIT REPASSER TOUS LES ARGUMENTS.
+// Il n'en prenait que deux et jetait le troisième (`discret`) : la synchro
+// de fond redevenait bruyante sans qu'aucun appel ne le montre, et la voix
+// « retape ton code » repartait au milieu d'une vente. Même piège que
+// restaurerSauvegarde en 21.0 : dans ce fichier, une fonction redéfinie
+// plus bas GAGNE — vérifier la signature avant d'ajouter un paramètre.
+var _loadFromSupaBase=loadFromSupa;loadFromSupa=async function(code,pin,discret){var data=await _loadFromSupaBase(code,pin,discret);return data?migrateDBData(data):null;};
 // delaiMs === false : on écrit dans le téléphone SANS reprogrammer d'envoi.
 // Indispensable à la fin de syncToSupa : sinon chaque envoi réussi en
 // reprogrammait un autre 800 ms plus tard, qui réussissait, qui en
