@@ -3110,7 +3110,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.2'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.3'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3876,6 +3876,32 @@ function memoriserEntree(o){
 }
 function lireEntree(){
   try{return JSON.parse(localStorage.getItem('myboutiq_entree')||'null');}catch(e){return null;}
+}
+// ⚠️ CE TÉLÉPHONE GARDE LA BOUTIQUE DE QUELQU'UN D'AUTRE.
+// Arrive quand le même appareil a servi à configurer plusieurs commerces —
+// et systématiquement avec l'APK, qui hérite du stockage de Chrome.
+// On ne l'ouvre pas (ce n'est pas son commerce) et on ne l'efface pas tout
+// seul (ce sont de vraies ventes). C'est lui qui tranche, en connaissance.
+function _proposerQuitterBoutiqueEtrangere(nom){
+  var fr=(lang==='fr');
+  var msg=fr
+    ?('⚠️ Ce téléphone garde encore la boutique « '+nom+' », qui ne t\'appartient pas.\n\n'
+      +'Ton compte n\'a aucune boutique enregistrée sur le serveur.\n\n'
+      +'Veux-tu VIDER cette boutique de ce téléphone pour repartir propre ?\n\n'
+      +'Ses ventes déjà envoyées au serveur ne sont PAS touchées — seule la copie de cet appareil est effacée.')
+    :('⚠️ This phone still holds the shop "'+nom+'", which is not yours.\n\n'
+      +'Your account has no shop on the server.\n\n'
+      +'Clear this shop from this phone and start clean?\n\n'
+      +'Sales already sent to the server are NOT affected — only this device\'s copy.');
+  showToast('⚠️ '+(fr?'Cette boutique n\'est pas la tienne':'This shop is not yours'));
+  try{parler(fr?'Cette boutique n\'est pas la tienne.':'This shop is not yours.');}catch(e){}
+  if(!confirm(msg))return;
+  // Copie de secours AVANT d'effacer — la règle de la 21.0 vaut ici aussi.
+  try{if(typeof sauvegarderAvant==='function')sauvegarderAvant('boutique d\'un autre commerçant');}catch(e){}
+  try{localStorage.removeItem('myboutiq_v6');}catch(e){}
+  try{localStorage.removeItem('myboutiq_entree');}catch(e){}
+  showToast('🧹 '+(fr?'Téléphone vidé — reconnecte-toi':'Phone cleared — sign in again'));
+  setTimeout(function(){location.reload();},900);
 }
 function oublierEntree(){
   // Un vendeur qui change de vendeur doit retomber sur SON onglet, pas sur
@@ -5153,9 +5179,35 @@ async function loginP(){
     _terminerLoginPatron(remoteDB,tel,email);
     return;
   }
-  if(DB&&normalizePhone(DB.cfg.tel||'')===tel){
+  // ⚠️⚠️ IL S'EST RETROUVÉ DANS LA BOUTIQUE D'UN CLIENT.
+  // Ce repli sert au patron qui reprend SA boutique quand le serveur n'en a
+  // pas encore trace. Le seul contrôle était le numéro inscrit dans la
+  // boutique LOCALE — or il configure les boutiques de ses clients SUR SON
+  // PROPRE TÉLÉPHONE, donc avec son numéro. Le garde-fou le reconnaissait,
+  // adoptait la boutique du client, y écrivait son numéro, et la renvoyait
+  // au serveur SOUS SON IDENTITÉ. Deux commerces mélangés en une connexion.
+  //
+  // ⚠️ AGGRAVÉ PAR L'APK : une application TWA partage le stockage de Chrome
+  // pour ce domaine. L'installer n'offre donc PAS un départ propre — elle
+  // hérite de la dernière boutique ouverte dans le navigateur.
+  //
+  // L'identifiant de compte fait foi. Le numéro ne suffit plus : il ne dit
+  // pas à qui appartient la boutique, seulement qui l'a saisi.
+  var _moi=(res&&res.data&&res.data.user&&res.data.user.id)||null;
+  var _proprio=(DB&&DB.cfg&&DB.cfg.ownerId)||null;
+  var _aMoi;
+  if(_proprio&&_moi)_aMoi=(_proprio===_moi);
+  else if(_proprio)_aMoi=false;                 // elle a un propriétaire connu, et ce n'est pas prouvé être lui
+  else _aMoi=(normalizePhone((DB&&DB.cfg&&DB.cfg.tel)||'')===tel);  // boutique ancienne, sans propriétaire enregistré
+  if(DB&&DB.cfg&&DB.cfg.code&&_aMoi){
     DB.cfg.tel=tel;
+    if(_moi)DB.cfg.ownerId=_moi;
     await syncToSupa();
+  }else if(DB&&DB.cfg&&DB.cfg.code){
+    // Une boutique est là, mais elle n'est pas à lui. On ne l'ouvre pas, on
+    // ne l'écrase pas non plus : c'est le commerce de quelqu'un.
+    _proposerQuitterBoutiqueEtrangere(DB.cfg.nom||'');
+    return;
   }else{
     showToast(t('boutiqueIntrouvable'));return;
   }
