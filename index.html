@@ -3362,7 +3362,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.32'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.33'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -13565,7 +13565,20 @@ function getSaleBenef(v){
       if(prixAchatAberrant(pa,px))return;   // prix de gros : on ne compte pas
       if(pa>0){b+=(px-pa)*q;connu=true;}
     });
-    if(!connu)return 0;                                   // rien de connu : on n'invente pas un bénéfice
+    if(!connu){
+      // ⚠️ AUCUNE LIGNE UTILISABLE — mais la VENTE, elle, avait retenu son
+      // bénéfice au moment de l'encaissement. On le jetait.
+      // MESURÉ : 13 ventes de sa boutique « G » portaient 51 340 F de
+      // bénéfice réel, affichés zéro. 22 ventes et 82 900 F sur une autre.
+      // La ligne n'avait pas gardé le prix d'achat ; la vente, si.
+      // On le reprend, mais SEULEMENT s'il est croyable : un bénéfice
+      // supérieur au montant encaissé, ou négatif, c'est la signature du
+      // prix de gros pris pour un prix unitaire — celui-là reste écarté.
+      var rec=Number((v.benefice!==undefined&&v.benefice!==null)?v.benefice:v.ben)||0;
+      var tot=Number(v.total)||0;
+      if(rec>0&&tot>0&&rec<=tot)return rec;
+      return 0;                                           // rien de croyable : on n'invente pas
+    }
     b-=(Number(v.remise)||0)+(Number(v.reductionPoints)||0); // les remises sortent du bénéfice
     return b;
   }
