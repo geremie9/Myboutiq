@@ -948,6 +948,15 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
   font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center}
 
 /* ── CONTEXT MENU ── */
+/* ── L'ACTION PRINCIPALE NE DOIT JAMAIS DEMANDER DE DÉFILER ──────────
+   Mesuré sur 360×640, le téléphone de ses commerçants : le bouton
+   « Enregistrer » de l'écran Prix tombait 61 px SOUS le bord. Il tapait
+   son prix et ne trouvait pas comment valider.
+   Le pied reste collé au bas de la feuille, avec un fond opaque pour que
+   le contenu qui passe dessous ne le rende pas illisible. */
+.pied-collant{position:sticky;bottom:0;z-index:5;
+  background:linear-gradient(180deg,rgba(255,255,255,0) 0,var(--C) 14px,var(--C) 100%);
+  padding:12px 0 4px;margin-top:6px}
 .ctxm{position:fixed;z-index:150;background:var(--C);border-radius:15px;padding:7px;box-shadow:0 8px 30px rgba(0,0,0,.2);min-width:185px;display:none}
 .ctxm.show{display:block}
 .ctxi{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;color:var(--T);transition:background .15s}
@@ -2180,17 +2189,30 @@ body{max-width:min(100%,1200px)}
           <div class="crow"><span class="clbl" id="lbl-pa-cur">Prix achat actuel</span><span class="cval" id="cur-pa">0</span></div>
           <div class="crow"><span class="clbl" id="lbl-pv-cur">Prix vente actuel</span><span class="cval" id="cur-pv">0</span></div>
         </div>
-        <div class="sth2" id="ps0b-hpa">Prix d'achat (l'unité)</div>
-        <div class="pig"><label class="pl" id="lbl-npa">Ce que TU paies pour un</label>
+        <!-- ⚠️ « Quand on veut modifier un article, souvent ses écritures sont
+             longues. » Il avait raison : « Prix d'achat (l'unité) » PUIS
+             « Ce que TU paies pour un » disaient la même chose deux fois, et
+             chaque doublon poussait le bouton d'enregistrement plus bas.
+             Un seul libellé par champ. -->
+        <div class="pig"><label class="pl" id="lbl-npa">Prix d'achat</label>
           <input class="pi" type="number" id="inp-npa" oninput="calcBenR()" inputmode="numeric" placeholder="—"></div>
-        <div class="sth" id="ps0b-h">🏷️ Nouveau prix de vente ?</div>
-        <div class="pig"><label class="pl" id="lbl-npx">Nouveau prix</label>
+        <div class="pig"><label class="pl" id="lbl-npx">Prix de vente</label>
           <input class="pi" type="number" id="inp-npv" oninput="calcBenR()" inputmode="numeric">
           <div class="shcts"><button class="shct" onclick="setNPV(50)">+50</button><button class="shct" onclick="setNPV(100)">+100</button><button class="shct" onclick="setNPV(200)">+200</button><button class="shct" onclick="setNPV(0)">×2</button></div>
         </div>
         <div class="bcard bon" id="bc-r" style="display:none"><div><div class="blbl" id="bl-r">📈 Bénéfice</div><div style="font-size:10px;font-weight:700;margin-top:2px;color:#2E7D32" id="bs-r">Marge</div></div><div class="bamt" id="ba-r">+0</div></div>
-        <button class="bnxt" onclick="saveR()" id="btn-save-r">💾 <span id="lbl-save-r">Enregistrer</span></button>
-        <button class="bbk" style="margin-top:9px;justify-content:center;width:100%" onclick="selArt(artCours,false)" id="btn-reconf">Reconfigurer →</button>
+        <!-- ⚠️⚠️ MESURÉ SUR UN TÉLÉPHONE 360×640 — celui de ses commerçants :
+             le bouton « Enregistrer » tombait à 701 px sur un écran de 640,
+             donc SOIXANTE ET UN PIXELS SOUS LE BORD. Il tapait son prix,
+             cherchait à valider, et ne voyait rien.
+             « Certaines sont cachées à l'extérieur de l'écran, il faut
+             défiler pour voir tout ce qu'il faut travailler sur l'article. »
+             L'action principale ne doit JAMAIS demander de défiler : elle
+             reste collée en bas, toujours sous le pouce. -->
+        <div class="pied-collant">
+          <button class="bnxt" onclick="saveR()" id="btn-save-r">💾 <span id="lbl-save-r">Enregistrer</span></button>
+          <button class="bbk" style="margin-top:7px;justify-content:center;width:100%" onclick="selArt(artCours,false)" id="btn-reconf">Reconfigurer →</button>
+        </div>
       </div>
       <!-- Step 1 -->
       <div class="pst" id="ps1">
@@ -3303,7 +3325,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.23'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.24'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -10640,6 +10662,69 @@ function expSetGros(i,v){
 // Le prix saisi sur la ligne, sans redessiner : redessiner ferait perdre le
 // focus à chaque chiffre tapé, et il faudrait retoucher le champ cinq fois
 // pour écrire « 12500 ».
+// ══════════════════════════════════════════════════════════════════
+//  LES FORMATS, PROPOSÉS DÈS QU'IL TOUCHE UNE BOISSON
+//
+//  Sa demande : « il faudrait que l'application sache que chaque marque
+//  de jus se vend sous plusieurs formes. Il faut paramétrer ça à la base
+//  de telle façon que le commerçant n'ait pas beaucoup à faire. Dès qu'il
+//  touche un jus, ça nous montre les variétés. »
+//
+//  MESURÉ : sur 1369 entrées du catalogue, SEULEMENT 12 produits ont
+//  plusieurs formats. Coca-Cola n'existe qu'en 60 cl — ni 33 cl, ni
+//  1,5 L. L'app ne savait donc effectivement rien.
+//
+//  ⚠️ Je ne peux pas remplir le catalogue de prix que j'ignore. Mais un
+//  FORMAT est une contenance, pas de l'argent : l'app propose l'échelle,
+//  il touche ce qu'il vend, et chaque format devient une ligne où il
+//  n'a qu'un prix à donner. Un geste au lieu d'un article à recréer.
+// ══════════════════════════════════════════════════════════════════
+function _expChipsFormats(a,i){
+  if(!a)return '';
+  var faux={nm:a.nm,cat:(typeof a._cat==='number')?a._cat:categorieDepuisNomProduit(a.nm)};
+  if(!_estBoisson(faux))return '';
+  var fr=(lang==='fr');
+  var racine=txtNorm(_nomSansFormat(a.nm));
+  if(!racine)return '';
+  // Les formats déjà dans la liste (ou déjà en boutique) ne sont pas
+  // reproposés : on ne fabrique pas de doublon.
+  var pris={};
+  (_expListe||[]).forEach(function(x){
+    if(txtNorm(_nomSansFormat(x.nm))!==racine)return;
+    var m=String(x.nm).match(/\d+[.,]?\d*\s*(cl|ml|l)\b/i);
+    if(m)pris[txtNorm(m[0])]=1;
+  });
+  (DB.articles||[]).forEach(function(p){
+    if(txtNorm(_nomSansFormat(p.nm))!==racine)return;
+    var m=String(p.nm).match(/\d+[.,]?\d*\s*(cl|ml|l)\b/i);
+    if(m)pris[txtNorm(m[0])]=1;
+  });
+  var libres=FORMATS_BOISSON.filter(function(f){return !pris[txtNorm(f)];});
+  if(!libres.length)return '';
+  return '<div style="margin-top:5px" onclick="event.stopPropagation()">'
+    +'<div style="font-size:9.5px;font-weight:800;color:var(--M);margin-bottom:3px">'
+    +(fr?'AUTRES FORMATS QUE TU VENDS :':'OTHER SIZES YOU SELL:')+'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:4px">'
+    +libres.map(function(f){
+      return '<button type="button" onclick="expAjouterFormat('+i+',\''+f+'\')" '
+        +'style="border:1px solid var(--BD);background:#fff;border-radius:7px;padding:3px 8px;'
+        +'font-size:10.5px;font-weight:800;color:var(--B);cursor:pointer;font-family:Outfit,sans-serif">+ '+f+'</button>';
+    }).join('')+'</div></div>';
+}
+function expAjouterFormat(i,f){
+  var a=_expListe[i];if(!a)return;
+  var racine=_nomSansFormat(a.nm)||a.nm;
+  var nom=racine+' '+f;
+  if((_expListe||[]).some(function(x){return txtNorm(x.nm)===txtNorm(nom);}))return;
+  if((DB.articles||[]).some(function(p){return txtNorm(p.nm)===txtNorm(nom);})){
+    showToast('ℹ️ '+(lang==='fr'?'Déjà dans ta boutique':'Already in your shop'));return;
+  }
+  // ⚠️ Le prix reste VIDE : chaque format se vend à son prix, et je ne
+  // sais pas lequel. La ligne portera son champ orange, comme les autres.
+  _expListe.splice(i+1,0,{nm:nom,px:0,pa:0,stk:0,_imgUrl:a._imgUrl,_e:a._e,_cat:a._cat,um:a.um});
+  expRender();
+  showToast('➕ '+nom+' — '+(lang==='fr'?'donne son prix':'set its price'));
+}
 function expPrixDirect(i,val){
   var a=_expListe[i];if(!a)return;
   a.px=Math.max(0,parseFloat(String(val||'').replace(',','.'))||0);
@@ -10705,6 +10790,7 @@ function expRender(){
                      :(perte?(' · ⚠️ '+(fr?'à perte ':'at a loss ')+fmt(ben)):(' · '+(fr?'bénéfice ':'profit ')+fmt(ben)+'/'+u)))+
               (a.stk>0?(' · '+fmtQ(a.stk)+' '+u):'')+'</div>'))+
         '<div style="font-size:10px;font-weight:700;color:var(--B);margin-top:1px">'+achat+' ✎</div>'+
+        _expChipsFormats(a,i)+
       '</div>'+
       '<button type="button" onclick="expSupprimer('+i+')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>'+
       '</div>';
