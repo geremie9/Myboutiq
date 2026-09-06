@@ -1962,6 +1962,21 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- Dire une fois à combien se vend le casier / la palette / le carton entier -->
+<div class="ov" id="ov-gros-px" onclick="closeOv(event,'ov-gros-px')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="gpx-tit">📦 Vendre en gros</div><button class="bcl" onclick="closeSheet('ov-gros-px')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div id="gpx-art" style="font-size:14px;font-weight:800;margin-bottom:4px">Article</div>
+      <div id="gpx-q" style="font-size:13px;color:var(--M);margin-bottom:11px;line-height:1.45"></div>
+      <div class="pig"><label class="pl" id="gpx-lbl">Prix du lot entier</label><input class="pi sm" type="number" id="gpx-inp" inputmode="numeric" oninput="majApercuGpx()"></div>
+      <div id="gpx-apercu" style="font-size:12.5px;font-weight:800;color:var(--G);margin:2px 0 10px;min-height:17px"></div>
+      <button type="button" onclick="gpxDetail()" style="width:100%;background:none;border:1.5px dashed var(--BD);border-radius:10px;padding:9px;font-size:12px;font-weight:700;color:var(--M);cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:11px" id="gpx-meme">Le même prix qu'au détail</button>
+      <button class="bnxt" onclick="validerPrixGros()">🛒 <span id="gpx-add">Ajouter au panier</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- Réparer les bénéfices inconnus : la liste des articles vendus sans prix d'achat -->
 <div class="ov" id="ov-rep-ben" onclick="closeOv(event,'ov-rep-ben')">
   <div class="bsht"><div class="shndl"></div>
@@ -3175,7 +3190,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.8'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.9'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6139,7 +6154,17 @@ function cmpAch(mode){
 function cmpGrosInfo(){
   var mesure=_cmpUmVal!=='pc';
   var u=mesure?(_cmpUmVal==='kg'?'kg':'L'):(lang==='fr'?'pièce':'unit');
-  var nomGros=_cmpUmVal==='kg'?(lang==='fr'?'sac':'bag'):_cmpUmVal==='L'?(lang==='fr'?'bidon':'can'):(lang==='fr'?'carton':'box');
+  // ⚠️ « IL NE FAUT PAS QUE ÇA SOIT CARTON PARTOUT. »
+  // Cette ligne ne regardait que l'unité de mesure : tout ce qui se vend à
+  // la pièce devenait un « carton ». Or les jus partent en PALETTE, les
+  // boissons en CASIER, d'autres produits en PAQUET ou en LOT.
+  // `_motContenant()` savait déjà répondre — elle lit ce que le commerçant a
+  // saisi (p.umCont), puis ce que le catalogue connaît (casier, palette,
+  // plateau, bidon…). Deux fonctions faisaient le même travail et l'écran
+  // Compléter appelait la moins savante. On demande d'abord à celle qui sait.
+  var nomGros='';
+  try{if(_cmpArt)nomGros=_motContenant(_cmpArt)||'';}catch(e){}
+  if(!nomGros)nomGros=_cmpUmVal==='kg'?(lang==='fr'?'sac':'bag'):_cmpUmVal==='L'?(lang==='fr'?'bidon':'can'):(lang==='fr'?'carton':'box');
   var n=mesure
     ?Math.round((parseFloat(String((document.getElementById('cmp-sac')||{}).value||'').replace(',','.'))||0)*100)/100
     :Math.round((parseFloat(String((document.getElementById('cmp-ach-n')||{}).value||'').replace(',','.'))||0)*100)/100;
@@ -7008,8 +7033,28 @@ function confirmerVar(){
   updatePUI(varArtCours.id);closeSheet('ov-var');
 }
 function addPanier(p,v){
-  var key=v?p.id+'-'+v.id:p.id+'-0';var maxS=v?v.stk:p.stk;
+  var key=v?p.id+'-'+v.id:p.id+'-0';
   var cur=panier[key]||0;
+  // ⚠️ LE STOCK D'UNE VARIANTE « CASIER » NE VIT PAS SUR LA VARIANTE.
+  // Quand une famille partage un stock de base (une variante avec qBase>1),
+  // les unités sont sur le PARENT et la variante affiche 0. addPanier lisait
+  // `v.stk` : il refusait de vendre une palette alors que 240 jus étaient en
+  // rayon. `_dispoApresPanier` savait déjà compter juste, mais pour l'écran
+  // des variantes seulement — la caisse n'en profitait pas.
+  var maxS;
+  if(v&&utiliseStockBase(p)){
+    var pris=0;
+    Object.keys(panier).forEach(function(k){
+      var pr=k.split('-');if(pr[0]!=String(p.id))return;
+      var vv=(p.vr||[]).find(function(x){return String(x.id)===String(pr[1]);});
+      pris+=(panier[k]||0)*(vv?getQBase(vv):1);
+    });
+    // Combien de CETTE variante tiennent encore dans le stock de base,
+    // en comptant ce qui est déjà au panier sous toutes ses formes.
+    maxS=cur+Math.floor(Math.max(0,(Number(getStk(p))||0)-pris)/getQBase(v));
+  }else{
+    maxS=v?v.stk:p.stk;
+  }
   if(cur>=maxS){
     if(!p.rt){showToast(t('stockInsuf'));return;}
     if(cur===maxS){ouvrirNeg(p,v);return;}
@@ -7042,11 +7087,18 @@ function _uniteMot(p){
   return fr?'pièces':'units';
 }
 function _chipGros(p){
-  // Pas sur les familles (la variante a son propre écran), ni sur un
-  // article encore incomplet (il n'est pas vendable).
-  if(!p||(p.vr&&p.vr.length)||articleIncomplet(p))return '';
-  var n=Number(p.umSac)||0;
+  if(!p||articleIncomplet(p))return '';
   var mot=_motContenant(p);
+  // ⚠️ DÉFAUT QUE J'ALLAIS INTRODUIRE : le repère disparaissait dès que
+  // l'article avait des variantes — donc juste après que le commerçant ait
+  // créé son « casier de 12 ». Le geste qu'on venait de lui apprendre
+  // s'évanouissait à l'usage suivant. Quand une variante de gros existe,
+  // le repère la vend et affiche SON prix.
+  var vg=_varianteGros(p);
+  if(vg)return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+(vg.nm||mot)+'">📦<span>'+fmt(vg.px)+'</span></button>';
+  // Les autres familles gardent leur écran de variantes, sans repère.
+  if(p.vr&&p.vr.length)return '';
+  var n=Number(p.umSac)||0;
   if(n>1)return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+mot+' de '+fmtQ(n)+'">📦<span>×'+fmtQ(n)+'</span></button>';
   return '<button class="pgros vide" onclick="direTailleGros(event,'+p.id+')" title="'+(lang==='fr'?'Vendre par '+mot:'Sell by the '+mot)+'">📦</button>';
 }
@@ -7064,19 +7116,130 @@ function _ajouterLot(p,n){
   showToast('📦 '+fmtQ(ajout)+' '+p.nm+(ajout<n?(' — '+(fr?'c\'est tout ce qui reste':'that is all that is left')):''));
   try{parler(fr?(fmtQ(ajout)+' '+p.nm):(fmtQ(ajout)+' '+p.nm));}catch(e){}
 }
+// ⚠️⚠️ « UN CLIENT VIENT ACHETER LES JUS EN PALETTES, UN CARTON D'HUILE.
+//        COMMENT ON VA LE FACTURER, ÉTANT DONNÉ QU'ON VEND EN DÉTAIL ? »
+//        (question posée par un vrai commerçant après une démonstration)
+//
+// Ce que faisait ce bouton : mettre 12 unités au panier AU PRIX DE DÉTAIL.
+// 12 × 500 = 6 000. Or un casier ne se vend presque jamais au prix de douze
+// bouteilles — c'est même toute la raison d'acheter un casier. Et le reçu
+// annonçait « 12 Coca », pas « 1 casier ».
+//
+// ⭐ LE MODÈLE EXISTAIT DÉJÀ, non branché : une VARIANTE porte `qBase`, le
+// nombre d'unités de base qu'elle consomme. Une variante « Casier de 12 »
+// avec son propre prix retire 12 bouteilles du stock et facture SON prix.
+// Vérifié : casier vendu 5 500 (et non 6 000), stock 120 → 108, bénéfice
+// 5 500 − 4 800 = 700, et la bouteille garde ses 500 F.
+// Même leçon qu'à la porte du vendeur : quand une porte paraît lourde,
+// chercher d'abord si le mécanisme existe et n'est pas branché sur le geste.
+//
+// ⚠️ AUCUN PRIX N'EST DEVINÉ. Le total au détail est PROPOSÉ comme point de
+// départ, avec le calcul affiché — il tape le sien. Un prix de gros inventé
+// serait une marge fausse, et une marge fausse ne se voit jamais.
+function _varianteGros(p){
+  if(!p||!p.vr)return null;
+  return p.vr.find(function(v){return getQBase(v)>1;})||null;
+}
+// « Un palette entier » : le mot change de genre. Une app qui écorche la
+// langue de ses commerçants perd un peu de leur confiance à chaque phrase.
+var _MOTS_FEM={palette:1,boite:1,caisse:1,barquette:1,bouteille:1,plaquette:1};
+function _femGros(mot){return !!_MOTS_FEM[txtNorm(mot)];}
+function _unGros(mot){return (_femGros(mot)?'une ':'un ')+mot;}
+function _leGros(mot){return (_femGros(mot)?'la ':'le ')+mot;}
+// ⚠️ Composer _unGros(_grosEntier(mot)) donnait « UN palette ENTIÈRE » : le
+// second appel recevait « palette entière », introuvable dans la table.
+// Une seule fonction construit la phrase entière, en une fois.
+function _unGrosEntier(mot){
+  var f=_femGros(mot);
+  return (f?'une ':'un ')+mot+(f?' entière':' entier');
+}
 function vendreGros(e,pid){
   if(e)e.stopPropagation();
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
   if(venteVerrouillee&&venteVerrouillee())return;
   var n=Number(p.umSac)||0;
   if(!(n>1)){direTailleGros(e,pid);return;}
-  _ajouterLot(p,n);
+  // Le prix du gros est-il connu ? Alors on vend le gros, à SON prix.
+  var vg=_varianteGros(p);
+  if(vg){addPanier(p,vg);
+    try{showToast('📦 '+_unGros(_motContenant(p))+' — '+p.nm+' · '+fmt(vg.px));}catch(x){}
+    return;}
+  demanderPrixGros(p);
+}
+var _grosPxArt=null;
+function demanderPrixGros(p){
+  var fr=(lang==='fr');
+  if(role!=='patron'&&!hasPerm('produits')){
+    // Un vendeur ne fixe pas les prix : on lui met le détail, c'est honnête.
+    _ajouterLot(p,Number(p.umSac)||0);return;
+  }
+  _grosPxArt=p;
+  var n=Number(p.umSac)||0,mot=_motContenant(p),det=(Number(p.px)||0)*n;
+  document.getElementById('gpx-tit').textContent='📦 '+(fr?('Vendre '+_unGros(mot)):('Sell 1 '+mot));
+  document.getElementById('gpx-art').textContent=p.nm+' — '+mot+' de '+fmtQ(n);
+  document.getElementById('gpx-q').textContent=fr
+    ?('Au détail, '+fmtQ(n)+' × '+fmt(p.px)+' = '+fmt(det)+'. '
+      +_majuscule(_unGrosEntier(mot))+', tu le vends combien ?')
+    :(fmtQ(n)+' × '+fmt(p.px)+' = '+fmt(det)+' at retail. What do you charge for a whole '+mot+'?');
+  var i=document.getElementById('gpx-inp');i.value='';i.placeholder=String(det);
+  document.getElementById('gpx-apercu').textContent='';
+  document.getElementById('ov-gros-px').classList.add('show');
+  try{parler(fr?('Un '+mot+' entier, tu le vends combien ?'):'');}catch(x){}
+}
+function gpxDetail(){
+  var p=_grosPxArt;if(!p)return;
+  var n=Number(p.umSac)||0;
+  document.getElementById('gpx-inp').value=(Number(p.px)||0)*n;
+  majApercuGpx();
+}
+function majApercuGpx(){
+  var p=_grosPxArt;if(!p)return;
+  var v=parseFloat(String(document.getElementById('gpx-inp').value||'').replace(',','.'))||0;
+  var n=Number(p.umSac)||0,det=(Number(p.px)||0)*n,el=document.getElementById('gpx-apercu');
+  if(!el)return;
+  var fr=(lang==='fr');
+  if(!(v>0)){el.textContent='';return;}
+  var ecart=det-v;
+  el.textContent=fr
+    ?(fmt(v)+' '+_leGros(_motContenant(p))+(ecart>0?('  ·  '+fmt(ecart)+' de moins qu\'au détail'):ecart<0?('  ·  '+fmt(-ecart)+' de plus qu\'au détail'):'  ·  comme au détail'))
+    :(fmt(v)+' per '+_motContenant(p));
+}
+function validerPrixGros(){
+  var p=_grosPxArt;if(!p)return;
+  var fr=(lang==='fr');
+  var v=parseFloat(String(document.getElementById('gpx-inp').value||'').replace(',','.'))||0;
+  // ⚠️ Sans son chiffre, on n'écrit rien. Pas de repli sur le total détail :
+  // il doit DIRE son prix de gros, sinon la marge du gros serait inventée.
+  if(!(v>0)){showToast('⚠️ '+(fr?('Dis à combien tu vends '+_leGros(_motContenant(p))):'Give the price'));return;}
+  var n=Number(p.umSac)||0,mot=_motContenant(p);
+  if(!p.vr)p.vr=[];
+  // La famille naît ici : l'unité devient sa 1re variante, le gros la 2e.
+  if(!p.vr.length){
+    p.vr.push({id:1,nm:(fr?('À l\'unité'):'Each'),px:Number(p.px)||0,pa:Number(p.pa)||0,
+               stk:0,stk0:0,rt:p.rt!==false,qBase:1});
+  }
+  var vid=Math.max.apply(null,p.vr.map(function(x){return x.id;}))+1;
+  var nomV=_majuscule(mot)+' de '+fmtQ(n);
+  // Prix d'achat du gros : SEULEMENT s'il est déduisible de l'unité connue.
+  var paG=(Number(p.pa)>0)?Math.round(Number(p.pa)*n*100)/100:0;
+  p.vr.push({id:vid,nm:nomV,px:v,pa:paG,stk:0,stk0:0,rt:p.rt!==false,qBase:n});
+  journalAjouter('vente en gros',p.nm,'',nomV+' — '+fmt(v));
+  save();
+  closeSheet('ov-gros-px');
+  try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+  var pp=DB.articles.find(function(x){return x.id===p.id;});
+  var vg=_varianteGros(pp);
+  if(vg)addPanier(pp,vg);
+  showToast('📦 '+_unGros(mot)+' — '+fmt(v));
 }
 function _grosRenderMots(){
   var box=document.getElementById('gros-mots');if(!box)return;
   var fr=(lang==='fr');
-  var mots=fr?['carton','casier','sac','paquet','palette','plateau']
-             :['box','crate','bag','pack','pallet','tray'];
+  // « Les jus se vendent par PALETTES, certaines boissons en CASIER,
+  //   certains produits en PAQUETS ou en LOTS, en carton aussi. »
+  // La palette d'abord pour les boissons, et « lot » ajouté : il manquait.
+  var mots=fr?['carton','casier','palette','paquet','lot','sac','bidon','plateau']
+             :['box','crate','pallet','pack','lot','bag','can','tray'];
   if(_grosMot&&mots.indexOf(_grosMot)<0)mots.unshift(_grosMot);
   box.innerHTML=mots.map(function(m){
     return '<button class="gros-mot'+(m===_grosMot?' on':'')+'" onclick="grosChoisirMot(\''+m+'\')">'+m+'</button>';
