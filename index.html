@@ -341,11 +341,26 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 /* ── FLOAT CART ── */
 .fcart{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);width:calc(100% - 30px);max-width:400px;z-index:60;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
 .fcart.hide{transform:translateX(-50%) translateY(130px);opacity:0;pointer-events:none}
-.cpill{background:var(--P);border-radius:19px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 30px rgba(26,26,46,.35);cursor:pointer;border:none;width:100%;font-family:'Outfit',sans-serif}
-.cbub{background:var(--A);color:var(--P);border-radius:9px;padding:3px 9px;font-size:12px;font-weight:900}
-.csum{text-align:left;margin-left:9px}
-.csub{font-size:10px;color:rgba(255,255,255,.4);font-weight:600}
-.ctot{font-size:17px;font-weight:800;color:#fff}
+/* ── ⚠️ « AU MOMENT D'ENCAISSEMENT, ENTRE L'ARTICLE, SON PRIX TOTAL ET LE
+   MOT ENCAISSÉ, IL Y A UNE LIGNE NOIRE QUI PEUT PERTURBER LA VENTE SI ON
+   VEUT AJOUTER DES ARTICLES. » ────────────────────────────────────────
+   MESURÉ : une dalle de 345×61 px sur fond rgb(34,31,43) — presque noir —
+   posée en travers, alors que TOUT le reste de l'écran est clair : fond
+   gris très pâle, cartes blanches, ombres douces. Elle coupait le regard
+   en deux au moment précis où il continue d'ajouter des articles.
+   Elle devient une surface claire, translucide, qui laisse deviner la
+   grille derrière : elle flotte au-dessus au lieu de barrer. Le vert de
+   « Encaisser » reste la seule couleur forte — c'est l'action. */
+.cpill{background:rgba(255,255,255,.94);border-radius:19px;padding:11px 13px 11px 11px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 10px 30px rgba(26,26,46,.16),0 2px 6px rgba(26,26,46,.06);
+  border:1px solid rgba(26,26,46,.07);cursor:pointer;width:100%;font-family:'Outfit',sans-serif;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.cbub{background:var(--A);color:var(--P);border-radius:10px;min-width:26px;height:26px;
+  display:inline-flex;align-items:center;justify-content:center;padding:0 7px;font-size:13px;font-weight:900}
+.csum{text-align:left;margin-left:10px}
+.csub{font-size:10px;color:var(--M);font-weight:700}
+.ctot{font-size:17px;font-weight:900;color:var(--T)}
 .benc{background:var(--G);color:#fff;border:none;border-radius:12px;padding:9px 15px;font-size:14px;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer;white-space:nowrap}
 .benc:active{transform:scale(.95)}
 
@@ -3240,7 +3255,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.15'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.16'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5857,10 +5872,35 @@ function appliquerOrdrePrio(lst){
   var idx={};ordrePrio.forEach(function(id,i){idx[id]=i;});
   return lst.slice().sort(function(a,b){var ia=idx.hasOwnProperty(a.id)?idx[a.id]:999999,ib=idx.hasOwnProperty(b.id)?idx[b.id]:999999;return ia-ib;});
 }
+// ⚠️ « CHAQUE ARTICLE QUI REÇOIT UNE MODIFICATION, QUELQUE CHOSE DE
+//     TOUCHÉ, DEVRAIT REMONTER AUTOMATIQUEMENT DANS LES PREMIÈRES LIGNES.
+//     LA MODIFICATION, LA VENTE, TOUT. »
+// Ça existait — et n'était appelé QUE par la recherche vocale. Ni une
+// vente, ni un changement de prix, ni un réappro ne faisaient remonter
+// l'article. Et l'ordre vivait dans une variable de session : il
+// disparaissait au premier rechargement.
+// Il est maintenant gardé sur l'APPAREIL. Pas dans la boutique : ce que
+// CE téléphone a touché récemment ne regarde pas les autres, et n'a rien
+// à faire dans les données partagées.
+var _CLE_RECENTS='myboutiq_recents';
+try{var _r=JSON.parse(localStorage.getItem(_CLE_RECENTS)||'[]');if(Array.isArray(_r))ordrePrio=_r;}catch(e){}
 function mettreEnAvant(pid){
-  ordrePrio=ordrePrio.filter(function(id){return id!==pid;});
+  if(pid==null)return;
+  pid=Number(pid);
+  ordrePrio=ordrePrio.filter(function(id){return Number(id)!==pid;});
   ordrePrio.unshift(pid);
-  if(ordrePrio.length>8)ordrePrio.length=8;
+  if(ordrePrio.length>12)ordrePrio.length=12;
+  try{localStorage.setItem(_CLE_RECENTS,JSON.stringify(ordrePrio));}catch(e){}
+}
+// Un seul point d'entrée pour « on vient d'y toucher », appelé partout.
+function toucheArticle(pid){
+  try{
+    mettreEnAvant(pid);
+    if(document.getElementById('s-caisse')&&document.getElementById('s-caisse').classList.contains('on')){
+      var q=(document.getElementById('src-c')||{}).value||'';
+      if(!q)renderProd(DB.articles);
+    }
+  }catch(e){}
 }
 // Dit une seule fois par session : la question « qu'est-ce que tu vends ? »
 // posée à voix haute sur une boutique vide.
@@ -6497,6 +6537,7 @@ function validerCompleter(){
     }
     delete p._autoNm;delete p._srcName;
   }
+  try{mettreEnAvant(p.id);}catch(e){}
   save();if(typeof initTabs==='function')initTabs();
   renderProd(DB.articles);renderStock(DB.articles);
   closeSheet('ov-completer');
@@ -6615,6 +6656,7 @@ function peutModifierPrix(){
 function quickEditPrix(e,pid){
   if(e)e.stopPropagation();
   if(!peutModifierPrix())return;
+  try{mettreEnAvant(pid);}catch(x){}
   var p=DB.articles.find(function(x){return x.id==pid;});
   if(!p)return;
   document.getElementById('ctxm').classList.remove('show');
@@ -13428,7 +13470,8 @@ function ajouterAppro(pid,vid,qty){
   DB.appros.push({id:genVenteId(),pid:pid,vid:(vid==null?null:vid),qty:q,dev:_deviceId,date:new Date().toISOString()});
 }
 function definirStock(a,v,desired){
-  if(!DB)return;if(!Array.isArray(DB.appros))DB.appros=[];
+  if(!DB)return;
+  try{toucheArticle(a&&a.id);}catch(e){}if(!Array.isArray(DB.appros))DB.appros=[];
   var tgt=v||a,want=Number(desired)||0;
   if(tgt.stk0===undefined){tgt.stk0=want;tgt.stk=want;return;}
   var cur=Number(tgt.stk)||0,delta=want-cur;
@@ -14088,7 +14131,7 @@ encaisser=function(){
   }else{
     paiement={mode:pmntModeVente};
   }
-  Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1],parts=key.split('-'),pid=parts[0],vid=parts[1],p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;var px=v?v.px:p.px,pa=v?v.pa:p.pa,qBase=v?getQBase(v):1;var qNorm,qDep;if(v){/* ⚠️ Lisait v.stk : pour un carton qui puise dans une AUTRE variante, v.stk vaut 0, donc TOUTE la vente passait en depassement — et le recalcul exclut les depassements. Le stock ne bougeait jamais. stockVarDispo connait la reserve et couvre les trois modeles. */var dv=Math.max(0,stockVarDispo(p,v));qNorm=Math.min(qty,dv);qDep=qty-qNorm;}else{var dp=Math.max(0,p.stk||0);qNorm=Math.min(qty,dp);qDep=qty-qNorm;}lignes.push({nm:p.nm+(v?' — '+v.nm:''),px:px,pa:pa,qte:qty,qty:qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:qBase,dep:qDep});});
+  Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1],parts=key.split('-'),pid=parts[0],vid=parts[1],_tch=toucheArticle(pid),p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;var px=v?v.px:p.px,pa=v?v.pa:p.pa,qBase=v?getQBase(v):1;var qNorm,qDep;if(v){/* ⚠️ Lisait v.stk : pour un carton qui puise dans une AUTRE variante, v.stk vaut 0, donc TOUTE la vente passait en depassement — et le recalcul exclut les depassements. Le stock ne bougeait jamais. stockVarDispo connait la reserve et couvre les trois modeles. */var dv=Math.max(0,stockVarDispo(p,v));qNorm=Math.min(qty,dv);qDep=qty-qNorm;}else{var dp=Math.max(0,p.stk||0);qNorm=Math.min(qty,dp);qDep=qty-qNorm;}lignes.push({nm:p.nm+(v?' — '+v.nm:''),px:px,pa:pa,qte:qty,qty:qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:qBase,dep:qDep});});
   var now=new Date(),h=now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),dateFr=now.toLocaleDateString('fr-FR');
   var ptsGagnes=0,ptsUtilises=Math.round(remisePoints/1000*100),clientId=null,clientNm='';
   if(clientVente){var cl=DB.clients.find(function(c){return c.id===clientVente.id;})||clientVente;clientId=cl.id;clientNm=cl.nm;if(ptsUtilises>0){cl.points=Math.max(0,(cl.points||0)-ptsUtilises);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'points_use',pts:ptsUtilises,amt:remisePoints});}ptsGagnes=pointsGagnesPour(total);cl.points=(cl.points||0)+ptsGagnes;majNiveauClient(cl);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'achat',amt:total,pts:ptsGagnes});
