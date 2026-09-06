@@ -1074,6 +1074,25 @@ body{max-width:min(100%,1200px)}
            font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">Créer ma boutique</button>
 </div>
 <div class="toast" id="toast"></div>
+<!-- ⚠️⚠️ « IL FAUT QUE LES VARIANTES SOIENT MODIFIABLES, COMME LES ARTICLES
+     QUI NE SONT PAS EN VARIANTE. IL FAUT QU'ILS AIENT LES MÊMES
+     CONDITIONS, MÊMES POSSIBILITÉS DE MODIFIER, D'ANNULER OU TOUT AUTRE. »
+     MESURÉ : un article a NEUF actions (prix, reconfigurer, variante,
+     carton, famille, stock, photo, rupture, supprimer). Une variante n'en
+     avait qu'UNE : saisir une quantité. Elle était un citoyen de seconde
+     zone dans sa propre application.
+     Même menu, mêmes gestes, ouvert par le même appui long. -->
+<div class="ctxm" id="ctxmv">
+  <div style="padding:6px 12px 8px;font-size:11px;font-weight:800;color:var(--M);border-bottom:1px solid var(--BD);margin-bottom:5px" id="cxv-tit">Variante</div>
+  <div class="ctxi" onclick="ctxvQte()">🔢 <span id="cxv0">Saisir une quantité</span></div>
+  <div class="ctxi" onclick="ctxvPrix()">✏️ <span id="cxv1">Modifier le prix de vente</span></div>
+  <div class="ctxi" onclick="ctxvAchat()">💰 <span id="cxv2">Prix d'achat</span></div>
+  <div class="ctxi" onclick="ctxvNom()">🔤 <span id="cxv3">Renommer</span></div>
+  <div class="ctxi" onclick="ctxvStock()">➕ <span id="cxv4">Corriger le stock</span></div>
+  <div class="ctxi" onclick="ctxvPhoto()">🖼️ <span id="cxv5">Changer la photo</span></div>
+  <div class="ctxi danger" onclick="ctxvSuppr()">🗑️ <span id="cxv6">Supprimer cette variante</span></div>
+  <input type="file" id="inp-photo-var-ctx" accept="image/*" style="display:none" onchange="uploadPhotoVarCtx(event)">
+</div>
 <div class="ctxm" id="ctxm">
   <div class="ctxi" onclick="ctxPV()">✏️ <span id="cx1">Modifier prix vente</span></div>
   <div class="ctxi" onclick="ctxRC()">📦 <span id="cx2">Reconfigurer prix</span></div>
@@ -3267,7 +3286,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.19'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.20'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6720,6 +6739,143 @@ function quickEditPrix(e,pid){
   if(p.vr&&p.vr.length){ouvrirCompleterArticle(p);return;} // famille -> fiche variantes (le prix est PAR variante)
   ouvrirModifR(p);
 }
+// ══════════════════════════════════════════════════════════════════
+//  LE MENU D'UNE VARIANTE — les mêmes gestes que sur un article
+//  Chaque action réutilise le chemin EXISTANT de l'article : on ne
+//  réécrit pas la logique du prix, du stock ou de la photo, on la
+//  branche sur la variante. C'est ce qui garantit qu'elles se
+//  comporteront pareil demain, quand l'une des deux changera.
+// ══════════════════════════════════════════════════════════════════
+var _vCtxP=null,_vCtxV=null;
+function showCtxVar(e,p,v){
+  if(!p||!v)return;
+  if(role!=='patron'&&!hasPerm('produits')){showToast('🔒 '+(lang==='fr'?'Ton patron ne t\'a pas autorisé':'Not allowed'));return;}
+  _vCtxP=p;_vCtxV=v;
+  var m=document.getElementById('ctxmv');if(!m)return;
+  document.getElementById('ctxm').classList.remove('show');
+  m.classList.add('show');
+  var fr=(lang==='fr');
+  document.getElementById('cxv-tit').textContent=(v.nm||'')+' · '+p.nm;
+  document.getElementById('cxv0').textContent=fr?'Saisir une quantité':'Enter a quantity';
+  document.getElementById('cxv1').textContent=fr?'Modifier le prix de vente':'Edit sell price';
+  document.getElementById('cxv2').textContent=fr?'Prix d\'achat':'Cost price';
+  document.getElementById('cxv3').textContent=fr?'Renommer':'Rename';
+  document.getElementById('cxv4').textContent=fr?'Corriger le stock':'Fix stock';
+  document.getElementById('cxv5').textContent=fr?'Changer la photo':'Change photo';
+  document.getElementById('cxv6').textContent=fr?'Supprimer cette variante':'Delete this variant';
+  var x=Math.min((e&&e.clientX)||60,window.innerWidth-200),y=Math.min((e&&e.clientY)||120,window.innerHeight-260);
+  m.style.left=x+'px';m.style.top=y+'px';
+  setTimeout(function(){document.addEventListener('click',function _h(){_fermerCtxVar();document.removeEventListener('click',_h);});},100);
+}
+function _fermerCtxVar(){var m=document.getElementById('ctxmv');if(m)m.classList.remove('show');}
+function ctxvQte(){_fermerCtxVar();if(_vCtxP&&_vCtxV)saisirQteVariante(_vCtxP,_vCtxV);}
+// La photo va sur LA variante visée, pas dans la feuille d'ajout : les
+// deux chemins ne doivent pas se marcher dessus.
+var _varPhotoCible=null;
+function uploadPhotoVarCtx(ev){
+  var file=ev.target.files&&ev.target.files[0];if(!file)return;
+  var v=_varPhotoCible,p=varArtCours;
+  ev.target.value='';
+  if(!v){return;}
+  if(!supa){showToast('⛔ '+(lang==='fr'?'Connexion requise pour la photo':'Connection required'));return;}
+  showToast('🔄 '+(lang==='fr'?'Envoi de la photo…':'Uploading…'));
+  compresserImage(file,300,0.6).then(function(blob){return uploadBlobProduit(blob);}).then(function(url){
+    if(!url)throw new Error('upload');
+    v.img=url;
+    try{save();}catch(e){}
+    try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+    try{if(_varBox&&p)renderVarLst(p);}catch(e){}
+    showToast('✅ '+(lang==='fr'?'Photo mise sur ':'Photo set on ')+(v.nm||''));
+  }).catch(function(){
+    showToast('⚠️ '+(lang==='fr'?'La photo n\'est pas partie — réessaie':'Upload failed — try again'));
+  });
+}
+function _vApres(){
+  try{save();}catch(e){}
+  try{mettreEnAvant(_vCtxP&&_vCtxP.id);}catch(e){}
+  try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+  try{if(_varBox&&_vCtxP)renderVarLst(_vCtxP);}catch(e){}
+}
+function ctxvPrix(){
+  _fermerCtxVar();var p=_vCtxP,v=_vCtxV;if(!p||!v)return;
+  var fr=(lang==='fr');
+  var s=prompt((fr?'Prix de vente de ':'Sell price for ')+v.nm+' :',String(v.px||''));
+  if(s===null)return;
+  var n=parseFloat(String(s).replace(',','.'))||0;
+  // ⚠️ Un prix à zéro rend la variante invendable : on refuse plutôt que
+  // de laisser une ligne morte dans la grille.
+  if(!(n>0)){showToast('⚠️ '+(fr?'Le prix de vente doit être supérieur à zéro':'Sell price must be above zero'));return;}
+  var av=v.px;v.px=n;
+  journalAjouter('prix',p.nm+' — '+v.nm,fmt(av),fmt(n));
+  _vApres();showToast('✅ '+v.nm+' — '+fmt(n));
+}
+function ctxvAchat(){
+  _fermerCtxVar();var p=_vCtxP,v=_vCtxV;if(!p||!v)return;
+  var fr=(lang==='fr');
+  var s=prompt((fr?'Prix d\'achat de ':'Cost price for ')+v.nm+(fr?'\n\n(laisse vide si tu ne sais pas — mieux vaut vide qu\'un chiffre faux)':''),String(v.pa||''));
+  if(s===null)return;
+  var t=String(s).trim();
+  // Vide = « je ne sais pas ». On l'accepte : le rapport signalera le
+  // bénéfice inconnu et proposera de le compléter plus tard.
+  var n=t===''?0:(parseFloat(t.replace(',','.'))||0);
+  var av=v.pa;v.pa=n;
+  journalAjouter('prix achat',p.nm+' — '+v.nm,fmt(av),n?fmt(n):(fr?'inconnu':'unknown'));
+  _vApres();
+  showToast(n?('✅ '+(fr?'Bénéfice ':'Profit ')+fmt(v.px-n)):('✅ '+(fr?'Prix d\'achat effacé':'Cost cleared')));
+}
+function ctxvNom(){
+  _fermerCtxVar();var p=_vCtxP,v=_vCtxV;if(!p||!v)return;
+  var fr=(lang==='fr');
+  var s=prompt(fr?'Nouveau nom :':'New name:',v.nm||'');
+  if(s===null)return;
+  s=String(s).trim();
+  if(!s){showToast('⚠️ '+(fr?'Un nom est nécessaire':'A name is required'));return;}
+  if((p.vr||[]).some(function(x){return x!==v&&txtNorm(x.nm)===txtNorm(s);})){
+    showToast('⚠️ '+(fr?'Une autre variante porte déjà ce nom':'Another variant already has this name'));return;
+  }
+  var av=v.nm;v.nm=s;
+  journalAjouter('nom',p.nm,av,s);
+  _vApres();showToast('✅ '+s);
+}
+function ctxvStock(){
+  _fermerCtxVar();var p=_vCtxP,v=_vCtxV;if(!p||!v)return;
+  var fr=(lang==='fr');
+  var actuel=stockVarDispo(p,v);
+  var s=prompt((fr?'Combien de ':'How many ')+v.nm+(fr?' as-tu maintenant ?':' do you have?'),String(actuel));
+  if(s===null)return;
+  var n=parseFloat(String(s).replace(',','.'));
+  if(isNaN(n)||n<0){showToast('⚠️ '+(fr?'Nombre invalide':'Invalid number'));return;}
+  // definirStock écrit un MOUVEMENT, il ne réécrit pas l'histoire : c'est
+  // ce qui permet aux deux téléphones de s'accorder.
+  definirStock(p,v,n);
+  _vApres();showToast('✅ '+v.nm+' — '+fmtQ(n));
+}
+function ctxvPhoto(){
+  _fermerCtxVar();var p=_vCtxP,v=_vCtxV;if(!p||!v)return;
+  varArtCours=p;_varPhotoCible=v;
+  var inp=document.getElementById('inp-photo-var-ctx');
+  if(inp){inp.value='';inp.click();}
+  else showToast('⚠️ '+(lang==='fr'?'Photo indisponible ici':'Photo unavailable here'));
+}
+function ctxvSuppr(){
+  _fermerCtxVar();var p=_vCtxP,v=_vCtxV;if(!p||!v)return;
+  var fr=(lang==='fr');
+  // ⚠️ Une variante qui a du stock ou un historique n'est pas un brouillon.
+  var reste=stockVarDispo(p,v);
+  var msg=(fr?('Supprimer « '+v.nm+' » ?'):('Delete "'+v.nm+'"?'))
+    +(reste>0?('\n\n'+(fr?('⚠️ Il reste '+fmtQ(reste)+' en stock.'):('⚠️ '+fmtQ(reste)+' left in stock.'))):'')
+    +'\n\n'+(fr?'Les ventes déjà faites restent dans tes rapports.':'Past sales stay in your reports.');
+  if(!confirm(msg))return;
+  // Une copie AVANT tout effacement — la règle de la 21.0.
+  try{sauvegarderAvant(fr?('avant suppression de '+v.nm):('before deleting '+v.nm));}catch(e){}
+  // ⚠️ Les variantes qui puisent dans celle-ci perdraient leur réserve :
+  // on les emporte avec, sinon elles resteraient invendables sans raison.
+  var emportees=(p.vr||[]).filter(function(x){return x!==v&&_estGrosDeVariante(x)&&String(x.base)===String(v.id);});
+  p.vr=(p.vr||[]).filter(function(x){return x!==v&&emportees.indexOf(x)<0;});
+  journalAjouter('suppression',p.nm+' — '+v.nm,v.nm,'');
+  _vApres();
+  showToast('🗑️ '+v.nm+(emportees.length?(' + '+emportees.length+' '+(fr?'lot(s) lié(s)':'linked lot(s)')):''));
+}
 function showCtx(e,p){
   artCtx=p;
   var m=document.getElementById('ctxm');m.classList.add('show');
@@ -7167,10 +7323,24 @@ function _brancherVar(d,p,v){
     }
     chgVQ(v.id,p.id,1,!!p.rt);
   };
+  // ⚠️ L'appui long ouvrait UNIQUEMENT « saisir une quantité ». C'était le
+  // seul geste qu'une variante connaissait, alors qu'un article en a neuf.
+  // Il ouvre maintenant le même menu que dehors — et « Saisir une
+  // quantité » y reste EN PREMIER, car c'est le geste le plus fréquent.
+  // Un vendeur sans droit sur les produits garde l'ancien chemin direct :
+  // on ne lui montre pas un menu dont tout serait interdit.
+  var _ouvrir=function(ev){
+    if(role!=='patron'&&!hasPerm('produits')){saisirQteVariante(p,v);return;}
+    showCtxVar(ev,p,v);
+  };
   var t=null;
-  d.addEventListener('touchstart',function(){t=setTimeout(function(){t=null;saisirQteVariante(p,v);},550);},{passive:true});
+  d.addEventListener('touchstart',function(ev){
+    var _e={clientX:(ev.touches&&ev.touches[0])?ev.touches[0].clientX:0,
+            clientY:(ev.touches&&ev.touches[0])?ev.touches[0].clientY:0};
+    t=setTimeout(function(){t=null;_ouvrir(_e);},550);
+  },{passive:true});
   ['touchend','touchmove','touchcancel'].forEach(function(e){d.addEventListener(e,function(){if(t){clearTimeout(t);t=null;}},{passive:true});});
-  d.oncontextmenu=function(e){e.preventDefault();saisirQteVariante(p,v);return false;};
+  d.oncontextmenu=function(e){e.preventDefault();_ouvrir(e);return false;};
 }
 
 // ── ⭕ LE CERCLE ── Les variantes jaillissent autour de la carte touchée.
