@@ -475,6 +475,21 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
    sur toutes les tuiles, un carreau sans photo devenait 131 px de haut là où
    la carte voisine en faisait 153 — mesuré aux quatre largeurs. */
 .vtile.has-photo{padding:0;justify-content:flex-end;align-items:flex-end;aspect-ratio:1/1.18}
+/* ── LA CONTENANCE, LUE D'UN COUP D'ŒIL ──────────────────────────────
+   Quand plusieurs variantes partagent la même photo parce qu'elles sont
+   le même produit en plusieurs tailles, c'est le NOMBRE qui les
+   distingue — pas l'image. Il doit donc être le plus lisible de la
+   tuile : grand, sombre sur clair, posé en haut à gauche là où l'œil
+   commence. Fond opaque : une contenance à moitié lisible sur une
+   bouteille sombre ne sert à rien. */
+.vt-fmt{position:absolute;top:6px;left:6px;z-index:4;
+  background:rgba(255,255,255,.95);color:var(--T);
+  border-radius:8px;padding:3px 8px;font-size:13px;font-weight:900;line-height:1;
+  box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.vsat-fmt{position:absolute;top:-4px;left:50%;transform:translateX(-50%);z-index:4;
+  background:rgba(255,255,255,.96);color:var(--T);
+  border-radius:7px;padding:2px 6px;font-size:11px;font-weight:900;line-height:1;
+  white-space:nowrap;box-shadow:0 2px 7px rgba(0,0,0,.22)}
 .vtile.has-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:15px;transition:transform .15s}
 .vtile.has-photo:active img{transform:scale(1.06)}
 .vt-ov{display:flex;flex-direction:column;align-items:center;gap:1px;width:100%;min-width:0}
@@ -1087,6 +1102,7 @@ body{max-width:min(100%,1200px)}
   <div class="ctxi" onclick="ctxvQte()">🔢 <span id="cxv0">Saisir une quantité</span></div>
   <div class="ctxi" onclick="ctxvPrix()">✏️ <span id="cxv1">Modifier le prix de vente</span></div>
   <div class="ctxi" onclick="ctxvAchat()">💰 <span id="cxv2">Prix d'achat</span></div>
+  <div class="ctxi" onclick="ctxvGros()">📦 <span id="cxvg">Vendre par carton</span></div>
   <div class="ctxi" onclick="ctxvNom()">🔤 <span id="cxv3">Renommer</span></div>
   <div class="ctxi" onclick="ctxvStock()">➕ <span id="cxv4">Corriger le stock</span></div>
   <div class="ctxi" onclick="ctxvPhoto()">🖼️ <span id="cxv5">Changer la photo</span></div>
@@ -3286,7 +3302,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.20'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.21'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6759,6 +6775,7 @@ function showCtxVar(e,p,v){
   document.getElementById('cxv0').textContent=fr?'Saisir une quantité':'Enter a quantity';
   document.getElementById('cxv1').textContent=fr?'Modifier le prix de vente':'Edit sell price';
   document.getElementById('cxv2').textContent=fr?'Prix d\'achat':'Cost price';
+  var _mg=_motContenant(p);document.getElementById('cxvg').textContent=fr?('Vendre par '+_mg):('Sell by the '+_mg);
   document.getElementById('cxv3').textContent=fr?'Renommer':'Rename';
   document.getElementById('cxv4').textContent=fr?'Corriger le stock':'Fix stock';
   document.getElementById('cxv5').textContent=fr?'Changer la photo':'Change photo';
@@ -6769,6 +6786,13 @@ function showCtxVar(e,p,v){
 }
 function _fermerCtxVar(){var m=document.getElementById('ctxmv');if(m)m.classList.remove('show');}
 function ctxvQte(){_fermerCtxVar();if(_vCtxP&&_vCtxV)saisirQteVariante(_vCtxP,_vCtxV);}
+// ⚠️ « Et si je veux vendre une variante en gros ? Casier, carton,
+//     paquet, lot… » Le modele existait depuis la 21.13 — une variante
+//     peut puiser dans une autre — et demanderPrixGros acceptait deja
+//     une variante cible. Il ne manquait QUE le geste pour y arriver.
+//     Meme lecon que la porte du vendeur : chercher si le mecanisme
+//     existe avant de le reecrire.
+function ctxvGros(){_fermerCtxVar();if(_vCtxP&&_vCtxV)demanderPrixGros(_vCtxP,_vCtxV);}
 // La photo va sur LA variante visée, pas dans la feuille d'ajout : les
 // deux chemins ne doivent pas se marcher dessus.
 var _varPhotoCible=null;
@@ -7307,6 +7331,43 @@ function _replierPhotoVar(d,html){
 // (.pmedia, 62 px). ⚠️ Une vignette de 44 px rendait la tuile 33 px plus
 // courte que la carte voisine — mesuré. C'est la même remarque que la
 // largeur, en vertical.
+// ══════════════════════════════════════════════════════════════════
+//  LA PHOTO D'UNE VARIANTE DE FORMAT
+//
+//  Sa demande : « concernant la photo qui représente une variante, il
+//  faut essayer de penser. Je ne sais pas, c'est toi qui es l'expert. »
+//
+//  MON AVIS, et le raisonnement : une variante n'a pas toujours besoin
+//  de sa propre photo. « Savon Azur » et « Savon Palmida » sont deux
+//  produits différents — chacun mérite la sienne. Mais « Coca 50 cl » et
+//  « Coca 1,5 L » sont le MÊME produit dans deux tailles : deux photos
+//  presque identiques n'apprennent rien, encombrent la grille, et
+//  obligent le commerçant à comparer deux bouteilles pour trouver la
+//  bonne.
+//
+//  Une variante de FORMAT hérite donc de l'image de sa famille, et
+//  affiche sa contenance EN GRAND par-dessus. Une seule image, et l'œil
+//  lit « 1,5 L » au lieu de mesurer un goulot.
+//
+//  ⚠️ Sa propre photo, s'il en a mis une, gagne TOUJOURS. On ne remplace
+//  jamais ce qu'il a choisi lui-même.
+// ══════════════════════════════════════════════════════════════════
+function _formatDeVariante(p,v){
+  if(!p||!v||v.img)return '';   // sa photo à lui l'emporte
+  var nm=String(v.nm||'');
+  var m=nm.match(/(\d+[.,]?\d*)\s*(cl|CL|ml|ML|l|L)\b\.?\s*$/);
+  if(!m)return '';
+  // On n'hérite que si le reste du nom EST la famille : « Coca 1,5 L »
+  // sous « Coca ». « Azur 1 L » sous « Savon » n'est pas un format de
+  // savon, c'est un autre produit — il garde son icône.
+  var reste=txtNorm(_nomSansFormat(nm)),fam=txtNorm(_nomSansFormat(p.nm||''));
+  if(reste&&fam&&reste!==fam)return '';
+  return m[1].replace('.',',')+' '+m[2].toLowerCase().replace('cl','cl').replace(/^l$/,'L');
+}
+function _imgVar(p,v){
+  if(v&&v.img)return v.img;
+  return _formatDeVariante(p,v)?(p&&p.img)||'':'';
+}
 function _mediaVar(p,v){
   var nm=(v&&v.nm)||p.nm;
   if(DB.cfg&&DB.cfg.noEmoji){
@@ -7391,7 +7452,7 @@ function renderVarCercle(p){
     // pour onze) — « ça sort un genre un genre ». Elles arrivent ensemble :
     // il voit sa famille d'un coup, pas un défilé.
     d.innerHTML='<span class="vsat-r">'
-      +(v.img?'<img src="'+v.img+'" loading="lazy" alt="">':vignetteArt(p,v,g.taille-6,Math.round((g.taille-6)/2)))
+      +(function(){var _im=_imgVar(p,v),_f=_formatDeVariante(p,v);return (_im?('<img src="'+_im+'" loading="lazy" alt="">'):vignetteArt(p,v,g.taille-6,Math.round((g.taille-6)/2)))+(_f?('<span class="vsat-fmt">'+_f+'</span>'):'');})()
       +'<span class="vsat-px">'+(g.serre?('<i>'+(v.nm||'?')+'</i>'):'')+'<b>'+i.pxCourt+'</b></span></span>'
       +(i.q>0?'<span class="vsat-b" data-moins="1">'+fmtQ(i.q)+'</span>':'')
       +(g.serre?'':'<span class="vsat-nm">'+(v.nm||'?')+'</span>');
@@ -7468,7 +7529,7 @@ function renderVarLst(p){
       // six « Savon » donnaient six vignettes identiques, impossible de les
       // distinguer d'un coup d'œil. vignetteArt donne à chacune la sienne —
       // sa photo, sinon son icône de rayon, avec sa propre couleur.
-      +(v.img?'<img src="'+v.img+'" loading="lazy" alt="">':_mediaVar(p,v))
+      +(function(){var _im=_imgVar(p,v),_f=_formatDeVariante(p,v);return (_im?('<img src="'+_im+'" loading="lazy" alt="">'):_mediaVar(p,v))+(_f?('<span class="vt-fmt">'+_f+'</span>'):'');})()
       +'<span class="vt-ov">'
       +'<span class="vt-nm">'+(v.nm||'?')+'</span>'
       +'<span class="vt-px">'+i.px+'</span>'
