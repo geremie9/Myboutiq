@@ -3362,7 +3362,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.34'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.35'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -12437,6 +12437,37 @@ function saveStk(){
     a.consigne=_cons>0?_cons:0;
   }
   var paU=stkPaUnit(),paMsg='';
+  // ⚠️⚠️ 276 ARTICLES SUR 680 (41 %) N'ONT AUCUN PRIX D'ACHAT — mesuré en base.
+  // Le champ existe juste au-dessus, mais c'est le cinquième d'un long
+  // formulaire : on tape la quantité et on valide. Or c'est ICI, la facture
+  // encore en main, que le commerçant connaît son prix. Plus jamais après.
+  //
+  // On pose donc UNE question, au bon moment, et on demande le TOTAL PAYÉ :
+  // personne ne connaît « 183 la pièce », tout le monde sait « 4 000 le
+  // carton ». L'app fait la division.
+  //
+  // « Je ne sais pas » est une VRAIE réponse : on la respecte et on ne
+  // redemande plus pour cet article — mieux vaut vide qu'un chiffre faux.
+  // Il pourra toujours le compléter depuis « Bénéfices inconnus ».
+  //
+  // Pas de question sur un article à variantes : le prix appartient alors à
+  // chaque variante, et poser la question au niveau du parent serait faux.
+  if(!(paU>0)&&!(Number(a.pa)>0)&&!a.paRefuse&&!parVariante&&q>0){
+    var _rep=prompt('💰 '+a.nm+'\n\n'
+      +(fr?('Tu viens de recevoir '+fmtQ(q)+' '+uniteArt(a)+'.\n\nTu as payé COMBIEN EN TOUT pour ça ?')
+          :('You just received '+fmtQ(q)+' '+uniteArt(a)+'.\n\nHow much did you pay in TOTAL?'))
+      +'\n\n'+(fr?'(laisse vide si tu ne sais pas — mieux vaut vide qu\'un chiffre faux)'
+                 :'(leave empty if you don\'t know)'),'');
+    if(_rep!==null){
+      var _tot=parseFloat(String(_rep).replace(',','.'))||0;
+      if(_tot>0){
+        paU=Math.round(_tot/q*100)/100;
+        showToast('✅ '+(fr?'Soit ':'That is ')+fmt(paU)+' / '+uniteArt(a));
+      }else{
+        a.paRefuse=1;   // il ne sait pas : on respecte, et on ne redemande plus
+      }
+    }
+  }
   if(paU>0){
     // Si le commerçant annule la question du conditionnement, on garde son
     // ancien prix d'achat — mais on n'annule PAS son entrée de stock, qui
@@ -12447,6 +12478,7 @@ function saveStk(){
   if(paU>0&&Number(a.pa)!==paU){
     journalAjouter('prix',a.nm+(fr?' (achat)':' (cost)'),fmt(a.pa||0),fmt(paU));
     a.pa=paU;
+    if(a.paRefuse)delete a.paRefuse;   // il sait maintenant : le refus n'a plus lieu d'être
     paMsg=' · '+(fr?'achat':'cost')+' '+fmt(paU)+'/'+uniteArt(a);
   }
   ajouterAppro(a.id,vid,q);
