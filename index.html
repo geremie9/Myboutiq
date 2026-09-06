@@ -3362,11 +3362,14 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.28'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.29'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
 var _offlinePending=false,_offlineToastShown=false;
+// Heure du dernier refus d'écraser le serveur (voir syncToSupa). Sert à le
+// DIRE dans « État de la liaison » : un envoi retenu ne doit pas être muet.
+var _syncRefusEcrasement=0;
 window.addEventListener('online',function(){
   if(_offlinePending){
     _offlinePending=false;_offlineToastShown=false;
@@ -3378,12 +3381,27 @@ window.addEventListener('online',function(){
 window.addEventListener('offline',function(){
   if(!_offlineToastShown){_offlineToastShown=true;showToast('📴 '+(lang==='fr'?'Hors ligne — tes ventes sont enregistrées, elles se synchroniseront au retour du réseau':'Offline — your sales are saved, they will sync when back online'));}
 });
+// ⚠️⚠️ CETTE IDENTITÉ ÉTAIT DANS sessionStorage — EFFACÉE À CHAQUE FERMETURE.
+// MESURÉ EN BASE sur sa seule boutique « G » : 125 identités d'appareil
+// différentes, presque toutes nées quelques minutes avant leur première vente
+// et jamais revues. TROIS pour la seule journée du 06/09.
+// Conséquence : le garde-fou « ces données viennent de MOI » (cfg._dev)
+// ne reconnaissait plus jamais le téléphone. Chaque appareil traitait sa
+// PROPRE écriture comme celle d'un inconnu et refusionnait tout, toutes les
+// 20 secondes — ce qui multipliait les écritures, donc les occasions
+// d'écraser les ventes de l'autre téléphone.
+// Elle vit maintenant dans localStorage. On reprend celle de la session en
+// cours quand elle existe, pour ne pas couper la journée en deux.
 var _deviceId=(function(){
   try{
-    var id=sessionStorage.getItem('mb_device_id');
-    if(!id){id='d_'+Date.now()+'_'+Math.random().toString(36).slice(2);sessionStorage.setItem('mb_device_id',id);}
+    var id=localStorage.getItem('mb_device_id');
+    if(!id){
+      try{id=sessionStorage.getItem('mb_device_id');}catch(e){}
+      if(!id)id='d_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+      localStorage.setItem('mb_device_id',id);
+    }
     return id;
-  }catch(e){return 'd_'+Math.random().toString(36).slice(2);}
+  }catch(e){return 'd_'+Date.now()+'_'+Math.random().toString(36).slice(2);}
 })();
 function genVenteId(){return _deviceId+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);}
 // ═══ S4 : journal des gestes sensibles (qui a changé quoi, quand) ═══
@@ -3644,6 +3662,25 @@ async function signUpOwnerAuth(phone,pin){
   var user=await getAuthUser();
   return {user:user||(res.data&&res.data.user?res.data.user:null),error:null};
 }
+// ═══════════════════════════════════════════════════════════════════
+// LA LECTURE QUI PROTÈGE L'AUTRE TÉLÉPHONE.
+// Avant d'écrire, on relit le serveur et on fusionne : sans ça, l'appareil
+// pousse SA copie entière et efface tout ce que l'autre a fait depuis.
+// Elle doit être DISCRÈTE (elle tourne après chaque vente : un refus ne doit
+// ni parler à voix haute ni effacer la clé) et elle doit essayer PLUSIEURS
+// clés — une seule clé fragile suffisait à la faire échouer, et l'écriture
+// partait quand même.
+// ═══════════════════════════════════════════════════════════════════
+async function _lireAvantEcrire(code){
+  var cles=[];
+  try{var pp=_pinPatronDispo();if(pp)cles.push(pp);}catch(e){}
+  try{if(_shopPin&&String(_shopPin).length>=4&&cles.indexOf(String(_shopPin))<0)cles.push(String(_shopPin));}catch(e){}
+  try{var pv=(DB&&DB.cfg&&DB.cfg.pinVendeur)||'';if(pv&&String(pv).length>=4&&cles.indexOf(String(pv))<0)cles.push(String(pv));}catch(e){}
+  for(var i=0;i<cles.length;i++){
+    try{var d=await loadFromSupa(code,cles[i],true);if(d)return d;}catch(e){}
+  }
+  return null;
+}
 async function syncToSupa(){
   // ⚠️ RÈGLE 2 DE LA BOUTIQUE D'EXEMPLE : elle ne quitte JAMAIS le téléphone.
   // Sans cette ligne, 170 faux articles et leurs faux stocks partiraient au
@@ -3686,7 +3723,27 @@ async function syncToSupa(){
     // ⚠️ `discret` : cette lecture tourne en fond APRÈS chaque vente. Sans
     // elle, un refus faisait effacer le code et PARLER à voix haute — au
     // milieu d'une vente, à quelqu'un qui venait justement d'entrer.
-    try{ if(navigator.onLine&&DB.cfg.code){ var _rem=await loadFromSupa(DB.cfg.code,_pinPatronDispo(),true); if(_rem){ DB=migrateDBData(mergeDB(DB,_rem));_artSnapApresFusion(); } } }catch(e){}
+    var _fusionOk=false;
+    try{ if(navigator.onLine&&DB.cfg.code){ var _rem=await _lireAvantEcrire(DB.cfg.code); if(_rem){ DB=migrateDBData(mergeDB(DB,_rem));_artSnapApresFusion();_fusionOk=true; } } }catch(e){}
+    // ⚠️⚠️ VOICI COMMENT DES VENTES DISPARAISSAIENT.
+    // Cette relecture était enveloppée dans un try/catch VIDE, et l'écriture
+    // suivait quoi qu'il arrive. Un hoquet réseau, une clé refusée, le frein
+    // posé une minute — et le téléphone poussait sa copie ENTIÈRE par-dessus
+    // celle du serveur. Tout ce que l'autre téléphone avait vendu depuis la
+    // dernière lecture réussie était effacé. Le commentaire d'origine promet
+    // « ne jamais écraser les ventes d'un autre vendeur » : ce n'était vrai
+    // que lorsque la lecture réussissait.
+    // LA RÈGLE, désormais : on n'écrase JAMAIS une boutique déjà au serveur
+    // sans l'avoir relue. Ne pas écrire coûte un retard — les ventes sont en
+    // sécurité dans le téléphone et repartiront. Écrire à l'aveugle coûte les
+    // ventes de quelqu'un d'autre, définitivement. Ce n'est pas comparable.
+    // Créer une boutique NEUVE reste libre : il n'y a rien à écraser.
+    var _refusEcrasement=function(){
+      _offlinePending=true;                 // repris par la veille des 20 s
+      _syncRefusEcrasement=Date.now();      // visible dans « État de la liaison »
+      console.warn('Sync: écriture annulée — copie du serveur illisible, on ne l\'écrase pas');
+      return false;
+    };
     DB.cfg._dev=_deviceId;
     for(var attempt=0;attempt<3;attempt++){
       DB.cfg.code=formatShopCode(DB.cfg.code||genCode());
@@ -3715,6 +3772,7 @@ async function syncToSupa(){
         var ownerRows=byOwner.data||[];
         var ownerExact=ownerRows.find(function(r){return normalizeShopCode(r.code)===normalizeShopCode(DB.cfg.code);})||null;
         if(ownerExact){
+          if(!_fusionOk)return _refusEcrasement();   // boutique déjà au serveur : relue ou pas écrite
           var updExact=await supa.from('boutiques').update(payload).eq('id',ownerExact.id);
           if(!updExact.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv1=document.getElementById('code-val');if(cv1)cv1.textContent=DB.cfg.code;return true;}
           if(String(updExact.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
@@ -3729,6 +3787,9 @@ async function syncToSupa(){
       if(!user){
         // Vendeur : écriture serveur = code + PIN équipe (vérifié serveur). Le PIN patron ne part jamais.
         if(!_pinEncoreUtilisable())throw new Error(lang==='fr'?'🔐 Reconnecte-toi avec le PIN équipe':'🔐 Reconnect with the team PIN');
+        // Le vendeur écrit TOUJOURS dans une boutique qui existe déjà : c'est
+        // celle du patron. Sans relecture, ses ventes écrasent celles du patron.
+        if(!_fusionOk)return _refusEcrasement();
         var rpcSave=await supa.rpc('boutique_ecrire',{p_code:DB.cfg.code,p_pin:String(_shopPin),p_data:payload.data});
         if(!rpcSave.error&&rpcSave.data===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
         // Serveur temporairement fermé (trop de PIN faux) : les ventes restent
@@ -3745,6 +3806,7 @@ async function syncToSupa(){
       if(byCode.data&&byCode.data.length){
         var row=byCode.data[0];
         if(!row.owner_id||row.owner_id===((user&&user.id)||DB.cfg.ownerId)){
+          if(!_fusionOk)return _refusEcrasement();   // idem : on n'écrase pas à l'aveugle
           var updCode=await supa.from('boutiques').update(payload).eq('id',row.id);
           if(!updCode.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
           if(String(updCode.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
@@ -13644,10 +13706,24 @@ function recomputeStock(d){
   return d;
 }
 // Horodatage fiable d'un évènement (vente/appro) : l'id = "device_<ms>_rand"
+// ⚠️⚠️ CETTE FONCTION DATAIT LES VENTES DU JOUR OÙ LE TÉLÉPHONE EST NÉ.
+// Un identifiant de vente s'écrit : d_<naissance appareil>_<hasard>_<heure de
+// la vente>_<hasard>. On lisait le PREMIER nombre — la naissance de l'appareil.
+// Tant que l'identité mourait à chaque fermeture, l'écart restait de quelques
+// minutes et ne se voyait pas. Maintenant qu'elle vit dans localStorage, ce
+// premier nombre serait le jour de l'INSTALLATION : le premier archivage
+// aurait replié — donc effacé de la liste — des mois de ventes d'un coup.
+// On prend donc le PLUS GRAND horodatage plausible de l'identifiant : c'est
+// toujours celui de la vente, jamais celui de l'appareil.
 function _epochEvt(o){
   if(!o)return null;
   var id=o.id||'';var m=String(id).split('_');
-  if(m.length>=2){var e=parseInt(m[1],10);if(e>1000000000000&&e<4000000000000)return e;}
+  var meilleur=null;
+  for(var i=0;i<m.length;i++){
+    var e=parseInt(m[i],10);
+    if(e>1000000000000&&e<4000000000000&&(meilleur==null||e>meilleur))meilleur=e;
+  }
+  if(meilleur!=null)return meilleur;
   if(o.date){var d=new Date(o.date);if(!isNaN(d))return d.getTime();var f=(typeof parseDateFR==='function')&&parseDateFR(o.date);if(f&&!isNaN(f))return f.getTime();}
   return null; // inconnu -> on ne l'archivera jamais (prudence : ne rien perdre)
 }
@@ -14524,6 +14600,7 @@ save=function(skipNotif){DB=migrateDBData(DB);persistDB();if(!skipNotif)checkNot
 var _syncToSupaBase=syncToSupa;
 syncToSupa=async function(){
   var r=await _syncToSupaBase.apply(this,arguments);
+  if(r===true){_offlinePending=false;_offlineToastShown=false;_syncRefusEcrasement=0;}
   if(r===true&&DB&&DB.cfg){
     DB.cfg.lastSyncOk=new Date().toISOString();
     try{localStorage.setItem('myboutiq_v6',JSON.stringify(DB));}catch(e){}
@@ -14549,7 +14626,7 @@ var _rtDerniereLecture=0;
 // PIN. On lit donc avec elle en priorité — ainsi son rafraîchissement ne
 // dépend plus de l'état du PIN gardé sur le téléphone. Le PIN reste la voie
 // du vendeur, et le secours du patron.
-async // ⚠️ LA CHAÎNE QUI TUAIT LE TEMPS RÉEL, en entier :
+// ⚠️ LA CHAÎNE QUI TUAIT LE TEMPS RÉEL, en entier :
 //   un refus muet du serveur -> _signalerPinRefuse() met _shopPin à NULL
 //   -> ici on lisait donc avec pin=null
 //   -> et loadFromSupa refuse toute lecture sans pin tant que le frein
@@ -14721,6 +14798,13 @@ function majLiaison(){
   h+=_liLigne(etat,
       fr?'Nouvelles des autres téléphones':'News from other phones',
       detail);
+  // Un envoi retenu pour protéger le serveur : il doit le voir, sinon on
+  // retombe dans le défaut d'origine — une panne qui ne dit pas son nom.
+  var retenu=_syncRefusEcrasement&&(Date.now()-_syncRefusEcrasement<300000);
+  if(retenu)h+=_liLigne(null,
+      fr?'Tes ventes attendent leur tour':'Your sales are waiting',
+      fr?'Le téléphone n\'a pas pu relire la boutique, il refuse d\'écraser celle du serveur. Tes ventes sont gardées ici et repartiront toutes seules ('+_ilYA(_syncRefusEcrasement)+').'
+        :'Could not re-read the shop; refusing to overwrite. Sales are kept here and will sync on their own.');
   h+=_liLigne('info',
       fr?'Cette boutique':'This shop',
       ((DB&&DB.cfg&&DB.cfg.nom)||'—')+' · '+((DB&&DB.cfg&&DB.cfg.code)||'—')+' · '
@@ -14749,7 +14833,14 @@ function demarrerSurveillanceTempsReel(){
   _rtTimerFond=setInterval(function(){
     if(document.visibilityState!=='visible')return;
     if(!supa){assurerConnexionSupa();return;}   // sans liaison, on tente d'abord de la rétablir
-    if(navigator.onLine)reconnecterTempsReel(false);
+    if(navigator.onLine){
+      reconnecterTempsReel(false);
+      // Un envoi retenu (lecture d'avant-écriture ratée, réseau tombé) doit
+      // repartir tout seul. Avant, il n'y avait qu'un seul rattrapage :
+      // l'évènement « online ». Un téléphone qui n'a jamais perdu le réseau
+      // ne le recevait jamais, et ses ventes attendaient la vente SUIVANTE.
+      if(_offlinePending)try{syncToSupa();}catch(e){}
+    }
   },20000);
   majEtatConnexion();
 }
