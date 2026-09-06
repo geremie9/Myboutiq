@@ -3240,7 +3240,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.14'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.15'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4948,15 +4948,35 @@ function buildObConfirm(){
 // Le faux système de code de vérification a été retiré : il affichait le code
 // à l'écran puis annonçait « Numéro vérifié », ce qui était mensonger. Le
 // numéro est désormais contrôlé sur son format (voir verifierTelephone).
+// ⚠️⚠️ « SI ON DOUBLE-CLIQUE SUR CRÉER MA BOUTIQUE, ÇA CRÉE DEUX
+//        BOUTIQUES IDENTIQUES. »
+// Vérifié dans sa base : CINQ boutiques « Geremie Kodji » créées entre
+// 20:42:54 et 20:43:11 — dix-sept secondes. Rien n'empêchait un second
+// appui : chacun refaisait signUpOwnerAuth, tirait un nouveau code et
+// insérait une boutique de plus.
+// Le verrou est posé APRÈS les validations : si le PIN est trop court,
+// il doit pouvoir corriger et réessayer tout de suite.
+var _obEnCours=false;
 async function finaliserOb(){
+  if(_obEnCours)return;
   var nm=document.getElementById('ob-nom')?.value.trim()||'';
   var tel=normalizePhone(document.getElementById('ob-tel')?.value.trim()||'');
   var pin=document.getElementById('ob-pin')?.value.trim()||'';
   if(!nm){showToast(t('errBoutique'));return;}
   if(!tel){showToast(t('errTel'));return;}
   if(!pin||pin.length<4){showToast(obLang==='fr'?'⚠️ PIN minimum 4 chiffres':'⚠️ PIN minimum 4 digits');return;}
+  _obEnCours=true;
+  var _btn=document.getElementById('ob7-btn');
+  if(_btn){_btn.disabled=true;_btn.style.opacity='.55';_btn.textContent=(obLang==='fr'?'⏳ Création…':'⏳ Creating…');}
+  var _relacher=function(){
+    _obEnCours=false;
+    if(_btn){_btn.disabled=false;_btn.style.opacity='';_btn.textContent='🚀 Lancer MyBoutiQ';}
+  };
+  try{ return await _finaliserObSuite(nm,tel,pin,_relacher); }catch(e){ _relacher(); throw e; }
+}
+async function _finaliserObSuite(nm,tel,pin,_relacher){
   var authReg=await signUpOwnerAuth(tel,pin);
-  if(authReg.error){showToast(authReg.error.message||t('compteIntrouvable'));return;}
+  if(authReg.error){showToast(authReg.error.message||t('compteIntrouvable'));_relacher();return;}
   var authUser=await getAuthUser();
   var p=obPays||PAYS[0];
   var reg=document.getElementById('ob-region')?.value.trim()||'';
@@ -4977,7 +4997,7 @@ async function finaliserOb(){
   };
   save();
   var synced=await syncToSupa();
-  if(!synced)return;
+  if(!synced){_relacher();return;}
   lang=obLang;
   appliquerLang();
   document.getElementById('p-tel').value=tel;
@@ -5650,13 +5670,32 @@ function _grilleCatalogueCaisse(q){
   try{
     var dejaLa={};
     (DB.articles||[]).forEach(function(p){dejaLa[txtNorm(p.nm)]=1;});
+    // ⚠️⚠️ « QUAND ON CHERCHE UN ARTICLE QU'ON N'A PAS DANS NOTRE BOUTIQUE,
+    //        C'EST IMPOSSIBLE DE LE CONFIGURER. »
+    // MESURÉ : chercher « sucre » proposait Coca-Cola, Fanta, Sprite… et
+    // JAMAIS le sucre. Parce que leur famille s'appelle « SUCRErie » et que
+    // la recherche faisait un simple `indexOf` sur un texte où le nom, la
+    // famille et le libellé sont collés. Les six sucreries prenaient les six
+    // places, et l'article cherché n'apparaissait pas.
+    // On classe : un mot qui COMMENCE par ce qu'il tape passe devant un mot
+    // qui le contient au milieu. « Sucre » avant « Sucrerie ».
+    var _rang=function(e){
+      var nm=txtNorm(e.nm||''),pl=txtNorm(e.plein||'');
+      if(nm===cle||pl===cle)return 0;                       // le mot exact
+      if(nm.indexOf(cle)===0||pl.indexOf(cle)===0)return 1;  // commence par
+      if((' '+nm).indexOf(' '+cle)>=0||(' '+pl).indexOf(' '+cle)>=0)return 2; // un mot commence par
+      if(nm.indexOf(cle)>=0||pl.indexOf(cle)>=0)return 3;    // dans le nom
+      return 4;                                              // ailleurs (famille, mots-clés)
+    };
+    var _cands=[];
     catalogueIndex().forEach(function(e){
-      if(prop.length>=6)return;
       if(e.k.indexOf(cle)<0)return;
       if(dejaLa[txtNorm(e.plein)])return;
-      if(prop.some(function(x){return txtNorm(x.plein)===txtNorm(e.plein);}))return;
-      prop.push(e);
+      if(_cands.some(function(x){return txtNorm(x.plein)===txtNorm(e.plein);}))return;
+      _cands.push(e);
     });
+    _cands.sort(function(a,b){return _rang(a)-_rang(b);});
+    prop=_cands.slice(0,6);
   }catch(e){}
   var h='<div style="grid-column:1/-1">';
   if(prop.length){
@@ -13331,6 +13370,42 @@ function mergeDB(base,other){
     });
   }
   base.clients=Object.keys(cById).map(function(k){return cById[k];});
+  // ══════════════════════════════════════════════════════════════════
+  // ⚠️⚠️ L'ÉQUIPE NE FUSIONNAIT PAS DU TOUT.
+  //
+  // Sa remarque : « quand tu invites un vendeur, ça ne vient pas
+  // instantanément chez toi pour que tu lui donnes les autorisations. Ça
+  // dure peut-être plusieurs heures. Ou même peut-être ça ne revient pas. »
+  //
+  // Ce n'était pas un RETARD, c'était un EFFACEMENT. Le vendeur s'inscrit
+  // lui-même dans `DB.equipe` sur SON téléphone et l'envoie au serveur.
+  // mergeDB fusionnait articles, ventes, clients, dépenses, mouvements —
+  // et sautait `equipe`. Le patron gardait donc la sienne, puis sa synchro
+  // suivante RÉÉCRIVAIT le serveur : le vendeur disparaissait. « Peut-être
+  // ça ne revient pas » : jamais, en réalité.
+  //
+  // Union par identifiant, et par PRÉNOM en repli — deux téléphones qui
+  // ajoutent chacun un vendeur produisent le même id local (max+1), donc
+  // l'id seul ferait perdre l'un des deux.
+  //
+  // ⚠️ Sur un doublon, la copie de CE téléphone gagne : c'est le patron qui
+  // fixe les permissions, et son réglage ne doit pas être écrasé par la
+  // copie qu'un vendeur a renvoyée.
+  // ══════════════════════════════════════════════════════════════════
+  try{
+    var _eq=[],_vus={};
+    var _poser=function(m){
+      if(!m)return;
+      var cle=(m.id!=null?('i'+m.id):'')+'|'+txtNorm(m.nm||'');
+      var cleNom='n'+txtNorm(m.nm||'');
+      if(_vus[cle]||(m.nm&&_vus[cleNom]))return;
+      _vus[cle]=1;if(m.nm)_vus[cleNom]=1;
+      _eq.push(m);
+    };
+    (base.equipe||[]).forEach(_poser);      // le local d'abord : il gagne
+    (other.equipe||[]).forEach(_poser);     // puis ce que l'autre a ajouté
+    if(_eq.length)base.equipe=_eq;
+  }catch(e){}
   // Les DÉPENSES ne fusionnaient pas du tout : la copie du serveur remplaçait
   // la liste entière, donc une dépense notée ici disparaissait au premier
   // rafraîchissement. Union par identifiant, comme les ventes.
