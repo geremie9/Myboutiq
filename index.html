@@ -479,6 +479,21 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
    sinon elles étaient coupées. Mêmes coins que .pcard.has-photo .qbdg. */
 .vt-badge{position:absolute;top:6px;right:6px;min-width:26px;height:26px;border-radius:13px;background:var(--G);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 2px 7px rgba(0,0,0,.3);z-index:3}
 .vt-moins{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:13px;background:#fff;border:1.5px solid var(--BD);color:var(--R);font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.22);z-index:3}
+/* ── ⚠️ « TU ENTRES MÊME POUR ANNULER UN PRODUIT, C'EST COMPLIQUÉ. » ──
+   MESURÉ : le « − » d'une variante fait 24×24 px à l'écran. La norme
+   tactile est 44×44 — il fait la MOITIÉ de ce qu'un doigt exige, et le
+   reste de la tuile ajoute au lieu de retirer. Rater le bouton, c'est
+   donc ajouter un article de plus : l'erreur va dans le mauvais sens.
+   Dehors, les tuiles d'article ont depuis toujours un agrandisseur
+   invisible (.pedit::after,.qbdg::after → 44px). Les variantes ne l'ont
+   JAMAIS eu — c'est exactement son « tout ce qu'on fait dehors ne
+   s'applique pas à l'intérieur ». Même technique, même mesure. */
+.vt-moins::after,.vt-badge::after{content:'';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%}
+/* Le − doit aussi se VOIR : c'est le geste de correction, celui qu'on
+   cherche quand on s'est trompé et qu'on est pressé. */
+.vt-moins{border-color:var(--R);border-width:2px}
+.vt-moins:active{transform:scale(.9);background:var(--R);color:#fff}
 
 /* ══ ☰ LISTE ══ Une variante par ligne, cible large. C'est la présentation
    qui reste lisible quand une famille en compte dix ou plus. */
@@ -551,6 +566,13 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .vsat-b{position:absolute;top:-4px;right:-4px;min-width:24px;height:24px;border-radius:12px;background:var(--G);
   color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;
   box-shadow:0 2px 7px rgba(0,0,0,.3)}
+/* ⚠️ EN MODE CERCLE, CE BADGE EST LE SEUL MOYEN DE RETIRER — et il fait
+   24×24. Le reste du satellite AJOUTE. Rater la cible, c'est donc ajouter
+   un article de plus : l'erreur va dans le mauvais sens, et il faut
+   recommencer. Même agrandisseur invisible que les tuiles d'article. */
+.vsat-b::after{content:'';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%}
+.vsat-b:active{transform:scale(.88)}
 /* ⚠️ Le prix était une étiquette SOUS la pastille : à dix variantes, elle
    dépassait sur le satellite voisin et devenait illisible (vu à l'écran —
    mon premier test ne mesurait que les pastilles, pas les étiquettes).
@@ -3210,7 +3232,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.11'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.12'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
