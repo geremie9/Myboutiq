@@ -3348,7 +3348,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.25'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.26'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7830,17 +7830,40 @@ function _unGrosEntier(mot){
   var f=_femGros(mot);
   return (f?'une ':'un ')+mot+(f?' entière':' entier');
 }
+// ⚠️⚠️ « PEUT-ON VALORISER UN CARTON QUAND ON BLOQUE LA MODIFICATION ? »
+//
+// NON, ET C'ÉTAIT UN DÉFAUT. Le verrou annonce lui-même « Modifications
+// bloquées — TU PEUX VENDRE TRANQUILLEMENT », et cette fonction sortait
+// EN SILENCE dès qu'il était mis. Bloquer les modifications pour vendre
+// en paix arrêtait donc la vente des cartons, sans un mot.
+//
+// LA RÈGLE, celle que le verrou promet :
+//   · vendre un carton = une VENTE      -> passe toujours ;
+//   · fixer ou corriger sa taille/prix = une MODIFICATION -> bloquée,
+//     et on le DIT au lieu de ne rien faire.
 function vendreGros(e,pid){
   if(e)e.stopPropagation();
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
-  if(venteVerrouillee&&venteVerrouillee())return;
+  var fr=(lang==='fr');
+  var verrou=!!(venteVerrouillee&&venteVerrouillee());
   var n=Number(p.umSac)||0;
-  if(!(n>1)){direTailleGros(e,pid);return;}
-  // Le prix du gros est-il connu ? Alors on vend le gros, à SON prix.
   var vg=_varianteGros(p);
-  if(vg){addPanier(p,vg);
+  // ⭐ LE LOT EXISTE : c'est une vente pure, le verrou ne la concerne pas.
+  if(vg){
+    addPanier(p,vg);
     try{showToast('📦 '+_unGros(_motContenant(p))+' — '+p.nm+' · '+fmt(vg.px));}catch(x){}
-    return;}
+    return;
+  }
+  // La taille est connue mais pas le prix du lot : vendre le contenu au
+  // détail reste une vente, elle passe aussi.
+  if(n>1&&verrou){_ajouterLot(p,n);return;}
+  // À partir d'ici il faudrait ÉCRIRE sur l'article — donc modifier.
+  if(verrou){
+    showToast('🔒 '+(fr?'Modifications bloquées — touche le cadenas en haut pour régler le '+_motContenant(p)
+                       :'Editing is locked — tap the padlock above'));
+    return;
+  }
+  if(!(n>1)){direTailleGros(e,pid);return;}
   demanderPrixGros(p);
 }
 var _grosPxArt=null,_grosPxVar=null;
@@ -8040,6 +8063,12 @@ var _grosEdition=false;
 function corrigerConditionnement(pid){
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
   if(role!=='patron'&&!hasPerm('produits')){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  // ⚠️ Corriger un conditionnement ÉCRIT sur l'article : c'est une
+  // modification, donc le verrou s'applique — et il le dit.
+  if(venteVerrouillee&&venteVerrouillee()){
+    showToast('🔒 '+(lang==='fr'?'Modifications bloquées — touche le cadenas en haut':'Editing is locked — tap the padlock above'));
+    return;
+  }
   direTailleGros(null,pid,true);
 }
 function direTailleGros(e,pid,edition){
