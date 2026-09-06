@@ -3255,7 +3255,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.16'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.17'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -13594,23 +13594,66 @@ function _articlesDemo(){
   // On ne garde que ce qui porte DÉJÀ ses deux prix : rien à inventer.
   var src=idx.filter(function(x){return x&&x.pa>0&&x.px>0&&x.plein;});
   var vus={},arts=[],id=100;
+  // Le stock n'est pas de l'argent : un nombre d'unités en rayon ne peut
+  // pas tromper sur une marge. Il suit le conditionnement quand on le
+  // connaît (2 casiers de 12 = 24), sinon il reste rond et lisible.
+  var _stkDe=function(x){return (x.sac>1)?(x.sac*2):((x.um==='kg'||x.um==='L')?20:24);};
+  var _photo=function(nom){try{return photoCatalogue(nom)||'';}catch(e){return '';}};
+  // ⚠️⚠️ « DANS NOTRE BOUTIQUE EXEMPLE, ON NE PEUT PAS REGROUPER LES
+  //        ARTICLES. IL FALLAIT QUE TOUS CES ÉLÉMENTS CAPTIVANTS SOIENT
+  //        INCLUS DANS LA BOUTIQUE TEST. »
+  // MESURÉ : la démonstration créait 170 articles PLATS, zéro famille. Le
+  // commerçant qui découvre l'app n'y voyait donc jamais les variantes —
+  // alors que c'est la boutique d'exemple qui sert de première porte.
+  // Le catalogue porte pourtant 41 familles regroupables (Sucrerie 60 cl a
+  // dix parfums, Bière 65 cl huit marques, Eau minérale trois formats).
+  // On les monte comme le ferait un vrai commerçant : UN article, des
+  // variantes qui gardent chacune leur prix, leur photo et leur stock.
+  var parFam={},seuls=[];
   src.forEach(function(x){
     var k=txtNorm(x.plein);
     if(vus[k])return;vus[k]=1;
-    // Le stock n'est pas de l'argent : un nombre d'unités en rayon ne peut
-    // pas tromper sur une marge. Il suit le conditionnement quand on le
-    // connaît (2 casiers de 12 = 24), sinon il reste rond et lisible.
-    var stk=(x.sac>1)?(x.sac*2):((x.um==='kg'||x.um==='L')?20:24);
+    if(x.fam)(parFam[x.fam]=parFam[x.fam]||[]).push(x);
+    else seuls.push(x);
+  });
+  Object.keys(parFam).forEach(function(f){
+    var membres=parFam[f];
+    // Une « famille » d'un seul membre n'en est pas une : elle deviendrait
+    // un article à ouvrir pour rien.
+    if(membres.length<2){seuls.push(membres[0]);return;}
+    var ref=membres[0];
+    var a={id:id++,nm:f,e:'📦',cat:CAT_IDX_N.indexOf(ref.cat),
+           px:0,pa:0,stk:0,stk0:0,vr:[],rt:false,vd:0};
+    if(a.cat<0)a.cat=0;
+    if(ref.um&&ref.um!=='pc')a.um=ref.um;
+    // ⚠️ NE JAMAIS CHERCHER LA PHOTO PAR LE NOM DE FAMILLE.
+    // Mesuré : « Sucrerie 60 cl » recevait bonbon-sachet.jpg — une
+    // confiserie sur une famille de sodas, parce que « sucrerie » ressemble
+    // à « sucre ». Un nom de famille est une étiquette de rangement, pas un
+    // produit : il n'a pas de photo à lui.
+    // La vignette d'une famille est celle d'un de ses MEMBRES — un produit
+    // qui s'y trouve vraiment. Sinon, l'emoji.
+    var ph='';
+    for(var _i=0;_i<membres.length&&!ph;_i++)ph=_photo(membres[_i].plein);
+    if(ph)a.img=ph;
+    membres.forEach(function(x,n){
+      var st=_stkDe(x);
+      var v={id:n+1,nm:x.nm||x.plein,px:x.px,pa:x.pa,stk:st,stk0:st,qBase:1};
+      var vp=_photo(x.plein);if(vp)v.img=vp;
+      a.vr.push(v);
+    });
+    arts.push(a);
+  });
+  seuls.forEach(function(x){
+    var st=_stkDe(x);
     var a={id:id++,nm:x.plein,e:'📦',cat:CAT_IDX_N.indexOf(x.cat),
-           px:x.px,pa:x.pa,stk:stk,stk0:stk,vr:[],rt:false,vd:0};
+           px:x.px,pa:x.pa,stk:st,stk0:st,vr:[],rt:false,vd:0};
     if(a.cat<0)a.cat=0;
     if(x.um&&x.um!=='pc')a.um=x.um;
     if(x.sac>0){a.umSac=x.sac;a.umCont=x.cont||null;}
-    // La photo n'est posée que si le catalogue 600 la connaît vraiment.
-    // photoCatalogue() cherche par nom complet, par nom, puis par mots —
-    // s'il ne trouve pas, l'emoji suffit : on ne met pas la photo d'un
-    // autre produit pour faire joli.
-    try{var ph=photoCatalogue(x.plein);if(ph)a.img=ph;}catch(e){}
+    // La photo n'est posée que si le catalogue 600 la connaît vraiment :
+    // on ne met pas la photo d'un autre produit pour faire joli.
+    var ph=_photo(x.plein);if(ph)a.img=ph;
     arts.push(a);
   });
   return arts;
