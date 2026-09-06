@@ -3240,7 +3240,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.13'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.14'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -10131,6 +10131,14 @@ function expSetGros(i,v){
   a.gros=Math.max(0,Math.round(parseFloat(String(v).replace(',','.'))||0));
   expRender();
 }
+// Le prix saisi sur la ligne, sans redessiner : redessiner ferait perdre le
+// focus à chaque chiffre tapé, et il faudrait retoucher le champ cinq fois
+// pour écrire « 12500 ».
+function expPrixDirect(i,val){
+  var a=_expListe[i];if(!a)return;
+  a.px=Math.max(0,parseFloat(String(val||'').replace(',','.'))||0);
+  // pas de redessin : on ne touche pas au champ pendant qu'il tape
+}
 function expBasculeDetail(i){
   _expOuvert=(_expOuvert===i)?-1:i;
   expRender();
@@ -10170,11 +10178,26 @@ function expRender(){
         : ('<span style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</span>'))+
       '<div style="flex:1;min-width:0;cursor:pointer" onclick="expBasculeDetail('+i+')">'+
         '<div style="font-size:12.5px;font-weight:800;color:var(--T)">'+a.nm+'</div>'+
-        '<div style="font-size:10.5px;font-weight:700;color:'+(perte?'var(--R)':sansPa?'var(--O)':'var(--M)')+'">'+
-          fmt(a.px)+'/'+u+
-          (sansPa?(' · '+(fr?'bénéfice inconnu':'profit unknown'))
-                 :(perte?(' · ⚠️ '+(fr?'à perte ':'at a loss ')+fmt(ben)):(' · '+(fr?'bénéfice ':'profit ')+fmt(ben)+'/'+u)))+
-          (a.stk>0?(' · '+fmtQ(a.stk)+' '+u):'')+'</div>'+
+        // ⚠️⚠️ « ON MET LE STOCK, TOUS LES DÉTAILS, ÇA RESTE TOUJOURS ROUGE.
+        //        ÇA TE DIT MÊME LE PRIX DE VENTE ZÉRO ALORS QU'ON A DÉJÀ
+        //        CONFIGURÉ. »
+        // REPRODUIT : le prix n'était que du TEXTE, il fallait deviner qu'on
+        // pouvait toucher la ligne pour ouvrir un détail. Sans ce geste,
+        // l'article partait à 0 — et l'app annonçait « ✅ 1 article créé ! ».
+        // Un succès annoncé pour un article invendable.
+        // Le prix de vente est la SEULE chose qu'un article exige. Quand il
+        // manque, ce n'est plus un texte à deviner : c'est un champ, sur la
+        // ligne, sous ses yeux.
+        (!(a.px>0)
+          ? ('<input class="pi sm" type="number" inputmode="numeric" value="" '
+             +'placeholder="'+(fr?'Prix de vente':'Sell price')+'" '
+             +'onclick="event.stopPropagation()" oninput="expPrixDirect('+i+',this.value)" '
+             +'style="margin-top:3px;height:34px;font-size:13px;border-color:var(--O)">')
+          : ('<div style="font-size:10.5px;font-weight:700;color:'+(perte?'var(--R)':sansPa?'var(--O)':'var(--M)')+'">'+
+              fmt(a.px)+'/'+u+
+              (sansPa?(' · '+(fr?'bénéfice inconnu':'profit unknown'))
+                     :(perte?(' · ⚠️ '+(fr?'à perte ':'at a loss ')+fmt(ben)):(' · '+(fr?'bénéfice ':'profit ')+fmt(ben)+'/'+u)))+
+              (a.stk>0?(' · '+fmtQ(a.stk)+' '+u):'')+'</div>'))+
         '<div style="font-size:10px;font-weight:700;color:var(--B);margin-top:1px">'+achat+' ✎</div>'+
       '</div>'+
       '<button type="button" onclick="expSupprimer('+i+')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>'+
@@ -10215,7 +10238,21 @@ function expRender(){
 function expCreerTous(){
   var fr=lang==='fr';
   if(!_expListe.length)return;
-  
+  // ⚠️ L'app annonçait « ✅ 1 article créé ! » pour un article à 0 F, en ne
+  // mentionnant que le prix d'ACHAT manquant. Or c'est le prix de VENTE qui
+  // décide si l'article peut se vendre — sans lui, la tuile reste rouge et
+  // il ne comprend pas pourquoi. On le dit AVANT, on nomme les articles
+  // concernés, et on le laisse décider : refuser bloquerait quelqu'un qui
+  // veut vraiment finir plus tard.
+  var _sansPx=_expListe.filter(function(a){return !(a.px>0);});
+  if(_sansPx.length){
+    var _noms=_sansPx.slice(0,4).map(function(a){return '· '+a.nm;}).join('\n')
+              +(_sansPx.length>4?('\n· … et '+(_sansPx.length-4)+' autres'):'');
+    if(!confirm((fr?(_sansPx.length===1?'Cet article n\'a pas de prix de vente :':(_sansPx.length+' articles n\'ont pas de prix de vente :'))
+                  :(_sansPx.length+' item(s) have no sell price:'))+'\n\n'+_noms+'\n\n'
+      +(fr?'Sans prix, ils ne pourront pas être vendus et resteront marqués en orange.\n\nLes créer quand même ?'
+          :'Without a price they cannot be sold.\n\nCreate them anyway?')))return;
+  }
   var sansPa=0,dejaLa=[];
   _expListe.forEach(function(a){
     // ⚠️ Ce chemin ne vérifiait RIEN. L'ajout à la main et le choix en photos
