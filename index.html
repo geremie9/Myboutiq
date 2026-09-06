@@ -3348,7 +3348,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.26'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.27'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3795,14 +3795,42 @@ var _pinRefuse=false;
 // Elle n'a besoin que du premier : il est déjà entré, il travaille, et lui
 // annoncer que son code est mort au milieu d'une vente est faux et
 // inquiétant. On garde donc le frein, sans la voix ni l'effacement.
+// ⚠️⚠️ « LE TEMPS RÉEL A DISPARU. TOUT CE QUI EST SYNCHRONISATION… BEAUCOUP
+//        DE CHOSES, RIEN NE SE PASSE. »
+//
+// C'ÉTAIT MOI. Le frein anti-martèlement était DÉFINITIF : un seul refus
+// muet du serveur — un hoquet réseau suffit — et `_pinRefuse` restait vrai
+// pour toute la session. Or `loadFromSupa` commence par
+//     if(pin==null && _pinRefuse) return null;
+// et c'est exactement l'appel que fait le temps réel quand une vente
+// arrive d'un autre téléphone. Plus rien ne remontait : ni les ventes du
+// vendeur, ni son arrivée dans l'équipe.
+// Et depuis la 21.2 je l'avais rendu SILENCIEUX : la panne ne se voyait
+// même plus.
+//
+// Le frein servait à empêcher un rappel toutes les 800 ms. Il n'a JAMAIS
+// eu besoin d'être définitif : il lui faut une durée. Une minute suffit
+// à éteindre le martèlement, et la synchro repart d'elle-même.
+var _pinRefuseJusqua=0;
+var _PAUSE_PIN=60000;
 function _marquerPinRefuse(){
-  if(_pinRefuse)return true;
   _pinRefuse=true;
+  _pinRefuseJusqua=Date.now()+_PAUSE_PIN;
   return true;
 }
+// Le frein est-il encore actif ? Un frein expiré se relâche tout seul.
+function _freinPinActif(){
+  if(!_pinRefuse)return false;
+  // Un refus SIGNALÉ (il doit retaper son PIN) reste ferme : là, réessayer
+  // ne servirait à rien tant qu'il n'a pas agi.
+  if(!_pinRefuseJusqua)return true;
+  if(Date.now()<_pinRefuseJusqua)return true;
+  _pinRefuse=false;_pinRefuseJusqua=0;
+  return false;
+}
 function _signalerPinRefuse(){
-  if(_pinRefuse)return true;
-  _pinRefuse=true;
+  if(_pinRefuse&&!_pinRefuseJusqua)return true;
+  _pinRefuse=true;_pinRefuseJusqua=0;
   var fr=(lang==='fr');
   // Le PIN gardé ici est périmé — typiquement changé depuis un autre
   // téléphone. mergeDB protège la copie locale POUR TOUJOURS : sans cet
@@ -3862,7 +3890,7 @@ async function loadFromSupa(code,pin,discret){
   if(!supa)return null;
   // Tant qu'il n'a pas retapé son PIN, on ne rappelle plus le serveur : c'est
   // ce martèlement qui le faisait bloquer.
-  if(pin==null&&_pinRefuse)return null;
+  if(pin==null&&_freinPinActif())return null;
   try{
     code=formatShopCode(code);
     var p=(pin!=null?pin:_shopPin);
@@ -3876,7 +3904,7 @@ async function loadFromSupa(code,pin,discret){
       if(pin==null){if(discret)_marquerPinRefuse();else _signalerPinRefuse();}
       return null;
     }
-    _pinRefuse=false;                  // le serveur nous accepte à nouveau
+    _pinRefuse=false;_pinRefuseJusqua=0;                  // le serveur nous accepte à nouveau
     if(pin!=null)_shopPin=String(pin); // 1re lecture réussie -> on mémorise le PIN validé
     return res.data;
   }catch(e){_signalerBlocagePin(e);return null;}
@@ -5388,7 +5416,7 @@ function _finishLoginP(){
   if(DB&&DB.cfg){
     _shopPin=String(DB.cfg.pin||_pinPatronValide||'')||null;
     if(_shopPin&&DB.cfg&&!DB.cfg.pin)DB.cfg.pin=_shopPin;   // pour le hors ligne
-    _pinRefuse=false;                                        // nouvelle connexion : on repart propre
+    _pinRefuse=false;_pinRefuseJusqua=0;                                        // nouvelle connexion : on repart propre
     assurerPinVendeur();
   } // 2e facteur serveur du patron
   document.getElementById('u-nm').textContent=DB.cfg.nom.split(' ')[0];
@@ -5713,7 +5741,7 @@ async function loginV(){
   _finishLoginV(nm,code);
 }
 function _finishLoginV(nm,code){
-  _pinRefuse=false;   // il vient de prouver son PIN : on repart propre
+  _pinRefuse=false;_pinRefuseJusqua=0;   // il vient de prouver son PIN : on repart propre
   // On demande AVANT d'ouvrir la boutique : un vendeur écarté par le patron,
   // ou un vendeur de trop, ne doit pas entrer.
   var etat=registerVendeurEquipe(nm),fr=lang==='fr';
@@ -14449,6 +14477,15 @@ var _rtDernierSignal=0,_rtDernierEssai=0,_rtDerniereMaj=0,_rtDernierRefus=0;
 // PIN. On lit donc avec elle en priorité — ainsi son rafraîchissement ne
 // dépend plus de l'état du PIN gardé sur le téléphone. Le PIN reste la voie
 // du vendeur, et le secours du patron.
+async // ⚠️ LA CHAÎNE QUI TUAIT LE TEMPS RÉEL, en entier :
+//   un refus muet du serveur -> _signalerPinRefuse() met _shopPin à NULL
+//   -> ici on lisait donc avec pin=null
+//   -> et loadFromSupa refuse toute lecture sans pin tant que le frein
+//      est mis.
+// Résultat : plus une seule vente du vendeur ne remontait, ni son arrivée
+// dans l'équipe. Un hoquet réseau suffisait, et c'était définitif.
+// On ne se contente plus d'UNE clé : on essaie toutes celles que cet
+// appareil possède avant de renoncer.
 async function _lirePourMoi(code){
   if(role==='patron'){
     try{
@@ -14456,9 +14493,27 @@ async function _lirePourMoi(code){
       if(d){_rtVoie='session';return d;}
     }catch(e){}
   }
-  var f=await loadFromSupa(code,_shopPin);
-  _rtVoie=f?'pin':'';
-  return f;
+  var cles=[];
+  if(_shopPin&&String(_shopPin).length>=4)cles.push(String(_shopPin));
+  try{
+    var pp=_pinPatronDispo();
+    if(pp&&cles.indexOf(pp)<0)cles.push(pp);
+  }catch(e){}
+  try{
+    var pv=(DB&&DB.cfg&&DB.cfg.pinVendeur)||'';
+    if(pv&&String(pv).length>=4&&cles.indexOf(String(pv))<0)cles.push(String(pv));
+  }catch(e){}
+  for(var i=0;i<cles.length;i++){
+    var f=await loadFromSupa(code,cles[i]);
+    if(f){
+      // Cette clé marche : on la garde pour les prochaines lectures.
+      _shopPin=cles[i];
+      _rtVoie='pin';
+      return f;
+    }
+  }
+  _rtVoie='';
+  return null;
 }
 var _rtVoie='',_rtEchoIgnore=0;
 async function _rtRefetch(code){
