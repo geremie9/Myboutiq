@@ -2911,6 +2911,18 @@ body{max-width:min(100%,1200px)}
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="addvar-t">🔀 Variante</div><button class="bcl" onclick="closeSheet('ov-addvar')">✕</button></div>
     <div class="pstps">
+      <!-- ⚠️ « Concernant les boissons comme les jus, je veux qu'on les traite
+           de façon différente, parce que les jus se vendent dans un
+           conditionnement 1,5 litres, 1 litre, 0,75, 0,25, etc. »
+           Le catalogue ne connaît les jus qu'en 1 L : ses autres formats
+           n'existent nulle part, et je ne peux pas inventer leurs prix.
+           Ce que l'app PEUT donner, c'est le format — un fait d'emballage,
+           pas d'argent. Elle propose l'échelle, il donne le prix. Même
+           partage que pour le prix du carton. -->
+      <div id="var-formats-bloc" style="display:none;margin-bottom:11px">
+        <div style="font-size:10.5px;font-weight:800;color:var(--M);margin-bottom:6px" id="var-formats-t">FORMAT DE LA BOUTEILLE</div>
+        <div class="shcts" id="var-formats"></div>
+      </div>
       <div class="pig"><label class="pl" id="lbl-var-nm">Nom</label><input class="pi sm" type="text" id="var-nm" style="font-size:15px;font-weight:700"></div>
       <div id="var-photo-preview" style="display:none" class="photo-preview"><img id="var-photo-img" src=""><div class="pp-txt" id="var-photo-txt">Photo prête</div><button type="button" class="pp-rm" onclick="retirerPhotoVar()">✕</button></div>
       <button type="button" id="btn-photo-var" class="photo-upl-btn" onclick="document.getElementById('inp-photo-var').click()" style="width:100%;background:#E8F5E9;color:var(--G);border:none;border-radius:10px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:7px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-4.5-4.5L6 21"/></svg><span id="lbl-photo-var">Photo de la variante (optionnel)</span></button>
@@ -3255,7 +3267,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.18'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.19'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6740,7 +6752,56 @@ function ctxToggleRupt(){
   save();renderProd(DB.articles);renderStock(DB.articles);
   showToast((artCtx.rt?'✅ ':'⛔ ')+artCtx.nm+' — '+(lang==='fr'?'vente en rupture':'sell when out of stock')+' '+(artCtx.rt?(lang==='fr'?'activée':'on'):(lang==='fr'?'désactivée':'off')));
 }
-function ctxAV(){if(!artCtx)return;varArtCours=artCtx;document.getElementById('addvar-t').textContent=(lang==='fr'?'🔀 Variante de ':'🔀 Variant of ')+artCtx.nm;['var-nm','var-pa','var-pv','var-stk','var-parc'].forEach(function(id){var _e=document.getElementById(id);if(_e)_e.value='';});try{varMode('u');}catch(e){}document.getElementById('var-bc').style.display='none';var _sv=document.getElementById('sug-prix-v');if(_sv)_sv.style.display='none';selVarImg=null;var _vp=document.getElementById('var-photo-preview');if(_vp)_vp.style.display='none';document.getElementById('ov-addvar').classList.add('show');}
+function ctxAV(){if(!artCtx)return;varArtCours=artCtx;try{majFormatsVariante(artCtx);}catch(e){}document.getElementById('addvar-t').textContent=(lang==='fr'?'🔀 Variante de ':'🔀 Variant of ')+artCtx.nm;['var-nm','var-pa','var-pv','var-stk','var-parc'].forEach(function(id){var _e=document.getElementById(id);if(_e)_e.value='';});try{varMode('u');}catch(e){}document.getElementById('var-bc').style.display='none';var _sv=document.getElementById('sug-prix-v');if(_sv)_sv.style.display='none';selVarImg=null;var _vp=document.getElementById('var-photo-preview');if(_vp)_vp.style.display='none';document.getElementById('ov-addvar').classList.add('show');}
+// ══════════════════════════════════════════════════════════════════
+//  LES FORMATS D'UNE BOISSON
+//  L'échelle réelle des bouteilles vendues au Cameroun. Ce sont des
+//  CONTENANCES, pas des prix : l'app peut les proposer sans rien
+//  inventer. Il touche celui qu'il vend, le nom se remplit, il n'a plus
+//  que le prix à donner.
+// ══════════════════════════════════════════════════════════════════
+var FORMATS_BOISSON=['25 cl','33 cl','50 cl','60 cl','65 cl','75 cl','1 L','1,5 L','2 L','5 L'];
+function _estBoisson(p){
+  if(!p)return false;
+  try{
+    if(CAT_IDX_N[p.cat]==='Boissons'||CAT_IDX_N[p.cat]==='Alcool')return true;
+  }catch(e){}
+  // Le rayon peut être mal rangé : le nom tranche aussi.
+  return /jus|eau|soda|bi[eè]re|boisson|nectar|sirop|lait|vin|whisky|sucrerie|cola|malt/i.test(String(p.nm||''));
+}
+// Le nom sans sa contenance : « Jus Fruitki 1 L » -> « Jus Fruitki ».
+function _nomSansFormat(nm){
+  return String(nm||'').replace(/\s*\d+[.,]?\d*\s*(cl|CL|ml|ML|l|L)\b\.?/g,'').replace(/\s{2,}/g,' ').trim();
+}
+function majFormatsVariante(p){
+  var bloc=document.getElementById('var-formats-bloc'),box=document.getElementById('var-formats');
+  if(!bloc||!box)return;
+  if(!_estBoisson(p)){bloc.style.display='none';box.innerHTML='';return;}
+  var fr=(lang==='fr');
+  var t=document.getElementById('var-formats-t');
+  if(t)t.textContent=fr?'FORMAT DE LA BOUTEILLE':'BOTTLE SIZE';
+  // Les formats DÉJÀ créés sont écartés : on ne propose pas un doublon.
+  var pris={};
+  (p.vr||[]).forEach(function(v){
+    var m=String(v.nm||'').match(/\d+[.,]?\d*\s*(cl|ml|l)\b/i);
+    if(m)pris[txtNorm(m[0])]=1;
+  });
+  var base=_nomSansFormat(p.nm);
+  box.innerHTML=FORMATS_BOISSON.filter(function(f){return !pris[txtNorm(f)];}).map(function(f){
+    return '<button type="button" class="shct" onclick="choisirFormatVariante(\''+f+'\')">'+f+'</button>';
+  }).join('');
+  bloc.style.display=box.innerHTML?'block':'none';
+}
+function choisirFormatVariante(f){
+  var i=document.getElementById('var-nm');if(!i)return;
+  var base=varArtCours?_nomSansFormat(varArtCours.nm):'';
+  // La variante porte SON format : c'est ce qui la distingue des autres.
+  i.value=(base?(base+' '):'')+f;
+  [...document.querySelectorAll('#var-formats .shct')].forEach(function(b){
+    b.classList.toggle('on',b.textContent===f);
+  });
+  try{document.getElementById('var-pv').focus();}catch(e){}
+}
 // ── Photo d'une variante (upload direct, compressée) ──
 var selVarImg=null;
 function uploadPhotoVar(ev){
