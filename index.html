@@ -3302,7 +3302,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.21'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.22'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7645,7 +7645,29 @@ function _chipGros(p){
   // s'évanouissait à l'usage suivant. Quand une variante de gros existe,
   // le repère la vend et affiche SON prix.
   var vg=_varianteGros(p);
-  if(vg)return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+(vg.nm||mot)+'">📦<span>'+fmt(vg.px)+'</span></button>';
+  if(vg){
+    // ⚠️⚠️ « POURQUOI ON VOIT LA POSSIBILITÉ DE VENDRE EN GROS À L'ENTRÉE ?
+    //        Il fallait d'abord entrer à l'intérieur pour voir chaque
+    //        article avec ses ventes en carton. Je parle du lait concentré
+    //        non sucré : une partie en carton et une partie en unité. »
+    //
+    // Il a raison, et c'est MOI qui l'ai rendu faux. En 21.9 une famille
+    // n'avait que DEUX visages — « à l'unité » et « casier de 12 » — donc
+    // un repère unique sur la tuile disait toute la vérité.
+    // Depuis la 21.13, chaque variante peut avoir SON propre lot. Or
+    // _varianteGros() renvoie LA PREMIÈRE trouvée : le repère en montrait
+    // un et cachait les autres, avec un seul prix pour toute la famille.
+    //
+    // Règle : le repère ne reste dehors que si la famille n'a vraiment que
+    // deux visages. Dès qu'il y a plusieurs formes, le gros se choisit
+    // À L'INTÉRIEUR, variante par variante — là où chacune montre son
+    // propre prix et son propre stock.
+    var lots=(p.vr||[]).filter(function(v){return getQBase(v)>1;});
+    var unites=(p.vr||[]).filter(function(v){return getQBase(v)<=1;});
+    if(lots.length===1&&unites.length<=1)
+      return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+(vg.nm||mot)+'">📦<span>'+fmt(vg.px)+'</span></button>';
+    return '';
+  }
   // Les autres familles gardent leur écran de variantes, sans repère.
   if(p.vr&&p.vr.length)return '';
   var n=Number(p.umSac)||0;
