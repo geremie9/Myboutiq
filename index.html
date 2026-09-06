@@ -1962,6 +1962,17 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- Réparer les bénéfices inconnus : la liste des articles vendus sans prix d'achat -->
+<div class="ov" id="ov-rep-ben" onclick="closeOv(event,'ov-rep-ben')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="rep-ben-tit">Bénéfices inconnus</div><button class="bcl" onclick="closeSheet('ov-rep-ben')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="background:#FFF3E0;border-radius:9px;padding:10px 12px;font-size:11.5px;font-weight:700;color:#B45309;line-height:1.45;margin-bottom:12px" id="rep-ben-expl"></div>
+      <div class="scd" id="rep-ben-lst"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Dire une fois combien il y a dans un carton / casier / sac, puis en vendre un -->
 <div class="ov" id="ov-gros" onclick="closeOv(event,'ov-gros')">
   <div class="bsht"><div class="shndl"></div>
@@ -3164,7 +3175,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.7'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.8'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6312,6 +6323,40 @@ function validerCompleter(){
   renderProd(DB.articles);renderStock(DB.articles);
   closeSheet('ov-completer');
   showToast('✅ '+p.nm+' — '+(fr?'prêt à vendre !':'ready to sell!'));
+  try{_proposerRattrapagePrixAchat(p);}catch(e){}
+}
+// ⚠️ CE QUE J'AVAIS RATÉ, ET QUI RENDAIT LE BOUTON « CORRIGER » MENSONGER.
+// Le rapport lit le prix d'achat inscrit SUR LA VENTE au moment où elle a
+// eu lieu, pas celui de l'article aujourd'hui. Corriger la fiche ne
+// réparait donc RIEN de ce qui était déjà vendu : l'écran continuait
+// d'annoncer le même montant inconnu, pour toujours. Un bouton qui promet
+// une correction et n'en fait aucune est pire que pas de bouton.
+//
+// On propose donc de combler les ventes passées — et on ne comble QUE les
+// trous : une ligne qui porte déjà un coût enregistré n'est jamais touchée.
+// Remplir un vide n'est pas réécrire l'histoire ; écraser un chiffre réel
+// le serait. Le geste est annoncé, chiffré, et inscrit au journal.
+function _proposerRattrapagePrixAchat(p){
+  if(!p||!(Number(p.pa)>0))return;
+  var fr=(lang==='fr');
+  var vis=[],ca=0,n=0;
+  (DB.ventes||[]).forEach(function(v){
+    if(!v||v.annulee||!Array.isArray(v.lignes))return;
+    v.lignes.forEach(function(l){
+      if(!l||l.pid!=p.id||(Number(l.pa)||0)>0)return;
+      vis.push(l);n++;ca+=(Number(l.px)||0)*(Number(l.qte||l.qty)||0);
+    });
+  });
+  if(!n)return;
+  if(!confirm((fr?'Appliquer ce prix d\'achat aux ventes DÉJÀ faites ?':'Apply this cost to sales ALREADY made?')+'\n\n'
+    +(fr?(n+' vente(s) de « '+p.nm+' », soit '+fmt(ca)+' de chiffre d\'affaires, n\'ont aucun prix d\'achat : leur bénéfice n\'est pas compté.')
+        :(n+' sale(s) of "'+p.nm+'", '+fmt(ca)+' of revenue, have no cost: their profit is not counted.'))+'\n\n'
+    +(fr?'Les ventes qui ont déjà un prix d\'achat ne seront pas touchées.':'Sales that already have a cost are left untouched.')))return;
+  vis.forEach(function(l){l.pa=Number(p.pa)||0;});
+  journalAjouter('prix achat',p.nm,(fr?'inconnu sur '+n+' vente(s)':'unknown on '+n+' sale(s)'),fmt(p.pa));
+  save();
+  try{renderRpt();}catch(e){}
+  showToast('📈 '+(fr?n+' vente(s) recalculée(s)':n+' sale(s) recomputed'));
 }
 // ── Vente au poids / à la mesure : sélecteur ½ · 1 · 2 · 5 ou quantité libre ──
 var _qteArt=null;
@@ -11090,7 +11135,8 @@ function renderRpt(){
       // est inconnu, au lieu de la compter comme du bénéfice.
       var inc=getCaisseSales().reduce(function(s,v){return s+getSaleCAInconnu(v);},0);
       if(inc<=0)return '';
-      return '<div class="rrow"><span class="rlbl" style="color:var(--O)">⚠️ '+(lang==='fr'?'Ventes sans prix d\'achat':'Sales without cost')+'<div style="font-size:9.5px;font-weight:600;color:var(--M)">'+(lang==='fr'?'bénéfice inconnu — non compté ci-dessus':'profit unknown — not counted above')+'</div></span><span class="rval" style="color:var(--O)">'+fmt(inc)+'</span></div>';
+      // La ligne n'était qu'un constat. Elle ouvre maintenant la réparation.
+      return '<div class="rrow" style="cursor:pointer" onclick="ouvrirReparerBenefice()"><span class="rlbl" style="color:var(--O)">⚠️ '+(lang==='fr'?'Ventes sans prix d\'achat':'Sales without cost')+'<div style="font-size:9.5px;font-weight:600;color:var(--B);text-decoration:underline">'+(lang==='fr'?'bénéfice inconnu — touche pour corriger':'profit unknown — tap to fix')+'</div></span><span class="rval" style="color:var(--O)">'+fmt(inc)+'</span></div>';
     })()+
     (function(){
       // La consigne n'est ni un chiffre d'affaires ni un bénéfice : c'est de
@@ -12131,6 +12177,87 @@ function getSaleBenef(v){
   return Number((v.benefice!==undefined&&v.benefice!==null)?v.benefice:v.ben)||0;
 }
 // Chiffre d'affaires dont le bénéfice est INCONNU (articles sans prix d'achat).
+// ══════════════════════════════════════════════════════════════════
+//  RÉPARER LES BÉNÉFICES INCONNUS
+//
+//  Sa question : « si on supprime certaines étapes, n'y a-t-il pas risque
+//  de mauvaise configuration ? Est-ce que l'article PEUT être bien
+//  configuré pour connaître les bénéfices et sortir un rapport clair ? »
+//
+//  MESURÉ, et la réponse était à moitié rassurante :
+//    · quand le prix d'achat manque, l'app compte 0 de bénéfice — elle
+//      n'invente rien et sous-estime plutôt que de gonfler ;
+//    · le rapport le DIT déjà (« ⚠️ Ventes sans prix d'achat — bénéfice
+//      inconnu, non compté ci-dessus »).
+//  Mais la ligne n'était qu'un constat : elle nommait le problème sans
+//  offrir la réparation. Dire à quelqu'un que son chiffre est incomplet
+//  sans lui donner le geste qui le complète, c'est l'inquiéter pour rien.
+//  Elle ouvre maintenant la liste des articles concernés, chacun d'un tap.
+// ══════════════════════════════════════════════════════════════════
+function _articlesSansPrixAchat(){
+  var vus={},out=[];
+  getCaisseSales().forEach(function(v){
+    ((v&&v.lignes)||[]).forEach(function(l){
+      if(!l||(Number(l.pa)||0)>0)return;
+      var p=(DB.articles||[]).find(function(x){return x.id==l.pid;});
+      if(!p||vus[p.id])return;
+      // Une famille se répare variante par variante : on l'ouvre quand même,
+      // l'écran Compléter sait présenter ses variantes.
+      vus[p.id]=1;
+      out.push({p:p,ca:0});
+    });
+  });
+  // Combien de chiffre d'affaires chaque article laisse dans l'ombre.
+  out.forEach(function(o){
+    getCaisseSales().forEach(function(v){
+      ((v&&v.lignes)||[]).forEach(function(l){
+        if(!l||l.pid!=o.p.id||(Number(l.pa)||0)>0)return;
+        o.ca+=(Number(l.px)||0)*(Number(l.qte||l.qty)||0);
+      });
+    });
+  });
+  out.sort(function(a,b){return b.ca-a.ca;});
+  return out;
+}
+function ouvrirReparerBenefice(){
+  var fr=(lang==='fr');
+  if(role!=='patron'&&!hasPerm('produits')){
+    showToast('🔒 '+(fr?'Réservé au patron':'Owner only'));return;
+  }
+  var l=_articlesSansPrixAchat();
+  var c=document.getElementById('rep-ben-lst');
+  if(!c)return;
+  document.getElementById('rep-ben-tit').textContent=fr?'Bénéfices inconnus':'Unknown profits';
+  document.getElementById('rep-ben-expl').textContent=fr
+    ?('Ces articles ont été vendus sans prix d\'achat. Leur bénéfice n\'est pas compté — ni en plus, ni en moins. Donne le prix d\'achat et tout se recalcule.')
+    :('These items were sold without a cost price. Their profit is not counted. Give the cost and everything recomputes.');
+  if(!l.length){
+    c.innerHTML='<div style="text-align:center;padding:22px;font-size:13px;font-weight:700;color:var(--G)">✅ '
+      +(fr?'Tous tes articles vendus ont leur prix d\'achat.':'All sold items have a cost price.')+'</div>';
+  }else{
+    c.innerHTML=l.map(function(o){
+      var media=o.p.img?('<img src="'+o.p.img+'" style="width:34px;height:34px;border-radius:8px;object-fit:cover">')
+                       :('<span style="font-size:22px">'+(o.p.e||'📦')+'</span>');
+      return '<div class="sit" style="cursor:pointer" onclick="reparerArticle('+o.p.id+')">'
+        +media+'<div class="siinf"><div class="sinm">'+o.p.nm+'</div>'
+        +'<div class="sidet">'+(fr?'chiffre d\'affaires sans bénéfice connu : ':'revenue with unknown profit: ')+fmt(o.ca)+'</div></div>'
+        +'<span style="font-size:13px;font-weight:800;color:var(--B)">'+(fr?'Corriger':'Fix')+' ›</span></div>';
+    }).join('');
+  }
+  document.getElementById('ov-rep-ben').classList.add('show');
+}
+function reparerArticle(pid){
+  var p=(DB.articles||[]).find(function(x){return x.id==pid;});
+  if(!p)return;
+  closeSheet('ov-rep-ben');
+  // Le bloc facultatif doit être OUVERT : c'est le prix d'achat qu'il vient
+  // corriger, l'y faire chercher serait absurde.
+  _cmpPlusOuvert=true;
+  setTimeout(function(){
+    try{ouvrirCompleterArticle(p);}catch(e){}
+    try{document.getElementById('cmp-pa').focus();}catch(e){}
+  },220);
+}
 function getSaleCAInconnu(v){
   if(!v||!Array.isArray(v.lignes))return 0;
   return v.lignes.reduce(function(s,l){
