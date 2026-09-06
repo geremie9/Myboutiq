@@ -268,7 +268,20 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .photo-upl-btn.busy{opacity:.6;pointer-events:none}
 .pnm{font-size:10px;font-weight:700;color:var(--T);margin-bottom:3px;line-height:1.2}
 .ppr{font-size:12px;font-weight:800;color:var(--B)}
-.pvbdg{font-size:8px;font-weight:800;color:var(--B);background:rgba(41,121,255,.09);border-radius:5px;padding:1px 5px;margin-top:2px;display:inline-block}
+/* ── L'INDICATEUR DE VARIANTES ────────────────────────────────────────
+   Il disait « 3 var. » en 8 pixels. Une abréviation, dans une langue
+   écrite, pour des commerçants dont beaucoup ne lisent pas — et si petite
+   qu'un œil pressé la manque. Elle ne disait ni ce qu'étaient ces
+   variantes, ni qu'on pouvait choisir.
+   Maintenant : trois traits empilés, dessinés en CSS (donc pas d'emoji à
+   masquer, pas de mot à traduire), et le nombre à taille lisible. Le
+   dessin dit « plusieurs formes », le chiffre dit combien. */
+.pvbdg{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:900;
+  color:var(--B);background:rgba(41,121,255,.11);border:1px solid rgba(41,121,255,.18);
+  border-radius:7px;padding:2px 7px 2px 6px;margin-top:3px;line-height:1;vertical-align:middle}
+.pvbdg i{display:inline-block;width:9px;height:2px;border-radius:1px;background:currentColor;
+  margin-bottom:6px;box-shadow:0 4px 0 currentColor,0 8px 0 currentColor}
+.pcard.has-photo .pvbdg{background:rgba(255,255,255,.94);border-color:rgba(255,255,255,.5);color:#1B4FA8}
 .qbdg{position:absolute;top:-7px;right:-7px;background:var(--R);color:#fff;border-radius:50%;width:24px;height:24px;font-size:10px;font-weight:900;display:none;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(255,61,0,.4);cursor:pointer;flex-direction:column;gap:0;z-index:3}
 .qbdg.show{display:flex}
 .pcard.has-photo .qbdg{top:7px;right:7px}
@@ -1969,8 +1982,15 @@ body{max-width:min(100%,1200px)}
     <div style="padding:8px 19px 24px">
       <div id="gpx-art" style="font-size:14px;font-weight:800;margin-bottom:4px">Article</div>
       <div id="gpx-q" style="font-size:13px;color:var(--M);margin-bottom:11px;line-height:1.45"></div>
-      <div class="pig"><label class="pl" id="gpx-lbl">Prix du lot entier</label><input class="pi sm" type="number" id="gpx-inp" inputmode="numeric" oninput="majApercuGpx()"></div>
+      <div class="pig"><label class="pl" id="gpx-lbl">Tu le vends combien ?</label><input class="pi sm" type="number" id="gpx-inp" inputmode="numeric" oninput="majApercuGpx()"></div>
       <div id="gpx-apercu" style="font-size:12.5px;font-weight:800;color:var(--G);margin:2px 0 10px;min-height:17px"></div>
+      <!-- ⚠️ « Quand on achète en carton, c'est pour avoir des marges : en gros
+           c'est moins cher, pour aller revendre un peu plus cher. »
+           Je posais le prix d'achat du gros à « unitaire × 24 ». C'était FAUX,
+           et faux dans le sens qui coûte : la marge du gros paraissait nulle
+           alors qu'elle est justement meilleure. On le lui DEMANDE. -->
+      <div class="pig"><label class="pl" id="gpx-pa-lbl">Et tu l'achètes combien ? (facultatif)</label><input class="pi sm" type="number" id="gpx-pa" inputmode="numeric" oninput="majApercuGpx()"></div>
+      <div id="gpx-marge" style="font-size:12.5px;font-weight:800;color:var(--G);margin:2px 0 10px;min-height:17px"></div>
       <button type="button" onclick="gpxDetail()" style="width:100%;background:none;border:1.5px dashed var(--BD);border-radius:10px;padding:9px;font-size:12px;font-weight:700;color:var(--M);cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:11px" id="gpx-meme">Le même prix qu'au détail</button>
       <button class="bnxt" onclick="validerPrixGros()">🛒 <span id="gpx-add">Ajouter au panier</span></button>
     </div>
@@ -3190,7 +3210,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.9'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.10'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5808,7 +5828,7 @@ function renderProd(lst){
       '<div class="qbdg '+(pq>0?'show':'')+'" id="qb-'+p.id+'" onclick="retirerUn(event,'+p.id+')">'+'<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">✕</span></div>'+
       (p.img?
         '<img class="pcard-img" src="'+p.img+'" loading="lazy" onerror="this.parentElement.classList.remove(\'has-photo\');this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pemoji\',textContent:\''+p.e+'\'}))">'+
-        '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+prixTxt+'</div>'+_chipGros(p)+(hasV?'<div class="pvbdg">'+p.vr.length+' var.</div>':'')+'</div>'
+        '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+prixTxt+'</div>'+_chipGros(p)+(hasV?_badgeVariantes(p):'')+'</div>'
         :
         (DB.cfg&&DB.cfg.noEmoji
           ?'<div class="pmedia pmono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)
@@ -5817,7 +5837,7 @@ function renderProd(lst){
         '<div class="pnm">'+p.nm+'</div>'+
         '<div class="ppr">'+prixTxt+'</div>'+
         _chipGros(p)+
-        (hasV?'<div class="pvbdg">'+p.vr.length+' var.</div>':'')
+        (hasV?_badgeVariantes(p):'')
       )+
       (inc?'<div class="sinc">✏️ '+(lang==='fr'?'À compléter':'To complete')+'</div>':'')+
       (isLow&&!inc?'<div class="slow">⚠️ '+(lang==='fr'?'Bas':'Low')+'</div>':'')+
@@ -7086,6 +7106,14 @@ function _uniteMot(p){
   if(p&&p.um==='L')return fr?'litres':'liters';
   return fr?'pièces':'units';
 }
+// Le nombre de formes, et leurs noms au survol. Le dessin porte le sens ;
+// le mot « variante » n'apparaît nulle part sur la tuile.
+function _badgeVariantes(p){
+  var n=(p.vr||[]).length;
+  if(!n)return '';
+  var noms=(p.vr||[]).map(function(v){return v.nm||'';}).filter(Boolean).join(' · ');
+  return '<div class="pvbdg" title="'+noms.replace(/"/g,'')+'"><i></i>'+n+'</div>';
+}
 function _chipGros(p){
   if(!p||articleIncomplet(p))return '';
   var mot=_motContenant(p);
@@ -7100,6 +7128,22 @@ function _chipGros(p){
   if(p.vr&&p.vr.length)return '';
   var n=Number(p.umSac)||0;
   if(n>1)return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+mot+' de '+fmtQ(n)+'">📦<span>×'+fmtQ(n)+'</span></button>';
+  // ⚠️ « JE VOIS PARTOUT VENTE EN CARTON. CE N'EST PAS TOUS LES ARTICLES
+  //     OÙ ON ACHÈTE EN CARTON. »
+  // Il a raison, et c'était MOI : le repère vide s'affichait sur CHAQUE
+  // article, y compris ceux qui ne se vendent qu'à l'unité. Une grille
+  // entière de 📦 laisse croire que tout se vend en gros, et noie le seul
+  // endroit où ça compte vraiment.
+  // Il ne s'affiche plus que si le catalogue connaît un conditionnement
+  // pour cet article — donc là où la question a un sens. Ailleurs, le
+  // chemin reste ouvert par le menu de l'article (🔀 Ajouter variante) :
+  // rien n'est retiré, on cesse seulement de le crier partout.
+  var connu=0;
+  try{
+    var m=mesureCatalogue(familleCatalogueDe(p.nm)||p.nm);
+    connu=(m&&m.sac>0)?m.sac:0;
+  }catch(e){}
+  if(!connu)return '';
   return '<button class="pgros vide" onclick="direTailleGros(event,'+p.id+')" title="'+(lang==='fr'?'Vendre par '+mot:'Sell by the '+mot)+'">📦</button>';
 }
 function _ajouterLot(p,n){
@@ -7182,7 +7226,18 @@ function demanderPrixGros(p){
       +_majuscule(_unGrosEntier(mot))+', tu le vends combien ?')
     :(fmtQ(n)+' × '+fmt(p.px)+' = '+fmt(det)+' at retail. What do you charge for a whole '+mot+'?');
   var i=document.getElementById('gpx-inp');i.value='';i.placeholder=String(det);
+  var ipa=document.getElementById('gpx-pa');
+  if(ipa){
+    ipa.value='';
+    // ⚠️ AUCUNE SUGGESTION ICI. « unitaire × n » serait un chiffre plausible
+    // et faux : il achète justement le gros MOINS cher. Un prix d'achat faux
+    // ne se voit jamais — mieux vaut un champ vide.
+    ipa.placeholder='';
+    var l=document.getElementById('gpx-pa-lbl');
+    if(l)l.textContent=fr?('Et tu l\'achètes combien ? (facultatif)'):'And what do you pay? (optional)';
+  }
   document.getElementById('gpx-apercu').textContent='';
+  var mg=document.getElementById('gpx-marge');if(mg)mg.textContent='';
   document.getElementById('ov-gros-px').classList.add('show');
   try{parler(fr?('Un '+mot+' entier, tu le vends combien ?'):'');}catch(x){}
 }
@@ -7203,6 +7258,18 @@ function majApercuGpx(){
   el.textContent=fr
     ?(fmt(v)+' '+_leGros(_motContenant(p))+(ecart>0?('  ·  '+fmt(ecart)+' de moins qu\'au détail'):ecart<0?('  ·  '+fmt(-ecart)+' de plus qu\'au détail'):'  ·  comme au détail'))
     :(fmt(v)+' per '+_motContenant(p));
+  // La marge du gros, montrée pendant qu'il tape : c'est ce qu'il vient
+  // chercher en achetant en gros, et c'est le seul moyen qu'il la vérifie.
+  var mg=document.getElementById('gpx-marge');
+  if(mg){
+    var pa=parseFloat(String((document.getElementById('gpx-pa')||{}).value||'').replace(',','.'))||0;
+    if(pa>0&&v>0){
+      var ben=v-pa;
+      mg.style.color=(ben>=0?'var(--G)':'var(--R)');
+      mg.textContent=fr?(fmt(v)+' − '+fmt(pa)+' = '+fmt(ben)+' de bénéfice sur '+_leGros(_motContenant(p)))
+                       :(fmt(v)+' − '+fmt(pa)+' = '+fmt(ben)+' profit');
+    }else mg.textContent='';
+  }
 }
 function validerPrixGros(){
   var p=_grosPxArt;if(!p)return;
@@ -7221,7 +7288,13 @@ function validerPrixGros(){
   var vid=Math.max.apply(null,p.vr.map(function(x){return x.id;}))+1;
   var nomV=_majuscule(mot)+' de '+fmtQ(n);
   // Prix d'achat du gros : SEULEMENT s'il est déduisible de l'unité connue.
-  var paG=(Number(p.pa)>0)?Math.round(Number(p.pa)*n*100)/100:0;
+  // ⚠️ Ce prix d'achat vient de LUI, jamais d'un calcul. Je le posais à
+  // « unitaire × n » : c'était faux, et faux du mauvais côté — acheter en
+  // gros coûte MOINS cher, c'est la raison d'en acheter. La marge du gros
+  // paraissait donc nulle alors qu'elle est la meilleure. S'il ne le dit
+  // pas, on laisse vide : le rapport signalera « bénéfice inconnu » et
+  // proposera de le compléter, plutôt que d'annoncer un chiffre inventé.
+  var paG=parseFloat(String((document.getElementById('gpx-pa')||{}).value||'').replace(',','.'))||0;
   p.vr.push({id:vid,nm:nomV,px:v,pa:paG,stk:0,stk0:0,rt:p.rt!==false,qBase:n});
   journalAjouter('vente en gros',p.nm,'',nomV+' — '+fmt(v));
   save();
