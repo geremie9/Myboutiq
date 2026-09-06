@@ -496,6 +496,15 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
    tuile : grand, sombre sur clair, posé en haut à gauche là où l'œil
    commence. Fond opaque : une contenance à moitié lisible sur une
    bouteille sombre ne sert à rien. */
+/* Le repère du gros sur une variante : même langage que dehors (.pgros),
+   même place — sous le prix, en bas de la tuile. La zone de touche est
+   élargie à 44 px comme partout ailleurs. */
+.vt-gros{display:inline-flex;align-items:center;gap:3px;margin-top:3px;
+  background:rgba(0,150,136,.15);color:#00695C;border-radius:6px;padding:2px 7px;
+  font-size:10px;font-weight:900;line-height:1;position:relative;z-index:3}
+.vtile.has-photo .vt-gros{background:rgba(255,255,255,.94);color:#00695C}
+.vt-gros::after{content:'';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);width:100%;height:44px;min-width:44px}
 .vt-fmt{position:absolute;top:6px;left:6px;z-index:4;
   background:rgba(255,255,255,.95);color:var(--T);
   border-radius:8px;padding:3px 8px;font-size:13px;font-weight:900;line-height:1;
@@ -521,7 +530,12 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .vtile .vt-stk{font-size:9px;font-weight:700}
 /* ⚠️ overflow:hidden sur la tuile — les pastilles devaient rentrer DEDANS,
    sinon elles étaient coupées. Mêmes coins que .pcard.has-photo .qbdg. */
-.vt-badge{position:absolute;top:6px;right:6px;min-width:26px;height:26px;border-radius:13px;background:var(--G);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 2px 7px rgba(0,0,0,.3);z-index:3}
+/* ⚠️ « Même les badges devront être en ROUGE comme les autres, au lieu
+   du vert. » Dehors le badge de quantité est rouge (.qbdg) ; dedans il
+   était vert. Le même geste ne peut pas avoir deux couleurs : le rouge
+   dit « touche-moi pour retirer », et c est ce que fait le badge dans
+   les deux grilles. */
+.vt-badge{position:absolute;top:6px;right:6px;min-width:26px;height:26px;border-radius:13px;background:var(--R);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 2px 7px rgba(0,0,0,.3);z-index:3}
 .vt-moins{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:13px;background:#fff;border:1.5px solid var(--BD);color:var(--R);font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.22);z-index:3}
 /* ── ⚠️ « TU ENTRES MÊME POUR ANNULER UN PRODUIT, C'EST COMPLIQUÉ. » ──
    MESURÉ : le « − » d'une variante fait 24×24 px à l'écran. La norme
@@ -607,7 +621,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .vsat-r img{width:100%;height:100%;object-fit:cover}
 .vsat.hq .vsat-r{border-color:var(--G);box-shadow:0 0 0 3.5px rgba(0,200,83,.35),0 7px 20px rgba(0,0,0,.3)}
 .vsat.out{opacity:.42}
-.vsat-b{position:absolute;top:-4px;right:-4px;min-width:24px;height:24px;border-radius:12px;background:var(--G);
+.vsat-b{position:absolute;top:-4px;right:-4px;min-width:24px;height:24px;border-radius:12px;background:var(--R);
   color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;
   box-shadow:0 2px 7px rgba(0,0,0,.3)}
 /* ⚠️ EN MODE CERCLE, CE BADGE EST LE SEUL MOYEN DE RETIRER — et il fait
@@ -3348,7 +3362,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.27'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.28'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6840,6 +6854,18 @@ var _vCtxP=null,_vCtxV=null;
 function showCtxVar(e,p,v){
   if(!p||!v)return;
   if(role!=='patron'&&!hasPerm('produits')){showToast('🔒 '+(lang==='fr'?'Ton patron ne t\'a pas autorisé':'Not allowed'));return;}
+  // ⚠️ « MÊME QUAND ON BLOQUE LA MODIFICATION, LES ARTICLES EN VARIANTE
+  //     PEUVENT TOUJOURS ÊTRE MODIFIÉS. »
+  // Le verrou existait dehors et pas dedans : encore la même asymétrie.
+  // Un menu dont TOUTES les entrées écrivent sur l'article n'a rien à
+  // faire pendant que les modifications sont bloquées — sauf la saisie
+  // d'une quantité, qui est une vente et reste donc accessible.
+  if(venteVerrouillee&&venteVerrouillee()){
+    saisirQteVariante(p,v);
+    showToast('🔒 '+(lang==='fr'?'Modifications bloquées — touche le cadenas en haut pour modifier'
+                                :'Editing is locked — tap the padlock above'));
+    return;
+  }
   _vCtxP=p;_vCtxV=v;
   var m=document.getElementById('ctxmv');if(!m)return;
   document.getElementById('ctxm').classList.remove('show');
@@ -7499,6 +7525,18 @@ function _brancherVar(d,p,v){
     if(ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-moins')){
       chgVQ(v.id,p.id,-1,!!p.rt);return;
     }
+    // ⭐ Toucher le repère 📦 vend LE LOT, pas l'unité — exactement comme
+    // dehors. Sans ce test, il ajouterait une bouteille au lieu du casier.
+    var g=ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-gros');
+    if(g){
+      var lot=(p.vr||[]).find(function(x){return String(x.id)===String(g);});
+      if(lot){
+        ev.stopPropagation();
+        chgVQ(lot.id,p.id,1,!!p.rt);
+        try{showToast('📦 '+_unGros(_motContenant(p))+' — '+(v.nm||p.nm)+' · '+fmt(lot.px));}catch(x){}
+        return;
+      }
+    }
     chgVQ(v.id,p.id,1,!!p.rt);
   };
   // ⚠️ L'appui long ouvrait UNIQUEMENT « saisir une quantité ». C'était le
@@ -7650,7 +7688,8 @@ function renderVarLst(p){
       +'<span class="vt-ov">'
       +'<span class="vt-nm">'+(v.nm||'?')+'</span>'
       +'<span class="vt-px">'+i.px+'</span>'
-      +'<span class="vt-stk" style="color:'+i.coul+'">'+i.stk+'</span></span>';
+      +'<span class="vt-stk" style="color:'+i.coul+'">'+i.stk+'</span>'
+      +_chipGrosVariante(p,v)+'</span>';
     _replierPhotoVar(d,_mediaVar(p,v));
     _brancherVar(d,p,v);
     l.appendChild(d);
@@ -7752,6 +7791,32 @@ function _badgeVariantes(p){
   if(!n)return '';
   var noms=(p.vr||[]).map(function(v){return v.nm||'';}).filter(Boolean).join(' · ');
   return '<div class="pvbdg" title="'+noms.replace(/"/g,'')+'"><i></i>'+n+'</div>';
+}
+// ══════════════════════════════════════════════════════════════════
+//  LE REPÈRE DU GROS, SUR UNE VARIANTE
+//
+//  Sa remarque : « la partie là, où on touche le carton pour les
+//  palettes — vous pouvez la mettre en bas comme les autres articles qui
+//  sont dehors. »
+//
+//  Dehors, une tuile porte son 📦 sous le prix depuis la 20.9. Dedans,
+//  il n'y en avait aucun : le gros d'une variante n'existait que dans le
+//  menu de l'appui long, donc invisible. Même repère, même place.
+//
+//  Il n'apparaît QUE si le lot existe déjà — on ne remet pas un 📦 sur
+//  chaque variante, c'est la leçon du « carton partout ».
+// ══════════════════════════════════════════════════════════════════
+function _lotDeVariante(p,v){
+  if(!p||!v||_estGrosDeVariante(v))return null;
+  return (p.vr||[]).find(function(x){
+    return _estGrosDeVariante(x)&&String(x.base)===String(v.id);
+  })||null;
+}
+function _chipGrosVariante(p,v){
+  var lot=_lotDeVariante(p,v);
+  if(!lot)return '';
+  var mot=_motContenant(p);
+  return '<span class="vt-gros" data-gros="'+lot.id+'" title="'+mot+' de '+fmtQ(getQBase(lot))+'">📦 '+fmt(lot.px)+'</span>';
 }
 function _chipGros(p){
   if(!p||articleIncomplet(p))return '';
@@ -14473,6 +14538,13 @@ var _rtRefetchTimer=null;
 // Points de mesure — ils ne servent qu'à l'écran « État de la liaison »,
 // pour cesser de deviner quand un commerçant dit « ça ne bouge pas ».
 var _rtDernierSignal=0,_rtDernierEssai=0,_rtDerniereMaj=0,_rtDernierRefus=0;
+// ⚠️ _rtDerniereMaj ne compte QUE les fois où des données étrangères sont
+// entrées. Un patron seul dans sa boutique n'en aura jamais — et l'écran
+// affichait « 🔴 jamais » à côté de son propre « ✅ Tout circule ».
+// Une pastille rouge sur une liaison saine, c'est une pastille qu'on
+// n'écoutera plus le jour où elle sera vraie. On mesure donc AUSSI la
+// lecture qui a abouti : c'est elle qui prouve que le canal fonctionne.
+var _rtDerniereLecture=0;
 // Le patron possède une SESSION serveur : c'est une preuve plus forte qu'un
 // PIN. On lit donc avec elle en priorité — ainsi son rafraîchissement ne
 // dépend plus de l'état du PIN gardé sur le téléphone. Le PIN reste la voie
@@ -14521,6 +14593,7 @@ async function _rtRefetch(code){
   _rtDernierEssai=Date.now();
   var fresh=await _lirePourMoi(code);
   if(!fresh){_rtDernierRefus=Date.now();return;}
+  _rtDerniereLecture=Date.now();   // le serveur a répondu : la liaison est vivante
   // Écho de notre propre écriture : on ne l'ignore QUE s'il n'apporte rien.
   // Avant, on sortait dès que l'appareil était le dernier écrivain — et si le
   // patron était ce dernier écrivain, plus rien ne rentrait jamais.
@@ -14601,7 +14674,6 @@ function majLiaison(){
   var canalOk=(canal==='joined');
   var pinOk=(_shopPin!=null&&String(_shopPin).length>=4);
   var surv=!!_rtTimerFond;
-  var majRecente=_rtDerniereMaj&&(Date.now()-_rtDerniereMaj<120000);
   var h='';
   h+=_liLigne(enLigne?(lie?true:false):null,
       fr?'Internet et serveur':'Internet & server',
@@ -14621,25 +14693,43 @@ function majLiaison(){
       surv?(fr?'Toutes les 20 secondes, même si l\'écoute tombe':'Every 20 s')
           :(fr?'ARRÊTÉE — il faut se reconnecter pour voir du nouveau':'STOPPED'));
   // ⚠️ Ne JAMAIS accuser le serveur sans savoir : une lecture peut échouer
-  // avant même de l'atteindre, ou réussir et être écartée comme un écho.
-  var detail;
-  if(_rtEchoIgnore>_rtDerniereMaj&&_rtEchoIgnore>_rtDernierRefus)
-    detail=fr?' · le serveur répond, mais rien de nouveau à prendre':' · server answers, nothing new';
-  else if(_rtDernierRefus>_rtDerniereMaj)
-    detail=fr?' · dernière lecture refusée ('+(pinOk?'clé rejetée':'clé trop courte')+')':' · last read refused';
-  else if(_rtDernierEssai&&!_rtDerniereMaj)
-    detail=fr?' · aucune lecture aboutie pour l\'instant':' · no successful read yet';
-  else detail='';
-  h+=_liLigne(majRecente?true:(_rtDerniereMaj?null:false),
-      fr?'Dernière nouvelle reçue':'Last update received',
-      _ilYA(_rtDerniereMaj)+detail+(_rtVoie?(fr?' · voie : '+(_rtVoie==='session'?'session patron':'PIN'):''):''));
+  // avant même de l'atteindre, ou réussir et n'apporter aucune nouveauté.
+  // « Rien de nouveau » n'est PAS une panne : c'est une boutique tranquille.
+  // Ce qui compte pour lui, c'est : est-ce que le téléphone entend encore ?
+  var lectOk=_rtDerniereLecture&&(Date.now()-_rtDerniereLecture<120000);
+  var refusApres=_rtDernierRefus>_rtDerniereLecture;
+  var etat,detail;
+  if(refusApres){
+    etat=false;
+    detail=fr?'Le serveur a refusé la dernière lecture ('+(pinOk?'clé rejetée':'clé trop courte')+') — déconnecte-toi et reconnecte-toi'
+             :'Last read refused';
+  }else if(lectOk||_rtDerniereLecture){
+    etat=lectOk?true:null;
+    detail=(_rtDerniereMaj
+      ?(fr?'Dernière vente reçue '+_ilYA(_rtDerniereMaj):'Last sale received '+_ilYA(_rtDerniereMaj))
+      :(fr?'Rien de nouveau pour l\'instant — c\'est normal si personne d\'autre ne vend'
+          :'Nothing new yet'))
+      +(fr?' · vérifié '+_ilYA(_rtDerniereLecture):'')
+      +(_rtVoie?(fr?' · voie : '+(_rtVoie==='session'?'session patron':'PIN'):''):'');
+  }else if(_rtDernierEssai){
+    etat=null;
+    detail=fr?'Première lecture en cours…':'First read in progress…';
+  }else{
+    etat=null;
+    detail=fr?'Pas encore vérifié depuis l\'ouverture':'Not checked yet';
+  }
+  h+=_liLigne(etat,
+      fr?'Nouvelles des autres téléphones':'News from other phones',
+      detail);
   h+=_liLigne('info',
       fr?'Cette boutique':'This shop',
       ((DB&&DB.cfg&&DB.cfg.nom)||'—')+' · '+((DB&&DB.cfg&&DB.cfg.code)||'—')+' · '
       +(role==='patron'?(fr?'patron':'owner'):(fr?'vendeur '+(nomVendeur||''):'seller')));
   box.innerHTML=h;
   var r=document.getElementById('li-resume');
-  var toutVa=lie&&pinOk&&canalOk&&surv;
+  // Le bandeau doit dire la MÊME chose que les lignes : une lecture refusée
+  // est une panne, même si tout le reste est vert.
+  var toutVa=lie&&pinOk&&canalOk&&surv&&!refusApres;
   if(toutVa){r.style.background='#E8F5E9';r.style.color='#1B5E20';
     r.textContent='✅ '+(fr?'Tout circule. Une vente faite ailleurs arrive ici en 1 à 2 secondes.':'All good.');}
   else if(!enLigne){r.style.background='#FFF8E1';r.style.color='#B45309';
