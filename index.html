@@ -1525,6 +1525,28 @@ body{max-width:min(100%,1200px)}
           <button class="tog off" id="tog-recuauto" onclick="toggleRecuAuto()"></button>
         </div>
       </div>
+
+      <!-- ⚠️ MODE EXPERT — son idée, et c'est la bonne forme.
+           La comptabilité n'a rien à faire sous les yeux d'un commerçant qui
+           ne lit pas : elle encombrerait tout le monde pour servir quelques-uns.
+           Éteint par défaut, elle n'existe pas. Allumé, elle sort ce qu'un
+           comptable réclame. Le reste de l'app ne change pas d'un pixel. -->
+      <div class="stcd">
+        <div class="stit2" style="cursor:default">
+          <div class="stico" style="background:#EDE7F6">🎓</div>
+          <div class="stii"><div class="stitl" id="st-expert">Mode expert — comptabilité</div><div class="stisub" id="st-expert-s">Pour toi ou ton comptable. N'ajoute rien à l'écran de vente.</div></div>
+          <button class="tog off" id="tog-expert" onclick="toggleExpert()"></button>
+        </div>
+        <div id="bloc-expert" style="display:none;padding:2px 0 0">
+          <div style="background:#F3E5F5;border-radius:9px;padding:9px 11px;font-size:11px;font-weight:700;color:#4A148C;line-height:1.45;margin-bottom:9px" id="expert-avert">
+            ⚠️ Documents de travail à remettre à un comptable. Ce ne sont pas des déclarations fiscales, et ils n'ont été validés par aucun professionnel.
+          </div>
+          <button class="bpay" style="margin-bottom:9px" onclick="exporterLivreTresorerie()">📗 <span id="btn-livre">Livre de recettes-dépenses</span></button>
+          <button class="bpay" style="margin-bottom:9px" onclick="exporterDepenses()">📥 <span id="btn-dep-exp">Exporter les dépenses</span></button>
+          <button class="bpay" style="margin-bottom:9px" onclick="exportStockCSV()">📦 <span id="btn-stk-exp">Exporter le stock</span></button>
+          <button class="bpay" onclick="exportCSV()">🧾 <span id="btn-ven-exp">Exporter les ventes</span></button>
+        </div>
+      </div>
     </div>
     <!-- Mode veille -->
     <div class="stsc">
@@ -3142,7 +3164,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.6'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.7'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4910,6 +4932,7 @@ function appliquerLang(){
   document.getElementById('tog-veille').className='tog '+(DB.cfg.veille?'on':'off');
   var _tne2=document.getElementById('tog-noemoji');if(_tne2)_tne2.className='tog '+(DB.cfg.noEmoji?'on':'off');
   var _tra=document.getElementById('tog-recuauto');if(_tra)_tra.className='tog '+(DB.cfg.recuAuto?'on':'off');
+  try{majExpert();}catch(e){}
   var _sne=document.getElementById('st-noemoji');if(_sne)_sne.textContent=lang==='fr'?'Masquer les emojis':'Hide emojis';
   var _sne2=document.getElementById('st-noemoji-s');if(_sne2)_sne2.textContent=lang==='fr'?'Remplace les emojis par une pastille sobre (initiale)':'Replace emojis with a plain tile (initial)';
   // Biométrie — bouton visible si activée, toggle synchronisé
@@ -13486,6 +13509,136 @@ function exportCSV(){
   historyFiltered.forEach(function(v){rows.push([v.date,getSaleHeure(v),v.vendeur||'Patron',saleLinesLabel(v),v.total||0,getSaleBenef(v),v.annulee?'Annulée':'Validée']);});
   telechargerTableExcel(rows,'historique_ventes.xls');
   showToast('✅ '+(lang==='fr'?'Historique exporté !':'History exported!'));
+}
+// ══════════════════════════════════════════════════════════════════
+//  LIVRE DE RECETTES-DÉPENSES  (forme du SMT — OHADA)
+//
+//  Sa question : « peut-on instaurer une extraction des fichiers essentiels
+//  à l'analyse financière ou à la comptabilité, peut-être en activant un
+//  mode expert ? »
+//
+//  Le Système Minimal de Trésorerie de l'OHADA — celui qui s'applique aux
+//  TPE, et que le CGI camerounais réclame à l'IGS au-dessus de 10 M de CA —
+//  ne demande QUE deux pièces : un livre de recettes-dépenses et un état de
+//  rapprochement bancaire. La seconde ne concerne pas un commerçant sans
+//  compte en banque. La première, l'app la porte déjà, en morceaux.
+//
+//  ⚠️ UNE COMPTABILITÉ DE TRÉSORERIE COMPTE L'ARGENT REÇU, PAS LES VENTES.
+//  C'est toute la difficulté, et s'y tromper fausse le livre entier :
+//    · vente en espèces / mobile / mixte -> recette du jour, en entier ;
+//    · vente à CRÉDIT -> SEULE L'AVANCE est une recette. Le dû ne l'est pas
+//      tant qu'il n'est pas payé ;
+//    · remboursement d'un client -> recette au jour du paiement ;
+//    · dépense -> décaissement.
+//  Le bénéfice n'y figure PAS : ce n'est pas une notion de trésorerie, et
+//  l'y mêler donnerait un document qui a l'air comptable et qui est faux.
+//
+//  ⚠️ CE N'EST PAS UNE DÉCLARATION. C'est une EXTRACTION à poser sur la
+//  table d'un comptable. L'en-tête le dit noir sur blanc : je n'ai pas lu
+//  le texte officiel de l'AUDCIF, et un document qui se prétend conforme et
+//  qui ne l'est pas coûte une pénalité à quelqu'un qui m'a fait confiance.
+// ══════════════════════════════════════════════════════════════════
+function _jourTri(d){
+  // « 05/09/2026 » -> « 2026-09-05 » pour trier. Format ISO laissé tel quel.
+  var s=String(d||'');
+  var m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m)return m[3]+'-'+m[2]+'-'+m[1];
+  return s.slice(0,10);
+}
+function _mouvementsTresorerie(){
+  var mv=[];
+  (DB.ventes||[]).forEach(function(v){
+    if(!v||v.annulee)return;
+    var p=v.paiement||{},t=Number(v.total)||0,recu=t,quoi='Vente';
+    if(p.mode==='credit'){
+      // Le dû n'est pas encaissé : il entrera au livre le jour du paiement.
+      recu=Number(p.avance)||0;
+      quoi='Vente à crédit (avance)';
+    }else if(p.mode==='mixte'){
+      recu=(Number(p.especes)||0)+(Number(p.mobile)||0);
+      quoi='Vente (espèces + mobile)';
+    }else if(p.mode==='mobile'){quoi='Vente (mobile money)';}
+    else{quoi='Vente (espèces)';}
+    if(recu>0)mv.push({j:_jourTri(v.date),d:v.date,h:v.h||v.heure||'',lib:quoi,
+      ref:(v.clientNom||v.vendeur||''),rec:recu,dep:0});
+  });
+  (DB.clients||[]).forEach(function(c){
+    ((c&&c.hist)||[]).forEach(function(x){
+      if(!x||x.type!=='payment')return;
+      var a=Number(x.amt)||0;if(a<=0)return;
+      mv.push({j:_jourTri(x.date),d:x.date,h:'',lib:'Remboursement client',ref:c.nm||'',rec:a,dep:0});
+    });
+  });
+  (DB.depenses||[]).forEach(function(x){
+    if(!x)return;var a=Number(x.amt)||0;if(a<=0)return;
+    mv.push({j:_jourTri(x.date),d:x.date,h:'',lib:'Dépense — '+(x.nm||''),
+      ref:(x.cat||'')+(x.vendeur?(' / '+x.vendeur):''),rec:0,dep:a});
+  });
+  mv.sort(function(a,b){return a.j<b.j?-1:a.j>b.j?1:(String(a.h)<String(b.h)?-1:1);});
+  return mv;
+}
+function exporterLivreTresorerie(){
+  var fr=(lang==='fr');
+  if(!DB){return;}
+  var mv=_mouvementsTresorerie();
+  if(!mv.length){showToast('⚠️ '+(fr?'Rien à extraire pour le moment':'Nothing to extract yet'));return;}
+  var s=DB.cfg.s||'';
+  var rows=[];
+  rows.push([(fr?'LIVRE DE RECETTES-DÉPENSES':'CASH RECEIPTS & PAYMENTS BOOK'),'','','','','']);
+  rows.push([(fr?'Boutique':'Shop'),DB.cfg.nom||'',(fr?'Code':'Code'),DB.cfg.code||'','','']);
+  rows.push([(fr?'Période':'Period'),mv[0].d+' → '+mv[mv.length-1].d,(fr?'Devise':'Currency'),s,'','']);
+  rows.push([(fr?'Édité le':'Issued'),new Date().toLocaleDateString('fr-FR'),'','','','']);
+  rows.push(['','','','','','']);
+  rows.push([(fr?'⚠️ Document de travail à remettre à un comptable. Ce n\'est pas une déclaration fiscale et il n\'a pas été validé par un professionnel.'
+               :'⚠️ Working document for an accountant. Not a tax return; not reviewed by a professional.'),'','','','','']);
+  rows.push([(fr?'Les ventes à crédit ne figurent ici que pour l\'avance encaissée. Le reste dû entrera au jour du remboursement.'
+               :'Credit sales appear only for the advance received. The balance enters on the day it is repaid.'),'','','','','']);
+  rows.push(['','','','','','']);
+  rows.push([(fr?'Date':'Date'),(fr?'Libellé':'Description'),(fr?'Référence':'Reference'),
+             (fr?'Recette':'Receipt'),(fr?'Dépense':'Payment'),(fr?'Solde':'Balance')]);
+  var solde=0,tr=0,td=0;
+  mv.forEach(function(m){
+    solde+=m.rec-m.dep;tr+=m.rec;td+=m.dep;
+    rows.push([m.d,m.lib,m.ref,m.rec?m.rec:'',m.dep?m.dep:'',Math.round(solde*100)/100]);
+  });
+  rows.push(['','','','','','']);
+  rows.push(['',(fr?'TOTAUX':'TOTALS'),'',Math.round(tr*100)/100,Math.round(td*100)/100,Math.round(solde*100)/100]);
+  telechargerTableExcel(rows,'livre_tresorerie_'+(DB.cfg.code||'boutique').replace(/\s/g,'')+'_'+isoJour()+'.xls');
+  showToast('📗 '+(fr?'Livre extrait — '+mv.length+' mouvements':'Book exported — '+mv.length+' entries'));
+}
+function exporterDepenses(){
+  var fr=(lang==='fr');
+  var dep=(DB&&DB.depenses)||[];
+  // ⚠️ Les dépenses étaient les SEULES données d'argent sans aucun export.
+  // Un livre de trésorerie sans les décaissements ne vaut rien.
+  if(!dep.length){showToast('⚠️ '+(fr?'Aucune dépense enregistrée':'No expenses recorded'));return;}
+  var rows=[[(fr?'Date':'Date'),(fr?'Libellé':'Description'),(fr?'Catégorie':'Category'),
+             (fr?'Montant':'Amount'),(fr?'Payé par':'Paid by'),(fr?'Caisse':'From till')]];
+  var tot=0;
+  dep.slice().sort(function(a,b){return _jourTri(a.date)<_jourTri(b.date)?-1:1;}).forEach(function(x){
+    var a=Number(x.amt)||0;tot+=a;
+    rows.push([x.date||'',x.nm||'',x.cat||'',a,x.vendeur||'Patron',x.caisse?(fr?'oui':'yes'):'']);
+  });
+  rows.push(['','','','','','']);
+  rows.push(['',(fr?'TOTAL':'TOTAL'),'',Math.round(tot*100)/100,'','']);
+  telechargerTableExcel(rows,'depenses_'+(DB.cfg.code||'boutique').replace(/\s/g,'')+'_'+isoJour()+'.xls');
+  showToast('📥 '+(fr?'Dépenses exportées':'Expenses exported'));
+}
+function toggleExpert(){
+  if(!DB||!DB.cfg)return;
+  DB.cfg.expert=!DB.cfg.expert;
+  save();
+  majExpert();
+  var fr=(lang==='fr');
+  showToast(DB.cfg.expert?('🎓 '+(fr?'Mode expert activé':'Expert mode on'))
+                         :('🎓 '+(fr?'Mode expert désactivé':'Expert mode off')));
+}
+function majExpert(){
+  var on=!!(DB&&DB.cfg&&DB.cfg.expert);
+  var t=document.getElementById('tog-expert');
+  if(t)t.className='tog '+(on?'on':'off');
+  var b=document.getElementById('bloc-expert');
+  if(b)b.style.display=on?'block':'none';
 }
 function exportStockCSV(){
   if(!DB||!DB.articles||!DB.articles.length){showToast('Aucun article à exporter');return;}
