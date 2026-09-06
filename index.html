@@ -3362,7 +3362,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.33'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.34'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3716,8 +3716,25 @@ async function syncToSupa(){
     // ⚠️ `discret` : cette lecture tourne en fond APRÈS chaque vente. Sans
     // elle, un refus faisait effacer le code et PARLER à voix haute — au
     // milieu d'une vente, à quelqu'un qui venait justement d'entrer.
-    var _fusionOk=false;
-    try{ if(navigator.onLine&&DB.cfg.code){ var _rem=await _lireAvantEcrire(DB.cfg.code); if(_rem){ DB=migrateDBData(mergeDB(DB,_rem));_artSnapApresFusion();_fusionOk=true; } } }catch(e){}
+    // ⚠️ LA COURSE QUI RESTAIT OUVERTE.
+    // Relire puis écrire laisse ~1 seconde entre les deux. Si l'autre
+    // téléphone écrit pendant ce temps, sa vente est effacée sans un mot.
+    // On retient donc la VERSION lue (`_revVu`) et on n'écrit que si le
+    // serveur y est encore. Sinon on relit, on refusionne, on recommence.
+    // Relire est aussi la première chose à faire après un conflit : c'est
+    // pour ça que c'est une fonction, appelée avant ET pendant la boucle.
+    var _fusionOk=false,_revVu=null;
+    var _relire=async function(){
+      try{
+        if(!navigator.onLine||!DB.cfg.code)return false;
+        var r=await _lireAvantEcrire(DB.cfg.code);
+        if(!r)return false;
+        _revVu=(r.cfg&&r.cfg._rev!=null)?String(r.cfg._rev):null;
+        DB=migrateDBData(mergeDB(DB,r));_artSnapApresFusion();
+        return true;
+      }catch(e){return false;}
+    };
+    _fusionOk=await _relire();
     // ⚠️⚠️ VOICI COMMENT DES VENTES DISPARAISSAIENT.
     // Cette relecture était enveloppée dans un try/catch VIDE, et l'écriture
     // suivait quoi qu'il arrive. Un hoquet réseau, une clé refusée, le frein
@@ -3745,6 +3762,11 @@ async function syncToSupa(){
     try{DB.cfg.build=APP_BUILD;}catch(e){}
     for(var attempt=0;attempt<3;attempt++){
       DB.cfg.code=formatShopCode(DB.cfg.code||genCode());
+      // Chaque écriture porte une version neuve. C'est elle que l'autre
+      // téléphone lira, et qu'il devra retrouver intacte pour écrire à son
+      // tour. Tirée au sort : deux téléphones ne doivent jamais tomber sur
+      // la même, un compteur qui repart de zéro le permettrait.
+      DB.cfg._rev=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
       var payload={
         nom:DB.cfg.nom||'Ma Boutique',
         code:DB.cfg.code,
@@ -3771,7 +3793,16 @@ async function syncToSupa(){
         var ownerExact=ownerRows.find(function(r){return normalizeShopCode(r.code)===normalizeShopCode(DB.cfg.code);})||null;
         if(ownerExact){
           if(!_fusionOk)return _refusEcrasement();   // boutique déjà au serveur : relue ou pas écrite
-          var updExact=await supa.from('boutiques').update(payload).eq('id',ownerExact.id);
+          // On n'écrit que si le serveur est encore sur la version qu'on a lue.
+          var _qe=supa.from('boutiques').update(payload).eq('id',ownerExact.id);
+          _qe=(_revVu==null)?_qe.is('data->cfg->>_rev',null):_qe.eq('data->cfg->>_rev',_revVu);
+          var updExact=await _qe.select('id');
+          if(!updExact.error&&(!updExact.data||!updExact.data.length)){
+            // Zéro ligne touchée = quelqu'un a écrit entre notre lecture et
+            // maintenant. On ne force pas : on relit, on refusionne, on refait.
+            if(!(await _relire()))return _refusEcrasement();
+            _fusionOk=true;continue;
+          }
           if(!updExact.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv1=document.getElementById('code-val');if(cv1)cv1.textContent=DB.cfg.code;return true;}
           if(String(updExact.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
           throw updExact.error;
@@ -3788,15 +3819,26 @@ async function syncToSupa(){
         // Le vendeur écrit TOUJOURS dans une boutique qui existe déjà : c'est
         // celle du patron. Sans relecture, ses ventes écrasent celles du patron.
         if(!_fusionOk)return _refusEcrasement();
-        var rpcSave=await supa.rpc('boutique_ecrire',{p_code:DB.cfg.code,p_pin:String(_shopPin),p_data:payload.data});
-        if(!rpcSave.error&&rpcSave.data===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
+        // boutique_ecrire2 porte le même verrou de version et répond en clair
+        // ({ok, motif}) au lieu d'un simple true/false : un CONFLIT ne doit
+        // pas être confondu avec un PIN refusé, il ne compte aucun échec.
+        var rpcSave=await supa.rpc('boutique_ecrire2',{p_code:DB.cfg.code,p_pin:String(_shopPin),p_data:payload.data,p_rev:_revVu});
+        var _rep=rpcSave&&rpcSave.data;
+        if(!rpcSave.error&&_rep&&_rep.motif==='conflit'){
+          if(!(await _relire()))return _refusEcrasement();
+          _fusionOk=true;continue;
+        }
+        if(!rpcSave.error&&_rep&&_rep.ok===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
         // Serveur temporairement fermé (trop de PIN faux) : les ventes restent
         // dans le téléphone et repartiront au prochain essai.
         if(rpcSave.error&&_signalerBlocagePin(rpcSave.error))throw new Error('PIN_BLOQUE');
         // Même piège qu'à la lecture : pas d'erreur, juste un refus muet.
         // Sans ce test, l'envoi était reprogrammé toutes les 800 ms et
         // chaque tentative comptait comme un PIN faux.
-        if(!rpcSave.error)_signalerPinRefuse();
+        // ⚠️ Seul un vrai refus de clé mérite l'alarme. Une boutique
+        // introuvable ou un conflit n'est PAS une clé refusée : effacer le
+        // code du téléphone dans ces cas-là, c'est le défaut du 06/09.
+        if(!rpcSave.error&&(!_rep||_rep.motif==='pin'))_signalerPinRefuse();
         throw new Error(lang==='fr'?'❌ Sync vendeur refusée (code ou PIN équipe)':'❌ Seller sync refused (code or team PIN)');
       }
       var byCode=await supa.from('boutiques').select('id,owner_id,code').eq('code',DB.cfg.code).limit(1);
@@ -3805,7 +3847,13 @@ async function syncToSupa(){
         var row=byCode.data[0];
         if(!row.owner_id||row.owner_id===((user&&user.id)||DB.cfg.ownerId)){
           if(!_fusionOk)return _refusEcrasement();   // idem : on n'écrase pas à l'aveugle
-          var updCode=await supa.from('boutiques').update(payload).eq('id',row.id);
+          var _qc=supa.from('boutiques').update(payload).eq('id',row.id);
+          _qc=(_revVu==null)?_qc.is('data->cfg->>_rev',null):_qc.eq('data->cfg->>_rev',_revVu);
+          var updCode=await _qc.select('id');
+          if(!updCode.error&&(!updCode.data||!updCode.data.length)){
+            if(!(await _relire()))return _refusEcrasement();
+            _fusionOk=true;continue;
+          }
           if(!updCode.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
           if(String(updCode.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
           throw updCode.error;
