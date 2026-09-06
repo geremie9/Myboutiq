@@ -3362,7 +3362,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.29'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.30'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3745,6 +3745,11 @@ async function syncToSupa(){
       return false;
     };
     DB.cfg._dev=_deviceId;
+    // Le diagnostic du 06/09 a buté sur ce trou : impossible de savoir quel
+    // commerçant tournait encore sur la version qui détruisait ses ventes.
+    // La boutique dit maintenant d'où elle écrit — ça ne coûte rien et ça
+    // permet de prévenir les bons téléphones le jour d'un défaut grave.
+    try{DB.cfg.build=APP_BUILD;}catch(e){}
     for(var attempt=0;attempt<3;attempt++){
       DB.cfg.code=formatShopCode(DB.cfg.code||genCode());
       var payload={
@@ -7004,6 +7009,16 @@ function ctxvAchat(){
   // Vide = « je ne sais pas ». On l'accepte : le rapport signalera le
   // bénéfice inconnu et proposera de le compléter plus tard.
   var n=t===''?0:(parseFloat(t.replace(',','.'))||0);
+  // ⚠️ CE CHEMIN N'AVAIT AUCUN CONTRÔLE. Le formulaire des articles demande
+  // depuis longtemps « c'est le prix du bidon ? » quand l'achat dépasse 3 fois
+  // la vente — les VARIANTES, elles, écrivaient le chiffre tel quel. C'est
+  // ainsi qu'un prix de gros devient un prix unitaire et fabrique un bénéfice
+  // faux (mesuré : −2,1 M sur une boutique qui encaisse 761 k).
+  if(n>0){
+    var corr=corrigerPrixGros(p.nm+' — '+v.nm,n,Number(v.px)||0,uniteArt(p));
+    if(corr===null)return;
+    n=corr;
+  }
   var av=v.pa;v.pa=n;
   journalAjouter('prix achat',p.nm+' — '+v.nm,fmt(av),n?fmt(n):(fr?'inconnu':'unknown'));
   _vApres();
@@ -10465,6 +10480,16 @@ function brSaveCurrent(){
       else if(inp.dataset.vf==='px')v.px=parseFloat(inp.value)||0;
       else if(inp.dataset.vf==='stk')definirStock(a,v,parseInt(inp.value,10)||0);
     });
+    // ⚠️ EN SECOND PASSAGE, une fois les DEUX prix posés. Dans la boucle
+    // ci-dessus, le prix de vente pouvait être écrit APRÈS le prix d'achat :
+    // la comparaison aurait porté sur l'ancien chiffre. Même garde que le
+    // formulaire des articles — un prix de gros ne devient pas un prix
+    // unitaire en silence.
+    a.vr.forEach(function(v){
+      if(!prixAchatAberrant(Number(v.pa)||0,Number(v.px)||0))return;
+      var _c=corrigerPrixGros(a.nm+(v.nm?' — '+v.nm:''),Number(v.pa)||0,Number(v.px)||0,uniteArt(a));
+      if(_c!==null)v.pa=_c;
+    });
     delete a._pendingVariantSetup;
     a.vr.forEach(function(v){if(v._img){v.img=v._img;delete v._img;}if(!v.nm)v.nm=a.nm;});
     delete a._srcName;if(a._autoNm&&txtNorm(a.nm)!==txtNorm(a._autoNm))delete a._autoNm;
@@ -13449,12 +13474,32 @@ function getSaleHeure(v){return v.heure||v.h||'00:00';}
 // Avant, vendre 2 000 F sans prix d'achat ajoutait 2 000 F au chiffre d'affaires ET
 // 2 000 F au bénéfice — l'app faisait croire que tout était gagné. Recalculé depuis
 // les lignes, donc les ventes déjà enregistrées sont corrigées elles aussi.
+// ══════════════════════════════════════════════════════════════════
+//  UN PRIX D'ACHAT IMPOSSIBLE — LE PRIX DU BIDON PRIS POUR CELUI DU LITRE
+//
+//  MESURÉ EN BASE, sa boutique « G » : chiffre d'affaires 761 504 F, et
+//  l'app lui annonçait un bénéfice de −2 106 146 F. On ne perd pas 2,7 fois
+//  ce qu'on encaisse.
+//  La source : « Huile d'arachide » vendue 800 F le litre, prix d'achat
+//  enregistré 50 000 F — le prix du BIDON. L'app calculait
+//  (800 − 50 000) × 6 = −295 200 F sur une vente de 4 800 F, et l'affichait
+//  comme un fait. 51 articles dans 18 boutiques sont dans ce cas.
+//
+//  RÈGLE : au-delà de 3 fois le prix de vente, ce n'est plus une vente à
+//  perte, c'est un prix de gros pris pour un prix unitaire. On ne compte
+//  alors RIEN — comme pour un prix d'achat manquant. Un bénéfice inconnu
+//  vaut mieux qu'un bénéfice faux ; c'est déjà la règle de la maison.
+//  Une vraie vente à perte (jusqu'au tiers du prix d'achat) reste comptée.
+// ══════════════════════════════════════════════════════════════════
+//  On réutilise `prixAchatAberrant` (déjà 3× à la saisie) plutôt que d'ouvrir
+//  un second seuil qui finirait par diverger du premier.
 function getSaleBenef(v){
   if(!v)return 0;
   if(Array.isArray(v.lignes)&&v.lignes.length){
     var b=0,connu=false;
     v.lignes.forEach(function(l){
       var pa=Number(l.pa)||0,px=Number(l.px)||0,q=Number(l.qte||l.qty)||0;
+      if(prixAchatAberrant(pa,px))return;   // prix de gros : on ne compte pas
       if(pa>0){b+=(px-pa)*q;connu=true;}
     });
     if(!connu)return 0;                                   // rien de connu : on n'invente pas un bénéfice
@@ -13481,29 +13526,47 @@ function getSaleBenef(v){
 //  sans lui donner le geste qui le complète, c'est l'inquiéter pour rien.
 //  Elle ouvre maintenant la liste des articles concernés, chacun d'un tap.
 // ══════════════════════════════════════════════════════════════════
+// Deux maux, un seul écran de réparation :
+//  · `manquant`  — aucun prix d'achat : le bénéfice n'est pas compté ;
+//  · `impossible` — prix du carton/bidon pris pour celui de l'unité : le
+//    bénéfice était compté, et FAUX. Celui-là passe en premier, c'est le
+//    seul des deux qui donne un chiffre mensonger.
+function _lignePosePb(l){
+  if(!l)return '';
+  var pa=Number(l.pa)||0,px=Number(l.px)||0;
+  if(prixAchatAberrant(pa,px))return 'impossible';
+  if(pa<=0)return 'manquant';
+  return '';
+}
 function _articlesSansPrixAchat(){
   var vus={},out=[];
   getCaisseSales().forEach(function(v){
     ((v&&v.lignes)||[]).forEach(function(l){
-      if(!l||(Number(l.pa)||0)>0)return;
+      var mal=_lignePosePb(l);
+      if(!mal)return;
       var p=(DB.articles||[]).find(function(x){return x.id==l.pid;});
-      if(!p||vus[p.id])return;
+      if(!p)return;
       // Une famille se répare variante par variante : on l'ouvre quand même,
       // l'écran Compléter sait présenter ses variantes.
-      vus[p.id]=1;
-      out.push({p:p,ca:0});
+      if(vus[p.id]){ if(mal==='impossible')vus[p.id].mal='impossible'; return; }
+      vus[p.id]={p:p,ca:0,mal:mal};
+      out.push(vus[p.id]);
     });
   });
   // Combien de chiffre d'affaires chaque article laisse dans l'ombre.
   out.forEach(function(o){
     getCaisseSales().forEach(function(v){
       ((v&&v.lignes)||[]).forEach(function(l){
-        if(!l||l.pid!=o.p.id||(Number(l.pa)||0)>0)return;
+        if(!l||l.pid!=o.p.id||!_lignePosePb(l))return;
         o.ca+=(Number(l.px)||0)*(Number(l.qte||l.qty)||0);
       });
     });
   });
-  out.sort(function(a,b){return b.ca-a.ca;});
+  // Les prix impossibles d'abord : ce sont eux qui faussaient les rapports.
+  out.sort(function(a,b){
+    if((a.mal==='impossible')!==(b.mal==='impossible'))return a.mal==='impossible'?-1:1;
+    return b.ca-a.ca;
+  });
   return out;
 }
 function ouvrirReparerBenefice(){
@@ -13525,9 +13588,14 @@ function ouvrirReparerBenefice(){
     c.innerHTML=l.map(function(o){
       var media=o.p.img?('<img src="'+o.p.img+'" style="width:34px;height:34px;border-radius:8px;object-fit:cover">')
                        :('<span style="font-size:22px">'+(o.p.e||'📦')+'</span>');
-      return '<div class="sit" style="cursor:pointer" onclick="reparerArticle('+o.p.id+')">'
+      var pire=(o.mal==='impossible');
+      var det=pire
+        ? (fr?'⚠️ prix d\'achat '+fmt(o.p.pa)+' pour une vente à '+fmt(o.p.px)+' — c\'est sûrement le prix du carton ou du bidon'
+             :'⚠️ cost '+fmt(o.p.pa)+' vs price '+fmt(o.p.px)+' — likely the wholesale price')
+        : (fr?'chiffre d\'affaires sans bénéfice connu : ':'revenue with unknown profit: ')+fmt(o.ca);
+      return '<div class="sit" style="cursor:pointer'+(pire?';background:#FFF8E1':'')+'" onclick="reparerArticle('+o.p.id+')">'
         +media+'<div class="siinf"><div class="sinm">'+o.p.nm+'</div>'
-        +'<div class="sidet">'+(fr?'chiffre d\'affaires sans bénéfice connu : ':'revenue with unknown profit: ')+fmt(o.ca)+'</div></div>'
+        +'<div class="sidet"'+(pire?' style="color:#B45309;font-weight:700"':'')+'>'+det+'</div></div>'
         +'<span style="font-size:13px;font-weight:800;color:var(--B)">'+(fr?'Corriger':'Fix')+' ›</span></div>';
     }).join('');
   }
