@@ -3210,7 +3210,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.10'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.11'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3582,6 +3582,25 @@ async function syncToSupa(){
           if(!updCode.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
           if(String(updCode.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
           throw updCode.error;
+        }
+        // ⚠️⚠️ « LA BOUTIQUE D'UN CLIENT QUI ÉTAIT RESTÉE SUR MON TÉLÉPHONE
+        //        EST ENTRÉE DANS LA LISTE DE MES BOUTIQUES. »
+        // VOICI COMMENT. Le code existe et appartient à QUELQU'UN D'AUTRE.
+        // L'app tirait alors un code neuf et INSÉRAIT — c'est-à-dire qu'elle
+        // CLONAIT la boutique du client sous le compte de celui qui synchronise.
+        // MESURÉ EN BASE : « Teko center » (11 articles) recopié sous son
+        // compte, et 7 boutiques créées en 17 secondes le 05/09 — la boucle
+        // recommence à chaque tentative.
+        // Ce repli n'a de sens que pour une boutique NEUVE dont le code tiré
+        // au sort tombe déjà pris. Une boutique qui porte déjà des données
+        // n'est pas neuve : si son code est à un autre, c'est qu'elle n'est
+        // pas à nous, et on ne la duplique pas — on s'arrête et on le dit.
+        var _aDesDonnees=((DB.articles||[]).length>0)||((DB.ventes||[]).length>0);
+        if(_aDesDonnees){
+          var _fr=(lang==='fr');
+          showToast('⛔ '+(_fr?'Cette boutique appartient à un autre compte — elle n\'a pas été copiée chez toi'
+                              :'This shop belongs to another account — it was not copied to yours'));
+          throw new Error('BOUTIQUE_AUTRUI');
         }
         DB.cfg.code=genCode();
         continue;
