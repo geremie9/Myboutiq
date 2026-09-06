@@ -192,7 +192,21 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .new-user-note{font-size:12px;color:rgba(255,255,255,.65);font-weight:700;line-height:1.45;margin-bottom:10px;text-align:center}
 
 /* ── HEADER ── */
-.mhdr{background:var(--P);padding:12px 15px 10px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+/* ── ⚠️ « IL NE FAUT PAS QUE JE DOIVE POUSSER L'ÉCRAN DE L'AUTRE CÔTÉ
+   POUR VOIR UNE CHOSE QUI EST CACHÉE LÀ-BAS. » ────────────────────────
+   MESURÉ sur 360×640, le téléphone de ses commerçants : la rangée de
+   boutons du haut sortait de 56 px, et le dernier était coupé. Six
+   boutons de 44 px (la taille tactile minimale) font déjà 299 px avec
+   leurs écarts — il ne reste rien pour le « Bonjour ».
+   On ne rétrécit pas les boutons : passer sous 44 px casserait l'autre
+   règle. On ne retire rien non plus. La rangée passe donc À LA LIGNE
+   quand elle ne tient pas : deux rangs sur un petit écran, et TOUT reste
+   visible sans jamais pousser l'écran de côté. */
+.mhdr{background:var(--P);padding:12px 15px 10px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;flex-wrap:wrap;gap:8px;overflow-x:hidden}
+.mhdr>div:first-child{min-width:0;flex:1 1 auto}
+.mhdr .hrgt{flex-wrap:wrap;justify-content:flex-end;max-width:100%}
+.hn{min-width:0}
+.hn>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hg{font-size:10px;color:rgba(255,255,255,.4);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .hn{font-size:17px;font-weight:800;color:#fff;display:flex;align-items:center;gap:5px}
 .rbdg{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:700}
@@ -2400,7 +2414,10 @@ body{max-width:min(100%,1200px)}
           <input class="pi sm" type="text" id="ainp-umnom" maxlength="12" placeholder="ex : tas" oninput="majChipsUmNom()">
         </div>
         <div class="pig" id="sac-row" style="display:none"><label class="pl" id="lbl-sac">Taille du sac / bidon</label><input class="pi" type="number" id="ainp-sac" inputmode="decimal" step="0.5" placeholder="ex : 50"></div>
-        <button class="bnxt" onclick="goAS(1)" id="btn-as0">→ Continuer</button>
+        <!-- ⚠️ Mesuré à 822 px sur un écran de 640 : le « Continuer » de la
+             création d'article était lui aussi sous le bord. Même règle
+             que partout : l'action principale reste sous le pouce. -->
+        <div class="pied-collant"><button class="bnxt" onclick="goAS(1)" id="btn-as0">→ Continuer</button></div>
       </div>
       <div class="pst" id="as1">
         <button class="bbk" onclick="goAS(0)">←</button>
@@ -2499,8 +2516,14 @@ body{max-width:min(100%,1200px)}
         </div>
         <div class="pig" id="stk-fourn-row"><label class="pl" id="lbl-fourn">Fournisseur</label><input class="pi sm" type="text" id="inp-fourn" placeholder="Optionnel"></div>
         <div id="stk-apercu" style="display:none;border-radius:9px;padding:8px 10px;font-size:12px;font-weight:800;margin-bottom:9px"></div>
-        <button class="bnxt" onclick="saveStk()" id="btn-save-stk">✅ <span id="lbl-enreg-stk">Enregistrer</span></button>
-        <button class="bvid" style="margin-top:7px" onclick="document.getElementById('stk-form').style.display='none'" id="btn-chg-art">← <span id="lbl-chg-art">Changer</span></button>
+        <!-- ⚠️ MESURÉ à 1130 px sur un écran de 640 : QUATRE CENT QUATRE-VINGT-DIX
+             pixels sous le bord, bien pire que l'écran Prix. Le commerçant
+             saisissait son entrée de stock et ne trouvait pas comment
+             valider. Même correction : le pied reste collé en bas. -->
+        <div class="pied-collant">
+          <button class="bnxt" onclick="saveStk()" id="btn-save-stk">✅ <span id="lbl-enreg-stk">Enregistrer</span></button>
+          <button class="bvid" style="margin-top:7px" onclick="document.getElementById('stk-form').style.display='none'" id="btn-chg-art">← <span id="lbl-chg-art">Changer</span></button>
+        </div>
       </div>
     </div>
   </div>  </div>
@@ -3325,7 +3348,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.24'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.25'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6983,6 +7006,37 @@ function _estBoisson(p){
   // Le rayon peut être mal rangé : le nom tranche aussi.
   return /jus|eau|soda|bi[eè]re|boisson|nectar|sirop|lait|vin|whisky|sucrerie|cola|malt/i.test(String(p.nm||''));
 }
+// ══════════════════════════════════════════════════════════════════
+//  « ET D'AUTRES ARTICLES QUI SE COMPORTENT AINSI »
+//
+//  Les boissons ne sont pas seules : l'huile se vend en bidon de 1, 5 ou
+//  20 L, le gel douche en 250 ou 500 ml, la peinture en 1 ou 5 L.
+//
+//  ⚠️ MAIS PAS PARTOUT. La leçon du « carton partout » vaut ici aussi :
+//  proposer une échelle sur un savon ou un sac de riz encombrerait pour
+//  rien. La règle se limite d'elle-même — l'échelle n'apparaît que si
+//  l'article PORTE DÉJÀ une contenance dans son nom, ou si c'est une
+//  boisson. « Huile végétale 1 L » en profite ; « Savon Azur » non.
+//
+//  Et l'échelle proposée suit l'unité qu'il emploie déjà : on ne propose
+//  pas 5 L à quelqu'un qui vend des flacons de 100 ml.
+// ══════════════════════════════════════════════════════════════════
+var FORMATS_PETITS=['30 ml','50 ml','75 ml','100 ml','150 ml','250 ml','500 ml','1 L'];
+function _echelleFormats(nm){
+  var s=String(nm||'');
+  // Millilitres employés = petits contenants (cosmétique, hygiène).
+  if(/\d+\s*ml\b/i.test(s))return FORMATS_PETITS;
+  return FORMATS_BOISSON;
+}
+function _aUneContenance(nm){
+  return /\d+[.,]?\d*\s*(cl|ml|l)\b\.?/i.test(String(nm||''));
+}
+// Vrai quand proposer une échelle de formats a du sens pour cet article.
+function _venduParFormat(p){
+  if(!p)return false;
+  if(_aUneContenance(p.nm))return true;
+  return _estBoisson(p);
+}
 // Le nom sans sa contenance : « Jus Fruitki 1 L » -> « Jus Fruitki ».
 function _nomSansFormat(nm){
   return String(nm||'').replace(/\s*\d+[.,]?\d*\s*(cl|CL|ml|ML|l|L)\b\.?/g,'').replace(/\s{2,}/g,' ').trim();
@@ -6990,7 +7044,7 @@ function _nomSansFormat(nm){
 function majFormatsVariante(p){
   var bloc=document.getElementById('var-formats-bloc'),box=document.getElementById('var-formats');
   if(!bloc||!box)return;
-  if(!_estBoisson(p)){bloc.style.display='none';box.innerHTML='';return;}
+  if(!_venduParFormat(p)){bloc.style.display='none';box.innerHTML='';return;}
   var fr=(lang==='fr');
   var t=document.getElementById('var-formats-t');
   if(t)t.textContent=fr?'FORMAT DE LA BOUTEILLE':'BOTTLE SIZE';
@@ -7001,7 +7055,7 @@ function majFormatsVariante(p){
     if(m)pris[txtNorm(m[0])]=1;
   });
   var base=_nomSansFormat(p.nm);
-  box.innerHTML=FORMATS_BOISSON.filter(function(f){return !pris[txtNorm(f)];}).map(function(f){
+  box.innerHTML=_echelleFormats(p.nm).filter(function(f){return !pris[txtNorm(f)];}).map(function(f){
     return '<button type="button" class="shct" onclick="choisirFormatVariante(\''+f+'\')">'+f+'</button>';
   }).join('');
   bloc.style.display=box.innerHTML?'block':'none';
@@ -10682,7 +10736,7 @@ function expSetGros(i,v){
 function _expChipsFormats(a,i){
   if(!a)return '';
   var faux={nm:a.nm,cat:(typeof a._cat==='number')?a._cat:categorieDepuisNomProduit(a.nm)};
-  if(!_estBoisson(faux))return '';
+  if(!_venduParFormat(faux))return '';
   var fr=(lang==='fr');
   var racine=txtNorm(_nomSansFormat(a.nm));
   if(!racine)return '';
@@ -10699,7 +10753,7 @@ function _expChipsFormats(a,i){
     var m=String(p.nm).match(/\d+[.,]?\d*\s*(cl|ml|l)\b/i);
     if(m)pris[txtNorm(m[0])]=1;
   });
-  var libres=FORMATS_BOISSON.filter(function(f){return !pris[txtNorm(f)];});
+  var libres=_echelleFormats(a.nm).filter(function(f){return !pris[txtNorm(f)];});
   if(!libres.length)return '';
   return '<div style="margin-top:5px" onclick="event.stopPropagation()">'
     +'<div style="font-size:9.5px;font-weight:800;color:var(--M);margin-bottom:3px">'
