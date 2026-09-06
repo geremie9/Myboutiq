@@ -1114,6 +1114,7 @@ body{max-width:min(100%,1200px)}
   <div class="ctxi" onclick="ctxRC()">📦 <span id="cx2">Reconfigurer prix</span></div>
   <div class="ctxi" onclick="ctxAV()">🔀 <span id="cx3">Ajouter variante</span></div>
   <div class="ctxi" onclick="ctxGros()">📦 <span id="cx3b">Vendre par carton</span></div>
+  <div class="ctxi" id="ctxi-cond" onclick="ctxCond()">✎ <span id="cxcond">Corriger le conditionnement</span></div>
   <div class="ctxi" id="ctxi-fam" onclick="ctxFam()">🔗 <span id="cx8">Mettre dans une famille</span></div>
   <div class="ctxi" onclick="ctxST()">➕ <span id="cx4">Entrée stock</span></div>
   <div class="ctxi" onclick="ctxPhoto()">🖼️ <span id="cx6">Changer photo</span></div>
@@ -3302,7 +3303,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.22'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.23'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6913,6 +6914,17 @@ function showCtx(e,p){
   document.getElementById('cx7').textContent=(lang==='fr'?'Vente en rupture':'Sell when out of stock')+' : '+(p.rt?(lang==='fr'?'✅ Activée':'✅ On'):(lang==='fr'?'⛔ Désactivée':'⛔ Off'));
   document.getElementById('cx8').textContent=lang==='fr'?'Mettre dans une famille':'Put into a family';
   var _cf=document.getElementById('ctxi-fam');if(_cf)_cf.style.display=(p.vr.length||estMesure(p))?'none':'flex';
+  var _cc=document.getElementById('cxcond');
+  if(_cc){_cc.textContent=lang==='fr'?('Corriger : '+_motContenant(p)):('Fix: '+_motContenant(p));
+    _cc.parentElement.style.display=(Number(p.umSac)>1)?'flex':'none';}
+  // L'entrée de correction ne s'affiche que s'il Y A un conditionnement à
+  // corriger — sinon c'est une ligne de plus qui ne sert à rien.
+  var _cc=document.getElementById('cxcond');
+  if(_cc){
+    _cc.textContent=lang==='fr'?('Corriger : '+_motContenant(p)+(Number(p.umSac)>1?(' de '+fmtQ(p.umSac)):''))
+                               :('Fix: '+_motContenant(p));
+    _cc.parentElement.style.display=(Number(p.umSac)>1)?'flex':'none';
+  }
   document.getElementById('cx5').textContent=lang==='fr'?'Supprimer':'Delete';
   setTimeout(function(){document.addEventListener('click',function h(){document.getElementById('ctxm').classList.remove('show');document.removeEventListener('click',h);});},100);
 }
@@ -7082,6 +7094,7 @@ function mettreDansFamille(artId,cibleId){
   showToast('🔗 '+a.nm+' → '+t.nm+' ('+t.vr.length+' '+(fr?'variantes':'variants')+')');
 }
 function ctxGros(){if(!artCtx)return;var id=artCtx.id;document.getElementById('ctxm').classList.remove('show');setTimeout(function(){vendreGrosVariante(id);},180);}
+function ctxCond(){if(!artCtx)return;var id=artCtx.id;document.getElementById('ctxm').classList.remove('show');setTimeout(function(){corrigerConditionnement(id);},180);}
 function ctxST(){if(!artCtx)return;selArtStk(artCtx);document.getElementById('ov-stk').classList.add('show');}
 function ctxDL(){if(!artCtx)return;if(confirm((lang==='fr'?'Supprimer ':'Delete ')+'"'+artCtx.nm+'" ?')){sauvegarderAvant((lang==='fr'?'avant de supprimer ':'before deleting ')+artCtx.nm);if(!Array.isArray(DB.suppr))DB.suppr=[];DB.suppr.push(artCtx.id);journalAjouter('suppr',artCtx.nm,(lang==='fr'?'stock '+fmtQ(getStk(artCtx)):'stock '+fmtQ(getStk(artCtx))),'');DB.articles=DB.articles.filter(function(a){return a.id!==artCtx.id;});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();showToast('🗑️ '+artCtx.nm);}}
 function ouvrirNeg(p,v){negEnCours={p,v};
@@ -7936,23 +7949,49 @@ function grosChoisirMot(m){_grosMot=m;_grosRenderMots();majApercuGros();
   var q=document.getElementById('gros-q');
   if(q)q.textContent=fr?('Combien de '+_uniteMot(p)+' dans un '+m+' ?'):('How many '+_uniteMot(p)+' in one '+m+'?');
 }
-function direTailleGros(e,pid){
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️ « SI POUR LES PERSONNES QUI VENDENT PAR PALETTES ON LES MET PAR
+//     CARTON PAR ERREUR, COMMENT MODIFIER ? »
+//
+//  On ne pouvait PAS. Une fois « carton de 24 » enregistré, vendreGros
+//  vendait directement et l'écran des mots ne se rouvrait jamais. Le
+//  commerçant restait avec une erreur qu'il voyait tous les jours.
+//
+//  Le même écran sert donc à CORRIGER : mode `_grosEdition`, prérempli
+//  avec ce qu'il avait dit, et il repart de là.
+// ══════════════════════════════════════════════════════════════════
+var _grosEdition=false;
+function corrigerConditionnement(pid){
+  var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
+  if(role!=='patron'&&!hasPerm('produits')){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  direTailleGros(null,pid,true);
+}
+function direTailleGros(e,pid,edition){
   if(e)e.stopPropagation();
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
-  if(venteVerrouillee&&venteVerrouillee())return;
+  if(!edition&&venteVerrouillee&&venteVerrouillee())return;
   var fr=(lang==='fr');
+  _grosEdition=!!edition;
   _grosArt=p;_grosMot=_motContenant(p);
-  document.getElementById('gros-tit').textContent='📦 '+(fr?'Vendre par '+_grosMot:'Sell by the '+_grosMot);
+  var n=Number(p.umSac)||0;
+  document.getElementById('gros-tit').textContent=edition
+    ? ('📦 '+(fr?'Comment tu l\'achètes':'How you buy it'))
+    : ('📦 '+(fr?'Vendre par '+_grosMot:'Sell by the '+_grosMot));
   document.getElementById('gros-art').textContent=p.nm;
   document.getElementById('gros-q').textContent=fr?('Combien de '+_uniteMot(p)+' dans un '+_grosMot+' ?')
                                                   :('How many '+_uniteMot(p)+' in one '+_grosMot+'?');
-  document.getElementById('gros-inp').value='';
+  // En correction, on remet ce qu'il avait dit : il corrige au lieu de
+  // tout retaper, et il VOIT ce que l'app croyait savoir.
+  document.getElementById('gros-inp').value=(edition&&n>1)?String(n):'';
   document.getElementById('gros-apercu').textContent='';
   document.getElementById('gros-lbl').textContent=fr?'Un autre nombre':'Another number';
-  document.getElementById('gros-add').textContent=fr?'Ajouter au panier':'Add to cart';
+  document.getElementById('gros-add').textContent=edition
+    ? (fr?'Enregistrer':'Save')
+    : (fr?'Ajouter au panier':'Add to cart');
   _grosRenderMots();
+  if(edition&&n>1)majApercuGros();
   document.getElementById('ov-gros').classList.add('show');
-  try{parler(fr?('Combien de '+_uniteMot(p)+' dans un '+_grosMot+' ?'):'');}catch(x){}
+  if(!edition){try{parler(fr?('Combien de '+_uniteMot(p)+' dans un '+_grosMot+' ?'):'');}catch(x){}}
 }
 function grosRapide(n){
   var i=document.getElementById('gros-inp');if(!i)return;
@@ -7975,11 +8014,39 @@ function validerGros(){
   if(!(n>1)){showToast('⚠️ '+(fr?'Dis combien il y en a dedans':'Say how many are inside'));return;}
   n=Math.round(n*100)/100;
   var mot=_grosMot||_motContenant(p);
+  var avMot=p.umCont||'',avN=Number(p.umSac)||0;
   p.umSac=n;p.umCont=mot;
-  journalAjouter('conditionnement',p.nm,'',mot+' de '+fmtQ(n));
+  journalAjouter('conditionnement',p.nm,(avN>1?(avMot+' de '+fmtQ(avN)):''),mot+' de '+fmtQ(n));
+  // ⚠️ LA CORRECTION DOIT ATTEINDRE LE LOT DÉJÀ CRÉÉ.
+  // Sans ça, l'article dirait « palette de 24 » pendant que sa variante
+  // continuerait de s'appeler « carton de 24 » et de retirer l'ancien
+  // nombre. Une correction à moitié faite est pire que pas de correction :
+  // les deux écrans se contrediraient.
+  var lots=(p.vr||[]).filter(function(v){return getQBase(v)>1;});
+  if(_grosEdition&&lots.length===1){
+    var lot=lots[0];
+    var ancien=lot.nm||'';
+    // On ne renomme que si le nom portait l'ancien conditionnement :
+    // un nom qu'il a écrit lui-même ne doit pas être réécrit.
+    if(!avMot||txtNorm(ancien).indexOf(txtNorm(avMot))>=0||txtNorm(ancien).indexOf(txtNorm(_motContenant(p)))>=0){
+      var racine=_nomSansFormat(p.nm)||p.nm;
+      lot.nm=(fr?(mot+' de '+fmtQ(n)):(mot+' of '+fmtQ(n)));
+      journalAjouter('nom',p.nm,ancien,lot.nm);
+    }
+    if(Number(lot.qBase)!==n){
+      lot.qBase=n;
+      journalAjouter('conditionnement',p.nm+' — '+lot.nm,String(avN||''),String(n));
+    }
+  }
   save();
   closeSheet('ov-gros');
+  try{mettreEnAvant(p.id);}catch(e){}
   try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+  if(_grosEdition){
+    _grosEdition=false;
+    showToast('✅ '+p.nm+' — '+mot+' de '+fmtQ(n));
+    return;
+  }
   _ajouterLot(p,n);
 }
 function updatePUI(pid){
