@@ -3362,7 +3362,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.30'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.31'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3672,14 +3672,7 @@ async function signUpOwnerAuth(phone,pin){
 // partait quand même.
 // ═══════════════════════════════════════════════════════════════════
 async function _lireAvantEcrire(code){
-  var cles=[];
-  try{var pp=_pinPatronDispo();if(pp)cles.push(pp);}catch(e){}
-  try{if(_shopPin&&String(_shopPin).length>=4&&cles.indexOf(String(_shopPin))<0)cles.push(String(_shopPin));}catch(e){}
-  try{var pv=(DB&&DB.cfg&&DB.cfg.pinVendeur)||'';if(pv&&String(pv).length>=4&&cles.indexOf(String(pv))<0)cles.push(String(pv));}catch(e){}
-  for(var i=0;i<cles.length;i++){
-    try{var d=await loadFromSupa(code,cles[i],true);if(d)return d;}catch(e){}
-  }
-  return null;
+  try{return await _lireBoutique(code,true);}catch(e){return null;}
 }
 async function syncToSupa(){
   // ⚠️ RÈGLE 2 DE LA BOUTIQUE D'EXEMPLE : elle ne quitte JAMAIS le téléphone.
@@ -3998,12 +3991,19 @@ function _signalerBlocagePin(err){
   var i=m.indexOf('PIN_BLOQUE:');
   if(i<0)return false;
   var sec=parseInt(m.slice(i+11),10)||60;
+  var dejaBloque=(_pinBloqueJusqu&&Date.now()<_pinBloqueJusqu);
   _pinBloqueJusqu=Date.now()+sec*1000;
   var fr=lang==='fr';
   var min=Math.ceil(sec/60);
-  showToast('🚫 '+(fr
-    ? 'Trop de PIN faux. Réessaie dans '+(sec<90?(sec+' secondes'):(min+' minutes'))+'.'
-    : 'Too many wrong PINs. Try again in '+(sec<90?(sec+' seconds'):(min+' minutes'))+'.'));
+  // « UN MESSAGE EXCESSIF DIT TOUJOURS TROP DE FAUX MOT DE PASSE. »
+  // Il avait raison : la synchro de fond retente sans cesse, et CHAQUE refus
+  // relançait le même avertissement. On ne le dit qu'UNE fois par fermeture —
+  // le répéter n'apprend rien de neuf et donne l'impression que l'app s'affole.
+  if(!dejaBloque){
+    showToast('🚫 '+(fr
+      ? 'Trop de PIN faux. Réessaie dans '+(sec<90?(sec+' secondes'):(min+' minutes'))+'.'
+      : 'Too many wrong PINs. Try again in '+(sec<90?(sec+' seconds'):(min+' minutes'))+'.'));
+  }
   return true;
 }
 function attentePinRestante(){
@@ -14703,34 +14703,69 @@ var _rtDerniereLecture=0;
 // dans l'équipe. Un hoquet réseau suffisait, et c'était définitif.
 // On ne se contente plus d'UNE clé : on essaie toutes celles que cet
 // appareil possède avant de renoncer.
-async function _lirePourMoi(code){
+// ⚠️⚠️ MON ÉCHELLE DE CLÉS BRÛLAIT LE COMPTEUR DU SERVEUR.
+// En 21.27 j'ai fait essayer TROIS clés à chaque lecture pour qu'une clé
+// effacée ne condamne plus la boutique. Mais le serveur compte CHAQUE clé
+// refusée comme un mot de passe faux. Trois clés × une lecture toutes les
+// 20 s + une avant chaque envoi = le verrou anti-force-brute se referme sur
+// le commerçant lui-même.
+// MESURÉ sur sa boutique « G » le 06/09 : l'appareil 102.244.35.107 totalise
+// 8 échecs et AUCUN succès ; bloqué à 20:57. Et le message « Trop de PIN
+// faux » repartait à chaque tentative — d'où « un message excessif ».
+//
+// TROIS RÈGLES, une seule fonction pour tout le monde :
+//  1. le patron a une SESSION serveur : on lit par là, sans PIN, et ça ne
+//     compte AUCUN échec. C'est la voie qui marchait déjà (l'écran affiche
+//     « voie : session patron » en vert) — mais l'envoi ne s'en servait pas ;
+//  2. quand une clé a marché, on n'essaie QU'ELLE. L'échelle ne sert qu'une
+//     fois, quand on n'a encore rien qui marche ;
+//  3. une clé refusée est mise de côté 5 minutes, et tant que le serveur est
+//     fermé on ne frappe plus du tout à la porte.
+var _cleQuiMarche=null,_clesRefusees={},_PAUSE_CLE=300000;
+function _clesAEssayer(){
+  var out=[];
+  function add(k){
+    if(k==null)return;k=String(k);
+    if(k.length<4||out.indexOf(k)>=0)return;
+    var t=_clesRefusees[k];
+    if(t&&(Date.now()-t)<_PAUSE_CLE)return;   // refusée à l'instant : on n'insiste pas
+    out.push(k);
+  }
+  add(_cleQuiMarche);
+  // Une clé connue bonne suffit : toute clé en plus est un échec de plus.
+  if(out.length)return out;
+  add(_shopPin);
+  try{add(_pinPatronDispo());}catch(e){}
+  try{add(DB&&DB.cfg&&DB.cfg.pinVendeur);}catch(e){}
+  return out;
+}
+async function _lireBoutique(code,discret){
   if(role==='patron'){
     try{
       var d=await loadOwnerBoutiqueFromSupa(code);
       if(d){_rtVoie='session';return d;}
     }catch(e){}
   }
-  var cles=[];
-  if(_shopPin&&String(_shopPin).length>=4)cles.push(String(_shopPin));
-  try{
-    var pp=_pinPatronDispo();
-    if(pp&&cles.indexOf(pp)<0)cles.push(pp);
-  }catch(e){}
-  try{
-    var pv=(DB&&DB.cfg&&DB.cfg.pinVendeur)||'';
-    if(pv&&String(pv).length>=4&&cles.indexOf(String(pv))<0)cles.push(String(pv));
-  }catch(e){}
+  // Serveur fermé pour excès de PIN faux : frapper encore ne fait que
+  // prolonger la fermeture. On attend, et l'écran de liaison le dit.
+  if(typeof _pinBloqueJusqu!=='undefined'&&_pinBloqueJusqu&&Date.now()<_pinBloqueJusqu){_rtVoie='';return null;}
+  var cles=_clesAEssayer();
   for(var i=0;i<cles.length;i++){
-    var f=await loadFromSupa(code,cles[i]);
+    var f=await loadFromSupa(code,cles[i],discret);
     if(f){
-      // Cette clé marche : on la garde pour les prochaines lectures.
-      _shopPin=cles[i];
-      _rtVoie='pin';
+      _cleQuiMarche=cles[i];_shopPin=cles[i];_rtVoie='pin';
+      delete _clesRefusees[cles[i]];
       return f;
     }
+    _clesRefusees[cles[i]]=Date.now();
   }
   _rtVoie='';
   return null;
+}
+async function _lirePourMoi(code){
+  // Lecture de fond : discrète. Un refus se voit dans « État de la liaison »,
+  // il ne doit pas parler par-dessus une vente en cours.
+  return await _lireBoutique(code,true);
 }
 var _rtVoie='',_rtEchoIgnore=0;
 async function _rtRefetch(code){
@@ -14866,6 +14901,14 @@ function majLiaison(){
   h+=_liLigne(etat,
       fr?'Nouvelles des autres téléphones':'News from other phones',
       detail);
+  // Serveur fermé pour excès de PIN faux : la vraie cause quand plus rien ne
+  // circule. Elle se lit ICI, une fois, au lieu d'un avertissement qui repart
+  // toutes les secondes.
+  var att=(typeof attentePinRestante==='function')?attentePinRestante():0;
+  if(att>0)h+=_liLigne(false,
+      fr?'Serveur fermé un instant':'Server closed briefly',
+      fr?'Trop de codes faux ont été essayés. Ça rouvre dans '+att+' s. Si ça revient souvent, le vendeur n\'a pas le bon code équipe — refais-en un dans Réglages → Équipe.'
+        :'Too many wrong codes. Reopens in '+att+' s.');
   // Un envoi retenu pour protéger le serveur : il doit le voir, sinon on
   // retombe dans le défaut d'origine — une panne qui ne dit pas son nom.
   var retenu=_syncRefusEcrasement&&(Date.now()-_syncRefusEcrasement<300000);
