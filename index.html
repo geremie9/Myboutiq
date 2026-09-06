@@ -3362,7 +3362,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.31'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.32'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5751,8 +5751,19 @@ function memoriserSesBoutiques(liste){
 }
 // Code équipe = 2e facteur pour les vendeurs. Créé une fois, à dire de VIVE VOIX
 // (jamais dans le lien WhatsApp, sinon le lien transféré rouvrirait la porte).
+// ⚠️⚠️ « DANS CE CAS, PAS DE GÉNÉRATION DE CODE D'ÉQUIPE. ÇA RESTE UNIQUE
+//        ET UN SEUL. » — il a raison, et voici pourquoi c'était dangereux.
+// Cette fonction est appelée à CHAQUE connexion du patron et chaque fois
+// qu'il touche « 👁️ Voir ». Sur une boutique qui n'avait pas encore de code,
+// elle en TIRAIT UN AU SORT en silence, puis `save()` programmait une
+// synchro. Si cette synchro échouait — et elle a échoué toute la soirée du
+// 06/09 — le patron lisait à son vendeur un code que le serveur n'a jamais
+// reçu. C'est l'empreinte du serveur qui décide, pas le téléphone.
+// Elle ne fabrique donc plus RIEN. Poser un code est devenu un geste
+// explicite du patron, et il n'est annoncé qu'une fois le serveur vérifié.
+// Renvoie true si un code utilisable existe sur cet appareil.
 function assurerPinVendeur(){
-  if(!DB||!DB.cfg)return;
+  if(!DB||!DB.cfg)return false;
   if(!DB.cfg.pinVendeur||String(DB.cfg.pinVendeur).length<4){
     // ⚠️ NE JAMAIS EN INVENTER UN NOUVEAU EN SILENCE.
     // Si un code a déjà été posé pour cette boutique, son absence ici veut
@@ -5762,17 +5773,10 @@ function assurerPinVendeur(){
     // serveur : tout le monde dehors, sans un mot.
     // Le serveur ne peut pas nous le redonner (il n'en garde que l'empreinte).
     // On le dit donc au patron, et c'est lui qui décide d'en créer un.
-    if(DB.cfg.pvPose){
-      var fr=(lang==='fr');
-      showToast('🔑 '+(fr?'Le code équipe n\'est plus sur ce téléphone — ouvre « Mon équipe » pour en créer un nouveau'
-                         :'The team code is no longer on this phone — open "My team" to create a new one'));
-      return;
-    }
-    var n=String(Math.floor(1000+Math.random()*9000));
-    if(String(n)===String(DB.cfg.pin))n=String((parseInt(n,10)+1)%10000).padStart(4,'0');
-    DB.cfg.pinVendeur=n;
-    DB.cfg.pvPose=1;   // marque qu'un code a existé pour cette boutique
-  }else if(!DB.cfg.pvPose){DB.cfg.pvPose=1;}
+    return false;   // aucun code ici — on n'en invente pas, le patron décide
+  }
+  if(!DB.cfg.pvPose)DB.cfg.pvPose=1;
+  return true;
 }
 // Le patron décide explicitement d'un nouveau code équipe. C'est le SEUL
 // chemin qui remplace un code que des vendeurs connaissent peut-être déjà —
@@ -5781,17 +5785,61 @@ function creerNouveauCodeEquipe(){
   if(!DB||!DB.cfg)return;
   var fr=(lang==='fr');
   if(role!=='patron'){showToast('⛔ '+(fr?'Réservé au patron':'Patron only'));return;}
-  var nb=((DB.equipe||[]).length)||0;
-  if(!confirm((fr?'Créer un NOUVEAU code équipe ?':'Create a NEW team code?')+'\n\n'
-    +(fr?('Tes '+nb+' vendeurs devront apprendre le nouveau code. L\'ancien ne marchera plus.')
-        :('Your '+nb+' sellers will have to learn the new code. The old one stops working.'))))return;
+  var nb=((DB.equipe||[]).filter(function(m){return m&&m.role!=='patron';}).length)||0;
+  // Poser le premier code et en REMPLACER un ne coûtent pas la même chose.
+  // Le premier n'enferme personne dehors ; le second, si. On ne pose donc
+  // pas la même question — et le code, une fois posé, n'est plus jamais
+  // remplacé tout seul, nulle part.
+  var premier=!DB.cfg.pvPose;
+  if(!confirm(premier
+    ?((fr?'Poser le code équipe ?':'Set the team code?')+'\n\n'
+      +(fr?'Un seul code pour toute la boutique. Tu le diras de vive voix à tes vendeurs. Il ne changera plus tout seul.'
+          :'One code for the whole shop. Say it out loud to your sellers.'))
+    :((fr?'REMPLACER le code équipe ?':'REPLACE the team code?')+'\n\n'
+      +(fr?('Tes '+nb+' vendeurs ne pourront plus entrer tant qu\'ils n\'auront pas appris le nouveau. À ne faire que si un vendeur est parti, ou si le code a fuité.')
+          :('Your '+nb+' sellers will be locked out until they learn the new one.')))))return;
   var n=String(Math.floor(1000+Math.random()*9000));
   if(String(n)===String(DB.cfg.pin))n=String((parseInt(n,10)+1)%10000).padStart(4,'0');
   DB.cfg.pinVendeur=n;DB.cfg.pvPose=1;
   journalAjouter('code equipe',DB.cfg.nom||'',(fr?'perdu ou remplacé':'lost or replaced'),(fr?'nouveau code':'new code'));
-  save();
-  try{_teamCodeShown=false;revealTeamCode();}catch(e){}
-  showToast('🔑 '+(fr?'Nouveau code équipe : ':'New team code: ')+n+' — '+(fr?'dis-le de vive voix':'say it out loud'));
+  DB=migrateDBData(DB);persistDB(false);      // gardé ici, mais PAS encore annoncé
+  showToast('⏳ '+(fr?'Je vérifie auprès du serveur…':'Checking with the server…'));
+  _verifierPuisAnnoncerCodeEquipe(n);
+}
+// ⚠️⚠️ « MR H, PAS DE LIAISON. »
+// Le code était MONTRÉ au patron dès qu'il était tiré au sort, avant que le
+// serveur l'ait accepté. C'est l'empreinte du serveur qui décide, et elle ne
+// change que si l'écriture passe. Quand l'écriture échouait — et elle a
+// échoué toute la soirée du 06/09 — le patron lisait à son vendeur un code
+// que le serveur n'avait JAMAIS entendu. Le vendeur le tapait, se faisait
+// refuser, et chaque essai rapprochait la boutique du verrou.
+// MESURÉ : deux téléphones, 6 et 5 échecs, AUCUN succès, jamais entrés.
+//
+// On ne l'annonce donc plus sur une intention, mais sur une PREUVE : le
+// serveur a écrit, puis il ouvre réellement la porte avec ce code — le geste
+// exact que le vendeur va faire.
+async function _verifierPuisAnnoncerCodeEquipe(n){
+  var fr=(lang==='fr');
+  var ok=false;
+  try{ ok=(await syncToSupa())===true; }catch(e){}
+  if(ok){
+    // La seule preuve qui compte : essayer la porte avec ce code.
+    // On remet ensuite la clé du patron — sans ça, sa session redeviendrait
+    // celle d'un vendeur et il perdrait ses propres droits.
+    var gardeShop=_shopPin, gardeMarche=(typeof _cleQuiMarche!=='undefined')?_cleQuiMarche:null;
+    var porte=null;
+    try{ porte=await loadFromSupa(DB.cfg.code,n,true); }catch(e){}
+    _shopPin=gardeShop; if(typeof _cleQuiMarche!=='undefined')_cleQuiMarche=gardeMarche;
+    if(porte){
+      try{_teamCodeShown=false;revealTeamCode();}catch(e){}
+      showToast('🔑 '+(fr?'Nouveau code équipe : ':'New team code: ')+n+' — '+(fr?'le serveur l\'accepte, tu peux le dire de vive voix':'the server accepts it'));
+      return;
+    }
+  }
+  // Écriture ou vérification ratée : on ne fait PAS croire que le code marche.
+  showToast('⚠️ '+(fr
+    ?'Le nouveau code n\'est pas encore arrivé au serveur. NE LE DONNE PAS ENCORE — regarde « État de la liaison », puis recommence.'
+    :'The new code has not reached the server yet. Do NOT share it — check the connection screen.'));
 }
 async function loginV(){
   if(_refusePendantBlocage())return;
@@ -13350,10 +13398,25 @@ var _teamCodeShown=false;
 function masquerCodeEquipe(){_teamCodeShown=false;var v=document.getElementById('teamcode-val');if(v)v.textContent='••••';var b=document.getElementById('btn-teamcode-eye');if(b)b.textContent=lang==='fr'?'👁️ Voir':'👁️ Show';}
 function revealTeamCode(){
   if(!DB||!DB.cfg)return;
-  assurerPinVendeur();
+  var fr=(lang==='fr');
+  // Pas de code sur cet appareil : on ne bricole pas un chiffre pour remplir
+  // la case. Soit il n'y en a jamais eu, soit ce téléphone l'a perdu — et les
+  // deux se disent, parce qu'ils n'ont PAS la même conséquence pour les
+  // vendeurs déjà en place.
+  if(!assurerPinVendeur()){
+    var v0=document.getElementById('teamcode-val');
+    if(v0)v0.textContent='—';
+    _teamCodeShown=false;
+    showToast('🔑 '+(DB.cfg.pvPose
+      ?(fr?'Le code équipe n\'est plus sur ce téléphone. En créer un nouveau mettra tes vendeurs dehors le temps qu\'ils l\'apprennent.'
+          :'The team code is no longer on this phone.')
+      :(fr?'Aucun code équipe pour l\'instant — touche « Nouveau » pour en poser un, une seule fois.'
+          :'No team code yet — tap "New" to set one, once.')));
+    return;
+  }
   var v=document.getElementById('teamcode-val'),b=document.getElementById('btn-teamcode-eye');
   _teamCodeShown=!_teamCodeShown;
-  if(_teamCodeShown){if(v)v.textContent=DB.cfg.pinVendeur;if(b)b.textContent=lang==='fr'?'🙈 Cacher':'🙈 Hide';save();}
+  if(_teamCodeShown){if(v)v.textContent=DB.cfg.pinVendeur;if(b)b.textContent=fr?'🙈 Cacher':'🙈 Hide';save();}
   else masquerCodeEquipe();
 }
 // ── Génération code boutique scalable ──
@@ -14768,6 +14831,20 @@ async function _lirePourMoi(code){
   return await _lireBoutique(code,true);
 }
 var _rtVoie='',_rtEchoIgnore=0;
+// Signature du contenu d'une boutique, indépendante de l'ordre des listes
+// (le serveur et le téléphone ne les rangent pas pareil). Elle sert à
+// répondre à UNE question : « ce que le serveur me tend est-il exactement ce
+// que j'ai déjà ? » — la seule formulation honnête de « c'est mon écho ».
+function _signatureDonnees(d){
+  function s(l,pfx){
+    return (l||[]).map(function(x){return pfx+((x&&x.id!=null)?x.id:'?')+':'+_artEmpreinte(x);})
+                  .sort().join(',');
+  }
+  if(!d)return '';
+  return s(d.ventes,'v')+'|'+s(d.appros,'a')+'|'+s(d.articles,'p')+'|'
+        +s(d.equipe,'e')+'|'+s(d.clients,'c')+'|'
+        +((d.suppr||[]).slice().sort().join(','));
+}
 async function _rtRefetch(code){
   if(!DB||!DB.cfg||normalizeShopCode(code)!==normalizeShopCode(DB.cfg.code))return;
   _rtDernierEssai=Date.now();
@@ -14777,11 +14854,19 @@ async function _rtRefetch(code){
   // Écho de notre propre écriture : on ne l'ignore QUE s'il n'apporte rien.
   // Avant, on sortait dès que l'appareil était le dernier écrivain — et si le
   // patron était ce dernier écrivain, plus rien ne rentrait jamais.
-  if(fresh.cfg&&fresh.cfg._dev&&fresh.cfg._dev===_deviceId){
-    var nA=(fresh.ventes||[]).length,nL=((DB&&DB.ventes)||[]).length;
-    var aA=(fresh.articles||[]).length,aL=((DB&&DB.articles)||[]).length;
-    if(nA<=nL&&aA<=aL){_rtEchoIgnore=Date.now();return;}
-  }
+  // ⚠️⚠️ TROUVÉ PAR LE BANC À DEUX TÉLÉPHONES, invisible autrement.
+  // Ce garde-fou comparait des NOMBRES : « le serveur n'a pas plus de ventes
+  // que moi, donc c'est mon propre écho ». Or le patron avait 2 ventes et le
+  // serveur en avait 2 AUSSI — mais pas les mêmes : la sienne, et celle du
+  // vendeur. Compte égal, contenu différent : la vente du vendeur était
+  // jetée, et le vendeur Amadou n'apparaissait jamais dans l'équipe.
+  // Le défaut dormait tant que l'identité de l'appareil mourait chaque soir
+  // (le test `_dev` ne passait jamais). En rendant cette identité durable,
+  // je l'ai réveillé.
+  // On compare donc les CONTENUS, sans dépendre de qui a écrit en dernier :
+  // si la signature du serveur est celle de ce téléphone, il n'y a
+  // effectivement rien à prendre. Sinon on fusionne.
+  if(_signatureDonnees(fresh)===_signatureDonnees(DB)){_rtEchoIgnore=Date.now();return;}
   if(_venteEnCours()){
     _pendingRemoteDB=fresh;
     clearTimeout(_pendingRemoteTimer);
