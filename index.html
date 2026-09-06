@@ -3255,7 +3255,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.17'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.18'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3559,6 +3559,21 @@ async function syncToSupa(){
   }
   try{
     var user=await getAuthUser();
+    // ⚠️ DEUXIÈME BARRIÈRE contre le mélange des patrons.
+    // La boutique connaît le compte auquel elle appartient (ownerEmail,
+    // dérivé de SON numéro). Si la session ouverte est celle d'un AUTRE
+    // patron — deux comptes sur le même téléphone — on refuse d'écrire :
+    // sinon sa boutique changerait de propriétaire en silence.
+    // Sans ownerEmail (boutiques d'avant cette version), on garde
+    // l'ancien comportement : on ne casse pas ce qui existe.
+    try{
+      var _att=(DB.cfg&&DB.cfg.ownerEmail)?String(DB.cfg.ownerEmail).toLowerCase():'';
+      if(_att&&user&&user.email&&String(user.email).toLowerCase()!==_att){
+        console.warn('Sync: session d\'un autre patron — écriture refusée');
+        _offlinePending=true;
+        return false;
+      }
+    }catch(e){}
     if(user)DB.cfg.ownerId=user.id;
     // Fusionner l'état serveur AVANT d'écrire : ne jamais écraser les ventes d'un autre vendeur hors-ligne
     // ⚠️ `discret` : cette lecture tourne en fond APRÈS chaque vente. Sans
@@ -4990,9 +5005,38 @@ async function finaliserOb(){
   try{ return await _finaliserObSuite(nm,tel,pin,_relacher); }catch(e){ _relacher(); throw e; }
 }
 async function _finaliserObSuite(nm,tel,pin,_relacher){
+  // ══════════════════════════════════════════════════════════════════
+  // ⚠️⚠️ « UN TÉLÉPHONE QUI CRÉE PLUSIEURS PATRONS FINIRA PAR ÊTRE LE SEUL
+  //        PATRON REGORGEANT TOUTES SES BOUTIQUES. Un téléphone pouvait
+  //        normalement créer plusieurs boutiques, patrons, et ces boutiques
+  //        devront être identifiées par leurs numéros et leurs mots de
+  //        passe. »
+  //
+  // PROUVÉ DANS SA BASE : « Boutique YENG », inscrite avec le numéro
+  // +237655404810, appartient au compte du +237689335389. Un autre numéro,
+  // un autre mot de passe — et pourtant le même propriétaire.
+  //
+  // CAUSE : on inscrivait le nouveau patron SANS fermer la session du
+  // précédent. Le client garde alors l'ancienne session, getAuthUser()
+  // renvoie l'ANCIEN patron, et syncToSupa estampille la boutique neuve à
+  // son nom. Toutes les boutiques du téléphone finissaient sous un seul
+  // compte.
+  // ══════════════════════════════════════════════════════════════════
+  try{ if(supa&&supa.auth)await supa.auth.signOut(); }catch(e){}
   var authReg=await signUpOwnerAuth(tel,pin);
   if(authReg.error){showToast(authReg.error.message||t('compteIntrouvable'));_relacher();return;}
   var authUser=await getAuthUser();
+  // ⚠️ DERNIER FILET : on n'estampille JAMAIS une boutique avec un compte
+  // qui ne correspond pas au numéro donné. Mieux vaut refuser la création
+  // que de livrer le commerce de quelqu'un à un autre.
+  var _attendu=authEmailFromPhone(tel);
+  if(!authUser||!authUser.email||String(authUser.email).toLowerCase()!==String(_attendu).toLowerCase()){
+    var fr=(obLang==='fr');
+    showToast('⚠️ '+(fr?'Impossible de créer ce compte ici. Ferme l\'app et rouvre-la, puis réessaie.'
+                       :'Cannot create this account here. Close the app, reopen it and try again.'));
+    try{ if(supa&&supa.auth)await supa.auth.signOut(); }catch(e){}
+    _relacher();return;
+  }
   var p=obPays||PAYS[0];
   var reg=document.getElementById('ob-region')?.value.trim()||'';
   // Générer code boutique scalable (1 milliard de combinaisons)
