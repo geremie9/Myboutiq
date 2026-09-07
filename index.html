@@ -1137,6 +1137,9 @@ body{max-width:min(100%,1200px)}
 <div class="ctxm" id="ctxmv">
   <div style="padding:6px 12px 8px;font-size:11px;font-weight:800;color:var(--M);border-bottom:1px solid var(--BD);margin-bottom:5px" id="cxv-tit">Variante</div>
   <div class="ctxi" onclick="ctxvQte()">🔢 <span id="cxv0">Saisir une quantité</span></div>
+  <!-- Le même formulaire que pour un article : tout s'y modifie d'un coup.
+       Les lignes qui suivent restent des raccourcis d'un seul geste. -->
+  <div class="ctxi" onclick="ctxvTout()" style="font-weight:800">✎ <span id="cxvt">Tout modifier</span></div>
   <div class="ctxi" onclick="ctxvPrix()">✏️ <span id="cxv1">Modifier le prix de vente</span></div>
   <div class="ctxi" onclick="ctxvAchat()">💰 <span id="cxv2">Prix d'achat</span></div>
   <div class="ctxi" onclick="ctxvGros()">📦 <span id="cxvg">Vendre par carton</span></div>
@@ -3362,7 +3365,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.36'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.37'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6507,7 +6510,16 @@ function cmpModifierNom(){
   if(b)b.style.display='none';
   if(l){l.style.display='block';var c=document.getElementById('cmp-nm');if(c)try{c.focus();c.select();}catch(e){}}
 }
-function ouvrirCompleterArticle(p){
+// ⚠️ ÉTAPE 1 DU CHANTIER CONDITIONNEMENTS — « un seul formulaire ».
+// Sa demande : le MÊME formulaire pour un article et pour une variante.
+// En lisant le code, il n'y avait rien à construire : cet écran édite DÉJÀ
+// chaque variante en ligne (nom, achat, vente, stock, facteur de gros), via
+// cmpRenderFamRows. Le manque était ailleurs — on n'y accédait pas depuis la
+// variante. Un appui long sur une variante ouvrait SEPT boîtes de dialogue
+// séparées (ctxvNom, ctxvPrix, ctxvAchat, ctxvStock…), chacune un prompt().
+// On branche donc la variante sur le formulaire existant, au lieu d'en
+// écrire un troisième. `vidFocus` dit sur laquelle se poser.
+function ouvrirCompleterArticle(p,vidFocus){
   _cmpArt=p;
   var fr=lang==='fr',fam=!!(p.vr&&p.vr.length);
   var nomAuto=!!(p._autoNm&&txtNorm(p.nm)===txtNorm(p._autoNm));
@@ -6602,6 +6614,30 @@ function ouvrirCompleterArticle(p){
   }
   document.getElementById('ov-completer').classList.add('show');
   if(nomAuto)setTimeout(function(){try{nm.focus();if(nm.select)nm.select();}catch(e){}},250);
+  // Venu d'une variante : on l'amène sous ses yeux et on la désigne. Sans ça
+  // il ouvre une liste de dix variantes et doit chercher la sienne.
+  if(vidFocus!=null)setTimeout(function(){_cmpViserVariante(vidFocus);},300);
+}
+function _cmpViserVariante(vid){
+  try{
+    var champ=document.querySelector('#cmp-vars [data-cvid="'+vid+'"][data-cvf="nm"]');
+    if(!champ)return;
+    var ligne=champ.closest('div').parentNode;
+    if(ligne&&ligne.scrollIntoView)ligne.scrollIntoView({block:'center',behavior:'smooth'});
+    if(ligne){
+      ligne.style.transition='box-shadow .25s,background .25s';
+      ligne.style.boxShadow='0 0 0 2px var(--B)';
+      setTimeout(function(){ligne.style.boxShadow='';},1800);
+    }
+    champ.focus();if(champ.select)champ.select();
+  }catch(e){}
+}
+// Ouvre le formulaire complet sur la variante qu'il vient de toucher.
+function ctxvTout(){
+  var p=_vCtxP,v=_vCtxV;
+  _fermerCtxVar();
+  if(!p||!v)return;
+  setTimeout(function(){ouvrirCompleterArticle(p,v.id);},180);
 }
 function cmpRenderFamRows(){
   var p=_cmpArt;if(!p)return;
@@ -7054,6 +7090,7 @@ function showCtxVar(e,p,v){
   var fr=(lang==='fr');
   document.getElementById('cxv-tit').textContent=(v.nm||'')+' · '+p.nm;
   document.getElementById('cxv0').textContent=fr?'Saisir une quantité':'Enter a quantity';
+  document.getElementById('cxvt').textContent=fr?'Tout modifier (nom, prix, stock…)':'Edit everything';
   document.getElementById('cxv1').textContent=fr?'Modifier le prix de vente':'Edit sell price';
   document.getElementById('cxv2').textContent=fr?'Prix d\'achat':'Cost price';
   var _mg=_motContenant(p);document.getElementById('cxvg').textContent=fr?('Vendre par '+_mg):('Sell by the '+_mg);
