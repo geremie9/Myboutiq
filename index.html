@@ -3365,7 +3365,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.37'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.38'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6496,13 +6496,43 @@ function articleIncomplet(p){
 // Il vend autrement que le catalogue ne le croit : les boutons reviennent.
 // On ne supprime jamais le choix, on le range tant qu'il est inutile.
 function cmpChangerMesure(){
+  // ⚠️ Avant, ce bouton ne révélait qu'un champ NOMBRE. On pouvait dire
+  // « 20 » mais jamais corriger « bidon » en « carton » — exactement le cas
+  // qu'il a décrit. On ouvre donc l'écran complet, celui qui propose les
+  // mots (carton, casier, palette, paquet, lot, sac, bidon, plateau) ET le
+  // nombre. C'est le même écran que depuis la fiche article : un seul
+  // endroit pour dire comment on achète.
+  var p=_cmpArt;
+  if(p&&typeof corrigerConditionnement==='function'){
+    _cmpRevenirApresGros=true;
+    corrigerConditionnement(p.id);
+    return;
+  }
+  // Repli : l'ancien comportement, si l'écran complet n'est pas là.
   var r=document.getElementById('cmp-um-resume');if(r)r.style.display='none';
   var s=document.getElementById('cmp-um-sec');if(s)s.style.display='block';
-  // Le champ du conditionnement est caché par défaut pour les articles à la
-  // pièce : s'il vient justement le chercher, il doit le trouver ouvert.
   var l=document.getElementById('cmp-sac-row');if(l)l.style.display='block';
   var c=document.getElementById('cmp-sac');
   if(c)try{c.focus();}catch(e){}
+}
+// Après avoir corrigé le conditionnement, le formulaire est toujours ouvert
+// dessous avec la saisie en cours : on rafraîchit juste la ligne qui l'annonce,
+// sans rien redessiner d'autre — sinon il perdrait ce qu'il venait de taper.
+var _cmpRevenirApresGros=false;
+function _cmpMajLigneGros(){
+  if(!_cmpRevenirApresGros)return;
+  _cmpRevenirApresGros=false;
+  var p=_cmpArt;if(!p)return;
+  var fr=(lang==='fr');
+  var t=document.getElementById('cmp-um-resume-t'),b=document.getElementById('cmp-um-resume-b');
+  var u=(p.um==='kg')?'kg':(p.um==='L')?'L':'pc';
+  if(t)t.textContent=(fr?'Se vend ':'Sold ')+(u==='kg'?(fr?'au kilo':'by the kilo')
+                                             :u==='L'?(fr?'au litre':'by the litre')
+                                             :(fr?'à la pièce':'per unit'))
+    +((Number(p.umSac)>0&&p.umCont)?('  ·  '+(fr?'s\'achète par ':'bought by the ')+p.umCont+' '+(fr?'de ':'of ')+fmtQ(p.umSac)):'');
+  if(b)b.textContent=(Number(p.umSac)>0)?(fr?'✎ Ce n\'est pas ça':'✎ Not right')
+                                        :(fr?'📦 Dire comment tu l\'achètes':'📦 Say how you buy it');
+  var c=document.getElementById('cmp-sac');if(c)c.value=p.umSac||'';
 }
 // Le nom reste modifiable — il est simplement rangé tant qu'il est juste.
 function cmpModifierNom(){
@@ -6559,9 +6589,30 @@ function ouvrirCompleterArticle(p,vidFocus){
   var _su=null;
   try{_su=_condDeMaBoutique(p.nm)||mesureCatalogue(p.nm);}catch(e){}
   var _sait=!fam&&!!(_su&&((_su.um==='kg'||_su.um==='L')||_su.sac>0));
+  // ⚠️ SA QUESTION : « pourquoi les articles hors variante ne sont pas
+  // exactement comme les variantes à 100 % ? Si par erreur j'ai mis Diamaor
+  // en bidon, je touche sur gros pendant la modification et je peux changer. »
+  // Il avait raison. Chaque VARIANTE porte son champ « acheté en gros ? »
+  // en clair dans sa ligne. Un article SIMPLE, lui, n'avait rien : ni le
+  // nombre (champ caché), ni surtout le MOT du contenant — impossible de
+  // corriger « bidon » en « carton » sans sortir du formulaire.
+  // La ligne s'affiche donc pour TOUT article simple, qu'on sache ou non,
+  // et son bouton ouvre l'écran complet (nombre + mot).
   var _res=document.getElementById('cmp-um-resume');
   if(_res){
-    _res.style.display=_sait?'block':'none';
+    _res.style.display=fam?'none':'block';
+    if(!fam&&!_sait){
+      var _uu=(p.um==='kg')?'kg':(p.um==='L')?'L':'pc';
+      var _tn=document.getElementById('cmp-um-resume-t');
+      if(_tn)_tn.textContent=(fr?'Se vend ':'Sold ')+(_uu==='kg'?(fr?'au kilo':'by the kilo')
+                                                     :_uu==='L'?(fr?'au litre':'by the litre')
+                                                     :(fr?'à la pièce':'per unit'))
+        +((Number(p.umSac)>0&&p.umCont)?('  ·  '+(fr?'s\'achète par ':'bought by the ')+p.umCont+' '+(fr?'de ':'of ')+fmtQ(p.umSac)):'');
+      var _bn=document.getElementById('cmp-um-resume-b');
+      if(_bn)_bn.textContent=(Number(p.umSac)>0)
+        ?(fr?'✎ Ce n\'est pas ça':'✎ Not right')
+        :(fr?'📦 Dire comment tu l\'achètes':'📦 Say how you buy it');
+    }
     if(_sait){
       var _u=(p.um==='kg'||p.um==='L')?p.um:((_su.um==='kg'||_su.um==='L')?_su.um:'pc');
       var _n=(p.umSac>0)?p.umSac:(_su.sac||0);
@@ -8470,6 +8521,7 @@ function validerGros(){
   try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
   if(_grosEdition){
     _grosEdition=false;
+    try{_cmpMajLigneGros();}catch(e){}   // s'il venait du formulaire, la ligne se met à jour dessous
     showToast('✅ '+p.nm+' — '+mot+' de '+fmtQ(n));
     return;
   }
