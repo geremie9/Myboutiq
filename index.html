@@ -3362,7 +3362,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.35'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.36'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3611,22 +3611,40 @@ async function loadOwnerBoutiqueFromSupa(codeVoulu){
   var user=await getAuthUser();
   if(!supa||!user)return null;
   try{
-    var res=await supa.from('boutiques').select('code,data').eq('owner_id',user.id).order('updated_at',{ascending:false});
+    var res=await supa.from('boutiques').select('code,data,pin_vendeur_clair').eq('owner_id',user.id).order('updated_at',{ascending:false});
     if(res.error||!res.data||!res.data.length)return null;
     var rows=res.data;
+    // ⚠️ LE RAPPEL DU CODE ÉQUIPE, rendu à son propriétaire.
+    // Le déclencheur retire `cfg.pinVendeur` du blob partagé : un téléphone
+    // qui relit perdait donc sa copie, et plus personne ne pouvait dire le
+    // code aux vendeurs. C'est le point de départ de la panne du 06/09.
+    // Cette colonne n'est lisible QUE par le compte propriétaire (RLS), et
+    // n'autorise rien — seule l'empreinte fait foi. On la remet simplement
+    // là où l'app la cherche.
+    var _rendreCode=function(r){
+      if(!r||!r.data)return r&&r.data||null;
+      try{
+        if(r.pin_vendeur_clair&&String(r.pin_vendeur_clair).length>=4){
+          if(!r.data.cfg)r.data.cfg={};
+          r.data.cfg.pinVendeur=String(r.pin_vendeur_clair);
+          r.data.cfg.pvPose=1;
+        }
+      }catch(e){}
+      return r.data;
+    };
     if(codeVoulu){
       var exact=rows.filter(function(r){return normalizeShopCode(r.code)===normalizeShopCode(codeVoulu);})[0];
-      if(exact)return exact.data||null;
+      if(exact)return _rendreCode(exact);
       // Pas de correspondance. S'il n'a qu'UNE seule boutique, aucun doute
       // possible : c'est celle-là (téléphone neuf, ou reste d'une autre
       // boutique dans la mémoire locale). Le refuser l'enfermerait dehors.
-      if(rows.length===1)return rows[0].data||null;
+      if(rows.length===1)return _rendreCode(rows[0]);
       // Plusieurs boutiques et aucune ne correspond : on ne DEVINE pas, on ne
       // rapatrie surtout pas les ventes d'une autre. Il faudra lui demander
       // laquelle il veut ouvrir.
       return null;
     }
-    return rows[0].data||null;
+    return _rendreCode(rows[0]);
   }catch(e){return null;}
 }
 // Combien de boutiques ce compte possède-t-il déjà ?
@@ -14296,8 +14314,13 @@ function mergeDB(base,other){
   // connexion hors réseau le compare. Sans cette ligne, la première synchro
   // effacerait la copie locale et l'app ne pourrait plus parler au serveur.
   // La copie de CE téléphone fait foi ; elle ne quitte jamais l'appareil.
+  // ⚠️ UNE CHAÎNE VIDE N'EST PAS UNE ABSENCE — c'est le patron qui RETIRE
+  // l'accès vendeur. `!base.cfg[k]` confondait les deux : depuis que le
+  // serveur sait rappeler le code équipe, combler un vide annulait la
+  // révocation, et le vendeur renvoyé gardait sa clé. Trouvé par le banc à
+  // deux téléphones. On ne comble donc que ce qui est VRAIMENT absent.
   ['pin','pinVendeur'].forEach(function(k){
-    if(!base.cfg[k]&&other.cfg[k])base.cfg[k]=other.cfg[k];
+    if(base.cfg[k]==null&&other.cfg[k])base.cfg[k]=other.cfg[k];
   });
   // S3 : archivage. La borne = la plus avancée des deux. L'autorité sur les
   // articles (stk0/vd0 rebasés) revient au téléphone qui a archivé le plus loin.
