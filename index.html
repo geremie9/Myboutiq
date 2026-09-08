@@ -3365,7 +3365,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.38'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.39'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6518,8 +6518,15 @@ function cmpChangerMesure(){
 // Après avoir corrigé le conditionnement, le formulaire est toujours ouvert
 // dessous avec la saisie en cours : on rafraîchit juste la ligne qui l'annonce,
 // sans rien redessiner d'autre — sinon il perdrait ce qu'il venait de taper.
-var _cmpRevenirApresGros=false;
+var _cmpRevenirApresGros=false,_cmpRevenirApresGrosVar=null;
 function _cmpMajLigneGros(){
+  // Venu de la ligne d'une VARIANTE : on rafraîchit son bloc à elle, et le
+  // reste du formulaire ne bouge pas d'un pixel — il y tape peut-être.
+  if(_cmpRevenirApresGrosVar!=null){
+    var _vid=_cmpRevenirApresGrosVar;_cmpRevenirApresGrosVar=null;
+    try{_cmpMajBlocCondVar(_vid);cmpVarFlag(_vid);}catch(e){}
+    return;
+  }
   if(!_cmpRevenirApresGros)return;
   _cmpRevenirApresGros=false;
   var p=_cmpArt;if(!p)return;
@@ -6651,6 +6658,11 @@ function ouvrirCompleterArticle(p,vidFocus){
   document.getElementById('cmp-fam-add').style.display=fam&&(role==='patron'||hasPerm('produits'))?'block':'none';
   var vbox=document.getElementById('cmp-vars');
   vbox.style.display=fam?'block':'none';vbox.innerHTML='';
+  // ⚠️ CHAQUE OUVERTURE REPART DE « prix par pièce ». C'est la barrière qui
+  // rend une seconde division impossible : le prix d'achat enregistré est
+  // toujours unitaire, donc le mode qui ne divise pas est le seul juste
+  // tant qu'il n'a pas dit le contraire.
+  _cmpVarAch={};_cmpRevenirApresGrosVar=null;
   cmpUm((p.um==='kg'||p.um==='L')?p.um:'pc');
   document.getElementById('cmp-sac').value=p.umSac||'';
   if(fam){
@@ -6658,7 +6670,10 @@ function ouvrirCompleterArticle(p,vidFocus){
   }else{
     document.getElementById('cmp-pa').value=p.pa||'';
     document.getElementById('cmp-pv').value=p.px||'';
-    document.getElementById('cmp-ach-n').value='';
+    // La taille du gros est REMISE quand on la connaît : il ne retape pas
+    // « 24 » à chaque fois. Elle ne divise rien tant qu'il n'a pas dit
+    // « en gros » — et ce choix, lui, repart toujours de « à l'unité ».
+    document.getElementById('cmp-ach-n').value=(!estMesure(p)&&Number(p.umSac)>1)?String(p.umSac):'';
     var _st=Number(getStk(p))||0;
     document.getElementById('cmp-stk').value=_st>0?_st:'';
     cmpAch('u');
@@ -6710,10 +6725,7 @@ function cmpRenderFamRows(){
       '<input class="pi sm" style="flex:1;margin:0" type="number" inputmode="numeric" placeholder="'+(fr?('Vente / '+_cmpUniteFam()):'Sell')+'" data-cvid="'+v.id+'" data-cvf="px" value="'+(v.px||'')+'" oninput="cmpVarFlag('+v.id+')">'+
       '<input class="pi sm" style="width:74px;margin:0" type="number" inputmode="decimal" step="0.25" placeholder="Stock" data-cvid="'+v.id+'" data-cvf="stk" value="'+(v.stk||'')+'">'+
       '</div>'+
-      '<div style="display:flex;gap:6px;align-items:center;margin-top:5px">'+
-      '<span style="font-size:10.5px;font-weight:700;color:var(--M);flex-shrink:0">'+(fr?'Acheté en gros ?':'Bulk?')+'</span>'+
-      '<input class="pi sm" style="flex:1;margin:0" type="number" inputmode="decimal" step="0.5" placeholder="'+(fr?('nb par carton/sac — laisse vide si prix déjà par '+_cmpUniteFam()):'units per box')+'" data-cvid="'+v.id+'" data-cvf="gros" value="'+(v._gros||'')+'" oninput="cmpVarFlag('+v.id+')">'+
-      '</div>'+
+      '<div data-cvcond="'+v.id+'" style="margin-top:5px">'+_cmpBlocCondVar(p,v)+'</div>'+
       '<div data-cvinfo="'+v.id+'" style="font-size:10.5px;font-weight:800;color:#1B5E20;margin-top:4px;display:none"></div>'+
       '<div data-cvwarn="'+v.id+'" style="display:'+(perte?'block':'none')+';color:var(--R);font-size:10.5px;font-weight:800;margin-top:4px">⚠️ '+(fr?'Achat ≥ vente : tu vendrais à perte':'Cost ≥ sell: you would lose money')+'</div>';
     vbox.appendChild(row);
@@ -6721,10 +6733,94 @@ function cmpRenderFamRows(){
   if(!p.vr.length)vbox.innerHTML='<div style="text-align:center;color:var(--M);font-size:12px;font-weight:700;padding:9px">'+(fr?'Plus de variante — ajoute-en une 👇 ou ferme, l\'article redevient simple':'No variant left')+'</div>';
 }
 function _cmpUniteFam(){return _cmpUmVal==='kg'?'kg':_cmpUmVal==='L'?'L':(lang==='fr'?'pièce':'unit');}
+// ══════════════════════════════════════════════════════════════════
+//  LA LIGNE DE CONDITIONNEMENT D'UNE VARIANTE
+//
+//  ⚠️⚠️ CE QUE J'AI MESURÉ AU BANC AVANT D'ÉCRIRE UNE LIGNE, et qui est
+//  bien pire que l'asymétrie qu'il signalait :
+//  le champ « Acheté en gros ? » d'une variante n'était JAMAIS conservé.
+//  Il s'affichait sur `v._gros` — un champ que RIEN dans les 15 000
+//  lignes n'écrit. Donc : il tapait 24, le prix d'achat était divisé, le
+//  nombre disparaissait. Il rouvrait le formulaire, revoyait la case
+//  vide, y remettait le 24 qu'il sait vrai — et le prix d'achat était
+//  divisé UNE SECONDE FOIS.
+//     Mesuré : 300 → 12,5 → 0,52 le savon.
+//  Un prix d'achat qui fond à chaque passage, et rien à l'écran ne le
+//  dit. C'est exactement la faute qu'on s'interdit ici : un mauvais prix
+//  d'achat ne se voit jamais.
+//
+//  LE REMÈDE N'EST PAS DE PRÉREMPLIR LA CASE — ça diviserait encore.
+//  Le nombre devient une PROPRIÉTÉ de la variante (umSac + umCont), dite
+//  une fois sur l'écran qui sait le faire ; et la case libre laisse la
+//  place à une question à laquelle on répond : « le prix que je tape,
+//  il est pour quoi ? ». Cette réponse repart toujours de « par pièce » :
+//  une deuxième division devient impossible par construction.
+// ══════════════════════════════════════════════════════════════════
+var _cmpVarAch={};
+function _cmpBlocCondVar(p,v){
+  var fr=(lang==='fr'),cd=_condDe(p,v),u=_cmpUniteFam();
+  var h='<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">';
+  if(cd.n>1){
+    h+='<span style="font-size:10.5px;font-weight:800;color:#1B5E20">📦 '
+      +(fr?'s\'achète par ':'bought by the ')+cd.mot+' '+(fr?'de ':'of ')+fmtQ(cd.n)
+      // Dire d'où vient le nombre : hérité de la famille, il peut être faux
+      // pour CETTE forme-là — c'est tout son cas des douze bouteilles.
+      +(cd.sien?'':('  ·  '+(fr?'comme la famille':'as the family')))+'</span>';
+  }
+  h+='<button type="button" onclick="cmpVarCond('+v.id+')" style="background:none;border:none;color:var(--B);font-size:10.5px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;padding:0;text-decoration:underline">'
+    +(cd.n>1?(fr?'✎ Ce n\'est pas ça':'✎ Not right'):(fr?'📦 Dire comment tu l\'achètes':'📦 Say how you buy it'))
+    +'</button></div>';
+  if(cd.n>1){
+    var m=_cmpVarAch[v.id]||'u';
+    h+='<div style="display:flex;gap:6px;margin-top:5px">'
+      +'<button type="button" class="gros-mot'+(m==='u'?' on':'')+'" style="flex:1" onclick="cmpVarAch('+v.id+',\'u\')">'+(fr?'Prix par ':'Price per ')+u+'</button>'
+      +'<button type="button" class="gros-mot'+(m==='g'?' on':'')+'" style="flex:1" onclick="cmpVarAch('+v.id+',\'g\')">'+(fr?('Prix '+_duGros(cd.mot)):('Price of the '+cd.mot))+' ('+fmtQ(cd.n)+')</button>'
+      +'</div>';
+  }else{
+    // Conditionnement inconnu : la case libre reste — mais ce qu'il tape ici
+    // n'est plus jeté, il DEVIENT le conditionnement de la variante.
+    h+='<div style="display:flex;gap:6px;align-items:center;margin-top:5px">'
+      +'<span style="font-size:10.5px;font-weight:700;color:var(--M);flex-shrink:0">'+(fr?'Acheté en gros ?':'Bulk?')+'</span>'
+      +'<input class="pi sm" style="flex:1;margin:0" type="number" inputmode="decimal" step="0.5" placeholder="'+(fr?('nb par carton/sac — laisse vide si prix déjà par '+u):'units per box')+'" data-cvid="'+v.id+'" data-cvf="gros" value="" oninput="cmpVarFlag('+v.id+')">'
+      +'</div>';
+  }
+  return h;
+}
+// Le diviseur EN VIGUEUR sur cette ligne, lu au même endroit par l'aperçu
+// et par l'enregistrement — deux lectures différentes finiraient toujours
+// par se contredire, et c'est le prix d'achat qui trinquerait.
+function _cmpVarDiv(p,v){
+  var cd=_condDe(p,v);
+  if(cd.n>1)return (_cmpVarAch[v.id]==='g')?cd.n:0;
+  var el=document.querySelector('#cmp-vars [data-cvid="'+v.id+'"][data-cvf="gros"]');
+  return el?Math.round((parseFloat(String(el.value||'').replace(',','.'))||0)*100)/100:0;
+}
+function cmpVarAch(vid,m){
+  _cmpVarAch[vid]=m;
+  _cmpMajBlocCondVar(vid);
+  cmpVarFlag(vid);
+}
+// On ne redessine QUE ce bloc : cmpRenderFamRows repartirait des données
+// enregistrées et effacerait tout ce qu'il est en train de taper dans les
+// autres variantes.
+function _cmpMajBlocCondVar(vid){
+  var p=_cmpArt;if(!p)return;
+  var v=(p.vr||[]).find(function(x){return String(x.id)===String(vid);});if(!v)return;
+  var box=document.querySelector('#cmp-vars [data-cvcond="'+vid+'"]');
+  if(box)box.innerHTML=_cmpBlocCondVar(p,v);
+}
+// Le MOT autant que le nombre : c'est ce qui manquait à l'article simple
+// avant la 21.38, et qui manquait encore à la variante après.
+function cmpVarCond(vid){
+  var p=_cmpArt;if(!p)return;
+  _cmpRevenirApresGrosVar=vid;
+  corrigerConditionnement(p.id,vid);
+}
 function cmpVarFlag(vid){
   var g=function(f){var el=document.querySelector('#cmp-vars [data-cvid="'+vid+'"][data-cvf="'+f+'"]');return el;};
   var paEl=g('pa'),pa=parseFloat((paEl||{}).value)||0,px=parseFloat((g('px')||{}).value)||0;
-  var gros=Math.round((parseFloat(String((g('gros')||{}).value||'').replace(',','.'))||0)*100)/100;
+  var _p=_cmpArt,_v=_p&&(_p.vr||[]).find(function(x){return String(x.id)===String(vid);});
+  var gros=_v?_cmpVarDiv(_p,_v):0;
   var paU=(gros>0&&pa>0)?Math.round(pa/gros*100)/100:pa; // "prix du carton ÷ ce qu'il contient"
   var bad=paU>0&&px>0&&paU>=px;
   var w=document.querySelector('#cmp-vars [data-cvwarn="'+vid+'"]');
@@ -6764,6 +6860,14 @@ function cmpDetachVar(vid){
   
   var na={id:_prochainIdArticle(),nm:v.nm||p.nm,e:p.e,cat:p.cat,px:v.px||0,pa:v.pa||0,stk:v.stk||0,stk0:v.stk||0,al:5,vd:0,vr:[],rt:true};
   if(v.img||v._img)na.img=v.img||v._img;
+  // ⚠️ MESURÉ AU BANC : l'article détaché ressortait sans sa MESURE et sans
+  // son conditionnement — une huile au litre en bidon de 20 redevenait un
+  // article « à la pièce » qui ne sait rien. Sortir d'une famille n'est pas
+  // repartir de zéro : la mesure appartient au produit, le conditionnement
+  // à la forme, et les deux le suivent dehors.
+  var _cdn=_condDe(p,v);
+  if(p.um)na.um=p.um;
+  if(_cdn.n>0){na.umSac=_cdn.n;na.umCont=_cdn.mot;}
   DB.articles.push(na);
   p.vr=p.vr.filter(function(x){return x.id!=vid;});
   if(p._pendingVariantSetup)p._pendingVariantSetup=p._pendingVariantSetup.filter(function(id){return id!=vid;});
@@ -6936,11 +7040,23 @@ function validerCompleter(){
       var e=vals[v.id];if(!e)return;
       var vnm=(e.nm&&e.nm.value.trim())||'';
       v.nm=vnm||(nm+' '+i);
-      // "Acheté en gros" : le prix saisi est celui du carton/sac, on ramène à l'unité
-      var grosV=e.gros?Math.round((parseFloat(String(e.gros.value||'').replace(',','.'))||0)*100)/100:0;
+      // "Acheté en gros" : le prix saisi est celui du carton/sac, on ramène à l'unité.
+      // ⚠️ Le diviseur se lit par _cmpVarDiv, la MÊME fonction que l'aperçu
+      // « 4000 ÷ 24 = 167 » : ce qu'il a vu sous ses yeux est ce qui est écrit.
+      var grosV=_cmpVarDiv(p,v);
       if(e.pa){
         var paBrut=parseFloat(e.pa.value)||0;
         v.pa=(grosV>0&&paBrut>0)?Math.round(paBrut/grosV*100)/100:paBrut;
+      }
+      // ⭐ ET ON S'EN SOUVIENT. C'est tout le défaut de l'étape précédente :
+      // le nombre servait une fois puis disparaissait, et le prix d'achat
+      // était redivisé au passage suivant. Il n'est retenu que quand il vient
+      // d'être DIT ici (case libre) — jamais quand il était déjà connu, sinon
+      // on réécrirait la famille sur chaque variante sans qu'il l'ait demandé.
+      if(grosV>1&&!(_condDe(p,v).n>1)){
+        v.umSac=grosV;
+        v.umCont=_motContenant(p,v);
+        journalAjouter('conditionnement',p.nm+' — '+v.nm,'',v.umCont+' de '+fmtQ(grosV));
       }
       if(e.px)v.px=parseFloat(e.px.value)||0;
       // Stock : seulement si le patron a SAISI quelque chose (ne jamais écraser l'existant avec 0)
@@ -6968,6 +7084,21 @@ function validerCompleter(){
     // que le commerçant a besoin qu'on s'en souvienne pour calculer son prix
     // d'achat unitaire. Seuls le kilo et le litre en profitaient.
     p.umSac=(sac>0)?sac:null;
+    // ⚠️⚠️ MESURÉ AU BANC, et c'est la moitié « hors variante » de sa
+    // question. Un article vendu À LA PIÈCE ne dit pas sa taille de gros
+    // dans `cmp-sac` (cette case est celle du kilo et du litre) mais dans
+    // « Combien d'unités dans le gros ? ». Ce nombre servait à diviser le
+    // prix d'achat… puis était JETÉ. Il tapait « carton de 24 », le calcul
+    // était juste, et l'app n'en gardait rien : pas de 📦 sur la tuile, pas
+    // de mémoire au passage suivant, et sa boutique n'apprenait rien pour
+    // les articles voisins. On l'écrit, comme pour le kilo et le litre.
+    var _giS=cmpGrosInfo();
+    if(_cmpAchMode==='g'&&!_giS.mesure&&_giS.n>1){
+      var _avS=Number(p.umSac)||0;
+      p.umSac=_giS.n;
+      if(!p.umCont)p.umCont=_giS.nomGros;
+      if(_avS!==_giS.n)journalAjouter('conditionnement',p.nm,(_avS>1?fmtQ(_avS):''),(p.umCont||_giS.nomGros)+' de '+fmtQ(_giS.n));
+    }
     // Stock : c'est ICI qu'il manquait. definirStock passe par un événement,
     // donc le recalcul et la fusion multi-téléphones restent corrects.
     var champStk=document.getElementById('cmp-stk');
@@ -7292,15 +7423,15 @@ function showCtx(e,p){
   document.getElementById('cx7').textContent=(lang==='fr'?'Vente en rupture':'Sell when out of stock')+' : '+(p.rt?(lang==='fr'?'✅ Activée':'✅ On'):(lang==='fr'?'⛔ Désactivée':'⛔ Off'));
   document.getElementById('cx8').textContent=lang==='fr'?'Mettre dans une famille':'Put into a family';
   var _cf=document.getElementById('ctxi-fam');if(_cf)_cf.style.display=(p.vr.length||estMesure(p))?'none':'flex';
-  var _cc=document.getElementById('cxcond');
-  if(_cc){_cc.textContent=lang==='fr'?('Corriger : '+_motContenant(p)):('Fix: '+_motContenant(p));
-    _cc.parentElement.style.display=(Number(p.umSac)>1)?'flex':'none';}
   // L'entrée de correction ne s'affiche que s'il Y A un conditionnement à
   // corriger — sinon c'est une ligne de plus qui ne sert à rien.
+  // ⚠️ Ce bloc était écrit DEUX FOIS de suite, la seconde écrasant la
+  // première : deux `var _cc` dans la même fonction, deux textes différents.
+  // Rien de cassé, mais deux vérités pour un seul bouton.
   var _cc=document.getElementById('cxcond');
   if(_cc){
-    _cc.textContent=lang==='fr'?('Corriger : '+_motContenant(p)+(Number(p.umSac)>1?(' de '+fmtQ(p.umSac)):''))
-                               :('Fix: '+_motContenant(p));
+    _cc.textContent=lang==='fr'?('Corriger : '+_motContenant(p,null)+(Number(p.umSac)>1?(' de '+fmtQ(p.umSac)):''))
+                               :('Fix: '+_motContenant(p,null));
     _cc.parentElement.style.display=(Number(p.umSac)>1)?'flex':'none';
   }
   document.getElementById('cx5').textContent=lang==='fr'?'Supprimer':'Delete';
@@ -7443,6 +7574,19 @@ function _artVersVariante(cible,a){
   var vid=(cible.vr.length?Math.max.apply(null,cible.vr.map(function(v){return v.id;})):0)+1;
   var nv={id:vid,nm:a.nm,px:a.px||0,pa:a.pa||0,stk:a.stk||0,stk0:a.stk||0,rt:a.rt!==false,qBase:1};
   if(a.img)nv.img=a.img;
+  // ⚠️⚠️ MESURÉ AU BANC : « Huile Diamaor — bidon de 20 » regroupée dans la
+  // famille « Huile de coton — carton de 12 » ressortait SANS RIEN, et
+  // héritait donc du carton de 12 du voisin. Son prix d'achat unitaire
+  // devenait faux d'un facteur 1,67 — et un mauvais prix d'achat ne se voit
+  // jamais. La ligne d'à côté (« si la cible ne connaît pas la mesure, elle
+  // la prend chez l'article qui arrive ») avait été écrite pour ça, mais elle
+  // ne sauvait QUE le premier arrivant, et seulement quand la cible ignorait
+  // tout. Le conditionnement voyage maintenant AVEC la forme à laquelle il
+  // appartient : c'est le seul endroit où il est vrai.
+  if(Number(a.umSac)>0){
+    nv.umSac=Number(a.umSac);
+    nv.umCont=a.umCont||_motContenant(a,null);
+  }
   // Article ABSORBÉ dans une famille — pas la cible qui devient sa propre
   // première variante, laquelle garde son fonctionnement d'avant (son
   // histoire reste sur le parent, soldée par un mouvement inverse).
@@ -8094,7 +8238,7 @@ function _lotDeVariante(p,v){
 function _chipGrosVariante(p,v){
   var lot=_lotDeVariante(p,v);
   if(!lot)return '';
-  var mot=_motContenant(p);
+  var mot=_motContenant(p,v);
   return '<span class="vt-gros" data-gros="'+lot.id+'" title="'+mot+' de '+fmtQ(getQBase(lot))+'">📦 '+fmt(lot.px)+'</span>';
 }
 function _chipGros(p){
@@ -8195,6 +8339,9 @@ var _MOTS_FEM={palette:1,boite:1,caisse:1,barquette:1,bouteille:1,plaquette:1};
 function _femGros(mot){return !!_MOTS_FEM[txtNorm(mot)];}
 function _unGros(mot){return (_femGros(mot)?'une ':'un ')+mot;}
 function _leGros(mot){return (_femGros(mot)?'la ':'le ')+mot;}
+// « Prix DU palette » : la même écorchure que « un palette entière », un cran
+// plus loin. La table du genre existe, elle sert ici aussi.
+function _duGros(mot){return (_femGros(mot)?'de la ':'du ')+mot;}
 // ⚠️ Composer _unGros(_grosEntier(mot)) donnait « UN palette ENTIÈRE » : le
 // second appel recevait « palette entière », introuvable dans la table.
 // Une seule fonction construit la phrase entière, en une fois.
@@ -8275,7 +8422,8 @@ function demanderPrixGros(p,v,garderOuvert){
   }
   _grosPxArt=p;_grosPxVar=v||null;
   var base=v||p;
-  var n=Number(v?(v.umSac||p.umSac):p.umSac)||0,mot=_motContenant(p),det=(Number(base.px)||0)*n;
+  var _cd=_condDe(p,v||null);
+  var n=_cd.n,mot=_cd.mot,det=(Number(base.px)||0)*n;
   _grosRenderVars(p);
   var nr=document.getElementById('gpx-n-row');
   if(nr)nr.style.display=(n>1)?'none':'block';
@@ -8320,21 +8468,24 @@ function demanderPrixGros(p,v,garderOuvert){
 }
 function gpxDetail(){
   var p=_grosPxArt;if(!p)return;
-  var n=Number(p.umSac)||0;
-  document.getElementById('gpx-inp').value=(Number(p.px)||0)*n;
+  // Le prix au détail est celui de la VARIANTE visée : celui de la famille
+  // vaut 0 dès qu'elle a des variantes, et proposer 0 n'aide personne.
+  var n=_condDe(p,_grosPxVar).n;
+  document.getElementById('gpx-inp').value=(Number((_grosPxVar||p).px)||0)*n;
   majApercuGpx();
 }
 function majApercuGpx(){
   var p=_grosPxArt;if(!p)return;
   var v=parseFloat(String(document.getElementById('gpx-inp').value||'').replace(',','.'))||0;
-  var n=Number(p.umSac)||0,det=(Number(p.px)||0)*n,el=document.getElementById('gpx-apercu');
+  var n=_condDe(p,_grosPxVar).n,det=(Number((_grosPxVar||p).px)||0)*n,el=document.getElementById('gpx-apercu');
   if(!el)return;
   var fr=(lang==='fr');
   if(!(v>0)){el.textContent='';return;}
   var ecart=det-v;
+  var _mg=_motContenant(p,_grosPxVar);
   el.textContent=fr
-    ?(fmt(v)+' '+_leGros(_motContenant(p))+(ecart>0?('  ·  '+fmt(ecart)+' de moins qu\'au détail'):ecart<0?('  ·  '+fmt(-ecart)+' de plus qu\'au détail'):'  ·  comme au détail'))
-    :(fmt(v)+' per '+_motContenant(p));
+    ?(fmt(v)+' '+_leGros(_mg)+(ecart>0?('  ·  '+fmt(ecart)+' de moins qu\'au détail'):ecart<0?('  ·  '+fmt(-ecart)+' de plus qu\'au détail'):'  ·  comme au détail'))
+    :(fmt(v)+' per '+_mg);
   // La marge du gros, montrée pendant qu'il tape : c'est ce qu'il vient
   // chercher en achetant en gros, et c'est le seul moyen qu'il la vérifie.
   var mg=document.getElementById('gpx-marge');
@@ -8355,17 +8506,32 @@ function validerPrixGros(){
   // ⚠️ Sans son chiffre, on n'écrit rien. Pas de repli sur le total détail :
   // il doit DIRE son prix de gros, sinon la marge du gros serait inventée.
   if(!(v>0)){showToast('⚠️ '+(fr?('Dis à combien tu vends '+_leGros(_motContenant(p))):'Give the price'));return;}
-  var mot=_motContenant(p),cible=_grosPxVar||null;
-  // La taille : celle de l'article, ou celle qu'il vient de taper pour cette
-  // variante précise. Sans elle on n'écrit rien — un carton sans nombre ne
-  // peut retirer aucun stock.
-  var n=Number(cible?(cible.umSac||0):(p.umSac||0))||0;
+  var cible=_grosPxVar||null,mot=_motContenant(p,cible);
+  // ⚠️⚠️ CUL-DE-SAC MESURÉ AU BANC, sur son cas exact — « le lait concentré
+  // non sucré : une partie en carton et une partie en unité ».
+  // L'écran d'avant lisait la taille avec un repli sur la famille
+  // (`v.umSac || p.umSac`), donc il MASQUAIT la case du nombre. Celui-ci la
+  // lisait SANS repli (`cible.umSac || 0`), tombait sur 0, et réclamait
+  // « dis combien il y a dans un carton » — dans une case invisible.
+  // Il tapait son prix, validait, et rien ne se passait. Pour toujours.
+  // Une seule lecture, la même des deux côtés : _condDe.
+  var n=_condDe(p,cible).n;
   if(!(n>1)){
     n=parseFloat(String((document.getElementById('gpx-n')||{}).value||'').replace(',','.'))||0;
   }
   if(!(n>1)){showToast('⚠️ '+(fr?('Dis combien il y a dans '+_unGros(mot)):'Say how many inside'));return;}
   n=Math.round(n);
   if(!p.vr)p.vr=[];
+  // ⭐ IL VIENT DE LE DIRE : on le retient. « Palmida, carton de 12 » saisi
+  // ici servait au lot et disparaissait ; la fois d'après, le formulaire
+  // reposait la question. On n'écrit sur la variante QUE si son nombre
+  // diffère de celui de la famille — sinon on recopierait partout une
+  // vérité qui vit déjà un cran au-dessus.
+  if(cible&&cible!==p&&n>1&&_condDe(p,cible).n!==n){
+    cible.umSac=n;
+    if(!cible.umCont)cible.umCont=mot;
+    journalAjouter('conditionnement',p.nm+' — '+(cible.nm||''),'',mot+' de '+fmtQ(n));
+  }
   // La famille naît ici : l'unité devient sa 1re variante, le gros la 2e.
   if(!p.vr.length){
     p.vr.push({id:1,nm:(fr?('À l\'unité'):'Each'),px:Number(p.px)||0,pa:Number(p.pa)||0,
@@ -8431,8 +8597,11 @@ function grosChoisirMot(m){_grosMot=m;_grosRenderMots();majApercuGros();
 //  Le même écran sert donc à CORRIGER : mode `_grosEdition`, prérempli
 //  avec ce qu'il avait dit, et il repart de là.
 // ══════════════════════════════════════════════════════════════════
-var _grosEdition=false;
-function corrigerConditionnement(pid){
+var _grosEdition=false,_grosVar=null;
+// ⭐ `vid` : on corrige le conditionnement d'UNE VARIANTE. Le même écran, les
+// mêmes mots, la même barrière — une variante n'est pas un citoyen de
+// seconde zone, c'était toute sa remarque.
+function corrigerConditionnement(pid,vid){
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
   if(role!=='patron'&&!hasPerm('produits')){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
   // ⚠️ Corriger un conditionnement ÉCRIT sur l'article : c'est une
@@ -8441,20 +8610,25 @@ function corrigerConditionnement(pid){
     showToast('🔒 '+(lang==='fr'?'Modifications bloquées — touche le cadenas en haut':'Editing is locked — tap the padlock above'));
     return;
   }
-  direTailleGros(null,pid,true);
+  direTailleGros(null,pid,true,vid);
 }
-function direTailleGros(e,pid,edition){
+function direTailleGros(e,pid,edition,vid){
   if(e)e.stopPropagation();
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
   if(!edition&&venteVerrouillee&&venteVerrouillee())return;
   var fr=(lang==='fr');
   _grosEdition=!!edition;
-  _grosArt=p;_grosMot=_motContenant(p);
-  var n=Number(p.umSac)||0;
+  _grosVar=(vid!=null)?((p.vr||[]).find(function(x){return String(x.id)===String(vid);})||null):null;
+  var cible=_grosVar||p;
+  _grosArt=p;_grosMot=_motContenant(p,_grosVar);
+  // La taille montrée est CELLE DE LA CIBLE, jamais celle de la famille :
+  // proposer « 12 » parce que la famille dit 12, quand cette forme-là part
+  // en bidon de 20, c'est fabriquer la faute qu'on vient corriger.
+  var n=Number(cible.umSac)||0;
   document.getElementById('gros-tit').textContent=edition
     ? ('📦 '+(fr?'Comment tu l\'achètes':'How you buy it'))
     : ('📦 '+(fr?'Vendre par '+_grosMot:'Sell by the '+_grosMot));
-  document.getElementById('gros-art').textContent=p.nm;
+  document.getElementById('gros-art').textContent=p.nm+(_grosVar?(' — '+(_grosVar.nm||'')):'');
   document.getElementById('gros-q').textContent=fr?('Combien de '+_uniteMot(p)+' dans un '+_grosMot+' ?')
                                                   :('How many '+_uniteMot(p)+' in one '+_grosMot+'?');
   // En correction, on remet ce qu'il avait dit : il corrige au lieu de
@@ -8479,8 +8653,12 @@ function majApercuGros(){
   var n=parseFloat(String((document.getElementById('gros-inp')||{}).value||'').replace(',','.'))||0;
   var el=document.getElementById('gros-apercu');if(!el)return;
   var fr=(lang==='fr');
+  // Le total se calcule sur le prix de la CIBLE : celui de la famille est nul
+  // dès qu'elle a des variantes, et « = 0 » sous les yeux est un chiffre faux
+  // de plus.
+  var px=Number((_grosVar||p).px)||0;
   // On montre le total pour qu'il vérifie de ses yeux avant de valider.
-  el.textContent=n>1?('1 '+(_grosMot||_motContenant(p))+' = '+fmtQ(n)+' '+_uniteMot(p)+' = '+fmt(p.px*n)):'';
+  el.textContent=n>1?('1 '+(_grosMot||_motContenant(p,_grosVar))+' = '+fmtQ(n)+' '+_uniteMot(p)+(px>0?(' = '+fmt(px*n)):'')):'';
 }
 function validerGros(){
   var p=_grosArt;if(!p)return;
@@ -8490,39 +8668,53 @@ function validerGros(){
   // « probable » : mieux vaut redemander que retenir un chiffre faux.
   if(!(n>1)){showToast('⚠️ '+(fr?'Dis combien il y en a dedans':'Say how many are inside'));return;}
   n=Math.round(n*100)/100;
-  var mot=_grosMot||_motContenant(p);
-  var avMot=p.umCont||'',avN=Number(p.umSac)||0;
-  p.umSac=n;p.umCont=mot;
-  journalAjouter('conditionnement',p.nm,(avN>1?(avMot+' de '+fmtQ(avN)):''),mot+' de '+fmtQ(n));
-  // ⚠️ LA CORRECTION DOIT ATTEINDRE LE LOT DÉJÀ CRÉÉ.
+  var cible=_grosVar||p;
+  var mot=_grosMot||_motContenant(p,_grosVar);
+  var nomCible=p.nm+(_grosVar?(' — '+(_grosVar.nm||'')):'');
+  var avMot=cible.umCont||'',avN=Number(cible.umSac)||0;
+  // ⭐ On écrit sur la CIBLE. Une variante porte désormais son propre
+  // conditionnement : « Diamaor — bidon de 20 » dans une famille dont le
+  // reste part en carton de 12, c'est son cas exact.
+  cible.umSac=n;cible.umCont=mot;
+  journalAjouter('conditionnement',nomCible,(avN>1?(avMot+' de '+fmtQ(avN)):''),mot+' de '+fmtQ(n));
+  // ⚠️ LA CORRECTION DOIT ATTEINDRE LES LOTS DÉJÀ CRÉÉS.
   // Sans ça, l'article dirait « palette de 24 » pendant que sa variante
   // continuerait de s'appeler « carton de 24 » et de retirer l'ancien
   // nombre. Une correction à moitié faite est pire que pas de correction :
   // les deux écrans se contrediraient.
-  var lots=(p.vr||[]).filter(function(v){return getQBase(v)>1;});
-  if(_grosEdition&&lots.length===1){
-    var lot=lots[0];
+  // ⚠️ AVANT, ça ne marchait QUE si la famille n'avait qu'un seul lot
+  // (`lots.length===1`) : dès qu'Azur ET Palmida avaient chacun leur carton,
+  // corriger n'atteignait plus rien. On ne compte plus les lots, on prend
+  // CEUX QUI PUISENT DANS LA CIBLE — les seuls que cette correction concerne.
+  var lots=(p.vr||[]).filter(function(v){
+    if(!(getQBase(v)>1))return false;
+    return _grosVar?(String(v.base)===String(_grosVar.id))
+                   :(v.base==null);
+  });
+  if(_grosEdition)lots.forEach(function(lot){
     var ancien=lot.nm||'';
     // On ne renomme que si le nom portait l'ancien conditionnement :
     // un nom qu'il a écrit lui-même ne doit pas être réécrit.
-    if(!avMot||txtNorm(ancien).indexOf(txtNorm(avMot))>=0||txtNorm(ancien).indexOf(txtNorm(_motContenant(p)))>=0){
-      var racine=_nomSansFormat(p.nm)||p.nm;
-      lot.nm=(fr?(mot+' de '+fmtQ(n)):(mot+' of '+fmtQ(n)));
+    if(!avMot||txtNorm(ancien).indexOf(txtNorm(avMot))>=0||txtNorm(ancien).indexOf(txtNorm(mot))>=0){
+      lot.nm=(_grosVar&&_grosVar.nm?(_grosVar.nm+' — '):'')+(fr?(mot+' de '+fmtQ(n)):(mot+' of '+fmtQ(n)));
       journalAjouter('nom',p.nm,ancien,lot.nm);
     }
     if(Number(lot.qBase)!==n){
       lot.qBase=n;
       journalAjouter('conditionnement',p.nm+' — '+lot.nm,String(avN||''),String(n));
     }
-  }
+  });
   save();
   closeSheet('ov-gros');
   try{mettreEnAvant(p.id);}catch(e){}
+  try{DB=recomputeStock(DB);}catch(e){}
   try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
-  if(_grosEdition){
-    _grosEdition=false;
+  // Une variante ne se met pas au panier depuis cet écran : on venait
+  // corriger une fiche, pas vendre.
+  if(_grosEdition||_grosVar){
+    _grosEdition=false;_grosVar=null;
     try{_cmpMajLigneGros();}catch(e){}   // s'il venait du formulaire, la ligne se met à jour dessous
-    showToast('✅ '+p.nm+' — '+mot+' de '+fmtQ(n));
+    showToast('✅ '+nomCible+' — '+mot+' de '+fmtQ(n));
     return;
   }
   _ajouterLot(p,n);
@@ -10007,8 +10199,32 @@ function regrouperDans(cible,membres,fam){
 // Celui qu'il a saisi lui-même l'emporte toujours sur celui du catalogue :
 // un carton de Coca fait 24 chez l'un et 12 chez l'autre — la base propose,
 // elle n'impose pas.
-function _motContenant(p){
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ ÉTAPE 2 DU CHANTIER — LE CONDITIONNEMENT APPARTIENT AUSSI À LA VARIANTE
+//
+//  Sa remarque : « il y a par exemple des huiles de coton qui se vendent
+//  en carton de 12 litres réparties en douze bouteilles. » Et la même
+//  chose, en pire, au regroupement : mesuré au banc, un « Diamaor —
+//  bidon de 20 » qui rejoignait la famille « Huile » perdait son bidon et
+//  héritait du CARTON DE 12 du voisin, sans un mot. Son prix d'achat
+//  unitaire devenait faux, et un mauvais prix d'achat ne se voit jamais.
+//
+//  UNE SEULE RÈGLE, et une seule fonction pour la lire :
+//     le conditionnement de la VARIANTE, sinon celui de la FAMILLE.
+//  Rien n'est écrit en double : une variante qui n'a rien de particulier
+//  à dire ne porte rien et se comporte exactement comme avant, au bit
+//  près. C'est la seule façon de toucher au conditionnement sans risquer
+//  les boutiques existantes.
+// ══════════════════════════════════════════════════════════════════
+function _condDe(p,v){
+  if(v&&Number(v.umSac)>0)return {n:Number(v.umSac),mot:_motContenant(p,v),sien:true};
+  if(p&&Number(p.umSac)>0)return {n:Number(p.umSac),mot:_motContenant(p,null),sien:false};
+  return {n:0,mot:_motContenant(p,v),sien:false};
+}
+function _motContenant(p,v){
   var fr=(lang==='fr');
+  // Ce que la variante dit d'elle-même passe avant ce que la famille croit.
+  if(v&&v.umCont)return v.umCont;
   if(p&&p.umCont)return p.umCont;
   try{
     var m=mesureCatalogue(familleCatalogueDe(p.nm)||p.nm);
