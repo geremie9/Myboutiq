@@ -10217,9 +10217,45 @@ function regrouperDans(cible,membres,fam){
 //  les boutiques existantes.
 // ══════════════════════════════════════════════════════════════════
 function _condDe(p,v){
-  if(v&&Number(v.umSac)>0)return {n:Number(v.umSac),mot:_motContenant(p,v),sien:true};
-  if(p&&Number(p.umSac)>0)return {n:Number(p.umSac),mot:_motContenant(p,null),sien:false};
-  return {n:0,mot:_motContenant(p,v),sien:false};
+  var src=null,sien=false;
+  if(v&&Number(v.umSac)>0){src=v;sien=true;}
+  else if(p&&Number(p.umSac)>0)src=p;
+  if(!src)return {n:0,mot:_motContenant(p,v),sien:false,par:0,parMot:'',parTaille:0};
+  // ⭐ ÉTAPE 3 — LE NIVEAU DU MILIEU. `umPar` × `umParTaille` = `umSac`.
+  // ⚠️ `umSac` NE CHANGE PAS DE SENS : il reste le nombre d'unités de VENTE
+  // dans le contenant d'achat, et tout le reste de l'app (prix d'achat
+  // unitaire, stock, lots, repère 📦) continue de le lire sans rien savoir
+  // du milieu. Le niveau intermédiaire ne fait que DIRE COMMENT ce nombre a
+  // été obtenu. C'est la seule façon d'ajouter un étage sans toucher au
+  // calcul de personne.
+  var par=Number(src.umPar)||0,pt=Number(src.umParTaille)||0;
+  // Et il ne compte que si les deux nombres retombent bien sur le total :
+  // un calcul qui ne tombe pas juste sous ses yeux vaut moins que rien.
+  if(!(par>0&&pt>0)||Math.abs(par*pt-Number(src.umSac))>0.01){par=0;pt=0;}
+  return {n:Number(src.umSac),mot:_motContenant(p,sien?v:null),sien:sien,
+          par:par,parMot:src.umParMot||'',parTaille:pt};
+}
+// Comment on ÉCRIT un conditionnement — un seul endroit, pour que le niveau
+// du milieu ne puisse jamais survivre à la correction du nombre total.
+function _poserCond(cible,n,mot,par,parMot,parTaille){
+  if(!cible)return;
+  cible.umSac=(n>0)?n:null;
+  cible.umCont=mot||cible.umCont||null;
+  var bon=(par>0&&parTaille>0&&Math.abs(par*parTaille-n)<=0.01);
+  cible.umPar=bon?par:null;
+  cible.umParMot=bon?(parMot||null):null;
+  cible.umParTaille=bon?parTaille:null;
+}
+// « carton de 12 bouteilles (18 L) » — ce qu'il a dit, et le nombre dont
+// l'app se sert, ensemble. Montrer l'un sans l'autre, c'est soit lui parler
+// une langue qu'il ne reconnaît pas, soit lui cacher le chiffre qui compte.
+function _libelleCond(p,v){
+  var fr=(lang==='fr'),cd=_condDe(p,v);
+  if(!(cd.n>0))return '';
+  if(cd.par>0&&cd.parMot)
+    return cd.mot+' '+(fr?'de ':'of ')+fmtQ(cd.par)+' '+cd.parMot+(cd.par>1?'s':'')
+           +' ('+fmtQ(cd.n)+' '+_uniteMot(p)+')';
+  return cd.mot+' '+(fr?'de ':'of ')+fmtQ(cd.n);
 }
 function _motContenant(p,v){
   var fr=(lang==='fr');
