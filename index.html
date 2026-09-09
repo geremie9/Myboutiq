@@ -3474,7 +3474,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.60'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.61'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7055,6 +7055,85 @@ function _replierSiUneVariante(p,muet){
 //  cours de réglage », est un chantier — on la laisse tranquille. Replier le
 //  travail de quelqu'un pendant qu'il le fait, c'est le défaire.
 // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ ALIGNER LES FAMILLES D'AVANT
+//
+//  « Oui, alignez le regroupement aussi. »
+//
+//  Toutes les familles créées avant la 21.61 portent l'ancien mécanisme : la
+//  1re variante est repartie du stock NET, et le compte de l'article a été
+//  soldé par un mouvement inverse. Les chiffres du jour sont justes — mais
+//  l'histoire d'avant le regroupement est restée sur un compte que plus
+//  personne n'affiche. Annuler une vente d'avant ne rend donc rien : mesuré
+//  35 au lieu de 40, en silence, avec « stock restitué » à l'écran.
+//
+//  On répare sans rien effacer : le mouvement de solde RESTE (l'effacer se
+//  défferait à la première synchro avec l'autre téléphone, qui le rapporte),
+//  et on déplace les deux points de départ. Le compte de l'article part de ce
+//  que le solde annule — il tombe donc à zéro — et la 1re variante part du
+//  stock d'origine et hérite de tous les mouvements. Rien n'est réécrit.
+//
+//  ⚠️ ET ON VÉRIFIE. Après avoir déplacé, on rejoue tout et on compare au
+//  chiffre d'avant, article par article, variante par variante. Le moindre
+//  écart et on remet cet article comme il était. Une migration qui change un
+//  stock sans le dire est pire que le défaut qu'elle répare.
+// ══════════════════════════════════════════════════════════════════
+function _alignerFamillesAnciennes(){
+  try{
+    if(!DB||!DB.cfg||!Array.isArray(DB.articles))return 0;
+    if(DB.cfg._alignFam)return 0;
+    if(role!=='patron')return 0;
+    var avant={};
+    DB.articles.forEach(function(p){
+      if(!p||!p.vr||!p.vr.length)return;
+      avant[p.id]={t:getStk(p),v:p.vr.map(function(v){return Number(v.stk)||0;})};
+    });
+    var touches=[];
+    DB.articles.forEach(function(p){
+      if(!p||!p.vr||!p.vr.length)return;
+      if(utiliseStockBase(p))return;                       // le compte de base sert encore
+      if(p.vr.some(function(v){return v&&v.reprisBase;}))return;   // déjà aligné
+      // La variante qui EST l'article : celle qui ne vient pas d'ailleurs.
+      var heriti=p.vr.filter(function(v){return v&&v.oid==null;});
+      if(heriti.length!==1)return;
+      // Le mouvement de solde signe l'ancien mécanisme. Sans lui, cette
+      // famille est née autrement : on ne la touche pas.
+      var solde=0,vus=0;
+      (DB.appros||[]).forEach(function(a){
+        if(!a||a.pid!==p.id||a.vid!=null||!a.solde)return;
+        solde+=Number(a.qty)||0;vus++;
+      });
+      if(!vus)return;
+      touches.push({p:p,v:heriti[0],vStk0:Number(heriti[0].stk0)||0,pStk0:Number(p.stk0)||0});
+      heriti[0].stk0=Number(p.stk0)||0;
+      heriti[0].reprisBase=1;
+      p.stk0=-solde;                                       // ce que le solde annule
+    });
+    DB.cfg._alignFam=1;
+    if(!touches.length){try{save();}catch(e){}return 0;}
+    DB=recomputeStock(DB);
+    // ── La vérification, article par article ──
+    var repris=[];
+    touches.forEach(function(m){
+      var av=avant[m.p.id];if(!av)return;
+      var ok=(getStk(m.p)===av.t)&&m.p.vr.every(function(v,i){return (Number(v.stk)||0)===av.v[i];});
+      if(!ok)repris.push(m);
+    });
+    if(repris.length){
+      repris.forEach(function(m){
+        m.v.stk0=m.vStk0;delete m.v.reprisBase;m.p.stk0=m.pStk0;
+      });
+      DB=recomputeStock(DB);
+    }
+    var n=touches.length-repris.length;
+    if(n)journalAjouter('famille',(lang==='fr'?'Familles alignées':'Families aligned'),
+                        n+(lang==='fr'?' famille(s)':' famil(ies)'),
+                        (lang==='fr'?'les ventes d\'avant redeviennent annulables':'pre-grouping sales cancellable again'));
+    try{save();}catch(e){}
+    try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+    return n;
+  }catch(e){return 0;}
+}
 function _replierFamillesSolitaires(){
   try{
     if(!DB||!DB.cfg||!Array.isArray(DB.articles))return 0;
@@ -8148,22 +8227,21 @@ function mettreDansFamille(artId,cibleId){
   var fr=lang==='fr';
   if(!t.vr.length){
     // La cible est un article seul : elle devient d'abord SA propre 1re variante
-    var _base=Number(t.stk)||0;   // ce qu'elle a vraiment en rayon
-    _artVersVariante(t,t);        // ce stock part dans la 1re variante
-    t.px=0;t.pa=0;
-    // ⚠️ On ne remet PAS stk0 à 0 : les anciens mouvements du parent (appros,
-    // ventes) existent toujours et le stock revenait par la fenêtre —
-    // « Savon » affichait 25 alors que ses variantes n'en totalisaient que 22.
-    // Pire : ce reste fantôme rendait `parent.stk>0`, et ajouter une variante
-    // basculait alors TOUTE la famille en « stock de base » (ligne saveVar),
-    // avec des chiffres faux. On solde le compte du parent par un mouvement
-    // inverse — un évènement de plus, que la fusion entre téléphones sait
-    // additionner, au lieu de réécrire l'histoire, qui elle ne fusionne pas.
-    if(_base){
-      DB.appros.push({id:genVenteId(),pid:t.id,vid:null,qty:-_base,dev:_deviceId,
-                      date:new Date().toISOString(),solde:true});
-    }
-    t.stk=0;
+    // ⚠️⚠️ ELLE EMPORTE SON PASSÉ, PAS SEULEMENT SON CHIFFRE.
+    // Ce que faisait la version d'avant : la 1re variante repartait du stock
+    // NET, et le compte du parent était soldé par un mouvement inverse. Les
+    // chiffres du jour étaient justes — mais l'histoire restait sur un compte
+    // que plus personne n'affiche. Annuler une vente d'AVANT le regroupement
+    // rendait donc le stock à ce compte fantôme : mesuré 35 au lieu de 40,
+    // en silence, pendant que l'écran annonçait « stock restitué ».
+    // La 1re variante REPREND le compte de l'article (`reprisBase`, voir
+    // recomputeStock) : elle repart du stock de DÉPART et hérite de tous ses
+    // mouvements. Rien n'est réécrit, rien n'est soldé, tout se rejoue.
+    // (Même mécanisme que la conversion d'une boisson en formats — 21.60.)
+    var nv0=_artVersVariante(t,t);
+    nv0.stk0=Number(t.stk0)||0;
+    nv0.reprisBase=1;
+    t.px=0;t.pa=0;t.stk0=0;t.stk=0;
   }
   // La MESURE appartient au produit, pas à la variante : le riz se vend au
   // kilo que ce soit du parfumé ou de l'ordinaire. Si la cible ne la connaît
@@ -16939,7 +17017,7 @@ function renderNotifPanel(){
 showNotifs=function(){renderNotifPanel();document.getElementById('ov-notifs').classList.add('show');};
 var _appliquerLangBase=appliquerLang;appliquerLang=function(){_appliquerLangBase();['dash','dash2','dash3','dash4','dash5'].forEach(function(id){var el=document.getElementById('n-'+id);if(el)el.textContent='Dashboard';});var btnUse=document.getElementById('btn-use-points');if(btnUse)btnUse.textContent=lang==='fr'?'⭐ Utiliser points':'⭐ Use points';var info=document.getElementById('client-vente-info');if(info&&!clientVente)info.textContent=lang==='fr'?'Client fidèle (optionnel)':'Loyal customer (optional)';};
 navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(function(n){var oc=n.getAttribute('onclick')||'';n.classList.toggle('on',oc.indexOf("navTo('"+tab+"'")>-1);});var m={caisse:'s-caisse',stock:'s-stock',rapports:'s-rapports',clients:'s-clients',dash:'s-dashboard'};goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);if(tab==='dash')renderDashboard();};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
