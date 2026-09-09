@@ -1613,7 +1613,11 @@ body{max-width:min(100%,1200px)}
   <div class="sthdr">
     <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px">
       <button onclick="goBack()" class="hbtn">←</button>
-      <div><div style="color:#fff;font-size:19px;font-weight:800" id="h-settings">Paramètres</div><div style="color:rgba(255,255,255,.4);font-size:12px;font-weight:600" id="bn-hdr">Ma Boutique</div><div id="app-build" style="color:rgba(255,255,255,.28);font-size:10px;font-weight:600"></div></div>
+      <div><div style="color:#fff;font-size:19px;font-weight:800" id="h-settings">Paramètres</div><div style="color:rgba(255,255,255,.4);font-size:12px;font-weight:600" id="bn-hdr">Ma Boutique</div><!-- ⚠️ Trois fois de suite il m'a dit « ce n'est pas visible », sans qu'aucun
+     de nous deux puisse dire s'il avait REÇU la version. Ce numéro était
+     écrit en 10 px à 28 % d'opacité — illisible sur un téléphone au soleil.
+     C'est la seule preuve dont il dispose : elle doit se lire. -->
+<div id="app-build" style="color:rgba(255,255,255,.72);font-size:12px;font-weight:800;margin-top:2px"></div></div>
     </div>
     <!-- Code boutique avec QR -->
     <div class="qr-wrap" style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px;margin-bottom:0">
@@ -3407,7 +3411,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.44'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.45'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7838,13 +7842,28 @@ function _panierAuDessus(oui){
     if(f)f.style.zIndex=oui?'81':'';
   }catch(e){}
 }
-var VAR_STYLES=['carre','liste','cercle'];
-// ⭕ par défaut : son choix après essai (« concernant les expériences, le
-// cercle est mieux »). Les familles trop nombreuses pour l'écran retombent
-// toutes seules en carrés, et la pastille le dit.
+var VAR_STYLES=['carre','cercle','liste'];
+// ⚠️⚠️ LE DÉFAUT REPASSE AUX RECTANGLES, ET C'EST LUI QUI A TRANCHÉ.
+//
+// Sa remarque : « dans les variantes ça a une forme cercle alors que les
+// hors-variantes ont une forme rectangle — il faut changer les formes des
+// variantes comme les formes des hors-variantes. » Il me l'avait déjà dit
+// une fois, et je l'avais mis sur une liste au lieu de le faire.
+//
+// Le cercle était le défaut depuis son « concernant les expériences, le
+// cercle est mieux » — dit en ESSAYANT la présentation, pas en VENDANT
+// avec. À l'usage, il donne raison à l'autre moitié de sa phrase : dedans
+// et dehors doivent se ressembler. C'est la même exigence que « tout ce
+// qu'on fait dehors ne s'applique pas à l'intérieur », répétée depuis la
+// 21.12 sous cinq formes différentes.
+//
+// ⚠️ ON NE SUPPRIME RIEN : le cercle reste, en deuxième position du cycle,
+// et la pastille « ⬛ Carrés · changer » y ramène d'une tape. Celui qui
+// l'avait choisi le garde — `DB.cfg.varStyle` n'est pas touché, seul le
+// défaut de ceux qui n'ont jamais choisi change.
 function _styleVar(){
-  var s=(DB&&DB.cfg&&DB.cfg.varStyle)||'cercle';
-  return VAR_STYLES.indexOf(s)<0?'cercle':s;
+  var s=(DB&&DB.cfg&&DB.cfg.varStyle)||'carre';
+  return VAR_STYLES.indexOf(s)<0?'carre':s;
 }
 // ⚠️ PLUS DE NOMBRE EN DUR. Avant : « 8 maximum », choisi au jugé — et
 // « Jus » (10 variantes) et « Bière » (9), les deux seules familles du
