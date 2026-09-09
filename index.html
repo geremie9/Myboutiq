@@ -270,7 +270,11 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
    Ce qui est corrigé ici, ce sont les deux vraies causes de croissance
    trouvées au banc — le nom sans photo qui ne se coupait pas, et la puce du
    gros qui repassait à la ligne. Voir `.pnm` et `.pgros` plus bas. */
-.pcard{background:var(--C);border-radius:16px;padding:15px 8px 13px;text-align:center;cursor:pointer;border:1px solid var(--BD);transition:all .15s cubic-bezier(.34,1.56,.64,1);position:relative;box-shadow:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04);user-select:none}
+/* ⚠️ `transition:all` sur une carte recreee par dizaines a chaque rendu fait
+   surveiller au navigateur TOUTES les proprietes, y compris celles que le
+   JS pose lui-meme. On ne garde que les quatre qui bougent vraiment : moins
+   de couches a recomposer, meme animation a l'oeil. */
+.pcard{background:var(--C);border-radius:16px;padding:15px 8px 13px;text-align:center;cursor:pointer;border:1px solid var(--BD);transition:transform .15s cubic-bezier(.34,1.56,.64,1),box-shadow .15s,background .15s,border-color .15s;position:relative;box-shadow:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04);user-select:none}
 .pcard:active{transform:scale(.91)}.pcard.sel{border-color:var(--G);background:#F0FFF8;box-shadow:0 4px 15px rgba(0,200,83,.2)}
 .pcard.hasv{border-color:rgba(41,121,255,.22);background:#F8F9FF}
 .pcard.neg{border-color:rgba(255,109,0,.25);background:#FFF8F0}
@@ -393,8 +397,30 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .cpill{background:rgba(255,255,255,.94);border-radius:19px;padding:11px 13px 11px 11px;
   display:flex;align-items:center;justify-content:space-between;
   box-shadow:0 10px 30px rgba(26,26,46,.16),0 2px 6px rgba(26,26,46,.06);
-  border:1px solid rgba(26,26,46,.07);cursor:pointer;width:100%;font-family:'Outfit',sans-serif;
-  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  border:1px solid rgba(26,26,46,.07);cursor:pointer;width:100%;font-family:'Outfit',sans-serif}
+/* ⚠️⚠️ LE FLOU DE CETTE BARRE EST RETIRE, ET VOICI POURQUOI.
+   Ses captures montrent DEUX ARTICLES peints dans la meme case — « Riz »
+   par-dessus « Papier a rouler », deux noms et DEUX PRIX superposes a
+   l'instant d'encaisser.
+   J'ai chasse ce defaut au banc : 528 situations mesurees au pixel — 4
+   tailles de boutique x 4 tailles d'ecran x 3 presentations x 11 gestes
+   (aller au stock et revenir, ouvrir/fermer les variantes, defiler,
+   chercher, vider la recherche, mettre au panier, basculer le verrou).
+   ZERO chevauchement. La geometrie est saine ; le defaut est donc dans le
+   RENDU, pas dans la mise en page.
+   Or cette barre est posee, en `fixed`, AU-DESSUS de la grille qui se
+   redessine ET se REORDONNE (les articles touches remontent en tete). Un
+   `backdrop-filter` a cet endroit oblige le compositeur a rechantillonner
+   le fond a chaque image, et les WebView Android sont connues pour y
+   laisser une image PRECEDENTE. Ca explique exactement ce qu'il voit : deux
+   RENDUS differents, donc deux articles differents, dans la meme case.
+   ⚠️ ET LE FLOU NE SERVAIT A RIEN : ce fond est blanc a 94 %. Le flou ne
+   travaillait que sur les 6 % restants — invisible a l'oeil, mesure en
+   comparant les deux images. On perd donc zero et on retire un risque.
+   ⚠️ Je ne peux PAS verifier sur son telephone d'ici : c'est une correction
+   RAISONNEE, pas constatee. Le voile des variantes (.vscrim) garde son flou,
+   lui : il travaille derriere un voile a 34 % et c'est SA demande (« mais
+   legerement tu peux voir les autres articles »). */
 .cbub{background:var(--A);color:var(--P);border-radius:10px;min-width:26px;height:26px;
   display:inline-flex;align-items:center;justify-content:center;padding:0 7px;font-size:13px;font-weight:900}
 .csum{text-align:left;margin-left:10px}
@@ -3439,7 +3465,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.52'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.53'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
