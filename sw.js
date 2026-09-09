@@ -1,4 +1,4 @@
-const CACHE_NAME='myboutiq-v141';
+const CACHE_NAME='myboutiq-v142';
 const IMG_CACHE='myboutiq-images-v1';
 // photos-catalogue.json fait partie de la coquille : la boutique doit pouvoir
 // décider hors ligne quelle photo poser, sans redemander au serveur.
@@ -27,6 +27,16 @@ function isProductImage(url){
 self.addEventListener('fetch',function(e){
   if(e.request.method!=='GET')return;
   var url=new URL(e.request.url);
+
+  // ⚠️⚠️ LE SERVICE WORKER NE DOIT JAMAIS SE GARDER LUI-MEME.
+  // Sa remarque : « pas de mise a jour visible dans l'app ».
+  // Ce gestionnaire garde en cache TOUTE reponse 200 de meme origine — y
+  // compris `sw.js` s'il passe par ici. Or c'est ce fichier que le
+  // navigateur va relire pour SAVOIR s'il existe une nouvelle version : le
+  // servir depuis le cache, c'est lui repondre « rien de neuf » pour
+  // toujours. Le fichier de version des annonces a le meme probleme.
+  // La regle sort AVANT tout le reste : ces deux-la vont au reseau, point.
+  if(url.pathname.indexOf('sw.js')!==-1){e.respondWith(fetch(e.request));return;}
 
   if(isProductImage(url)){
     e.respondWith(
