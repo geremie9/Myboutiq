@@ -3110,6 +3110,14 @@ body{max-width:min(100%,1200px)}
            partage que pour le prix du carton. -->
       <div id="var-formats-bloc" style="display:none;margin-bottom:11px">
         <div style="font-size:10.5px;font-weight:800;color:var(--M);margin-bottom:6px" id="var-formats-t">FORMAT DE LA BOUTEILLE</div>
+        <!-- ⚠️ MESURÉ : un jus DÉJÀ en boutique (40 bouteilles, 500 F) à qui
+             on ajoutait cinq formats perdait ses 40 de l'écran, criait
+             « épuisé ! », et son propre format n'existait nulle part. Ses
+             bouteilles doivent devenir un format, elles aussi. -->
+        <div id="var-fmt-actuel" style="display:none;background:#FFF8E1;border-radius:11px;padding:10px 11px;margin-bottom:10px">
+          <div id="var-fmt-actuel-q" style="font-size:11.5px;font-weight:800;color:#8D6E63;margin-bottom:8px;line-height:1.45"></div>
+          <div class="shcts" id="var-fmt-actuel-lst"></div>
+        </div>
         <div class="shcts" id="var-formats"></div>
         <div id="var-fmt-info" style="display:none;font-size:11.5px;font-weight:800;color:var(--B);margin-top:7px"></div>
       </div>
@@ -3466,7 +3474,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.59'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.60'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7824,6 +7832,55 @@ function _venduParFormat(p){
 function _nomSansFormat(nm){
   return String(nm||'').replace(/\s*\d+[.,]?\d*\s*(cl|CL|ml|ML|l|L)\b\.?/g,'').replace(/\s{2,}/g,' ').trim();
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « COMMENT UN COMMERÇANT PEUT VENDRE DES JUS DÉJÀ DANS LA BOUTIQUE
+//         EN 1,5 L … JUSQU'À 0,25 L ? »
+//
+//  MESURÉ : « Jus Fruitki 1 L », 40 bouteilles, 500 F. Il coche cinq
+//  formats, il écrit cinq prix. Résultat :
+//     · l'app crie aussitôt « ⚠️ Jus Fruitki 1 L est épuisé ! »
+//     · ses 40 bouteilles disparaissent de l'écran (le stock d'une famille
+//       est la somme de ses variantes, et les cinq nouvelles sont à zéro)
+//     · SON format — le 1 L qu'il vend vraiment — n'existe nulle part :
+//       écarté de la liste parce que le nom le porte déjà, et créé par
+//       personne. Il ne pouvait plus vendre son jus du tout.
+//
+//  Un 1,5 L et un 0,25 L ne sont pas deux façons de puiser dans le même
+//  tas : ce sont deux bouteilles différentes, chacune son stock. Les 40 qu'il
+//  a en rayon appartiennent donc à UN format — et ce format doit naître avec
+//  les autres, en emportant son prix, son prix d'achat et son stock.
+//
+//  ⚠️ ON NE DEVINE PAS LEQUEL. Si le nom le dit (« … 1 L »), on le propose
+//  déjà coché. Sinon on POSE LA QUESTION, et sans réponse on ne crée rien :
+//  perdre en silence le stock de quelqu'un est pire que lui demander.
+// ══════════════════════════════════════════════════════════════════
+var _fmtActuel='';
+// ⚠️ ON NE POSE LA QUESTION QUE S'IL Y A QUELQUE CHOSE À PERDRE — c'est-à-dire
+// DU STOCK. Un article à zéro qui devient une famille de formats ne perd rien :
+// ses formats naissent vides, comme il se doit. Le questionner quand même
+// serait une porte de plus à pousser pour rien, et la leçon du « carton
+// partout » vaut ici aussi : une règle qui se déclenche à tort encombre.
+function _besoinFmtActuel(p){
+  if(!p||!_venduParFormat(p))return false;
+  if(p.vr&&p.vr.length)return false;              // déjà une famille : rien à sauver
+  return Number(p.stk)>0;
+}
+// Le format que le nom porte déjà : « Jus Fruitki 1 L » -> « 1 L », écrit
+// comme l'échelle l'écrit, pour que les deux se reconnaissent.
+function _fmtDuNom(p){
+  var m=String(p&&p.nm||'').match(/\d+[.,]?\d*\s*(cl|ml|l)\b\.?/i);
+  if(!m)return '';
+  var cle=txtNorm(m[0]).replace(/\.$/,'');
+  var trouve='';
+  _echelleFormats(p.nm).forEach(function(f){if(txtNorm(f)===cle)trouve=f;});
+  return trouve;
+}
+function choisirFmtActuel(f){
+  _fmtActuel=(_fmtActuel===f)?'':f;
+  var k=_fmtSel.indexOf(f);
+  if(k>=0)_fmtSel.splice(k,1);                    // il ne se choisit pas deux fois
+  try{majFormatsVariante(varArtCours);}catch(e){}
+}
 function majFormatsVariante(p){
   var bloc=document.getElementById('var-formats-bloc'),box=document.getElementById('var-formats');
   if(!bloc||!box)return;
@@ -7837,12 +7894,34 @@ function majFormatsVariante(p){
     var m=String(v.nm||'').match(/\d+[.,]?\d*\s*(cl|ml|l)\b/i);
     if(m)pris[txtNorm(m[0])]=1;
   });
-  var base=_nomSansFormat(p.nm);
-  box.innerHTML=_echelleFormats(p.nm).filter(function(f){return !pris[txtNorm(f)];}).map(function(f){
+  // ── Et ce qu'il a DÉJÀ en rayon, c'est quel format ? ──
+  var zone=document.getElementById('var-fmt-actuel'),q=document.getElementById('var-fmt-actuel-q'),
+      lst=document.getElementById('var-fmt-actuel-lst');
+  var besoin=_besoinFmtActuel(p);
+  if(besoin&&!_fmtActuel)_fmtActuel=_fmtDuNom(p);
+  if(!besoin)_fmtActuel='';
+  if(zone){
+    zone.style.display=besoin?'block':'none';
+    if(besoin&&q){
+      var stk=Number(p.stk)||0;
+      q.textContent=fr
+        ?('Et ce que tu as déjà — '+(stk>0?(fmtQ(stk)+' en stock à '+fmt(p.px||0)):('ton prix de '+fmt(p.px||0)))+' — c\'est quel format ? Il gardera son stock et son prix.')
+        :('And what you already have — '+(stk>0?(fmtQ(stk)+' in stock'):'your current price')+' — which size is it? It keeps its stock and price.');
+    }
+    if(besoin&&lst){
+      lst.innerHTML=_echelleFormats(p.nm).map(function(f){
+        var on=(_fmtActuel===f);
+        return '<button type="button" class="shct'+(on?' on':'')+'" onclick="choisirFmtActuel(\''+f+'\')">'+(on?'✓ ':'')+f+'</button>';
+      }).join('');
+    }
+  }
+  box.innerHTML=_echelleFormats(p.nm).filter(function(f){
+    return !pris[txtNorm(f)]&&f!==_fmtActuel;
+  }).map(function(f){
     var on=_fmtSel.indexOf(f)>=0;
     return '<button type="button" class="shct'+(on?' on':'')+'" onclick="choisirFormatVariante(\''+f+'\')">'+(on?'✓ ':'')+f+'</button>';
   }).join('');
-  bloc.style.display=box.innerHTML?'block':'none';
+  bloc.style.display=(box.innerHTML||besoin)?'block':'none';
   _majMultiFormats();
 }
 // ══════════════════════════════════════════════════════════════════
@@ -7862,7 +7941,11 @@ function _majMultiFormats(){
   var box=document.getElementById('var-multi'),solo=document.getElementById('var-solo');
   var info=document.getElementById('var-fmt-info'),btn=document.getElementById('lbl-save-var');
   if(!box||!solo)return;
-  var fr=(lang==='fr'),n=_fmtSel.length,p=varArtCours;
+  var fr=(lang==='fr'),p=varArtCours;
+  // Le format qu'il tient déjà compte comme un format : c'est lui qui portera
+  // le stock. Deux formats en tout, c'est déjà une famille.
+  var actuel=(_fmtActuel&&_besoinFmtActuel(p))?_fmtActuel:'';
+  var n=_fmtSel.length+(actuel?1:0);
   if(info){
     info.style.display=n?'block':'none';
     info.textContent=n?(n===1?(fr?'1 format choisi — ou coche-en d\'autres pour les créer ensemble'
@@ -7876,11 +7959,21 @@ function _majMultiFormats(){
   }
   solo.style.display='none';box.style.display='block';
   var base=p?_nomSansFormat(p.nm):'';
+  var stkAct=Number(p&&p.stk)||0;
   // On garde ce qu'il a deja tape si la liste change
   var dejaSaisi={};
   box.querySelectorAll('[data-fmtpx]').forEach(function(i){dejaSaisi[i.dataset.fmtpx]=i.value;});
   box.innerHTML='<div style="font-size:10.5px;font-weight:800;color:var(--M);margin-bottom:7px">'
     +(fr?'LE PRIX DE CHAQUE FORMAT':'PRICE OF EACH SIZE')+'</div>'
+    // Sa ligne à lui d'abord, avec son prix déjà écrit et son stock rappelé :
+    // il doit VOIR que ses bouteilles ne sont pas perdues en route.
+    +(actuel?('<div style="display:flex;gap:8px;align-items:center;margin-bottom:7px;background:#FFF8E1;border-radius:9px;padding:6px 8px">'
+        +'<span style="flex:0 0 74px;font-size:13px;font-weight:900;color:var(--T)">'+actuel+'</span>'
+        +'<input class="pi sm" style="flex:1;margin:0" type="number" inputmode="numeric" data-fmtpx="'+actuel+'" data-fmtactuel="1" '
+        +'value="'+(Number(p.px)||'')+'">'
+        +'<span style="flex:0 0 auto;font-size:10.5px;font-weight:800;color:#8D6E63">'
+        +(fr?(stkAct>0?('garde '+fmtQ(stkAct)):'le tien'):(stkAct>0?('keeps '+fmtQ(stkAct)):'yours'))+'</span>'
+        +'</div>'):'')
     +_fmtSel.map(function(f){
       return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">'
         +'<span style="flex:0 0 74px;font-size:13px;font-weight:900;color:var(--T)">'+f+'</span>'
@@ -7912,7 +8005,7 @@ function choisirFormatVariante(f){
 }
 // Chaque ouverture repart d'une ardoise propre : sans ça, les formats cochés
 // la fois d'avant reviendraient sur un autre article.
-function _resetFormats(){_fmtSel=[];}
+function _resetFormats(){_fmtSel=[];_fmtActuel='';}
 // ⭐ Créer TOUS les formats cochés, chacun avec SON prix.
 function _saveVarFormats(){
   var p=varArtCours,fr=(lang==='fr');
@@ -7920,8 +8013,39 @@ function _saveVarFormats(){
   var box=document.getElementById('var-multi');
   var lignes=[].slice.call(box.querySelectorAll('[data-fmtpx]'));
   var base=_nomSansFormat(p.nm),faits=[],sansPrix=[];
+  // ⚠️ SES BOUTEILLES D'ABORD. Il a du stock, un prix, et il s'apprête à
+  // devenir une famille de formats : sans réponse à « c'est quel format ? »,
+  // ce stock n'appartiendrait à rien et disparaîtrait de l'écran. On ne crée
+  // alors RIEN, et on lui dit pourquoi — plutôt que de perdre en silence.
+  if(_besoinFmtActuel(p)&&!_fmtActuel){
+    showToast('🥤 '+(fr?('Dis d\'abord quel format sont tes '+(Number(p.stk)>0?fmtQ(p.stk)+' en stock':'articles actuels'))
+                       :'First tell me which size your current stock is'));
+    try{var z=document.getElementById('var-fmt-actuel');if(z)z.scrollIntoView({block:'center',behavior:'smooth'});}catch(e){}
+    return;
+  }
+  // Son format à lui naît EN PREMIER, et il emporte tout ce que l'article
+  // avait : son prix, son prix d'achat, sa photo, son conditionnement, son
+  // stock — et son passé.
+  var ligneAct=lignes.filter(function(i){return i.dataset.fmtactuel;})[0]||null;
+  if(ligneAct&&_besoinFmtActuel(p)){
+    var pxAct=parseFloat(String(ligneAct.value||'').replace(',','.'))||Number(p.px)||0;
+    var nv=_artVersVariante(p,p);
+    nv.nm=(base?(base+' '):'')+_fmtActuel;
+    if(pxAct>0)nv.px=pxAct;
+    // ⚠️ ON DÉPLACE SON HISTOIRE, PAS SON SOLDE. Le format repart du stock de
+    // DÉPART de l'article et hérite de tous ses mouvements (voir `reprisBase`
+    // dans recomputeStock) : ses ventes d'avant restent donc annulables. Figer
+    // le stock net dans un chiffre aurait perdu ces 5 bouteilles-là en
+    // silence, le jour où il annule une vente d'hier.
+    nv.stk0=Number(p.stk0)||0;
+    nv.reprisBase=1;
+    p.stk0=0;p.stk=0;p.px=0;p.pa=0;
+    p.nm=base||p.nm;                 // la famille s'appelle « Jus Fruitki »
+    faits.push(_fmtActuel);
+  }
   var nid=_prochainIdVariante(p);
   lignes.forEach(function(inp){
+    if(inp.dataset.fmtactuel)return;                 // déjà née, avec son stock
     var f=inp.dataset.fmtpx,px=parseFloat(String(inp.value||'').replace(',','.'))||0;
     // ⚠️ Sans prix, on ne crée RIEN. Un format annoncé « créé » et invendable
     // est précisément ce qu'on a réparé en 21.14.
@@ -13690,7 +13814,7 @@ function _varPaUnitaire(){
 function saveVar(){
   // Plusieurs formats cochés : c'est l'autre chemin, et il demande un prix
   // par format avant de créer quoi que ce soit.
-  if(_fmtSel.length>=2){_saveVarFormats();return;}
+  if(_fmtSel.length>=2||(_fmtSel.length>=1&&_fmtActuel&&_besoinFmtActuel(varArtCours))){_saveVarFormats();return;}
   var nm=document.getElementById('var-nm').value.trim(),pa=_varPaUnitaire(),pv=parseFloat(document.getElementById('var-pv').value)||0,stk=parseInt(document.getElementById('var-stk').value)||0;if(pa<0){showToast('📦 '+(lang==='fr'?"Combien d'unités dans 1 carton ? Sans ce nombre je ne peux pas calculer le prix à l'unité":'How many per box?'));var _c=document.getElementById('var-parc');if(_c)_c.focus();return;}if(!nm||!pv){showToast(t('errNom'));return;}if(!varArtCours)return;var nid=_prochainIdVariante(varArtCours);var qBase=1;if(varArtCours.stk>0){var msg=lang==='fr'?'Quantité de stock de base consommée par cette variante ?\\n(1 pour unité simple, 100 pour 100g, 1000 pour 1kg, 0.5 pour une demi-unité, etc.)':'Base stock units consumed by this variant?\\n(1 for single unit, 100 for 100g, 1000 for 1kg, 0.5 for half a unit, etc.)';var rep=prompt(msg,'1');if(rep===null)return;qBase=Math.max(0.001,parseFloat((rep||'1').replace(',','.'))||1);}var nv={id:nid,nm,px:pv,pa,stk,rt:true,qBase:qBase};if(typeof selVarImg!=='undefined'&&selVarImg)nv.img=selVarImg;varArtCours.vr.push(nv);if(stk>0){nv.stk0=stk;}save();renderProd(DB.articles);renderStock(DB.articles);closeSheet('ov-addvar');
   // Si la fiche famille est ouverte derrière, on la rafraîchit avec la nouvelle variante
   if(typeof _cmpArt!=='undefined'&&_cmpArt===varArtCours&&document.getElementById('ov-completer').classList.contains('show'))cmpRenderFamRows();
@@ -15492,10 +15616,31 @@ function recomputeStock(d){
     if(p&&p.vfus)Object.keys(p.vfus).forEach(function(vid){fondu[p.id+'|'+vid]=1;});
   });
   var _estFondu=function(pid,vid){return vid!=null&&!!fondu[pid+'|'+vid];};
+  // ⭐ LA VARIANTE QUI A REPRIS LE COMPTE DE L'ARTICLE. Quand « Jus Fruitki
+  // 1 L » devient une famille de formats, ses 40 bouteilles passent au format
+  // « 1 L » — et avec elles TOUT son passé : ses ravitaillements et ses
+  // ventes d'avant, qui ne portent aucun numéro de variante.
+  // ⚠️ SANS ÇA, ANNULER UNE VENTE D'AVANT LA CONVERSION NE REND RIEN. Le
+  // stock revenait sur un compte de base que plus personne n'affiche : mesuré
+  // 35 au lieu de 40, en silence, avec « stock restitué » à l'écran.
+  // (Le regroupement de deux articles règle le même problème autrement, par
+  // un mouvement de solde. Cette voie-ci est la plus sûre des deux : elle
+  // garde l'histoire au lieu de la figer dans un chiffre.)
+  var reprise={};
+  d.articles.forEach(function(p){
+    if(!p||!p.vr||!p.vr.length)return;
+    if(utiliseStockBase(p))return;           // le compte de base sert encore : on n'y touche pas
+    var v=p.vr.find(function(x){return x&&x.reprisBase;});
+    if(v)reprise[p.id]=v.id;
+  });
+  var _reprise=function(pid,vid,mvt){
+    if(vid!=null||!reprise[pid]||(mvt&&mvt.solde))return vid;
+    return reprise[pid];
+  };
   var approBase={},approVar={};
-  (d.appros||[]).forEach(function(a){if(!a||a.pid==null)return;var qy=Number(a.qty)||0;var _m=_rattacher(a),_p=_m?_m.pid:a.pid,_v=_m?_m.vid:a.vid;if(_estFondu(_p,_v))_v=null;if(_v==null)approBase[_p]=(approBase[_p]||0)+qy;else{var k=_p+'|'+_v;approVar[k]=(approVar[k]||0)+qy;}});
+  (d.appros||[]).forEach(function(a){if(!a||a.pid==null)return;var qy=Number(a.qty)||0;var _m=_rattacher(a),_p=_m?_m.pid:a.pid,_v=_m?_m.vid:a.vid;if(_estFondu(_p,_v))_v=null;_v=_reprise(_p,_v,a);if(_v==null)approBase[_p]=(approBase[_p]||0)+qy;else{var k=_p+'|'+_v;approVar[k]=(approVar[k]||0)+qy;}});
   var soldBase={},soldVar={},vendu={};
-  (d.ventes||[]).forEach(function(v){if(!v||v.annulee)return;(v.lignes||[]).forEach(function(l){if(!l||l.pid==null)return;var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;var _m=_rattacher(l),_pi=_m?_m.pid:l.pid,_vi=_m?_m.vid:l.vid;if(_estFondu(_pi,_vi))_vi=null;vendu[_pi]=(vendu[_pi]||0)+qt;var p=d.articles.find(function(x){return x.id==_pi;});if(!p)return;if(_vi){if(utiliseStockBase(p))soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);else{var _lv=(p.vr||[]).find(function(x){return String(x.id)===String(_vi);});var _gr=_lv&&_estGrosDeVariante(_lv);var k=_pi+'|'+(_gr?_lv.base:_vi);soldVar[k]=(soldVar[k]||0)+norm*(_gr?(Number(l.qBase)||getQBase(_lv)):1);}}else soldBase[_pi]=(soldBase[_pi]||0)+norm;});});
+  (d.ventes||[]).forEach(function(v){if(!v||v.annulee)return;(v.lignes||[]).forEach(function(l){if(!l||l.pid==null)return;var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;var _m=_rattacher(l),_pi=_m?_m.pid:l.pid,_vi=_m?_m.vid:l.vid;if(_estFondu(_pi,_vi))_vi=null;_vi=_reprise(_pi,_vi,l);vendu[_pi]=(vendu[_pi]||0)+qt;var p=d.articles.find(function(x){return x.id==_pi;});if(!p)return;if(_vi){if(utiliseStockBase(p))soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);else{var _lv=(p.vr||[]).find(function(x){return String(x.id)===String(_vi);});var _gr=_lv&&_estGrosDeVariante(_lv);var k=_pi+'|'+(_gr?_lv.base:_vi);soldVar[k]=(soldVar[k]||0)+norm*(_gr?(Number(l.qBase)||getQBase(_lv)):1);}}else soldBase[_pi]=(soldBase[_pi]||0)+norm;});});
   d.articles.forEach(function(p){
     p.stk=(Number(p.stk0)||0)+(approBase[p.id]||0)-(soldBase[p.id]||0);
     p.vd=(Number(p.vd0)||0)+(vendu[p.id]||0); // vd0 = ventes déjà archivées (compteur "vendu" à vie préservé)
