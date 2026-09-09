@@ -3065,7 +3065,16 @@ body{max-width:min(100%,1200px)}
       <div id="var-formats-bloc" style="display:none;margin-bottom:11px">
         <div style="font-size:10.5px;font-weight:800;color:var(--M);margin-bottom:6px" id="var-formats-t">FORMAT DE LA BOUTEILLE</div>
         <div class="shcts" id="var-formats"></div>
+        <div id="var-fmt-info" style="display:none;font-size:11.5px;font-weight:800;color:var(--B);margin-top:7px"></div>
       </div>
+      <!-- ⚠️ POSER SIX FORMATS DEMANDAIT SIX PASSAGES DANS CE FORMULAIRE.
+           Les cocher tous et n'ecrire QUE les prix fait le meme travail en un
+           seul passage. Et le prix est demande ICI, format par format : sans
+           lui on ne cree rien. C'est la regle de la 21.14 — jamais de variante
+           annoncee « creee » sans prix de vente, donc jamais de tuile rouge
+           qu'il n'a pas demandee. -->
+      <div id="var-multi" style="display:none;margin-bottom:11px"></div>
+      <div id="var-solo">
       <div class="pig"><label class="pl" id="lbl-var-nm">Nom</label><input class="pi sm" type="text" id="var-nm" style="font-size:15px;font-weight:700"></div>
       <div id="var-photo-preview" style="display:none" class="photo-preview"><img id="var-photo-img" src=""><div class="pp-txt" id="var-photo-txt">Photo prête</div><button type="button" class="pp-rm" onclick="retirerPhotoVar()">✕</button></div>
       <button type="button" id="btn-photo-var" class="photo-upl-btn" onclick="document.getElementById('inp-photo-var').click()" style="width:100%;background:#E8F5E9;color:var(--G);border:none;border-radius:10px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:9px;display:flex;align-items:center;justify-content:center;gap:7px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-4.5-4.5L6 21"/></svg><span id="lbl-photo-var">Photo de la variante (optionnel)</span></button>
@@ -3087,6 +3096,7 @@ body{max-width:min(100%,1200px)}
       <div class="pig"><label class="pl" id="lbl-var-pv">Prix de vente</label><input class="pi" type="number" id="var-pv" oninput="calcBenVar()" inputmode="numeric"></div>
       <div class="bcard bon" id="var-bc" style="display:none"><div><div class="blbl" id="var-bl">📈 Bénéfice</div></div><div class="bamt" id="var-ba">+0</div></div>
       <div class="pig"><label class="pl" id="lbl-var-stk">Stock initial</label><input class="pi" type="number" id="var-stk" placeholder="0" inputmode="numeric"></div>
+      </div>
       <button class="bnxt" onclick="saveVar()" id="btn-save-var">✅ <span id="lbl-save-var">Ajouter</span></button>
     </div>
   </div>
@@ -3410,7 +3420,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.49'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.50'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6884,6 +6894,7 @@ function cmpAddVar(){
   varArtCours=p;
   document.getElementById('addvar-t').textContent=(lang==='fr'?'🔀 Variante de ':'🔀 Variant of ')+p.nm;
   ['var-nm','var-pa','var-pv','var-stk','var-parc'].forEach(function(id){var _e=document.getElementById(id);if(_e)_e.value='';});try{varMode('u');}catch(e){}
+  try{_resetFormats();majFormatsVariante(p);}catch(e){}
   document.getElementById('var-bc').style.display='none';
   selVarImg=null;var pv=document.getElementById('var-photo-preview');if(pv)pv.style.display='none';
   document.getElementById('ov-addvar').classList.add('show');
@@ -7591,19 +7602,112 @@ function majFormatsVariante(p){
   });
   var base=_nomSansFormat(p.nm);
   box.innerHTML=_echelleFormats(p.nm).filter(function(f){return !pris[txtNorm(f)];}).map(function(f){
-    return '<button type="button" class="shct" onclick="choisirFormatVariante(\''+f+'\')">'+f+'</button>';
+    var on=_fmtSel.indexOf(f)>=0;
+    return '<button type="button" class="shct'+(on?' on':'')+'" onclick="choisirFormatVariante(\''+f+'\')">'+(on?'✓ ':'')+f+'</button>';
   }).join('');
   bloc.style.display=box.innerHTML?'block':'none';
+  _majMultiFormats();
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ PLUSIEURS FORMATS EN UN SEUL PASSAGE
+//
+//  « Un Coca se vend en 1,5 L, 1,25 L, 1 L, 0,75 L, 0,5 L, 0,25 L. » Six
+//  formats = six allers-retours dans ce formulaire. Il les coche, il n'ecrit
+//  que les prix, et les six naissent ensemble.
+//
+//  ⚠️ LE PRIX EST DEMANDE ICI, FORMAT PAR FORMAT. Creer six variantes sans
+//  prix ferait six tuiles rouges « a completer » — exactement le defaut
+//  repare en 21.14, ou l'app annoncait « article cree » pour un article
+//  invendable. Un format sans prix n'est simplement PAS cree, et on le dit.
+// ══════════════════════════════════════════════════════════════════
+var _fmtSel=[];
+function _majMultiFormats(){
+  var box=document.getElementById('var-multi'),solo=document.getElementById('var-solo');
+  var info=document.getElementById('var-fmt-info'),btn=document.getElementById('lbl-save-var');
+  if(!box||!solo)return;
+  var fr=(lang==='fr'),n=_fmtSel.length,p=varArtCours;
+  if(info){
+    info.style.display=n?'block':'none';
+    info.textContent=n?(n===1?(fr?'1 format choisi — ou coche-en d\'autres pour les créer ensemble'
+                                 :'1 size picked — pick more to create them together')
+                          :(fr?(n+' formats choisis — écris seulement leurs prix'):(n+' sizes picked'))):'';
+  }
+  if(n<2){
+    box.style.display='none';box.innerHTML='';solo.style.display='block';
+    if(btn)btn.textContent=fr?'Ajouter':'Add';
+    return;
+  }
+  solo.style.display='none';box.style.display='block';
+  var base=p?_nomSansFormat(p.nm):'';
+  // On garde ce qu'il a deja tape si la liste change
+  var dejaSaisi={};
+  box.querySelectorAll('[data-fmtpx]').forEach(function(i){dejaSaisi[i.dataset.fmtpx]=i.value;});
+  box.innerHTML='<div style="font-size:10.5px;font-weight:800;color:var(--M);margin-bottom:7px">'
+    +(fr?'LE PRIX DE CHAQUE FORMAT':'PRICE OF EACH SIZE')+'</div>'
+    +_fmtSel.map(function(f){
+      return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">'
+        +'<span style="flex:0 0 74px;font-size:13px;font-weight:900;color:var(--T)">'+f+'</span>'
+        +'<input class="pi sm" style="flex:1;margin:0" type="number" inputmode="numeric" data-fmtpx="'+f+'" '
+        +'value="'+(dejaSaisi[f]||'')+'" placeholder="'+(fr?'Prix de vente':'Sell price')+'">'
+        +'<button type="button" onclick="choisirFormatVariante(\''+f+'\')" title="'+(fr?'Retirer':'Remove')+'" '
+        +'style="flex:0 0 30px;height:30px;border:none;border-radius:8px;background:#FFEBEE;color:var(--R);font-size:13px;cursor:pointer">✕</button>'
+        +'</div>';
+    }).join('')
+    +'<div style="font-size:11px;font-weight:700;color:var(--M);margin-top:2px">'
+    +(fr?('Ils s\'appelleront « '+base+' 1,5 L », « '+base+' 1 L »… Le stock se met après.')
+       :('They will be named « '+base+' 1.5 L »…'))+'</div>';
+  if(btn)btn.textContent=fr?('Créer les '+n+' formats'):('Create the '+n+' sizes');
 }
 function choisirFormatVariante(f){
   var i=document.getElementById('var-nm');if(!i)return;
+  var k=_fmtSel.indexOf(f);
+  if(k>=0)_fmtSel.splice(k,1); else _fmtSel.push(f);
   var base=varArtCours?_nomSansFormat(varArtCours.nm):'';
-  // La variante porte SON format : c'est ce qui la distingue des autres.
-  i.value=(base?(base+' '):'')+f;
-  [...document.querySelectorAll('#var-formats .shct')].forEach(function(b){
-    b.classList.toggle('on',b.textContent===f);
+  // UN SEUL format : rien ne change de ce qu'il connaît — le nom se remplit,
+  // le curseur va au prix. C'est le geste le plus fréquent, il garde sa forme.
+  if(_fmtSel.length===1){
+    i.value=(base?(base+' '):'')+_fmtSel[0];
+  }else if(_fmtSel.length===0){
+    i.value='';
+  }
+  try{majFormatsVariante(varArtCours);}catch(e){}
+  if(_fmtSel.length===1){try{document.getElementById('var-pv').focus();}catch(e){}}
+}
+// Chaque ouverture repart d'une ardoise propre : sans ça, les formats cochés
+// la fois d'avant reviendraient sur un autre article.
+function _resetFormats(){_fmtSel=[];}
+// ⭐ Créer TOUS les formats cochés, chacun avec SON prix.
+function _saveVarFormats(){
+  var p=varArtCours,fr=(lang==='fr');
+  if(!p)return;
+  var box=document.getElementById('var-multi');
+  var lignes=[].slice.call(box.querySelectorAll('[data-fmtpx]'));
+  var base=_nomSansFormat(p.nm),faits=[],sansPrix=[];
+  var nid=(p.vr.length?Math.max.apply(null,p.vr.map(function(v){return v.id;})):0)+1;
+  lignes.forEach(function(inp){
+    var f=inp.dataset.fmtpx,px=parseFloat(String(inp.value||'').replace(',','.'))||0;
+    // ⚠️ Sans prix, on ne crée RIEN. Un format annoncé « créé » et invendable
+    // est précisément ce qu'on a réparé en 21.14.
+    if(!(px>0)){sansPrix.push(f);return;}
+    p.vr.push({id:nid++,nm:(base?(base+' '):'')+f,px:px,pa:0,stk:0,stk0:0,rt:true,qBase:1});
+    faits.push(f);
   });
-  try{document.getElementById('var-pv').focus();}catch(e){}
+  if(!faits.length){
+    showToast('💰 '+(fr?'Écris le prix d\'au moins un format':'Give at least one price'));
+    var _p=box.querySelector('[data-fmtpx]');if(_p){_p.style.borderColor='var(--R)';_p.focus();}
+    return;
+  }
+  save();
+  try{DB=recomputeStock(DB);}catch(e){}
+  renderProd(DB.articles);renderStock(DB.articles);
+  try{mettreEnAvant(p.id);}catch(e){}
+  if(typeof _cmpArt!=='undefined'&&_cmpArt===p&&document.getElementById('ov-completer').classList.contains('show'))cmpRenderFamRows();
+  _resetFormats();
+  closeSheet('ov-addvar');
+  // On dit ce qui est fait ET ce qui ne l'est pas : un format laissé sans prix
+  // n'existe pas, et il doit le savoir tout de suite.
+  showToast('✅ '+faits.length+' '+(fr?'formats créés':'sizes created')+' — '+faits.join(' · ')
+    +(sansPrix.length?('  ·  '+(fr?'sans prix, non créé'+(sansPrix.length>1?'s':'')+' : ':'no price: ')+sansPrix.join(' · ')):''));
 }
 // ── Photo d'une variante (upload direct, compressée) ──
 var selVarImg=null;
@@ -12866,7 +12970,11 @@ function _varPaUnitaire(){
   if(!(c>0))return -1;
   return Math.round(t/c);
 }
-function saveVar(){var nm=document.getElementById('var-nm').value.trim(),pa=_varPaUnitaire(),pv=parseFloat(document.getElementById('var-pv').value)||0,stk=parseInt(document.getElementById('var-stk').value)||0;if(pa<0){showToast('📦 '+(lang==='fr'?"Combien d'unités dans 1 carton ? Sans ce nombre je ne peux pas calculer le prix à l'unité":'How many per box?'));var _c=document.getElementById('var-parc');if(_c)_c.focus();return;}if(!nm||!pv){showToast(t('errNom'));return;}if(!varArtCours)return;var nid=(varArtCours.vr.length?Math.max.apply(null,varArtCours.vr.map(function(v){return v.id;})):0)+1;var qBase=1;if(varArtCours.stk>0){var msg=lang==='fr'?'Quantité de stock de base consommée par cette variante ?\\n(1 pour unité simple, 100 pour 100g, 1000 pour 1kg, 0.5 pour une demi-unité, etc.)':'Base stock units consumed by this variant?\\n(1 for single unit, 100 for 100g, 1000 for 1kg, 0.5 for half a unit, etc.)';var rep=prompt(msg,'1');if(rep===null)return;qBase=Math.max(0.001,parseFloat((rep||'1').replace(',','.'))||1);}var nv={id:nid,nm,px:pv,pa,stk,rt:true,qBase:qBase};if(typeof selVarImg!=='undefined'&&selVarImg)nv.img=selVarImg;varArtCours.vr.push(nv);if(stk>0){nv.stk0=stk;}save();renderProd(DB.articles);renderStock(DB.articles);closeSheet('ov-addvar');
+function saveVar(){
+  // Plusieurs formats cochés : c'est l'autre chemin, et il demande un prix
+  // par format avant de créer quoi que ce soit.
+  if(_fmtSel.length>=2){_saveVarFormats();return;}
+  var nm=document.getElementById('var-nm').value.trim(),pa=_varPaUnitaire(),pv=parseFloat(document.getElementById('var-pv').value)||0,stk=parseInt(document.getElementById('var-stk').value)||0;if(pa<0){showToast('📦 '+(lang==='fr'?"Combien d'unités dans 1 carton ? Sans ce nombre je ne peux pas calculer le prix à l'unité":'How many per box?'));var _c=document.getElementById('var-parc');if(_c)_c.focus();return;}if(!nm||!pv){showToast(t('errNom'));return;}if(!varArtCours)return;var nid=(varArtCours.vr.length?Math.max.apply(null,varArtCours.vr.map(function(v){return v.id;})):0)+1;var qBase=1;if(varArtCours.stk>0){var msg=lang==='fr'?'Quantité de stock de base consommée par cette variante ?\\n(1 pour unité simple, 100 pour 100g, 1000 pour 1kg, 0.5 pour une demi-unité, etc.)':'Base stock units consumed by this variant?\\n(1 for single unit, 100 for 100g, 1000 for 1kg, 0.5 for half a unit, etc.)';var rep=prompt(msg,'1');if(rep===null)return;qBase=Math.max(0.001,parseFloat((rep||'1').replace(',','.'))||1);}var nv={id:nid,nm,px:pv,pa,stk,rt:true,qBase:qBase};if(typeof selVarImg!=='undefined'&&selVarImg)nv.img=selVarImg;varArtCours.vr.push(nv);if(stk>0){nv.stk0=stk;}save();renderProd(DB.articles);renderStock(DB.articles);closeSheet('ov-addvar');
   // Si la fiche famille est ouverte derrière, on la rafraîchit avec la nouvelle variante
   if(typeof _cmpArt!=='undefined'&&_cmpArt===varArtCours&&document.getElementById('ov-completer').classList.contains('show'))cmpRenderFamRows();
   showToast(t('varianteAjoutee')+(qBase!==1?(lang==='fr'?' · stock base intelligent activé':' · smart base stock enabled'):''));}
