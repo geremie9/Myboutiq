@@ -3512,7 +3512,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.66'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.67'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4328,15 +4328,51 @@ function svgIcoArt(key,size){return '<svg viewBox="0 0 24 24" width="'+size+'" h
 // cls = classe de la boîte (pmedia | siemo-wrap ...), size = taille de l'icône en px.
 function mediaArtInner(p,size){var i=iconArticle(p),c=_RAYON[i.ray]||_RAYON.amber;return {bg:c.bg,fg:c.fg,svg:svgIcoArt(i.ico,size)};}
 // ── Unités de mesure : le commerce informel vend au ½ kg (riz, farine) et au ½ L (huile) ──
-function estMesure(p){return !!(p&&(p.um==='kg'||p.um==='L'));}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « RIZ (KG) » : IL L'AVAIT ÉCRIT, L'APP NE LE LISAIT PAS
+//
+//  Sa capture d'écran : « Combien de PIÈCES dans un sac ? », puis
+//  « 1 sac = 50 pièces = F 40 000 » — sur un article qu'il a lui-même
+//  nommé « Riz (kg) ». Le catalogue SAVAIT que le riz se pèse ; la fiche
+//  ne le lui demandait pas, et personne ne lisait le nom.
+//
+//  On ne devine pas : on LIT ce qu'il a écrit. Un article qui porte une
+//  mesure nue dans son nom — « (kg) », « au kg », « /kg », « (L) »,
+//  « au litre » — se mesure, point.
+//
+//  ⚠️ ET « RIZ 1KG » N'EST PAS PAREIL : c'est un sachet d'un kilo, vendu à
+//  la pièce, et ils sont partout dans une boutique camerounaise. Un chiffre
+//  COLLÉ à l'unité désigne un format, jamais une mesure. C'est la seule
+//  chose qui sépare les deux — et elle suffit.
+//
+//  ⚠️ SA PAROLE PASSE AVANT. S'il a dit « à la pièce » dans la fiche
+//  (um='pc'), on ne discute pas : le nom ne le contredit jamais.
+// ══════════════════════════════════════════════════════════════════
+function _umDuNom(nm){
+  var s=' '+txtNorm(nm)+' ';
+  if(/\d\s*(kg|kilos?|g|l|litres?|cl|ml)\b/.test(s))return '';   // un format, pas une mesure
+  if(/\((\s*)(kg|kilos?)(\s*)\)/.test(s)||/(\bau |\bpar |\/)\s*(kg|kilos?)\b/.test(s))return 'kg';
+  if(/\((\s*)(l|litres?)(\s*)\)/.test(s)||/(\bau |\bpar |\/)\s*(l|litres?)\b/.test(s))return 'L';
+  return '';
+}
+// La mesure d'un article, en UN SEUL endroit : ce qu'il a réglé, sinon ce
+// qu'il a écrit dans le nom. Tout le reste de l'app lit ceci.
+function _umDe(p){
+  if(!p)return '';
+  if(p.um==='kg'||p.um==='L')return p.um;
+  if(p.um)return '';                       // il a tranché : à la pièce
+  return _umDuNom(p.nm);
+}
+function estMesure(p){return !!_umDe(p);}
 // Le vivrier ne se vend ni au kilo ni à la pièce : il se vend au TAS, à la
 // BOTTE, à la CUVETTE. L'app disait « 3 unités » pour trois tas de tomates —
 // un mot que le commerçant n'emploie jamais. Le nom de l'unité est donc
 // libre, sans toucher au calcul (un tas reste une pièce entière).
 var UNITES_VIVRIER=['tas','botte','cuvette','sceau','panier','régime','boîte','sachet','paquet','bouquet'];
 function uniteArt(p){
-  if(p&&p.um==='kg')return 'kg';
-  if(p&&p.um==='L')return 'L';
+  var u=_umDe(p);
+  if(u==='kg')return 'kg';
+  if(u==='L')return 'L';
   if(p&&p.umNom)return p.umNom;
   return lang==='fr'?'unités':'units';
 }
@@ -9075,9 +9111,9 @@ function addPanier(p,v){
 // ══════════════════════════════════════════════════════════════════
 var _grosArt=null,_grosMot='';
 function _uniteMot(p){
-  var fr=(lang==='fr');
-  if(p&&p.um==='kg')return 'kg';
-  if(p&&p.um==='L')return fr?'litres':'liters';
+  var fr=(lang==='fr'),u=_umDe(p);
+  if(u==='kg')return 'kg';
+  if(u==='L')return fr?'litres':'liters';
   return fr?'pièces':'units';
 }
 // Le nombre de formes, et leurs noms au survol. Le dessin porte le sens ;
@@ -9255,7 +9291,7 @@ function _ajouterLotVariante(p,v,n,mot,force){
   // Le marqueur d'affichage : le reçu et la voix diront « 1 carton (24) »
   // au lieu de « ×24 ». Il ne touche ni la quantité ni le total.
   var key=p.id+'-'+v.id;
-  if(ajout===n&&cur===0)_grosPanier[key]={n:n,mot:mot,px:Number(v.px)||0,um:p.um||''};
+  if(ajout===n&&cur===0)_grosPanier[key]={n:n,mot:mot,px:Number(v.px)||0,um:_umDe(p)};
   else _oublierGros(key);
   if(navigator.vibrate)navigator.vibrate(30);
   var m=_mentionGros(key,varQtys[v.id]);
@@ -9406,7 +9442,7 @@ function _ajouterLot(p,n,mot,force){
   panier[key]=cur+ajout;
   // Entier seulement : s'il ne restait pas un carton complet, ce n'est plus
   // un carton et on ne l'écrira pas comme tel.
-  if(ajout===n)_grosPanier[key]={n:n,mot:mot,px:Number(p.px)||0,um:p.um||''};
+  if(ajout===n)_grosPanier[key]={n:n,mot:mot,px:Number(p.px)||0,um:_umDe(p)};
   else _oublierGros(key);
   updatePUI(p.id);
   if(navigator.vibrate)navigator.vibrate(30);
@@ -11825,13 +11861,13 @@ function _poserCond(cible,n,mot,par,parMot,parTaille){
 //  alourdirait toutes les autres lignes sans rien lever : c'est la leçon
 //  du « carton partout », appliquée aux mots.
 // ══════════════════════════════════════════════════════════════════
-function _uniteCourt(p){return (p&&p.um==='kg')?'kg':((p&&p.um==='L')?'L':'');}
+function _uniteCourt(p){var u=_umDe(p);return (u==='kg')?'kg':((u==='L')?'L':'');}
 function _avecUnite(p,n){var u=_uniteCourt(p);return fmtQ(n)+(u?(' '+u):'');}
 // Ce que la voix doit DIRE : « kg » se prononce mal, « kilos » se comprend.
 function _uniteDite(p){
-  var fr=(lang==='fr');
-  if(p&&p.um==='kg')return fr?'kilos':'kilos';
-  if(p&&p.um==='L')return fr?'litres':'liters';
+  var fr=(lang==='fr'),u=_umDe(p);
+  if(u==='kg')return 'kilos';
+  if(u==='L')return fr?'litres':'liters';
   return '';
 }
 function _libelleCond(p,v){
