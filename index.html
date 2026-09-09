@@ -530,6 +530,23 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .vtile.has-photo .vt-gros{background:rgba(255,255,255,.94);color:#00695C}
 .vt-gros::after{content:'';position:absolute;top:50%;left:50%;
   transform:translate(-50%,-50%);width:100%;height:44px;min-width:44px}
+.vt-gros.vide{background:rgba(26,26,46,.07);color:var(--M);font-weight:800}
+/* Le même repère, sur un satellite du cercle. Posé en bas, comme la puce
+   d'une tuile dehors : même place, même langage. Et la cible fait 44 px —
+   la leçon de la 21.12, qui n'avait jamais atteint ce repère-ci. */
+/* ⚠️ DÉFAUT VU SUR MA PROPRE CAPTURE, animations coupées : posé en bas du
+   satellite, ce repère recouvrait le NOM de la variante — « Savon A »
+   devenait « S…n A ». On le pose donc sur le bord bas du ROND, au-dessus
+   du nom, et le nom descend d'un cran quand un repère est là. */
+.vsat-gros{position:absolute;top:calc(var(--vsat-r,66px) - 9px);left:50%;transform:translateX(-50%);
+  display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.96);
+  color:#00695C;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:900;
+  line-height:1;white-space:nowrap;max-width:var(--vsat-arc,82px);overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,.28);z-index:4}
+.vsat.hasgros .vsat-nm{margin-top:11px}
+.vsat-gros.vide{background:rgba(255,255,255,.86);color:#4a4a5a;font-weight:800}
+.vsat-gros::after{content:'';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);width:100%;height:44px;min-width:44px}
 .vt-fmt{position:absolute;top:6px;left:6px;z-index:4;
   background:rgba(255,255,255,.95);color:var(--T);
   border-radius:8px;padding:3px 8px;font-size:13px;font-weight:900;line-height:1;
@@ -3390,7 +3407,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.43'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.44'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7995,6 +8012,16 @@ function _brancherVar(d,p,v){
     }
     // ⭐ Toucher le repère 📦 vend LE LOT, pas l'unité — exactement comme
     // dehors. Sans ce test, il ajouterait une bouteille au lieu du casier.
+    // ⭐ Le repère effacé : il n'y a pas encore de carton pour cette forme,
+    // et il vient de dire qu'il veut en vendre un. On lui ouvre l'écran, sur
+    // ELLE — plus besoin de deviner l'appui long.
+    var gn=ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-grosneuf');
+    if(gn){
+      ev.stopPropagation();
+      fermerVarInline();
+      setTimeout(function(){try{demanderPrixGros(p,v);}catch(x){}},160);
+      return;
+    }
     var g=ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-gros');
     if(g){
       var lot=(p.vr||[]).find(function(x){return String(x.id)===String(g);});
@@ -8034,7 +8061,10 @@ function fermerVarCercle(){
   _varCercle=null;_varCercleGeo=null;
 }
 function ouvrirVarCercle(p,carte){
-  var r=carte.getBoundingClientRect(),W=window.innerWidth,H=window.innerHeight,n=p.vr.length;
+  // ⚠️ La géométrie doit compter les bulles RÉELLEMENT dessinées : compter
+  // p.vr donnerait un cercle dimensionné pour cinq quand on en montre trois,
+  // avec des trous et des pastilles rapetissées pour rien.
+  var r=carte.getBoundingClientRect(),W=window.innerWidth,H=window.innerHeight,n=_varVisibles(p).length;
   var g=_geoCercle(n);if(!g)return false;
   var R=g.R,marge=g.taille/2+38;
   // Le centre suit la carte touchée, puis on le ramène pour que rien ne sorte.
@@ -8062,13 +8092,15 @@ function ouvrirVarCercle(p,carte){
 function renderVarCercle(p){
   var l=_varCercle&&_varCercle.querySelector('#vcirc-sat');
   if(!l||!_varCercleGeo)return;
-  var g=_varCercleGeo,n=p.vr.length;
+  var vis=_varVisibles(p);
+  var g=_varCercleGeo,n=vis.length;
   l.innerHTML='';
-  p.vr.forEach(function(v,k){
+  vis.forEach(function(v,k){
     var a=-Math.PI/2+2*Math.PI*k/n;   // on part du HAUT, sens de lecture
     var i=_infoVar(p,v);
     var d=document.createElement('div');
-    d.className='vsat'+(i.q>0?' hq':'')+(i.out?' out':'');
+    var _cg=_chipGrosVariante(p,v,true);
+    d.className='vsat'+(i.q>0?' hq':'')+(i.out?' out':'')+(_cg?' hasgros':'');
     d.style.left=Math.round(g.cx+g.R*Math.cos(a))+'px';
     d.style.top =Math.round(g.cy+g.R*Math.sin(a))+'px';
     // ⚠️ Elles sortaient l'une APRÈS l'autre (26 ms d'écart, jusqu'à 286 ms
@@ -8078,6 +8110,7 @@ function renderVarCercle(p){
       +(function(){var _im=_imgVar(p,v),_f=_formatDeVariante(p,v);return (_im?('<img src="'+_im+'" loading="lazy" alt="">'):vignetteArt(p,v,g.taille-6,Math.round((g.taille-6)/2)))+(_f?('<span class="vsat-fmt">'+_f+'</span>'):'');})()
       +'<span class="vsat-px">'+(g.serre?('<i>'+(v.nm||'?')+'</i>'):'')+'<b>'+i.pxCourt+'</b></span></span>'
       +(i.q>0?'<span class="vsat-b" data-moins="1">'+fmtQ(i.q)+'</span>':'')
+      +_cg
       +(g.serre?'':'<span class="vsat-nm">'+(v.nm||'?')+'</span>');
     _replierPhotoVar(d,vignetteArt(Object.assign({},p,{img:''}),Object.assign({},v,{img:'',_img:''}),62,31));
     _brancherVar(d,p,v);
@@ -8134,13 +8167,29 @@ function _varVersPanier(p){
   });
   updatePUI(p.id);
 }
+// ⚠️ « TROIS SAVONS » DOIT MONTRER TROIS SAVONS.
+// Depuis que chaque variante porte le repère de SON carton, le lot n'a plus
+// besoin d'une place à lui : trois savons dont deux ont un carton donnaient
+// CINQ bulles dans le cercle, et on ne lisait plus la famille.
+// Le lot rattaché à une variante se range donc derrière son repère.
+// ⚠️ DEUX EXCEPTIONS, sinon on rendrait quelque chose inatteignable :
+//  · un lot de FAMILLE (base non déclarée) n'a pas de variante porteuse —
+//    il garde sa place, c'est le cas « à l'unité / lot de 100 » ;
+//  · un lot dont la variante d'origine a disparu resterait orphelin : on
+//    le montre, pour qu'il puisse au moins le voir et le supprimer.
+function _varVisibles(p){
+  return (p.vr||[]).filter(function(v){
+    if(!_estGrosDeVariante(v))return true;
+    return !(p.vr||[]).some(function(x){return String(x.id)===String(v.base);});
+  });
+}
 function renderVarLst(p){
   if(_varCercle){renderVarCercle(p);return;}   // ⭕ : autre corps, même entrée
   var l=(_varBox&&document.getElementById('vinline-lst'))||document.getElementById('var-lst');
   if(!l)return;
   var liste=(!!_varBox&&_styleVar()==='liste');
   l.innerHTML='';l.className='vgrid'+(liste?' v-liste':'');
-  p.vr.forEach(function(v){
+  _varVisibles(p).forEach(function(v){
     var i=_infoVar(p,v);
     var d=document.createElement('div');
     // has-photo : la photo remplit la tuile et le texte passe sur le dégradé,
@@ -8280,11 +8329,39 @@ function _lotDeVariante(p,v){
     return _estGrosDeVariante(x)&&String(x.base)===String(v.id);
   })||null;
 }
-function _chipGrosVariante(p,v){
+// ⚠️⚠️ « J'AI TROIS SAVONS. QUAND J'ENTRE DANS LES VARIANTES, JE VEUX
+//        VENDRE LE SAVON B EN CARTON — MAIS ÇA NE SE VOIT PAS. »
+//
+// Il a raison, et j'ai trouvé DEUX trous en le reproduisant au banc :
+//
+//  1. CE REPÈRE N'ÉTAIT CÂBLÉ QUE DANS LA GRILLE. Il avait été écrit pour
+//     sa demande d'alors — « la partie où on touche le carton, mettez-la
+//     en bas comme les articles qui sont dehors » — et posé dans
+//     renderVarLst seulement. Or le réglage par DÉFAUT est le CERCLE :
+//     renderVarCercle ne l'appelait nulle part. Mesuré : zéro repère 📦
+//     sur les satellites. Le repère demandé était donc invisible pour
+//     tout le monde, depuis le premier jour.
+//
+//  2. ET POUR EN CRÉER UN, il fallait un APPUI LONG sur la variante puis
+//     « Vendre par carton ». Un geste caché, que personne ne devine.
+//     C'est exactement son « ça ne se voit pas ».
+//
+// Le repère a donc les deux états qu'il a déjà dehors, et la même règle
+// de verrou qu'il a lui-même posée :
+//   · le carton existe   -> il l'annonce et le VEND d'une tape ;
+//   · il n'existe pas    -> repère effacé qui l'OUVRE, et seulement
+//     modifications ouvertes. Verrou fermé = on vend, on ne configure pas.
+function _chipGrosVariante(p,v,cercle){
+  if(!p||!v||_estGrosDeVariante(v))return '';
+  var cls=cercle?'vsat-gros':'vt-gros',mot=_motContenant(p,v);
   var lot=_lotDeVariante(p,v);
-  if(!lot)return '';
-  var mot=_motContenant(p,v);
-  return '<span class="vt-gros" data-gros="'+lot.id+'" title="'+mot+' de '+fmtQ(getQBase(lot))+'">'+_emojiCont(mot)+' '+fmt(lot.px)+'</span>';
+  if(lot)
+    return '<span class="'+cls+'" data-gros="'+lot.id+'" title="'+mot+' de '+fmtQ(getQBase(lot))+'">'+_emojiCont(mot)+' '+fmt(lot.px)+'</span>';
+  // Pas encore de carton pour cette forme-là.
+  try{if(venteVerrouillee&&venteVerrouillee())return '';}catch(e){return '';}
+  if(role!=='patron'&&!hasPerm('produits'))return '';
+  return '<span class="'+cls+' vide" data-grosneuf="'+v.id+'" title="'
+    +(lang==='fr'?('Vendre '+(v.nm||'')+' par '+mot):('Sell by the '+mot))+'">'+_emojiCont(mot)+'</span>';
 }
 function _chipGros(p){
   if(!p||articleIncomplet(p))return '';
