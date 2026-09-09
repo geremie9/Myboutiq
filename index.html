@@ -3500,7 +3500,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.63'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.64'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7191,9 +7191,45 @@ function _replierFamillesSolitaires(){
     return n;
   }catch(e){return 0;}
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ ON N'EFFACE PAS LE SOL SOUS UN CARTON
+//
+//  Trouvé au banc en travaillant le repli : rien n'empêchait d'effacer
+//  « Azur » alors qu'« Azur — carton de 12 » existe encore. Le carton
+//  restait, mais il puise dans une réserve qui n'existe plus : mesuré
+//  120 unités affichées comme 0. Un stock qui disparaît de l'écran sans
+//  qu'une seule ligne ne le dise.
+//
+//  ⚠️ ON REFUSE, ON NE DÉFAIT PAS À SA PLACE. Effacer les cartons avec la
+//  variante serait détruire deux choses là où il en a demandé une — et
+//  chacune a son prix de vente et son prix d'achat. On lui dit lesquels
+//  bloquent, et il tranche.
+// ══════════════════════════════════════════════════════════════════
+function _cartonsQuiDependent(p,vid){
+  return ((p&&p.vr)||[]).filter(function(x){
+    return x&&_estGrosDeVariante(x)&&String(x.base)===String(vid);
+  });
+}
+// Vrai si on a dû refuser. Le message nomme les coupables : sans leur nom,
+// il chercherait dans une liste de douze ce qui bloque.
+function _bloqueParUnCarton(p,v,geste){
+  var dep=_cartonsQuiDependent(p,v&&v.id);
+  if(!dep.length)return false;
+  var fr=(lang==='fr'),noms=dep.map(function(x){return '« '+(x.nm||'?')+' »';}).join(', ');
+  showToast('📦 '+(fr?('Impossible : '+noms+' '+(dep.length>1?'puisent':'puise')+' dans « '+(v.nm||'?')+' »')
+                    :('Blocked: '+noms+' draws on "'+(v.nm||'?')+'"')));
+  alert(fr
+    ?('Impossible de '+geste+' « '+(v.nm||'?')+' ».\n\n'
+      +noms+' '+(dep.length>1?'sont des conditionnements de cette variante-là':'est un conditionnement de cette variante-là')
+      +' : sans elle, '+(dep.length>1?'ils tirent':'il tire')+' dans une réserve qui n\'existe plus, et le stock disparaît de l\'écran sans prévenir.\n\n'
+      +'Efface d\'abord '+noms+', puis reviens ici.')
+    :('Cannot '+geste+' "'+(v.nm||'?')+'".\n\n'+noms+' draws on it. Delete '+(dep.length>1?'them':'it')+' first.'));
+  return true;
+}
 function cmpDelVar(vid){
   var p=_cmpArt;if(!p)return;
   var v=p.vr.find(function(x){return x.id==vid;});if(!v)return;
+  if(_bloqueParUnCarton(p,v,(lang==='fr'?'supprimer':'delete')))return;
   if(!confirm((lang==='fr'?'Supprimer la variante "':'Delete variant "')+(v.nm||'?')+'" ?'))return;
   journalAjouter('suppr',p.nm+' — '+(v.nm||'?'),(lang==='fr'?'variante':'variant'),'');
   p.vr=p.vr.filter(function(x){return x.id!=vid;});
@@ -7206,6 +7242,9 @@ function cmpDelVar(vid){
 function cmpDetachVar(vid){
   var p=_cmpArt;if(!p)return;
   var v=p.vr.find(function(x){return x.id==vid;});if(!v)return;
+  // Sortir de la famille laisse le carton derrière, aussi orphelin qu'un
+  // effacement : la même porte, fermée pareil.
+  if(_bloqueParUnCarton(p,v,(lang==='fr'?'sortir':'detach')))return;
   if(!confirm('"'+(v.nm||'?')+(lang==='fr'?'" devient un article indépendant ?':'" becomes its own item?')))return;
   
   var na={id:_prochainIdArticle(),nm:v.nm||p.nm,e:p.e,cat:p.cat,px:v.px||0,pa:v.pa||0,stk:v.stk||0,stk0:v.stk||0,al:5,vd:0,vr:[],rt:true};
