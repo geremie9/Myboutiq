@@ -8797,10 +8797,14 @@ function validerGros(){
   var mot=_grosMot||_motContenant(p,_grosVar);
   var nomCible=p.nm+(_grosVar?(' — '+(_grosVar.nm||'')):'');
   var avMot=cible.umCont||'',avN=Number(cible.umSac)||0;
-  // ⭐ On écrit sur la CIBLE. Une variante porte désormais son propre
-  // conditionnement : « Diamaor — bidon de 20 » dans une famille dont le
-  // reste part en carton de 12, c'est son cas exact.
-  cible.umSac=n;cible.umCont=mot;
+  // ⭐ On écrit sur la CIBLE, par l'écrivain unique. Une variante porte
+  // désormais son propre conditionnement : « Diamaor — bidon de 20 » dans une
+  // famille dont le reste part en carton de 12, c'est son cas exact.
+  // ⚠️ `_poserCond` EFFACE au passage un éventuel niveau intermédiaire : s'il
+  // avait dit « carton de 12 bouteilles de 1,5 L » puis corrige le total à
+  // 24, les « 12 bouteilles » ne veulent plus rien dire. Un calcul qui ne
+  // tombe plus juste doit disparaître, pas survivre à moitié.
+  _poserCond(cible,n,mot,0,null,0);
   journalAjouter('conditionnement',nomCible,(avN>1?(avMot+' de '+fmtQ(avN)):''),mot+' de '+fmtQ(n));
   // ⚠️ LA CORRECTION DOIT ATTEINDRE LES LOTS DÉJÀ CRÉÉS.
   // Sans ça, l'article dirait « palette de 24 » pendant que sa variante
