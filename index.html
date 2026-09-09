@@ -3466,7 +3466,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.58'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.59'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6993,7 +6993,7 @@ function _nomFondu(p,v){
   if(a.indexOf(b)>=0)return fam;
   return (fam+' '+sien).slice(0,60);
 }
-function _replierSiUneVariante(p){
+function _replierSiUneVariante(p,muet){
   if(!p||!Array.isArray(p.vr)||p.vr.length!==1)return false;
   var v=p.vr[0];
   // ⚠️ ON NE REPLIE QUE CE QU'ON SAIT REPLIER SANS RIEN FAUSSER. Un carton
@@ -7002,7 +7002,9 @@ function _replierSiUneVariante(p){
   // famille d'un seul membre est laide, un stock faux est grave.
   try{if(_estGrosDeVariante(v)||getQBase(v)>1||utiliseStockBase(p))return false;}catch(e){return false;}
   var fr=(lang==='fr'),ancien=p.nm;
-  try{sauvegarderAvant(fr?('avant que « '+(v.nm||p.nm)+' » redevienne un article seul'):'before folding the last variant');}catch(e){}
+  // `muet` : le rattrapage en masse prend UNE sauvegarde et rejoue le stock
+  // UNE fois pour toute la boutique, au lieu de le faire article par article.
+  if(!muet)try{sauvegarderAvant(fr?('avant que « '+(v.nm||p.nm)+' » redevienne un article seul'):'before folding the last variant');}catch(e){}
   var cd=null;try{cd=_condDe(p,v);}catch(e){}
   p.nm=_nomFondu(p,v);
   if(Number(v.px)>0)p.px=Number(v.px);
@@ -7016,12 +7018,62 @@ function _replierSiUneVariante(p){
   p.vfus[v.id]=1;
   p.vr=[];
   if(p._pendingVariantSetup)delete p._pendingVariantSetup;
-  try{DB=recomputeStock(DB);}catch(e){}
+  if(!muet)try{DB=recomputeStock(DB);}catch(e){}
+  // Le journal, lui, garde chaque ligne même en masse : « pourquoi cet
+  // article s'appelle-t-il autrement ? » doit avoir une réponse, un article
+  // à la fois. C'est sa trace, pas un message de plus à l'écran.
   journalAjouter('famille',p.nm,(fr?'dernière variante de '+ancien:'last variant of '+ancien),
                  (fr?'redevient un article seul':'becomes its own item'));
-  showToast('↩️ '+p.nm+' — '+(fr?'seule variante restante : c\'est de nouveau un article simple'
+  if(!muet)showToast('↩️ '+p.nm+' — '+(fr?'seule variante restante : c\'est de nouveau un article simple'
                                 :'only variant left: it is a plain item again'));
   return true;
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ LE RATTRAPAGE — SES FAMILLES QUI N'ONT DÉJÀ QU'UN SEUL MEMBRE
+//
+//  « Il faut le faire. »
+//  Le repli de la 21.58 ne se déclenchait qu'au moment d'effacer une
+//  variante : les familles déjà solitaires — celles d'avant — restaient
+//  telles quelles, avec leur écran de variantes pour un seul article.
+//  On passe donc une fois, UNE SEULE, sur la boutique entière.
+//
+//  ⚠️ AVEC UN FILET. Une sauvegarde avant, une ligne au journal par article,
+//  et le compte annoncé à l'écran : il doit pouvoir revenir en arrière s'il
+//  n'aime pas ce qu'il voit.
+//
+//  ⚠️ ET ON NE TOUCHE PAS À CE QU'IL EST EN TRAIN DE CONSTRUIRE. Une famille
+//  se remplit variante par variante : à l'instant où il ajoute la première,
+//  elle n'en a qu'une. Une variante sans nom, ou une famille marquée « en
+//  cours de réglage », est un chantier — on la laisse tranquille. Replier le
+//  travail de quelqu'un pendant qu'il le fait, c'est le défaire.
+// ══════════════════════════════════════════════════════════════════
+function _replierFamillesSolitaires(){
+  try{
+    if(!DB||!DB.cfg||!Array.isArray(DB.articles))return 0;
+    if(DB.cfg._repliSolo)return 0;                 // une seule fois dans la vie de la boutique
+    if(role!=='patron')return 0;                   // un vendeur ne restructure pas la boutique
+    var cibles=DB.articles.filter(function(p){
+      if(!p||!Array.isArray(p.vr)||p.vr.length!==1)return false;
+      if(p._pendingVariantSetup&&p._pendingVariantSetup.length)return false;
+      var v=p.vr[0];
+      if(!v||!String(v.nm||'').trim())return false;
+      try{return !(_estGrosDeVariante(v)||getQBase(v)>1||utiliseStockBase(p));}catch(e){return false;}
+    });
+    DB.cfg._repliSolo=1;
+    var fr=(lang==='fr');
+    if(!cibles.length){try{save();}catch(e){}return 0;}
+    try{sauvegarderAvant(fr?'avant de simplifier les familles à un seul article':'before folding one-member families');}catch(e){}
+    var n=0;
+    cibles.forEach(function(p){if(_replierSiUneVariante(p,true))n++;});
+    try{DB=recomputeStock(DB);}catch(e){}
+    try{save();}catch(e){}
+    try{renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();}catch(e){}
+    if(n)setTimeout(function(){
+      showToast('↩️ '+n+' '+(fr?('famille'+(n>1?'s':'')+' à un seul article simplifiée'+(n>1?'s':'')+' — tes prix et ton stock n\'ont pas bougé')
+                              :('one-member famil'+(n>1?'ies':'y')+' folded — prices and stock unchanged')));
+    },1800);
+    return n;
+  }catch(e){return 0;}
 }
 function cmpDelVar(vid){
   var p=_cmpArt;if(!p)return;
@@ -16742,7 +16794,7 @@ function renderNotifPanel(){
 showNotifs=function(){renderNotifPanel();document.getElementById('ov-notifs').classList.add('show');};
 var _appliquerLangBase=appliquerLang;appliquerLang=function(){_appliquerLangBase();['dash','dash2','dash3','dash4','dash5'].forEach(function(id){var el=document.getElementById('n-'+id);if(el)el.textContent='Dashboard';});var btnUse=document.getElementById('btn-use-points');if(btnUse)btnUse.textContent=lang==='fr'?'⭐ Utiliser points':'⭐ Use points';var info=document.getElementById('client-vente-info');if(info&&!clientVente)info.textContent=lang==='fr'?'Client fidèle (optionnel)':'Loyal customer (optional)';};
 navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(function(n){var oc=n.getAttribute('onclick')||'';n.classList.toggle('on',oc.indexOf("navTo('"+tab+"'")>-1);});var m={caisse:'s-caisse',stock:'s-stock',rapports:'s-rapports',clients:'s-clients',dash:'s-dashboard'};goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);if(tab==='dash')renderDashboard();};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
