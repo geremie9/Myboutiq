@@ -3390,7 +3390,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.42'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.43'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -16224,7 +16224,55 @@ async function publierAnnonce(){
   }catch(e){showToast('❌ '+(fr?'Échec de l\'envoi':'Send failed'));}
   btn.disabled=false;btn.textContent='📣 '+(fr?'Publier':'Publish');
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « SUR MON PC ÇA PRENAIT AUTOMATIQUEMENT, PAS SUR LE TÉLÉPHONE. »
+//
+//  Son observation est la CLÉ, et l'écart n'est pas dans l'app : il est
+//  dans la façon dont un navigateur et une application Android traitent
+//  la même page.
+//
+//  SUR SON PC — il ferme l'onglet. Quand le DERNIER onglet d'un site se
+//  ferme, le service worker en attente prend la main tout seul à la
+//  visite suivante. D'où « ça prenait automatiquement ».
+//
+//  SUR SON TÉLÉPHONE — l'APK est une TWA en plein écran. Android ne la
+//  ferme pas, il la met en veille et la REPREND. La page n'est jamais
+//  rechargée, donc :
+//    · le service worker en attente n'active JAMAIS — il attend, à vie ;
+//    · le gestionnaire `load`, seul endroit qui regardait `reg.waiting`
+//      et affichait le bandeau, ne se rejoue jamais non plus.
+//  Résultat : il pouvait rester des semaines sur une vieille version,
+//  sans bandeau, sans rien. C'est exactement ce qu'il décrit.
+//
+//  ⚠️ ET UN VRAI DÉFAUT DESSOUS : quand une version attendait DÉJÀ,
+//  `reg.update()` ne redéclenche pas `updatefound` — il n'y a rien de
+//  neuf à installer. Le bandeau ne pouvait donc plus jamais apparaître.
+//  On regarde maintenant `reg.waiting` à chaque retour sur l'app.
+//
+//  ⭐ ET ON APPLIQUE TOUT SEUL QUAND C'EST SANS RISQUE. La règle d'avant
+//  — « ne jamais casser un écran en pleine vente » — reste entière : on
+//  ne demande plus un geste, on VÉRIFIE qu'il n'y a rien à casser.
+// ══════════════════════════════════════════════════════════════════
+function _majSansRisque(){
+  try{
+    // Un panier en cours : on ne touche à rien, c'est une vente.
+    if(typeof panier==='object'&&panier&&Object.keys(panier).length)return false;
+    // Un écran ouvert (prix, stock, variantes, encaissement…) : il est en
+    // train de faire quelque chose, même si le panier est vide.
+    if(document.querySelector('.ov.show'))return false;
+    if(document.body&&document.body.classList.contains('var-ouvert'))return false;
+    // Une saisie en cours : recharger lui ferait perdre ce qu'il tape.
+    var a=document.activeElement;
+    if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT'))return false;
+    return true;
+  }catch(e){return false;}
+}
 function montrerBandeauMaj(worker){
+  // Rien à casser -> on prend la nouvelle version tout de suite, comme sur
+  // son PC. Le rechargement ne perd rien : la boutique vit dans l'appareil.
+  if(_majSansRisque()&&worker){
+    try{worker.postMessage({type:'SKIP_WAITING'});return;}catch(e){}
+  }
   var b=document.getElementById('update-banner');if(!b)return;
   b.style.display='flex';
   var btn=document.getElementById('update-reload');
@@ -16250,6 +16298,11 @@ if('serviceWorker' in navigator){
       // pour ne pas harceler un forfait data compté au mégaoctet.
       var _derniereVerif=0;
       function chercherMaj(){
+        // ⚠️ D'ABORD : une version attend-elle DÉJÀ ? `reg.update()` ne
+        // redéclenche pas `updatefound` dans ce cas — il n'y a rien de neuf
+        // à installer — et le bandeau ne revenait donc jamais. Sur une TWA
+        // que le téléphone ne ferme pas, c'était l'impasse définitive.
+        if(reg.waiting&&navigator.serviceWorker.controller){montrerBandeauMaj(reg.waiting);return;}
         var t=Date.now();
         if(t-_derniereVerif<120000)return;
         _derniereVerif=t;
