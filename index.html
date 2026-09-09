@@ -253,6 +253,16 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 
 /* ── GRILLE PRODUITS ── */
 .pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:0 15px}
+/* ⚠️ SES CAPTURES : DEUX ARTICLES PEINTS DANS LA MÊME CASE (« Riz » par-dessus
+   « Papier à rouler », « Huile » par-dessus « Huile d'arachide »…).
+   J'AI VOULU POSER `overflow:hidden` ICI ET JE L'AI RETIRÉ : trois familles
+   de badges vivent VOLONTAIREMENT hors de la carte — `.qbdg` (le compteur du
+   panier) à -9 px, et `.slow` / `.sout` / `.sneg` / `.sinc` à -7 px. Les
+   rogner ferait perdre de vue CE QU'IL A DÉJÀ MIS AU PANIER : je casserais
+   un geste de vente pour réparer un défaut que je n'ai pas encore reproduit.
+   Ce qui est corrigé ici, ce sont les deux vraies causes de croissance
+   trouvées au banc — le nom sans photo qui ne se coupait pas, et la puce du
+   gros qui repassait à la ligne. Voir `.pnm` et `.pgros` plus bas. */
 .pcard{background:var(--C);border-radius:16px;padding:15px 8px 13px;text-align:center;cursor:pointer;border:1px solid var(--BD);transition:all .15s cubic-bezier(.34,1.56,.64,1);position:relative;box-shadow:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04);user-select:none}
 .pcard:active{transform:scale(.91)}.pcard.sel{border-color:var(--G);background:#F0FFF8;box-shadow:0 4px 15px rgba(0,200,83,.2)}
 .pcard.hasv{border-color:rgba(41,121,255,.22);background:#F8F9FF}
@@ -280,7 +290,10 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .photo-preview .pp-rm{background:#FFEBEE;color:var(--R);border:none;border-radius:8px;padding:6px 9px;font-size:11px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif}
 .photo-upl-btn{position:relative;overflow:hidden}
 .photo-upl-btn.busy{opacity:.6;pointer-events:none}
-.pnm{font-size:10px;font-weight:700;color:var(--T);margin-bottom:3px;line-height:1.2}
+/* `.pnm-ov` (la carte à photo) savait se couper depuis toujours ; `.pnm`,
+   non — un nom long y poussait la carte et débordait. Même règle pour les
+   deux, deux lignes au maximum. */
+.pnm{font-size:10px;font-weight:700;color:var(--T);margin-bottom:3px;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .ppr{font-size:12px;font-weight:800;color:var(--B)}
 /* ── L'INDICATEUR DE VARIANTES ────────────────────────────────────────
    Il disait « 3 var. » en 8 pixels. Une abréviation, dans une langue
@@ -313,9 +326,14 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 /* ⚠️ Placé en ABSOLU au premier jet, il recouvrait le prix : « 500FC5A ».
    Sur une tuile de 6 pouces il n'y a pas de coin libre — il prend donc sa
    propre ligne, sous le prix, où rien ne le gêne. */
+/* ⚠️ Défaut que J'AI introduit en 21.40 et vu sur ma propre capture :
+   « 📦 carton FCFA 1 500 » repassait à la ligne et cassait la tuile. Une
+   puce de 19 px de haut ne doit jamais pouvoir grandir. */
 .pgros{display:inline-flex;align-items:center;gap:2px;margin-top:3px;height:19px;padding:0 7px;
   border-radius:6px;border:none;background:rgba(0,150,136,.13);color:#00695C;
-  font-size:10px;font-weight:800;line-height:1;cursor:pointer;position:relative;z-index:3}
+  font-size:10px;font-weight:800;line-height:1;cursor:pointer;position:relative;z-index:3;
+  max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pgros>span{overflow:hidden;text-overflow:ellipsis}
 .pgros:active{transform:scale(.92)}
 .pgros.vide{background:rgba(26,26,46,.055);color:var(--M);font-weight:700;opacity:.75}
 .pcard.has-photo .pgros{background:rgba(255,255,255,.94);color:#00695C;margin-top:2px}
@@ -3365,7 +3383,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.40'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.41'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8259,7 +8277,7 @@ function _chipGrosVariante(p,v){
   var lot=_lotDeVariante(p,v);
   if(!lot)return '';
   var mot=_motContenant(p,v);
-  return '<span class="vt-gros" data-gros="'+lot.id+'" title="'+mot+' de '+fmtQ(getQBase(lot))+'">'+_emojiCont(mot)+' '+mot+' '+fmt(lot.px)+'</span>';
+  return '<span class="vt-gros" data-gros="'+lot.id+'" title="'+mot+' de '+fmtQ(getQBase(lot))+'">'+_emojiCont(mot)+' '+fmt(lot.px)+'</span>';
 }
 function _chipGros(p){
   if(!p||articleIncomplet(p))return '';
@@ -8290,7 +8308,10 @@ function _chipGros(p){
     var lots=(p.vr||[]).filter(function(v){return getQBase(v)>1;});
     var unites=(p.vr||[]).filter(function(v){return getQBase(v)<=1;});
     if(lots.length===1&&unites.length<=1)
-      return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+(vg.nm||mot)+'">'+_emojiCont(mot)+'<span>'+mot+' '+fmt(vg.px)+'</span></button>';
+      // L'image dit le contenant, le texte ne dit qu'un PRIX. C'est la règle
+      // qui lève sa confusion pour de bon : sur une puce de gros, un nombre
+      // est toujours un montant, jamais une quantité.
+      return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+(vg.nm||mot)+'">'+_emojiCont(mot)+'<span>'+fmt(vg.px)+'</span></button>';
     return '';
   }
   // Les autres familles gardent leur écran de variantes, sans repère.
