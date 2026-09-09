@@ -247,6 +247,17 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .hrgt{display:flex;gap:7px;align-items:center}
 .hbtn{width:36px;height:36px;border-radius:9px;border:none;background:rgba(255,255,255,.09);color:#fff;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s;position:relative}
 .hbtn:active{background:rgba(255,255,255,.2)}
+/* ⚠️ « LE RETOUR EST UN PEU COMPLEXE : UN PETIT BOUTON EN HAUT QU'ON TROUVE
+   À PEINE. » Il avait la taille d'une icône parmi cinq autres, et une flèche
+   nue pour tout indice. Un retour se cherche du POUCE, pas de l'œil : il
+   porte son nom, il est plus large, et il se voit. */
+.hbtn.hback{width:auto;min-width:96px;padding:0 14px 0 11px;gap:6px;font-size:15px;font-weight:800;
+       background:rgba(255,255,255,.16);white-space:nowrap}
+.hbtn.hback .hbl{font-size:13.5px;font-weight:800;letter-spacing:.2px}
+.hbtn.hback:active{background:rgba(255,255,255,.28)}
+/* Sur fond clair (écrans qui n'ont pas d'en-tête sombre) */
+.hbtn.hback.clair{background:rgba(0,0,0,.06);color:var(--T)}
+.hbtn.hback.clair:active{background:rgba(0,0,0,.12)}
 .hbtn-badge{position:absolute;top:-4px;right:-4px;background:var(--R);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:900;display:none;align-items:center;justify-content:center}
 .hbtn-badge.show{display:flex}
 
@@ -1515,7 +1526,7 @@ body{max-width:min(100%,1200px)}
       <button class="hbtn" id="btn-verrou" onclick="toggleVerrouVente()" title="Modifications bloquées pendant la vente" style="display:none">🔒</button>
       <button class="hbtn" id="btn-veille" onclick="toggleVeille()" title="Garder l'écran allumé" style="opacity:.55">🌙</button>
       <button class="hbtn" onclick="showNotifs()" title="Notifications"><span>🔔</span><div class="hbtn-badge" id="notif-badge">0</div></button>
-      <button class="hbtn" id="btn-st" onclick="goSt()">⚙️</button>
+      <button class="hbtn bst" id="btn-st" onclick="goSt()" title="Paramètres">⚙️</button>
       <button class="hbtn" onclick="logout()">🚪</button>
     </div>
   </div>
@@ -1583,7 +1594,7 @@ body{max-width:min(100%,1200px)}
 <div id="s-stock" class="scr">
   <div class="mhdr">
     <div><div class="hg">Inventaire</div><div class="hn" id="h-stock">📦 Stock</div></div>
-    <div class="hrgt"><button class="hbtn" id="btn-add-stk" onclick="ouvrirStk(null)" style="display:none">➕</button><button class="hbtn" onclick="logout()">🚪</button></div>
+    <div class="hrgt"><button class="hbtn" id="btn-add-stk" onclick="ouvrirStk(null)" style="display:none">➕</button><button class="hbtn bst" onclick="goSt()" title="Paramètres">⚙️</button><button class="hbtn" onclick="logout()">🚪</button></div>
   </div>
   <div class="mcont" style="padding-bottom:96px">
     <div style="padding:12px 15px">
@@ -1612,7 +1623,7 @@ body{max-width:min(100%,1200px)}
 <div id="s-rapports" class="scr">
   <div class="mhdr">
     <div><div class="hg" id="h-analyse">Analyse</div><div class="hn" id="h-rapports">📊 Rapports</div></div>
-    <div class="hrgt"><button class="hbtn" id="btn-clot" onclick="ouvrirClot()" style="display:none">🌙</button><button class="hbtn" onclick="logout()">🚪</button></div>
+    <div class="hrgt"><button class="hbtn" id="btn-clot" onclick="ouvrirClot()" style="display:none">🌙</button><button class="hbtn bst" onclick="goSt()" title="Paramètres">⚙️</button><button class="hbtn" onclick="logout()">🚪</button></div>
   </div>
   <div class="mcont" style="padding-bottom:96px"><div style="padding:13px 15px" id="rpt-cont"></div></div>
   <div class="bnav">
@@ -1628,7 +1639,7 @@ body{max-width:min(100%,1200px)}
 <div id="s-clients" class="scr">
   <div class="mhdr">
     <div><div class="hg" id="h-gestion">Gestion</div><div class="hn" id="h-clients">👥 Clients</div></div>
-    <div class="hrgt"><button class="hbtn" onclick="ouvrirAddCli()">➕</button><button class="hbtn" onclick="logout()">🚪</button></div>
+    <div class="hrgt"><button class="hbtn" onclick="ouvrirAddCli()">➕</button><button class="hbtn bst" onclick="goSt()" title="Paramètres">⚙️</button><button class="hbtn" onclick="logout()">🚪</button></div>
   </div>
   <div class="mcont" style="padding-bottom:96px"><div style="padding:13px 15px" id="cli-cont"></div></div>
   <div class="bnav">
@@ -1646,6 +1657,7 @@ body{max-width:min(100%,1200px)}
     <div><div class="hg">Analyse avancée</div><div class="hn">📊 Dashboard</div></div>
     <div class="hrgt">
       <button class="hbtn" id="btn-history" onclick="ouvrirHistory()" style="display:none" title="Historique ventes">📋</button>
+      <button class="hbtn bst" onclick="goSt()" title="Paramètres">⚙️</button>
       <button class="hbtn" onclick="logout()">🚪</button>
     </div>
   </div>
@@ -1665,7 +1677,7 @@ body{max-width:min(100%,1200px)}
 <div id="s-settings" class="scr">
   <div class="sthdr">
     <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px">
-      <button onclick="goBack()" class="hbtn">←</button>
+      <button onclick="goBack()" class="hbtn hback" aria-label="Retour">←<span class="hbl" id="lbl-ret1">Retour</span></button>
       <div><div style="color:#fff;font-size:19px;font-weight:800" id="h-settings">Paramètres</div><div style="color:rgba(255,255,255,.4);font-size:12px;font-weight:600" id="bn-hdr">Ma Boutique</div><!-- ⚠️ Trois fois de suite il m'a dit « ce n'est pas visible », sans qu'aucun
      de nous deux puisse dire s'il avait REÇU la version. Ce numéro était
      écrit en 10 px à 28 % d'opacité — illisible sur un téléphone au soleil.
@@ -1900,7 +1912,7 @@ body{max-width:min(100%,1200px)}
        comme partout ailleurs dans l'app. -->
   <div class="mhdr">
     <div style="display:flex;align-items:center;gap:10px">
-      <button class="hbtn" onclick="goBack()">←</button>
+      <button class="hbtn hback clair" onclick="goBack()" aria-label="Retour">←<span class="hbl" id="lbl-ret2">Retour</span></button>
       <div><div class="hg" id="h-abo-g">Gestion</div><div class="hn" id="h-abo">💎 Abonnement</div></div>
     </div>
   </div>
@@ -1935,7 +1947,7 @@ body{max-width:min(100%,1200px)}
 <!-- ASSISTANCE SCREEN -->
 <div id="s-assist" class="scr">
   <div class="assist-hdr">
-    <button class="hbtn" onclick="goBack()" style="flex-shrink:0">←</button>
+    <button class="hbtn hback" onclick="goBack()" style="flex-shrink:0" aria-label="Retour">←<span class="hbl" id="lbl-ret3">Retour</span></button>
     <div><div style="color:#fff;font-size:17px;font-weight:800" id="h-assist">🤖 Assistance MyBoutiQ</div><div style="color:rgba(255,255,255,.4);font-size:11px;font-weight:600" id="h-assist-s">Je suis là pour vous aider</div></div>
   </div>
   <div class="assist-contact">
@@ -3500,7 +3512,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.64'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.65'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4427,8 +4439,70 @@ function goScreen(id){
   var el=document.getElementById(id);
   if(el)el.classList.add('on');
   try{majFabAjout();}catch(x){}
-  if(id!=='s-splash')screenHist.push(id);
+  // ⚠️ Deux fois le même écran de suite gonflait la pile pour rien : le
+  // retour du téléphone devait alors être touché deux fois pour bouger.
+  if(id!=='s-splash'&&screenHist[screenHist.length-1]!==id)screenHist.push(id);
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ LE RETOUR DU TÉLÉPHONE
+//
+//  « Le retour est un peu complexe dans l'app, un petit bouton en haut
+//    qu'on trouve à peine. »
+//
+//  Le bouton a grossi et porte son nom — mais sur Android, le retour, c'est
+//  d'abord LE BOUTON DU TÉLÉPHONE. Or l'app n'empilait aucune page : appuyer
+//  dessus ne revenait pas en arrière, ÇA FERMAIT L'APPLICATION. En pleine
+//  vente, panier plein. C'est ça, un retour « complexe » : le geste naturel
+//  faisait le contraire de ce qu'il annonce.
+//
+//  Une seule page de rabiot est gardée en réserve. Chaque retour la dépense
+//  pour refermer ce qui est ouvert — une feuille, puis un écran — et la
+//  remet aussitôt. À la racine seulement, il peut sortir : et là on demande
+//  une deuxième fois, parce qu'un pouce qui glisse ne doit pas fermer la
+//  caisse d'un commerçant.
+// ══════════════════════════════════════════════════════════════════
+var _quitterArme=0,_navArmee=false;
+function _navSentinelle(){try{history.pushState({mb:1},'');_navArmee=true;}catch(e){}}
+// Les feuilles visibles, la dernière ouverte en premier. Certaines s'ouvrent
+// par une classe, d'autres par un style : on regarde ce qui est À L'ÉCRAN.
+function _feuillesOuvertes(){
+  var l=[];
+  try{
+    [].slice.call(document.querySelectorAll('.ov')).forEach(function(o){
+      if(o.classList.contains('show')||o.style.display==='flex')l.push(o);
+    });
+  }catch(e){}
+  return l;
+}
+function retourNaturel(){
+  // 1) le menu d'un appui long
+  try{var c=document.getElementById('ctxm');
+      if(c&&c.classList.contains('show')){c.classList.remove('show');return true;}}catch(e){}
+  // 2) les variantes ouvertes sous une carte
+  try{if(typeof _varBox!=='undefined'&&_varBox){fermerVarInline();return true;}}catch(e){}
+  // 3) la dernière feuille ouverte
+  var f=_feuillesOuvertes();
+  if(f.length){
+    var d=f[f.length-1];
+    d.classList.remove('show');
+    if(d.style.display==='flex')d.style.display='none';
+    return true;
+  }
+  // 4) un écran empilé
+  if(screenHist.length>1){goBack();return true;}
+  return false;
+}
+window.addEventListener('popstate',function(){
+  if(!_navArmee)return;                       // pas encore chez lui : on ne touche à rien
+  _navArmee=false;
+  if(retourNaturel()){_quitterArme=0;_navSentinelle();return;}
+  // Racine. On ne ferme pas la boutique sur un doigt qui glisse.
+  var t=Date.now();
+  if(_quitterArme&&t-_quitterArme<2500){return;}   // il confirme : on laisse partir
+  _quitterArme=t;
+  showToast('👋 '+(lang==='fr'?'Appuie encore pour quitter MyBoutiQ':'Press again to leave MyBoutiQ'));
+  _navSentinelle();
+});
 function goBack(){
   if(screenHist.length>1)screenHist.pop();
   var prev=screenHist[screenHist.length-1]||'s-caisse';
@@ -4440,6 +4514,10 @@ function navTo(tab,btn){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   btn.classList.add('on');
   var m={caisse:'s-caisse',stock:'s-stock',rapports:'s-rapports',clients:'s-clients'};
+  // ⚠️ CETTE VERSION EST REMPLACÉE PLUS BAS (celle qui connaît l'onglet
+  // Dash). Les deux doivent dire la même chose : un onglet REMPLACE la
+  // racine, il ne s'empile pas.
+  screenHist=[];
   goScreen(m[tab]);
   if(tab==='rapports')renderRpt();
   if(tab==='clients')renderClients();
@@ -5714,6 +5792,11 @@ function _finishLoginP(){
   document.getElementById('u-role').textContent=t('patron')+' 👑';
   document.getElementById('u-role').className='rbdg rb-p';
   ['btn-st','btn-add-stk','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
+  // ⚠️ « CAISSE, STOCK, RAPPORT OU DASHBOARD : ON DOIT VOIR FACILEMENT
+  // PARAMÈTRE. » L'engrenage n'existait QUE sur la caisse : depuis le stock,
+  // il fallait redescendre à la caisse avant de pouvoir régler quoi que ce
+  // soit. Il est maintenant sur chaque écran, au même endroit.
+  document.querySelectorAll('.bst').forEach(function(el){el.style.display='flex';});
   document.getElementById('btn-add').style.display='block';
   document.getElementById('btn-exp-stk').style.display='block';
   showSecPatron(true);var _spb=document.getElementById('sec-patron-backup');if(_spb)_spb.style.display='block';
@@ -6097,6 +6180,7 @@ function _finishLoginV(nm,code){
   document.getElementById('u-role').textContent=t('vendeur');
   document.getElementById('u-role').className='rbdg rb-v';
   ['btn-st','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+  document.querySelectorAll('.bst').forEach(function(el){el.style.display='none';});
   var bes=document.getElementById('btn-exp-stk');if(bes)bes.style.display='none';
   showSecPatron(false);var spb=document.getElementById('sec-patron-backup');if(spb)spb.style.display='none';
   save();
@@ -15088,6 +15172,11 @@ async function switchBoutiqueParCode(code){
   document.getElementById('u-role').textContent=t('patron')+' 👑';
   document.getElementById('u-role').className='rbdg rb-p';
   ['btn-st','btn-add-stk','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
+  // ⚠️ « CAISSE, STOCK, RAPPORT OU DASHBOARD : ON DOIT VOIR FACILEMENT
+  // PARAMÈTRE. » L'engrenage n'existait QUE sur la caisse : depuis le stock,
+  // il fallait redescendre à la caisse avant de pouvoir régler quoi que ce
+  // soit. Il est maintenant sur chaque écran, au même endroit.
+  document.querySelectorAll('.bst').forEach(function(el){el.style.display='flex';});
   document.getElementById('btn-add').style.display='block';
   document.getElementById('btn-exp-stk').style.display='block';
   showSecPatron(true);var _spb=document.getElementById('sec-patron-backup');if(_spb)_spb.style.display='block';
@@ -17184,8 +17273,15 @@ function renderNotifPanel(){
 }
 showNotifs=function(){renderNotifPanel();document.getElementById('ov-notifs').classList.add('show');};
 var _appliquerLangBase=appliquerLang;appliquerLang=function(){_appliquerLangBase();['dash','dash2','dash3','dash4','dash5'].forEach(function(id){var el=document.getElementById('n-'+id);if(el)el.textContent='Dashboard';});var btnUse=document.getElementById('btn-use-points');if(btnUse)btnUse.textContent=lang==='fr'?'⭐ Utiliser points':'⭐ Use points';var info=document.getElementById('client-vente-info');if(info&&!clientVente)info.textContent=lang==='fr'?'Client fidèle (optionnel)':'Loyal customer (optional)';};
-navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(function(n){var oc=n.getAttribute('onclick')||'';n.classList.toggle('on',oc.indexOf("navTo('"+tab+"'")>-1);});var m={caisse:'s-caisse',stock:'s-stock',rapports:'s-rapports',clients:'s-clients',dash:'s-dashboard'};goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);if(tab==='dash')renderDashboard();};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);};
+navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(function(n){var oc=n.getAttribute('onclick')||'';n.classList.toggle('on',oc.indexOf("navTo('"+tab+"'")>-1);});var m={caisse:'s-caisse',stock:'s-stock',rapports:'s-rapports',clients:'s-clients',dash:'s-dashboard'};
+  // ⚠️ LES CINQ ONGLETS DU BAS SONT LA RACINE, PAS UNE PILE. Chaque passage
+  // d'un onglet à l'autre s'ajoutait à l'historique : après dix minutes de
+  // travail, le retour remontait dix écrans en arrière au lieu de sortir —
+  // et on n'atteignait plus jamais le fond. Un onglet REMPLACE, il n'empile
+  // pas ; c'est ce que fait n'importe quelle application à onglets.
+  screenHist=[];
+  goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);if(tab==='dash')renderDashboard();};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
