@@ -3466,7 +3466,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.57'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.58'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -3587,6 +3587,9 @@ function _applyRemoteDB(data,silent){
   try{renderAgpx();renderAgstk();}catch(e){}
   try{renderFourn();}catch(e){}
   renderDashboard();renderNotifPanel();recalcTotaux();updateNotifBadge();updateClientVenteUI();updateObjBar();
+  // ⚠️ Le cadenas fait partie de ce qui doit être redessiné : une icône qui
+  // dit le contraire de l'état, c'est un commerçant qui tape deux fois.
+  try{majBoutonVerrou();}catch(e){}
   var codeEl=document.getElementById('code-val');if(codeEl)codeEl.textContent=DB.cfg.code;
   var hdr=document.getElementById('bn-hdr');if(hdr)hdr.textContent=DB.cfg.nom||'Ma Boutique';
   if(role==='vendeur'){var un=document.getElementById('u-nm');if(un)un.textContent=nomVendeur||'Vendeur';}
@@ -6268,6 +6271,18 @@ function creerEnVendant(i){
   showToast('✅ '+nom+' · '+fmt(px)+' — '+(fr?'ajouté au panier':'added to cart'));
 }
 function getQBase(v){var q=parseFloat(v&&v.qBase);return(q>0)?q:1;}
+// ⚠️ LE NUMÉRO D'UNE VARIANTE NE SE RECYCLE JAMAIS. Six endroits calculaient
+// « le plus grand numéro + 1 » à partir des variantes VIVANTES. Depuis qu'une
+// dernière variante peut être fondue dans son article (`vfus`), une famille
+// vidée repartirait de 1 — et la nouvelle variante n° 1 hériterait des ventes
+// de l'ancienne, comptées comme des mouvements de l'article. Le stock serait
+// faux sans que rien ne le dise. Les numéros fondus comptent donc encore.
+function _prochainIdVariante(p){
+  var m=0;
+  ((p&&p.vr)||[]).forEach(function(v){var i=parseFloat(v&&v.id);if(i>m)m=i;});
+  if(p&&p.vfus)Object.keys(p.vfus).forEach(function(k){var i=parseFloat(k);if(i>m)m=i;});
+  return m+1;
+}
 // ══════════════════════════════════════════════════════════════════
 //  DEUX FAÇONS DE PARTAGER UN STOCK — et la seconde manquait
 //
@@ -6945,6 +6960,69 @@ function cmpAddVar(){
   selVarImg=null;var pv=document.getElementById('var-photo-preview');if(pv)pv.style.display='none';
   document.getElementById('ov-addvar').classList.add('show');
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ UNE VARIANTE TOUTE SEULE N'EST PLUS UNE VARIANTE
+//
+//  « Supposons des articles qui sont en variantes. Si on efface les autres
+//    et que ça reste un seul élément dans une variante, automatiquement cet
+//    élément devient un seul article. Ça ne vaut pas la peine de laisser une
+//    variante alors que c'est un seul article à l'intérieur. »
+//
+//  Il a raison, et ça lui coûtait à chaque vente : une famille à un seul
+//  membre gardait son écran de variantes (une tape de plus pour vendre),
+//  son prix de famille à 0, et deux lignes — la famille ET son unique
+//  variante — dans les fiches Prix et Stock, pour une seule chose à vendre.
+//
+//  ⚠️ CE QUI POUVAIT SE PERDRE, ET QUI NE SE PERD PAS.
+//  Le stock ne se stocke pas : il se REJOUE (stk0 + ravitaillements −
+//  ventes). Or ses ventes passées désignent la VARIANTE. Effacer la variante
+//  sans plus, c'est jeter ces ventes hors du calcul — et le stock remonte
+//  tout seul. L'article garde donc la trace de la variante fondue (`vfus`),
+//  recomputeStock lui rend ces mouvements, et le stock de DÉPART s'additionne.
+//  Ce qui existait avant existe encore après, au chiffre près.
+// ══════════════════════════════════════════════════════════════════
+// « Savon » + « Azur » = « Savon Azur ». Mais si la variante s'appelle déjà
+// « Savon Azur », on ne dit pas « Savon Savon Azur » : une app qui écorche
+// les noms de ses articles perd un peu de sa confiance à chaque ligne.
+function _nomFondu(p,v){
+  var fam=String(p&&p.nm||'').trim(),sien=String(v&&v.nm||'').trim();
+  if(!sien)return fam;
+  if(!fam)return sien;
+  var a=txtNorm(fam),b=txtNorm(sien);
+  if(!a||b.indexOf(a)>=0)return sien;
+  if(a.indexOf(b)>=0)return fam;
+  return (fam+' '+sien).slice(0,60);
+}
+function _replierSiUneVariante(p){
+  if(!p||!Array.isArray(p.vr)||p.vr.length!==1)return false;
+  var v=p.vr[0];
+  // ⚠️ ON NE REPLIE QUE CE QU'ON SAIT REPLIER SANS RIEN FAUSSER. Un carton
+  // de variante n'a plus de sens sans sa base, et une famille à stock
+  // partagé compte autrement. Dans le doute, on ne touche à rien : une
+  // famille d'un seul membre est laide, un stock faux est grave.
+  try{if(_estGrosDeVariante(v)||getQBase(v)>1||utiliseStockBase(p))return false;}catch(e){return false;}
+  var fr=(lang==='fr'),ancien=p.nm;
+  try{sauvegarderAvant(fr?('avant que « '+(v.nm||p.nm)+' » redevienne un article seul'):'before folding the last variant');}catch(e){}
+  var cd=null;try{cd=_condDe(p,v);}catch(e){}
+  p.nm=_nomFondu(p,v);
+  if(Number(v.px)>0)p.px=Number(v.px);
+  if(Number(v.pa)>0)p.pa=Number(v.pa);
+  if(!p.img&&(v.img||v._img)){p.img=v.img||v._img;if(v._imgCat)p._imgCat=true;}
+  // Le conditionnement suit la forme à laquelle il appartient — celui de la
+  // variante s'il en a un, celui de la famille sinon. _condDe le sait déjà.
+  if(cd&&cd.n>0)try{_poserCond(p,cd.n,cd.mot,cd.par,cd.parMot,cd.parTaille);}catch(e){}
+  p.stk0=Math.round(((Number(p.stk0)||0)+(Number(v.stk0)||0))*100)/100;
+  if(!p.vfus)p.vfus={};
+  p.vfus[v.id]=1;
+  p.vr=[];
+  if(p._pendingVariantSetup)delete p._pendingVariantSetup;
+  try{DB=recomputeStock(DB);}catch(e){}
+  journalAjouter('famille',p.nm,(fr?'dernière variante de '+ancien:'last variant of '+ancien),
+                 (fr?'redevient un article seul':'becomes its own item'));
+  showToast('↩️ '+p.nm+' — '+(fr?'seule variante restante : c\'est de nouveau un article simple'
+                                :'only variant left: it is a plain item again'));
+  return true;
+}
 function cmpDelVar(vid){
   var p=_cmpArt;if(!p)return;
   var v=p.vr.find(function(x){return x.id==vid;});if(!v)return;
@@ -6952,8 +7030,10 @@ function cmpDelVar(vid){
   journalAjouter('suppr',p.nm+' — '+(v.nm||'?'),(lang==='fr'?'variante':'variant'),'');
   p.vr=p.vr.filter(function(x){return x.id!=vid;});
   if(p._pendingVariantSetup)p._pendingVariantSetup=p._pendingVariantSetup.filter(function(id){return id!=vid;});
-  save();cmpRenderFamRows();renderProd(DB.articles);renderStock(DB.articles);
   showToast('🗑️ '+(v.nm||''));
+  _replierSiUneVariante(p);            // il n'en reste qu'une ? ce n'est plus une variante
+  save();cmpRenderFamRows();renderProd(DB.articles);renderStock(DB.articles);
+  try{renderAgpx();renderAgstk();}catch(e){}
 }
 function cmpDetachVar(vid){
   var p=_cmpArt;if(!p)return;
@@ -6973,8 +7053,9 @@ function cmpDetachVar(vid){
   DB.articles.push(na);
   p.vr=p.vr.filter(function(x){return x.id!=vid;});
   if(p._pendingVariantSetup)p._pendingVariantSetup=p._pendingVariantSetup.filter(function(id){return id!=vid;});
-  save();cmpRenderFamRows();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();
   showToast('↗ '+na.nm+' — '+(lang==='fr'?'article indépendant':'own item'));
+  _replierSiUneVariante(p);            // celle qui reste toute seule sort aussi de sa famille
+  save();cmpRenderFamRows();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();
 }
 function cmpUm(u){
   _cmpUmVal=u;
@@ -7787,7 +7868,7 @@ function _saveVarFormats(){
   var box=document.getElementById('var-multi');
   var lignes=[].slice.call(box.querySelectorAll('[data-fmtpx]'));
   var base=_nomSansFormat(p.nm),faits=[],sansPrix=[];
-  var nid=(p.vr.length?Math.max.apply(null,p.vr.map(function(v){return v.id;})):0)+1;
+  var nid=_prochainIdVariante(p);
   lignes.forEach(function(inp){
     var f=inp.dataset.fmtpx,px=parseFloat(String(inp.value||'').replace(',','.'))||0;
     // ⚠️ Sans prix, on ne crée RIEN. Un format annoncé « créé » et invendable
@@ -7850,7 +7931,7 @@ function ctxFam(){
   document.getElementById('ov-fam').classList.add('show');
 }
 function _artVersVariante(cible,a){
-  var vid=(cible.vr.length?Math.max.apply(null,cible.vr.map(function(v){return v.id;})):0)+1;
+  var vid=_prochainIdVariante(cible);
   var nv={id:vid,nm:a.nm,px:a.px||0,pa:a.pa||0,stk:a.stk||0,stk0:a.stk||0,rt:a.rt!==false,qBase:1};
   if(a.img)nv.img=a.img;
   // ⚠️⚠️ MESURÉ AU BANC : « Huile Diamaor — bidon de 20 » regroupée dans la
@@ -7929,11 +8010,47 @@ function ctxGros(){if(!artCtx)return;var id=artCtx.id;document.getElementById('c
 function ctxCond(){if(!artCtx)return;var id=artCtx.id;document.getElementById('ctxm').classList.remove('show');setTimeout(function(){corrigerConditionnement(id);},180);}
 function ctxST(){if(!artCtx)return;selArtStk(artCtx);document.getElementById('ov-stk').classList.add('show');}
 function ctxDL(){if(!artCtx)return;if(confirm((lang==='fr'?'Supprimer ':'Delete ')+'"'+artCtx.nm+'" ?')){sauvegarderAvant((lang==='fr'?'avant de supprimer ':'before deleting ')+artCtx.nm);if(!Array.isArray(DB.suppr))DB.suppr=[];DB.suppr.push(artCtx.id);journalAjouter('suppr',artCtx.nm,(lang==='fr'?'stock '+fmtQ(getStk(artCtx)):'stock '+fmtQ(getStk(artCtx))),'');DB.articles=DB.articles.filter(function(a){return a.id!==artCtx.id;});save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();showToast('🗑️ '+artCtx.nm);}}
-function ouvrirNeg(p,v){negEnCours={p,v};
+// ⚠️⚠️ « LA VENTE EN GROS NE RESPECTE PAS LA RUPTURE DE STOCK. »
+// MESURÉ AU BANC : article à 5 unités, carton de 24 → 24 tombaient dans le
+// panier SANS UN MOT. Stock à zéro, carton de 24 → 24 aussi. Au détail, la
+// même vente passait par cette question ; en gros, elle ne la posait pas.
+// Un carton vendu dans le vide, c'est 24 unités de stock faux — et un stock
+// faux ne se voit qu'au réapprovisionnement, quand il est trop tard.
+// La question est donc la MÊME pour les deux, et elle porte le carton
+// entier : « vendre un carton (24) » et non « vendre » tout court.
+function ouvrirNeg(p,v,n,mot){
+  n=Math.max(1,Number(n)||1);
+  negEnCours={p:p,v:v,n:n,mot:mot||''};
+  var fr=(lang==='fr');
   // Sa photo, pas un émoji : il doit reconnaître ce qu'il s'apprête à vendre à découvert.
   var _ne=document.getElementById('neg-emo');
-  _ne.innerHTML='<span style="display:flex;justify-content:center">'+vignetteArt(p,v,72)+'</span>';document.getElementById('neg-nm').textContent=p.nm+(v?' — '+v.nm:'');document.getElementById('neg-msg').textContent=lang==='fr'?'Stock épuisé. Tu peux quand même vendre et te ravitailler après.':'Out of stock. You can still sell and restock later.';document.getElementById('ov-neg').classList.add('show');}
-function vendreMalgre(){if(!negEnCours)return;var p=negEnCours.p,v=negEnCours.v;var key=v?p.id+'-'+v.id:p.id+'-0';panier[key]=(panier[key]||0)+1;updatePUI(p.id);closeSheet('ov-neg');if(navigator.vibrate)navigator.vibrate(25);}
+  _ne.innerHTML='<span style="display:flex;justify-content:center">'+vignetteArt(p,v,72)+'</span>';
+  document.getElementById('neg-nm').textContent=p.nm+(v?' — '+v.nm:'');
+  var mt=mot||_motContenant(p,v||null);
+  document.getElementById('neg-msg').textContent=(n>1)
+    ?(fr?('Stock insuffisant. Tu peux quand même vendre '+_unGros(mt)+' ('+fmtQ(n)+') et te ravitailler après.')
+        :('Not enough stock. You can still sell 1 '+mt+' ('+fmtQ(n)+') and restock later.'))
+    :(fr?'Stock épuisé. Tu peux quand même vendre et te ravitailler après.'
+        :'Out of stock. You can still sell and restock later.');
+  document.getElementById('ov-neg').classList.add('show');
+}
+function vendreMalgre(){
+  if(!negEnCours)return;
+  var p=negEnCours.p,v=negEnCours.v,n=Math.max(1,Number(negEnCours.n)||1),mot=negEnCours.mot;
+  closeSheet('ov-neg');
+  // Il vient de répondre : on repasse par le chemin normal, en forçant, pour
+  // que le repère « 1 carton » et la voix restent exactement les mêmes qu'une
+  // vente en gros ordinaire. On ne repose pas une question déjà répondue.
+  if(n>1){
+    if(v)_ajouterLotVariante(p,v,n,mot,true);
+    else _ajouterLot(p,n,mot,true);
+    return;
+  }
+  var key=v?p.id+'-'+v.id:p.id+'-0';
+  panier[key]=(panier[key]||0)+1;
+  updatePUI(p.id);
+  if(navigator.vibrate)navigator.vibrate(25);
+}
 function ouvrirVar(p){
   varArtCours=p;varQtys={};
   p.vr.forEach(function(v){varQtys[v.id]=panier[p.id+'-'+v.id]||0;});
@@ -8713,14 +8830,18 @@ function vendreNiveau(e,pid,n,mot){
   if(!(n>1))return;
   _ajouterLot(p,n,mot||_motContenant(p,null));
 }
-function _ajouterLotVariante(p,v,n,mot){
+function _ajouterLotVariante(p,v,n,mot,force){
   var fr=(lang==='fr');
   if(!(n>1))return;
   if(!(Number(v.px)>0)){
     showToast('💰 '+(fr?'Prix manquant — complète cette variante d\'abord':'Missing price'));return;
   }
   var cur=varQtys[v.id]||0,dispo=_dispoApresPanier(p,v);
-  var ajout=(p.rt||v.rt)?n:Math.min(n,dispo);
+  mot=mot||_motContenant(p,v);
+  // La règle vaut à l'intérieur des variantes comme dehors : il l'a demandé
+  // pour tout, et un carton d'Azur vendu dans le vide ment autant qu'un autre.
+  if(!force&&dispo<n&&(p.rt||v.rt)){ouvrirNeg(p,v,n,mot);return;}
+  var ajout=force?n:((p.rt||v.rt)?n:Math.min(n,dispo));
   if(!(ajout>0)){showToast(t('stockInsuf'));return;}
   varQtys[v.id]=Math.round((cur+ajout)*100)/100;
   renderVarLst(p);
@@ -8862,14 +8983,17 @@ function _mentionGros(key,qty){
   return {nb:nb,mot:g.mot,emo:_emojiCont(g.mot),
           txt:fmtQ(nb)+' '+g.mot+(nb>1?'s':'')+' ('+fmtQ(qty)+(fr?' × ':' × ')+fmt(g.px||0)+')'};
 }
-function _ajouterLot(p,n,mot){
+function _ajouterLot(p,n,mot,force){
   var fr=(lang==='fr');
   var key=p.id+'-0',cur=panier[key]||0,dispo=getStk(p);
   var place=Math.max(0,dispo-cur);
-  var ajout=p.rt?n:Math.min(n,place);
+  mot=mot||_motContenant(p,null);
+  // ⚠️ LA RUPTURE SE DEMANDE, ELLE NE SE PREND PAS. Le stock ne couvre pas
+  // le carton : c'est la même question qu'au détail, avec le carton entier.
+  if(!force&&place<n&&p.rt){ouvrirNeg(p,null,n,mot);return;}
+  var ajout=force?n:(p.rt?n:Math.min(n,place));
   if(!(ajout>0)){showToast(t('stockInsuf'));return;}
   panier[key]=cur+ajout;
-  mot=mot||_motContenant(p,null);
   // Entier seulement : s'il ne restait pas un carton complet, ce n'est plus
   // un carton et on ne l'écrira pas comme tel.
   if(ajout===n)_grosPanier[key]={n:n,mot:mot,px:Number(p.px)||0};
@@ -9140,7 +9264,7 @@ function validerPrixGros(){
     p.vr[0].stk=Number(p.stk)||0;p.vr[0].stk0=Number(p.stk)||0;
     if(cible===null&&!(p.umSac>1))cible=p.vr[0];
   }
-  var vid=Math.max.apply(null,p.vr.map(function(x){return x.id;}))+1;
+  var vid=_prochainIdVariante(p);
   var nomV=(cible&&cible.nm?(cible.nm+' — '):'')+mot+' de '+fmtQ(n);
   // Prix d'achat du gros : SEULEMENT s'il est déduisible de l'unité connue.
   // ⚠️ Ce prix d'achat vient de LUI, jamais d'un calcul. Je le posais à
@@ -11777,13 +11901,13 @@ function continuerApresGroupement(){
     parent.px=0;parent.pa=0;parent.stk=0;
     parent._pendingVariantSetup=[];
     // La 1re photo du groupe devient AUSSI une variante : chaque photo reste vendable.
-    var vid0=(parent.vr.length?Math.max.apply(null,parent.vr.map(function(v){return v.id;})):0)+1;
+    var vid0=_prochainIdVariante(parent);
     parent.vr.push({id:vid0,nm:'',px:0,pa:0,stk:0,rt:true,qBase:1,_img:parent.img});
     parent._pendingVariantSetup.push(vid0);
     grp.slice(1).forEach(function(childId){
       var child=DB.articles.find(function(x){return x.id===childId;});
       if(!child)return;
-      var vid=(parent.vr.length?Math.max.apply(null,parent.vr.map(function(v){return v.id;})):0)+1;
+      var vid=_prochainIdVariante(parent);
       parent.vr.push({id:vid,nm:'',px:0,pa:0,stk:0,rt:true,qBase:1,_img:child.img});
       parent._pendingVariantSetup.push(vid);
       DB.articles=DB.articles.filter(function(x){return x.id!==childId;});
@@ -13515,7 +13639,7 @@ function saveVar(){
   // Plusieurs formats cochés : c'est l'autre chemin, et il demande un prix
   // par format avant de créer quoi que ce soit.
   if(_fmtSel.length>=2){_saveVarFormats();return;}
-  var nm=document.getElementById('var-nm').value.trim(),pa=_varPaUnitaire(),pv=parseFloat(document.getElementById('var-pv').value)||0,stk=parseInt(document.getElementById('var-stk').value)||0;if(pa<0){showToast('📦 '+(lang==='fr'?"Combien d'unités dans 1 carton ? Sans ce nombre je ne peux pas calculer le prix à l'unité":'How many per box?'));var _c=document.getElementById('var-parc');if(_c)_c.focus();return;}if(!nm||!pv){showToast(t('errNom'));return;}if(!varArtCours)return;var nid=(varArtCours.vr.length?Math.max.apply(null,varArtCours.vr.map(function(v){return v.id;})):0)+1;var qBase=1;if(varArtCours.stk>0){var msg=lang==='fr'?'Quantité de stock de base consommée par cette variante ?\\n(1 pour unité simple, 100 pour 100g, 1000 pour 1kg, 0.5 pour une demi-unité, etc.)':'Base stock units consumed by this variant?\\n(1 for single unit, 100 for 100g, 1000 for 1kg, 0.5 for half a unit, etc.)';var rep=prompt(msg,'1');if(rep===null)return;qBase=Math.max(0.001,parseFloat((rep||'1').replace(',','.'))||1);}var nv={id:nid,nm,px:pv,pa,stk,rt:true,qBase:qBase};if(typeof selVarImg!=='undefined'&&selVarImg)nv.img=selVarImg;varArtCours.vr.push(nv);if(stk>0){nv.stk0=stk;}save();renderProd(DB.articles);renderStock(DB.articles);closeSheet('ov-addvar');
+  var nm=document.getElementById('var-nm').value.trim(),pa=_varPaUnitaire(),pv=parseFloat(document.getElementById('var-pv').value)||0,stk=parseInt(document.getElementById('var-stk').value)||0;if(pa<0){showToast('📦 '+(lang==='fr'?"Combien d'unités dans 1 carton ? Sans ce nombre je ne peux pas calculer le prix à l'unité":'How many per box?'));var _c=document.getElementById('var-parc');if(_c)_c.focus();return;}if(!nm||!pv){showToast(t('errNom'));return;}if(!varArtCours)return;var nid=_prochainIdVariante(varArtCours);var qBase=1;if(varArtCours.stk>0){var msg=lang==='fr'?'Quantité de stock de base consommée par cette variante ?\\n(1 pour unité simple, 100 pour 100g, 1000 pour 1kg, 0.5 pour une demi-unité, etc.)':'Base stock units consumed by this variant?\\n(1 for single unit, 100 for 100g, 1000 for 1kg, 0.5 for half a unit, etc.)';var rep=prompt(msg,'1');if(rep===null)return;qBase=Math.max(0.001,parseFloat((rep||'1').replace(',','.'))||1);}var nv={id:nid,nm,px:pv,pa,stk,rt:true,qBase:qBase};if(typeof selVarImg!=='undefined'&&selVarImg)nv.img=selVarImg;varArtCours.vr.push(nv);if(stk>0){nv.stk0=stk;}save();renderProd(DB.articles);renderStock(DB.articles);closeSheet('ov-addvar');
   // Si la fiche famille est ouverte derrière, on la rafraîchit avec la nouvelle variante
   if(typeof _cmpArt!=='undefined'&&_cmpArt===varArtCours&&document.getElementById('ov-completer').classList.contains('show'))cmpRenderFamRows();
   showToast(t('varianteAjoutee')+(qBase!==1?(lang==='fr'?' · stock base intelligent activé':' · smart base stock enabled'):''));}
@@ -15306,10 +15430,20 @@ function recomputeStock(d){
     if(!l||l.pid==null||l.vid!=null||vivant[l.pid])return null;
     return parOid[l.pid]||null;
   };
+  // ⭐ UNE VARIANTE FONDUE DANS SON ARTICLE (il n'en restait qu'une, elle EST
+  // devenue l'article). Ses ventes et ses ravitaillements passés désignent
+  // toujours la variante. Sans cette table ils tomberaient dans le vide : le
+  // stock remonterait tout seul, en silence, et un stock faux ne se voit
+  // qu'au réapprovisionnement. On les rend donc à l'article lui-même.
+  var fondu={};
+  d.articles.forEach(function(p){
+    if(p&&p.vfus)Object.keys(p.vfus).forEach(function(vid){fondu[p.id+'|'+vid]=1;});
+  });
+  var _estFondu=function(pid,vid){return vid!=null&&!!fondu[pid+'|'+vid];};
   var approBase={},approVar={};
-  (d.appros||[]).forEach(function(a){if(!a||a.pid==null)return;var qy=Number(a.qty)||0;var _m=_rattacher(a),_p=_m?_m.pid:a.pid,_v=_m?_m.vid:a.vid;if(_v==null)approBase[_p]=(approBase[_p]||0)+qy;else{var k=_p+'|'+_v;approVar[k]=(approVar[k]||0)+qy;}});
+  (d.appros||[]).forEach(function(a){if(!a||a.pid==null)return;var qy=Number(a.qty)||0;var _m=_rattacher(a),_p=_m?_m.pid:a.pid,_v=_m?_m.vid:a.vid;if(_estFondu(_p,_v))_v=null;if(_v==null)approBase[_p]=(approBase[_p]||0)+qy;else{var k=_p+'|'+_v;approVar[k]=(approVar[k]||0)+qy;}});
   var soldBase={},soldVar={},vendu={};
-  (d.ventes||[]).forEach(function(v){if(!v||v.annulee)return;(v.lignes||[]).forEach(function(l){if(!l||l.pid==null)return;var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;var _m=_rattacher(l),_pi=_m?_m.pid:l.pid,_vi=_m?_m.vid:l.vid;vendu[_pi]=(vendu[_pi]||0)+qt;var p=d.articles.find(function(x){return x.id==_pi;});if(!p)return;if(_vi){if(utiliseStockBase(p))soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);else{var _lv=(p.vr||[]).find(function(x){return String(x.id)===String(_vi);});var _gr=_lv&&_estGrosDeVariante(_lv);var k=_pi+'|'+(_gr?_lv.base:_vi);soldVar[k]=(soldVar[k]||0)+norm*(_gr?(Number(l.qBase)||getQBase(_lv)):1);}}else soldBase[_pi]=(soldBase[_pi]||0)+norm;});});
+  (d.ventes||[]).forEach(function(v){if(!v||v.annulee)return;(v.lignes||[]).forEach(function(l){if(!l||l.pid==null)return;var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;var _m=_rattacher(l),_pi=_m?_m.pid:l.pid,_vi=_m?_m.vid:l.vid;if(_estFondu(_pi,_vi))_vi=null;vendu[_pi]=(vendu[_pi]||0)+qt;var p=d.articles.find(function(x){return x.id==_pi;});if(!p)return;if(_vi){if(utiliseStockBase(p))soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);else{var _lv=(p.vr||[]).find(function(x){return String(x.id)===String(_vi);});var _gr=_lv&&_estGrosDeVariante(_lv);var k=_pi+'|'+(_gr?_lv.base:_vi);soldVar[k]=(soldVar[k]||0)+norm*(_gr?(Number(l.qBase)||getQBase(_lv)):1);}}else soldBase[_pi]=(soldBase[_pi]||0)+norm;});});
   d.articles.forEach(function(p){
     p.stk=(Number(p.stk0)||0)+(approBase[p.id]||0)-(soldBase[p.id]||0);
     p.vd=(Number(p.vd0)||0)+(vendu[p.id]||0); // vd0 = ventes déjà archivées (compteur "vendu" à vie préservé)
@@ -15692,6 +15826,21 @@ function mergeDB(base,other){
   ['pin','pinVendeur'].forEach(function(k){
     if(base.cfg[k]==null&&other.cfg[k])base.cfg[k]=other.cfg[k];
   });
+  // ⚠️⚠️ « QUAND ON ACTIVE LA MODIFICATION, SOUVENT C'EST DÉSACTIVÉ. SOUVENT
+  //        IL FAUT CLIQUER DEUX FOIS DESSUS. »
+  // MESURÉ AU BANC, et ce n'était pas le bouton : il ouvre le cadenas (état
+  // ouvert, icône ✏️), la boutique revient du serveur, et `mergeDB(distant,
+  // DB)` rend le cfg du DISTANT. Le cadenas SE REFERME TOUT SEUL pendant que
+  // l'icône continue d'afficher ✏️. Sa tape suivante ne fait que rouvrir ce
+  // qui s'était refermé dans son dos — de son côté, il a tapé deux fois.
+  // Le cadenas n'est pas une donnée de la boutique : c'est la POSTURE DE CE
+  // TÉLÉPHONE-CI, « je vends » ou « je corrige ». Le téléphone de la caisse
+  // et celui du bureau n'ont aucune raison de la partager. Elle ne voyage
+  // donc plus : la valeur de CET appareil fait foi, dans les deux sens
+  // d'appel de la fusion.
+  var _monDB=(base===DB)?base:((other===DB)?other:null);
+  if(_monDB&&_monDB.cfg&&base.cfg!==_monDB.cfg)
+    base.cfg.venteDeverrouillee=_monDB.cfg.venteDeverrouillee;
   // S3 : archivage. La borne = la plus avancée des deux. L'autorité sur les
   // articles (stk0/vd0 rebasés) revient au téléphone qui a archivé le plus loin.
   var baseUp=(base.arch&&base.arch.upTo)||0, otherUp=(other.arch&&other.arch.upTo)||0;
