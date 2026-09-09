@@ -2183,12 +2183,11 @@ body{max-width:min(100%,1200px)}
       <div id="gros-art" style="font-size:14px;font-weight:800;margin-bottom:4px">Article</div>
       <div id="gros-q" style="font-size:13px;color:var(--M);margin-bottom:10px">Combien dedans ?</div>
       <div class="gros-mots" id="gros-mots"></div>
-      <div class="qte-grid" style="margin-top:8px">
-        <button class="qte-b" onclick="grosRapide(6)">6</button>
-        <button class="qte-b" onclick="grosRapide(12)">12</button>
-        <button class="qte-b" onclick="grosRapide(24)">24</button>
-        <button class="qte-b" onclick="grosRapide(48)">48</button>
-      </div>
+      <!-- ⚠️ Ces quatre nombres etaient FIGES a 6/12/24/48. Un plateau d'œufs
+           en fait 30, un sac de riz 25 ou 50, un bidon 20 : on lui proposait
+           quatre nombres faux et il devait tous les ignorer. Ils suivent
+           maintenant le contenant qu'il vient de choisir. -->
+      <div class="qte-grid" style="margin-top:8px" id="gros-rapides"></div>
       <div class="pig" style="margin-top:12px"><label class="pl" id="gros-lbl">Un autre nombre</label><input class="pi" type="number" step="1" min="2" id="gros-inp" inputmode="numeric" oninput="majApercuGros()"></div>
       <div id="gros-apercu" style="font-size:13px;font-weight:800;color:var(--G);margin:2px 0 12px;min-height:17px"></div>
       <button class="bnxt" onclick="validerGros()">🛒 <span id="gros-add">Ajouter au panier</span></button>
@@ -3411,7 +3410,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.47'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.48'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8892,12 +8891,54 @@ function _grosRenderMots(){
     return '<button class="gros-mot'+(m===_grosMot?' on':'')+'" onclick="grosChoisirMot(\''+m+'\')">'+_emojiCont(m)+' '+m+'</button>';
   }).join('');
 }
-function grosChoisirMot(m){_grosMot=m;_grosRenderMots();majApercuGros();
-  var p=_grosArt;if(!p)return;
-  var fr=(lang==='fr');
-  var q=document.getElementById('gros-q');
-  if(q)q.textContent=fr?('Combien de '+_uniteMot(p)+' dans un '+m+' ?'):('How many '+_uniteMot(p)+' in one '+m+'?');
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ « SI JE METS CARTON, C'EST LA FICHE DU CARTON QUI VA SORTIR ; SI JE
+//     METS LOT, C'EST LA FICHE DU LOT. »
+//
+//  C'etait le dernier bout de sa demande, et il manquait. Choisir un mot ne
+//  changeait QUE la question : le titre restait « Vendre en gros », l'image
+//  restait 📦, et les quatre raccourcis restaient figes a 6/12/24/48 —
+//  quatre nombres faux pour un plateau d'œufs (30), un sac de riz (25 ou 50)
+//  ou un bidon (20), qu'il devait tous ignorer.
+//
+//  L'ecran devient donc CELUI DU CONTENANT : son image, son nom, sa
+//  question, et les nombres qu'on trouve vraiment dedans.
+// ══════════════════════════════════════════════════════════════════
+// Ce qu'un contenant porte d'habitude. Deux colonnes : a la piece, et a la
+// mesure (kg/L) — un sac de sucre fait 50 kg, un sac de bonbons 100 pieces.
+// ⚠️ Ce ne sont que des RACCOURCIS : le champ libre reste, et rien n'est
+// ecrit sans qu'il valide. On propose, on n'impose pas.
+var _NB_CONT={carton:[6,12,24,48],boite:[10,20,50,100],casier:[12,20,24,30],
+              caisse:[12,24,48],palette:[48,96,120],paquet:[5,10,20,50],
+              lot:[3,6,10,12],sac:[25,50,100],bidon:[5,20,25],plateau:[12,30],
+              box:[6,12,24,48],tin:[10,20,50,100],crate:[12,20,24,30],case:[12,24,48],
+              pallet:[48,96,120],pack:[5,10,20,50],bag:[25,50,100],can:[5,20,25],tray:[12,30]};
+function _grosRapides(mot,mesure){
+  var l=null;
+  try{l=_NB_CONT[txtNorm(mot||'')];}catch(e){}
+  if(!l)l=mesure?[5,10,25,50]:[6,12,24,48];
+  if(mesure&&(txtNorm(mot||'')==='sac'||txtNorm(mot||'')==='bidon'))l=(txtNorm(mot)==='sac')?[25,50,100]:[5,20,25];
+  return l;
 }
+function _grosMajFiche(){
+  var p=_grosArt;if(!p)return;
+  var fr=(lang==='fr'),m=_grosMot||'',mesure=estMesure(p);
+  var t=document.getElementById('gros-tit');
+  if(t&&!_grosEdition)t.textContent=_emojiCont(m)+' '+(m?(fr?('Vendre par '+m):('Sell by the '+m))
+                                                       :(fr?'Vendre en gros':'Sell wholesale'));
+  var q=document.getElementById('gros-q');
+  if(q)q.textContent=m
+    ?(fr?('Combien de '+_uniteMot(p)+' dans '+_unGros(m)+' ?'):('How many '+_uniteMot(p)+' in one '+m+'?'))
+    :(fr?('Tu le vends en gros comment ? Choisis, puis dis combien de '+_uniteMot(p)+' dedans.')
+       :('How do you sell it wholesale? Pick one, then say how many inside.'));
+  var box=document.getElementById('gros-rapides');
+  if(box)box.innerHTML=_grosRapides(m,mesure).map(function(n){
+    return '<button class="qte-b" onclick="grosRapide('+n+')">'+n+'</button>';
+  }).join('');
+  var i=document.getElementById('gros-inp');
+  if(i)i.placeholder=m?(fr?('ex : '+_grosRapides(m,mesure)[0]):('e.g. '+_grosRapides(m,mesure)[0])):'';
+}
+function grosChoisirMot(m){_grosMot=m;_grosRenderMots();_grosMajFiche();majApercuGros();}
 // ══════════════════════════════════════════════════════════════════
 //  ⚠️ « SI POUR LES PERSONNES QUI VENDENT PAR PALETTES ON LES MET PAR
 //     CARTON PAR ERREUR, COMMENT MODIFIER ? »
@@ -8953,16 +8994,8 @@ function direTailleGros(e,pid,edition,vid){
   // alors qu'il n'a JAMAIS dit carton. On ne lui met un mot dans la bouche
   // qu'une fois qu'il l'a choisi.
   var _motDit=!!(cible.umCont||(function(){try{var m=mesureCatalogue(familleCatalogueDe(p.nm)||p.nm);return m&&m.cont;}catch(x){return false;}})());
-  document.getElementById('gros-tit').textContent=edition
-    ? ('📦 '+(fr?'Comment tu l\'achètes':'How you buy it'))
-    : (_emojiCont(_motDit?_grosMot:'')+' '+(_motDit?(fr?'Vendre par '+_grosMot:'Sell by the '+_grosMot)
-                                                  :(fr?'Vendre en gros':'Sell wholesale')));
+  if(edition)document.getElementById('gros-tit').textContent='📦 '+(fr?'Comment tu l\'achètes':'How you buy it');
   document.getElementById('gros-art').textContent=p.nm+(_grosVar?(' — '+(_grosVar.nm||'')):'');
-  document.getElementById('gros-q').textContent=_motDit
-    ? (fr?('Combien de '+_uniteMot(p)+' dans un '+_grosMot+' ?')
-        :('How many '+_uniteMot(p)+' in one '+_grosMot+'?'))
-    : (fr?('Tu le vends en gros comment ? Choisis, puis dis combien de '+_uniteMot(p)+' dedans.')
-        :('How do you sell it wholesale? Pick one, then say how many inside.'));
   // En correction, on remet ce qu'il avait dit : il corrige au lieu de
   // tout retaper, et il VOIT ce que l'app croyait savoir.
   document.getElementById('gros-inp').value=(edition&&n>1)?String(n):'';
@@ -8972,6 +9005,10 @@ function direTailleGros(e,pid,edition,vid){
     ? (fr?'Enregistrer':'Save')
     : (fr?'Ajouter au panier':'Add to cart');
   _grosRenderMots();
+  // Le mot n'est « dit » que s'il vient de LUI ou du catalogue : sinon on
+  // ouvre la fiche neutre, et elle prend l'identite du contenant qu'il choisit.
+  if(!_motDit)_grosMot='';
+  _grosMajFiche();
   if(edition&&n>1)majApercuGros();
   document.getElementById('ov-gros').classList.add('show');
   if(!edition){try{parler(fr?('Combien de '+_uniteMot(p)+' dans un '+_grosMot+' ?'):'');}catch(x){}}
