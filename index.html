@@ -39,9 +39,16 @@
 (function(){
   try{
     if(!window.PublicKeyCredential||!navigator.credentials||!navigator.credentials.get)return;
-    var e=null;try{e=JSON.parse(localStorage.getItem('myboutiq_entree')||'null');}catch(x){}
-    if(!e||!e.bio||!e.bioId)return;
-    var s=String(e.bioId);
+    // ⚠️ L'INTERRUPTEUR EST CELUI DE L'APPAREIL, pas celui d'une boutique.
+    // `myboutiq_entree` ne sert plus que de repli pour les installations
+    // d'avant la 21.63, le temps d'une ouverture.
+    var e=null;try{e=JSON.parse(localStorage.getItem('myboutiq_bio')||'null');}catch(x){}
+    if(!e||!e.on||!e.id){
+      try{e=JSON.parse(localStorage.getItem('myboutiq_entree')||'null');}catch(x){}
+      if(!e||!e.bio||!e.bioId)return;
+      e={on:1,id:e.bioId};
+    }
+    var s=String(e.id);
     if(!/^[A-Za-z0-9+/]+={0,2}$/.test(s))return;
     var b=atob(s);
     if(b.length<16||b.length>1024)return;          // même garde que debase64
@@ -3493,7 +3500,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.62'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.63'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5512,10 +5519,13 @@ function appliquerLang(){
   var _sne=document.getElementById('st-noemoji');if(_sne)_sne.textContent=lang==='fr'?'Masquer les emojis':'Hide emojis';
   var _sne2=document.getElementById('st-noemoji-s');if(_sne2)_sne2.textContent=lang==='fr'?'Remplace les emojis par une pastille sobre (initiale)':'Replace emojis with a plain tile (initial)';
   // Biométrie — bouton visible si activée, toggle synchronisé
+  var _bio=false;try{_bio=bioActif();}catch(e){}
   var bioBtn=document.getElementById('btn-bio-login');
-  if(bioBtn)bioBtn.style.display=(DB.cfg.bioEnabled?'flex':'none');
-  document.getElementById('tog-bio').className='tog '+(DB.cfg.bioEnabled?'on':'off');
-  var tb2=document.getElementById('tog-bio2');if(tb2)tb2.className='tog '+(DB.cfg.bioEnabled?'on':'off');
+  if(bioBtn)bioBtn.style.display=(_bio?'flex':'none');
+  document.getElementById('tog-bio').className='tog '+(_bio?'on':'off');
+  var tb2=document.getElementById('tog-bio2');if(tb2)tb2.className='tog '+(_bio?'on':'off');
+  var _sb=document.getElementById('st-bio2-s');
+  if(_sb)_sb.textContent=(lang==='fr')?'Entrer sans taper le PIN — sur CE téléphone, toutes boutiques':'Enter without the PIN — on THIS phone';
   // Caisse
   document.getElementById('src-c').placeholder='🔍 '+(lang==='fr'?'Chercher...':'Search...');
   document.getElementById('btn-enc').innerHTML='💵 '+t('encaisser');
@@ -5716,7 +5726,7 @@ function _finishLoginP(){
     tel:(document.getElementById('p-tel')||{}).value||DB.cfg.tel||'',
     ccNum:(document.getElementById('p-cc-num')||{}).textContent||'',
     ccFlag:(document.getElementById('p-cc-flag')||{}).textContent||'',
-    code:DB.cfg.code||'',boutique:DB.cfg.nom||'',bio:!!DB.cfg.bioEnabled});}catch(e){}
+    code:DB.cfg.code||'',boutique:DB.cfg.nom||'',bio:bioActif()});}catch(e){}
   // On rafraîchit discrètement la liste de ses boutiques pour la prochaine
   // entrée : elle doit être là AVANT de parler au serveur.
   setTimeout(function(){try{listerBoutiquesDuCompte();}catch(e){}},1500);
@@ -14520,6 +14530,52 @@ function debase64(s){
 }
 // La clé de CETTE boutique, à présenter au capteur. Sans elle, le navigateur
 // ne sait pas quoi vérifier.
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ L'EMPREINTE APPARTIENT AU TÉLÉPHONE, PAS À LA BOUTIQUE
+//
+//  « Chaque boutique a son empreinte, activée chez d'autres et désactivée,
+//    sur un même numéro. Or ce que je veux c'est juste à la porte d'entrée,
+//    que ce soit le patron ou le vendeur. »
+//
+//  Il a raison, et c'était une erreur de rangement : l'interrupteur vivait
+//  dans `DB.cfg` — donc DANS UNE BOUTIQUE, et synchronisé avec les autres
+//  téléphones. Trois conséquences, toutes vécues :
+//     · deux boutiques sur le même téléphone = deux réglages, l'un allumé
+//       l'autre éteint, pour un seul et même capteur ;
+//     · un téléphone qui reçoit la boutique d'un autre héritait d'un
+//       interrupteur allumé pour une clé qu'il ne possède pas ;
+//     · le vendeur n'y avait aucun accès — les Réglages sont au patron.
+//
+//  Le capteur est une propriété DE L'APPAREIL. Son interrupteur vit donc
+//  ici, dans la mémoire de l'appareil, hors de toute boutique et hors de
+//  tout rôle. Une porte, un doigt.
+// ══════════════════════════════════════════════════════════════════
+// WebAuthn n'existe qu'en https. La règle était écrite à deux endroits :
+// une seule définition, pour qu'elles ne puissent plus diverger.
+function _origineSure(){return location.protocol==='https:'||location.hostname==='localhost';}
+function bioLu(){
+  try{var o=JSON.parse(localStorage.getItem('myboutiq_bio')||'null');
+      if(o&&typeof o==='object')return o;}catch(e){}
+  // Première ouverture après la 21.63 : on reprend ce que CE téléphone
+  // savait déjà de lui-même.
+  // ⚠️ JAMAIS DEPUIS DB.cfg. Cet interrupteur-là a pu arriver d'un autre
+  // appareil, avec une clé que celui-ci ne possède pas : on allumerait un
+  // capteur qui ne peut rien reconnaître. Deux tapes suffisent à le
+  // rallumer proprement, un faux capteur ne se répare pas tout seul.
+  var m=null;try{m=JSON.parse(localStorage.getItem('myboutiq_entree')||'null');}catch(e){}
+  var o={on:!!(m&&m.bio&&m.bioId),id:(m&&m.bioId)||''};
+  try{localStorage.setItem('myboutiq_bio',JSON.stringify(o));}catch(e){}
+  return o;
+}
+function bioEcrire(chg){
+  var o=bioLu();
+  Object.keys(chg||{}).forEach(function(k){o[k]=chg[k];});
+  o.q=Date.now();
+  try{localStorage.setItem('myboutiq_bio',JSON.stringify(o));}catch(e){}
+  return o;
+}
+// Allumé ET une clé sur cet appareil : sans les deux, la porte ne peut rien.
+function bioActif(){var o=bioLu();return !!(o.on&&o.id);}
 function _clesEmpreinte(){
   try{
     // ⚠️ DB n'existe PAS sur l'écran d'entrée — et encore moins après une
@@ -14527,7 +14583,11 @@ function _clesEmpreinte(){
     // moment précis où l'empreinte doit servir, on ne savait donc PAS quelle
     // clé présenter au capteur. On le garde maintenant aussi dans la mémoire
     // d'appareil (myboutiq_entree), celle qui est faite pour survivre.
-    var id=(DB&&DB.cfg&&DB.cfg.bioCredId)||null;
+    // L'appareil d'abord : c'est LUI qui possède la clé. La boutique et
+    // l'ancienne mémoire ne servent plus que de repli pour les installations
+    // d'avant la 21.63.
+    var id=(bioLu().id)||null;
+    if(!id)id=(DB&&DB.cfg&&DB.cfg.bioCredId)||null;
     if(!id){var e=lireEntree();id=e&&e.bioId;}
     if(!id)return undefined;
     var buf=debase64(id);
@@ -14572,9 +14632,11 @@ async function activerBiometrieFlow(){
       }catch(e2){throw e2;}
     }
     if(cred){
-      DB.cfg.bioCredId=b64(cred.rawId);DB.cfg.bioEnabled=true;
-      DB.cfg.bioDecouvrable=!dur;    // pour que le diagnostic puisse le dire
-      save();return true;
+      // ⚠️ DANS L'APPAREIL, PAS DANS LA BOUTIQUE. Écrire ça dans DB.cfg le
+      // faisait voyager vers les autres téléphones — et changer d'une
+      // boutique à l'autre sur le même.
+      bioEcrire({on:true,id:b64(cred.rawId),dec:!dur,refus:0});
+      return true;
     }
   }catch(e){
     _noterBio('activation',e);
@@ -14613,17 +14675,17 @@ async function ouvrirDiagBio(){
       auto?(fr?'oui — sans rien toucher':'yes')
           :(fr?'non — ce téléphone n\'a pas encore de clé : éteins puis rallume l\'empreinte':'no — no key on this phone yet'));
 
-  var sur=(location.protocol==='https:'||location.hostname==='localhost');
+  var sur=_origineSure();
   h+=_liLigne(sur,fr?'Adresse sécurisée':'Secure origin',location.protocol+'//'+location.hostname);
   if(!sur)ok=false;
 
-  var mem=lireEntree()||{};
-  var actif=!!(DB&&DB.cfg&&DB.cfg.bioEnabled)||!!mem.bio;
-  h+=_liLigne(actif,fr?'L\'interrupteur est allumé':'Switch is on',
-      actif?(fr?'oui':'yes'):(fr?'NON — c\'est sans doute tout le problème : allume « Empreinte / Face ID » juste au-dessus':'NO — turn on the switch above'));
+  var mem=lireEntree()||{},dev=bioLu();
+  var actif=!!dev.on;
+  h+=_liLigne(actif,fr?'L\'interrupteur est allumé (sur CE téléphone)':'Switch is on (this phone)',
+      actif?(fr?'oui — pour toutes tes boutiques':'yes — for every shop'):(fr?'NON — c\'est sans doute tout le problème : allume « Empreinte / Face ID » juste au-dessus':'NO — turn on the switch above'));
   if(!actif)ok=false;
 
-  var idApp=(DB&&DB.cfg&&DB.cfg.bioCredId)||'',idMem=mem.bioId||'';
+  var idApp=dev.id||(DB&&DB.cfg&&DB.cfg.bioCredId)||'',idMem=dev.id||mem.bioId||'';
   var aCle=!!(idApp||idMem);
   // Vert seulement si la clé est AUSSI dans le téléphone : c'est elle qui
   // sert avant la connexion. Un feu vert avec un ⚠️ dedans ne veut rien dire.
@@ -14634,7 +14696,7 @@ async function ouvrirDiagBio(){
         +(!idMem?(fr?' · ⚠️ PAS dans ce téléphone : réactive-la pour qu\'elle y soit aussi':''):'')));
   if(!aCle)ok=false;
 
-  var dec=DB&&DB.cfg&&DB.cfg.bioDecouvrable;
+  var dec=(dev.dec!==undefined)?dev.dec:(DB&&DB.cfg&&DB.cfg.bioDecouvrable);
   h+=_liLigne(dec===undefined?null:!!dec,fr?'Clé retrouvable seule (survit à une réinstallation)':'Discoverable key',
       dec===undefined?(fr?'clé créée avant cette version — désactive puis réactive pour la refaire':'created by an older version — re-enable it')
       :dec?(fr?'oui':'yes'):(fr?'non — ce téléphone n\'a pas voulu, l\'app garde l\'identifiant à sa place':'no — the app keeps the id instead'));
@@ -14658,7 +14720,7 @@ async function ouvrirDiagBio(){
 async function reactiverEmpreinte(){
   var fr=(lang==='fr');
   if(!DB||!DB.cfg){showToast('⛔ '+(fr?'Connecte-toi d\'abord, puis reviens ici':'Sign in first'));return;}
-  DB.cfg.bioEnabled=false;
+  bioEcrire({on:false});
   var ok=await activerBiometrieFlow();
   _majTogBio(ok);
   showToast(ok?('✅ '+(fr?'Empreinte refaite — elle servira dès la prochaine ouverture':'Biometrics re-created'))
@@ -14667,25 +14729,73 @@ async function reactiverEmpreinte(){
 }
 function _majTogBio(on){
   ['tog-bio','tog-bio2'].forEach(function(id){var e=document.getElementById(id);if(e)e.className='tog '+(on?'on':'off');});
-  // L'écran d'entrée ne connaît pas DB : sans ce drapeau dans la mémoire de
-  // l'appareil, le bouton Empreinte ne s'affichait JAMAIS. On y range AUSSI
-  // l'identifiant de la clé — c'est ce qui permet de présenter la bonne clé
-  // au capteur avant toute connexion, et après une réinstallation.
-  try{memoriserEntree({role:'patron',bio:!!on,
-       bioId:(on&&DB&&DB.cfg&&DB.cfg.bioCredId)?DB.cfg.bioCredId:undefined});}catch(e){}
+  var b=document.getElementById('btn-bio-login');if(b)b.style.display=on?'flex':'none';
+  // ⚠️ On ne passe plus par memoriserEntree : cette fonction est CLASSÉE PAR
+  // RÔLE et repart d'une ardoise vide quand le rôle change. Elle forçait ici
+  // « patron » — un vendeur qui touchait l'empreinte effaçait donc, sans le
+  // savoir, tout ce que la porte se rappelait de lui.
+  // On garde quand même le drapeau à jour pour les versions d'avant.
+  try{var m=JSON.parse(localStorage.getItem('myboutiq_entree')||'null');
+      if(m){m.bio=!!on;if(on)m.bioId=bioLu().id||m.bioId;
+            localStorage.setItem('myboutiq_entree',JSON.stringify(m));}}catch(e){}
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ « QUE CE SOIT LE PATRON OU LE VENDEUR »
+//
+//  L'interrupteur de l'empreinte vit dans les Réglages — et les Réglages
+//  sont fermés au vendeur. Il n'avait donc AUCUN moyen de l'allumer, alors
+//  que c'est lui qui ouvre la caisse dix fois par jour.
+//
+//  On le propose donc là où le besoin se sent : juste après être entré,
+//  dans le bandeau, pour l'un comme pour l'autre. Une tape, et c'est fait.
+//  ⚠️ Trois fois au maximum, puis plus jamais : une proposition qui revient
+//  sans fin cesse d'être une proposition.
+// ══════════════════════════════════════════════════════════════════
+async function proposerEmpreinteALaPorte(){
+  try{
+    if(!DB||!DB.cfg||!window.PublicKeyCredential)return;
+    var o=bioLu();
+    if(o.on||(o.vu||0)>=3)return;
+    if(!_origineSure())return;                // WebAuthn n'existe qu'en https
+    var capteur=false;
+    try{capteur=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();}catch(e){}
+    if(!capteur)return;                       // pas de capteur : pas de promesse
+    var b=document.getElementById('annonce-banner');
+    if(!b||b.style.display==='flex')return;   // un autre message occupe déjà la place
+    var fr=(lang==='fr');
+    bioEcrire({vu:(o.vu||0)+1});
+    _annonceCourante=null;
+    document.getElementById('annonce-ico').textContent='👆';
+    document.getElementById('annonce-titre').textContent=fr?'Entrer avec ton doigt':'Enter with your finger';
+    document.getElementById('annonce-msg').textContent=fr
+      ?'Plus de code à taper à l\'ouverture. Touche ici pour l\'activer sur ce téléphone.'
+      :'No more PIN at the door. Tap to enable it on this phone.';
+    b.style.borderLeftColor='#1E88E5';
+    b.style.display='flex';
+    b.onclick=function(ev){
+      if(ev&&ev.target&&ev.target.closest&&ev.target.closest('button'))return;
+      b.style.display='none';b.onclick=null;
+      activerBiometrieFlow().then(function(ok){
+        _majTogBio(ok);
+        showToast(ok?('✅ '+(fr?'C\'est fait — à la prochaine ouverture, pose ton doigt':'Done — put your finger next time'))
+                    :('⛔ '+(fr?'Ça n\'a pas pris — tu peux réessayer plus tard':'Not enabled — try again later')));
+      });
+    };
+  }catch(e){}
 }
 function toggleBiometrie(){
-  if(!DB){showToast('⛔ '+(lang==='fr'?'Connecte-toi d\'abord':'Sign in first'));return;}
   if(!window.PublicKeyCredential){showToast('⛔ '+(lang==='fr'?'Ce téléphone ne gère pas l\'empreinte':'This phone has no biometrics'));return;}
-  if(!DB.cfg.bioEnabled){
+  if(!bioActif()){
+    if(!DB){showToast('⛔ '+(lang==='fr'?'Connecte-toi d\'abord':'Sign in first'));return;}
     activerBiometrieFlow().then(function(ok){
       _majTogBio(ok);
-      if(ok)showToast('✅ '+(lang==='fr'?'Empreinte activée — elle servira à la prochaine ouverture':'Biometrics enabled'));
+      if(ok)showToast('✅ '+(lang==='fr'?'Empreinte activée — pour CE téléphone, et pour toutes tes boutiques':'Biometrics enabled on this phone'));
     });
   }else{
-    DB.cfg.bioEnabled=false;save();
+    // On garde la clé : rallumer ne redemandera pas de la refabriquer.
+    bioEcrire({on:false});
     _majTogBio(false);
-    showToast('🔓 '+(lang==='fr'?'Empreinte désactivée':'Biometrics disabled'));
+    showToast('🔓 '+(lang==='fr'?'Empreinte désactivée sur ce téléphone':'Biometrics disabled on this phone'));
   }
 }
 // ⚠️ CETTE FONCTION ÉTAIT DÉCORATIVE. Elle vérifiait l'empreinte puis
@@ -14702,7 +14812,7 @@ async function loginBiometrique(){
   // « Biométrie non configurée » à quelqu'un qui l'avait bel et bien
   // configurée. La mémoire d'appareil, elle, s'en souvient.
   var mem=lireEntree();
-  if(!(DB&&DB.cfg&&DB.cfg.bioEnabled)&&!(mem&&mem.bio)){
+  if(!bioActif()&&!(mem&&mem.bio)){
     showToast('⛔ '+(fr?'Empreinte pas encore activée — Réglages 👆 Empreinte':'Biometrics not set up yet'));return;
   }
   arreterGuetEmpreinte();
@@ -17036,7 +17146,7 @@ function renderNotifPanel(){
 showNotifs=function(){renderNotifPanel();document.getElementById('ov-notifs').classList.add('show');};
 var _appliquerLangBase=appliquerLang;appliquerLang=function(){_appliquerLangBase();['dash','dash2','dash3','dash4','dash5'].forEach(function(id){var el=document.getElementById('n-'+id);if(el)el.textContent='Dashboard';});var btnUse=document.getElementById('btn-use-points');if(btnUse)btnUse.textContent=lang==='fr'?'⭐ Utiliser points':'⭐ Use points';var info=document.getElementById('client-vente-info');if(info&&!clientVente)info.textContent=lang==='fr'?'Client fidèle (optionnel)':'Loyal customer (optional)';};
 navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(function(n){var oc=n.getAttribute('onclick')||'';n.classList.toggle('on',oc.indexOf("navTo('"+tab+"'")>-1);});var m={caisse:'s-caisse',stock:'s-stock',rapports:'s-rapports',clients:'s-clients',dash:'s-dashboard'};goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);if(tab==='dash')renderDashboard();};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderDashboard();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
