@@ -1226,6 +1226,7 @@ body{max-width:min(100%,1200px)}
   <div class="ctxi" id="ctxi-fam" onclick="ctxFam()">🔗 <span id="cx8">Mettre dans une famille</span></div>
   <div class="ctxi" onclick="ctxST()">➕ <span id="cx4">Entrée stock</span></div>
   <div class="ctxi" onclick="ctxPhoto()">🖼️ <span id="cx6">Changer photo</span></div>
+  <div class="ctxi" id="ctxi-signal" onclick="ctxSignalerPhoto()">🚩 <span id="cxsig">Cette photo ne correspond pas</span></div>
   <div class="ctxi" onclick="ctxToggleRupt()">🔄 <span id="cx7">Vente en rupture</span></div>
   <div class="ctxi danger" onclick="ctxDL()">🗑️ <span id="cx5">Supprimer</span></div>
 </div>
@@ -3465,7 +3466,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.54'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.56'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7555,12 +7556,60 @@ function showCtx(e,p){
     if(_ic)_ic.textContent=_emojiCont(_mc);
     _cc.parentElement.style.display='flex';
   }
+  // ⚠️ Ne s'affiche QUE sur une photo venue du catalogue partagé : sa propre
+  // photo, il la change, il ne la « signale » pas.
+  var _cs=document.getElementById('ctxi-signal');
+  if(_cs){
+    _cs.style.display=(p.img&&p._imgCat)?'flex':'none';
+    var _ls=document.getElementById('cxsig');
+    if(_ls)_ls.textContent=lang==='fr'?'Cette photo ne correspond pas':'This photo is wrong';
+  }
   document.getElementById('cx5').textContent=lang==='fr'?'Supprimer':'Delete';
   setTimeout(function(){document.addEventListener('click',function h(){document.getElementById('ctxm').classList.remove('show');document.removeEventListener('click',h);});},100);
 }
 function ctxPV(){if(!artCtx||!peutModifierPrix())return;document.getElementById('ctxm').classList.remove('show');artCours=artCtx;ouvrirModifR(artCtx);}
 function ctxRC(){if(!artCtx||!peutModifierPrix())return;document.getElementById('ctxm').classList.remove('show');artCours=artCtx;selArt(artCtx,false);document.getElementById('ov-prix').classList.add('show');}
 function ctxPhoto(){if(!artCtx)return;document.getElementById('inp-photo-real-ctx').click();}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ « CETTE PHOTO NE CORRESPOND PAS »
+//
+//  Sa question : « si plusieurs commerçants ont importé les mêmes photos
+//  mais avec des caméras différentes, comment résoudre ça ? »
+//  L'égalisation (21.55) rattrape la lumière. Elle ne rattrape pas une photo
+//  qui montre le MAUVAIS PRODUIT — et une bibliothèque partagée à mille
+//  boutiques en accumule forcément. Sans ce geste, une mauvaise photo reste
+//  pour tout le monde, et personne n'a de moyen de le dire.
+//
+//  ⚠️ SA BOUTIQUE EST REPAREE TOUT DE SUITE, ET HORS LIGNE. Le signalement
+//  au serveur est un BONUS : s'il n'y a pas de réseau, sa carte est quand
+//  même nettoyée. On ne fait jamais dépendre son commerce d'une connexion.
+//  ⚠️ Et l'article se souvient du refus (`_imgRefus`) : sans ça, l'écran
+//  « tes articles peuvent avoir leur photo » lui reproposerait la même,
+//  indéfiniment.
+// ══════════════════════════════════════════════════════════════════
+function ctxSignalerPhoto(){
+  var p=artCtx;if(!p)return;
+  var fr=(lang==='fr');
+  document.getElementById('ctxm').classList.remove('show');
+  if(!(p.img&&p._imgCat)){showToast('🖼️ '+(fr?'Cette photo est la tienne — change-la simplement':'This photo is yours'));return;}
+  if(!confirm(fr?('Retirer cette photo de « '+p.nm+' » ?\n\nElle sera enlevée de ta boutique tout de suite, et signalée pour que les autres commerçants ne la reçoivent plus.')
+               :('Remove this photo from "'+p.nm+'"?'))) return;
+  var url=p.img;
+  // 1) Sa boutique, tout de suite — meme sans reseau.
+  delete p.img;delete p._imgCat;
+  p._imgRefus=true;
+  save();
+  try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+  journalAjouter('photo',p.nm,(fr?'photo du catalogue':'catalogue photo'),(fr?'signalée et retirée':'reported and removed'));
+  showToast('🚩 '+(fr?'Photo retirée. Merci — les autres en profiteront.':'Photo removed. Thank you.'));
+  // 2) Le serveur, si on peut. Un echec ici ne change rien pour lui.
+  try{
+    if(supa&&navigator.onLine&&url){
+      supa.from('photos_partagees').update({etat:'signalee'}).eq('url',url)
+        .then(function(){},function(){});
+    }
+  }catch(e){}
+}
 // Ajouter une vraie photo directement depuis la carte article (pousse vers les photos)
 function ajouterPhotoArticle(e,pid){
   e.stopPropagation();
@@ -10036,12 +10085,92 @@ function annulerCrop(){
   if(_cropState.callback)_cropState.callback(null);
   _cropState.callback=null;
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ ÉGALISER LA PHOTO — « si plusieurs commerçants importent les mêmes
+//     photos mais avec des caméras différentes, comment résoudre ça ? »
+//
+//  Sa question est juste : deux photos du même savon, l'une prise au soleil,
+//  l'autre sous une ampoule, ne se ressemblent pas — et une bibliothèque
+//  partagée devient un patchwork.
+//
+//  On ne peut pas changer sa caméra. On peut retirer CE QUI VIENT DE LA
+//  CAMÉRA plutôt que du produit : l'exposition et la dominante de couleur.
+//    · étirement des niveaux — le presque-noir redevient noir, le
+//      presque-blanc redevient blanc. Une photo sombre remonte, une photo
+//      brûlée redescend ;
+//    · équilibre des gris — une ampoule jaunit tout, un néon bleuit tout.
+//      On ramène la moyenne des trois canaux au neutre.
+//
+//  ⚠️ MAIN LÉGÈRE, ET C'EST VOLONTAIRE. Les deux corrections sont BRIDÉES
+//  (gain de couleur entre 0,85 et 1,18 ; étirement plafonné). Un produit
+//  vraiment rouge doit rester rouge, un produit vraiment sombre rester
+//  sombre : on corrige la lumière, jamais la marchandise. Et une photo déjà
+//  correcte ressort quasiment intacte — vérifié au banc.
+// ══════════════════════════════════════════════════════════════════
+function egaliserPhoto(cv,ctx){
+  try{
+    var w=cv.width,h=cv.height;
+    if(!(w>0&&h>0))return;
+    var d=ctx.getImageData(0,0,w,h),a=d.data,n=a.length;
+    var hist=new Uint32Array(256),px=0;
+    for(var i=0;i<n;i+=4){
+      hist[(a[i]*77+a[i+1]*151+a[i+2]*28)>>8]++;px++;
+    }
+    if(!px)return;
+    // Le presque-blanc : on ignore le 1 % le plus clair (reflets, speculaires).
+    var seuil=Math.max(1,Math.floor(px*0.01)),c=0,hi=255;
+    for(var v=255;v>=0;v--){c+=hist[v];if(c>=seuil){hi=v;break;}}
+    // ⚠️⚠️ ON NE CORRIGE QUE LE POINT BLANC, JAMAIS LE POINT NOIR — et mon
+    // premier essai a montre pourquoi. En etirant AUSSI les noirs, une photo
+    // sombre RESSORTAIT PLUS SOMBRE (moyenne 40 -> 31) et une photo jaune
+    // s'effondrait (212 -> 61). Le banc l'a attrape avant lui.
+    // Rendre blanc ce qui est presque blanc suffit : ca releve une photo
+    // sous-exposee sans jamais fabriquer des noirs qui n'existent pas — un
+    // produit sur fond clair n'a aucune raison d'avoir du noir.
+    var plafond=(hi<120)?2.4:1.8;        // une photo tres sombre a droit a plus
+    var gain=1;
+    if(hi>8&&hi<235){gain=245/hi;if(gain>plafond)gain=plafond;if(gain<1)gain=1;}
+    // ⚠️⚠️ L'EQUILIBRE DES GRIS NE SE MESURE QUE SUR LES ZONES CLAIRES,
+    // et mon premier essai a montre pourquoi : un produit VRAIMENT ROUGE
+    // (220,45,43) ressortait delave en (255,120,114). La moyenne de TOUTE
+    // l'image suppose que la scene est grise en moyenne — c'est faux devant
+    // un savon rouge, et on lui repeignait sa marchandise.
+    // Les zones CLAIRES, elles, sont le fond et les reflets : sous une
+    // lumiere neutre elles sont grises. Si ELLES tirent au jaune, c'est
+    // l'ampoule ; si elles restent neutres pendant que le produit est rouge,
+    // c'est que le produit est rouge. On mesure donc la lumiere la ou elle
+    // se voit, pas sur la marchandise.
+    var seuilClair=Math.max(90,Math.round(hi*0.62));
+    var sR=0,sG=0,sB=0,nc=0;
+    for(var k=0;k<n;k+=4){
+      if(((a[k]*77+a[k+1]*151+a[k+2]*28)>>8)<seuilClair)continue;
+      sR+=a[k];sG+=a[k+1];sB+=a[k+2];nc++;
+    }
+    // Trop peu de clair pour juger (photo tres sombre) : on ne devine pas.
+    if(nc<px*0.02){sR=sG=sB=1;nc=1;}
+    var mR=sR/nc,mG=sG/nc,mB=sB/nc,mo=(mR+mG+mB)/3;
+    var bride=function(k){return k<0.82?0.82:(k>1.22?1.22:k);};
+    var kR=bride(mR>4?mo/mR:1),kG=bride(mG>4?mo/mG:1),kB=bride(mB>4?mo/mB:1);
+    if(gain===1&&Math.abs(kR-1)<0.02&&Math.abs(kG-1)<0.02&&Math.abs(kB-1)<0.02)return;
+    for(var j=0;j<n;j+=4){
+      var vr=a[j]*gain*kR,vg=a[j+1]*gain*kG,vb=a[j+2]*gain*kB;
+      a[j]  =vr>255?255:vr;
+      a[j+1]=vg>255?255:vg;
+      a[j+2]=vb>255?255:vb;
+    }
+    ctx.putImageData(d,0,0);
+  }catch(e){}   // canvas illisible : on garde la photo telle quelle
+}
 function validerCrop(){
   var s=_cropState,OUT=600;
   var cv=document.createElement('canvas');cv.width=OUT;cv.height=OUT;
   var ctx=cv.getContext('2d');
   var ratio=OUT/s.vpSize;
+  // ⚠️ Fond BLANC avant de dessiner : un PNG transparent ressortait NOIR en
+  // JPEG, qui n'a pas de transparence. Un savon sur fond noir, sans raison.
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,OUT,OUT);
   ctx.drawImage(s.img, -s.tx/s.scale, -s.ty/s.scale, s.vpSize/s.scale, s.vpSize/s.scale, 0,0, OUT, OUT);
+  egaliserPhoto(cv,ctx);
   cv.toBlob(function(blob){
     document.getElementById('ov-crop').classList.remove('show');
     var cb=s.callback;s.callback=null;
@@ -10057,7 +10186,10 @@ function compresserImage(file,maxDim,quality){
       if(w>h){if(w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;}}
       else{if(h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}}
       var cv=document.createElement('canvas');cv.width=w;cv.height=h;
-      var ctx=cv.getContext('2d');ctx.drawImage(img,0,0,w,h);
+      var ctx=cv.getContext('2d');
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);   // pas de transparence virant au noir
+      ctx.drawImage(img,0,0,w,h);
+      try{egaliserPhoto(cv,ctx);}catch(e){}
       URL.revokeObjectURL(url);
       cv.toBlob(function(blob){
         if(!blob){reject(new Error('compression échouée'));return;}
@@ -10379,6 +10511,9 @@ function _articlesARafraichir(){
     if(!p||!p.nm)return;
     // Photo prise par le commerçant (pas venue du catalogue) : intouchable.
     if(p.img&&!p._imgCat)return;
+    // ⚠️ Il a dit « celle-ci ne correspond pas » : on ne la lui repropose
+    // JAMAIS. Redemander ce qu'il vient de refuser, c'est ne pas l'écouter.
+    if(p._imgRefus)return;
     var u='';
     try{u=photoCatalogue(p.nm)||'';}catch(e){}
     if(!u||u===p.img)return;
