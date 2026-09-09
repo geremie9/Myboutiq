@@ -3411,7 +3411,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.46'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.47'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8043,7 +8043,7 @@ function _brancherVar(d,p,v){
       // Modifications ouvertes : il peut vouloir en fixer LE PRIX de gros
       // plutôt que vendre au détail. On lui laisse le choix, une seule fois,
       // comme dehors — sinon on vend, sans rien demander.
-      if(!(venteVerrouillee&&venteVerrouillee())&&(role==='patron'||hasPerm('produits'))){
+      if((role==='patron'||hasPerm('produits'))&&!(venteVerrouillee&&venteVerrouillee())){
         fermerVarInline();
         setTimeout(function(){try{demanderPrixGros(p,v);}catch(x){}},160);
         return;
@@ -8416,10 +8416,13 @@ function _chipGrosVariante(p,v,cercle){
     return '<span class="'+cls+' vide" data-grosdet="'+v.id+'" title="'
       +(lang==='fr'?('Vendre '+_unGros(mot)+' de '+fmtQ(n)):('Sell 1 '+mot+' of '+fmtQ(n)))+'">'
       +_emojiCont(mot)+' '+fmtQ(n)+'</span>';
-  if(verrou)return '';
+  // Rien de connu : le repère NEUTRE, exactement comme dehors. « Tout
+  // produit est vendable en gros » — y compris celui dont il n'a jamais
+  // dit le conditionnement. Une tape ouvre l'écran qui le demande.
   if(role!=='patron'&&!hasPerm('produits'))return '';
   return '<span class="'+cls+' vide" data-grosneuf="'+v.id+'" title="'
-    +(lang==='fr'?('Vendre '+(v.nm||'')+' par '+mot):('Sell by the '+mot))+'">'+_emojiCont(mot)+'</span>';
+    +(lang==='fr'?('Vendre '+(v.nm||'')+' en gros'):('Sell wholesale'))+'">'
+    +_emojiCont(mot)+' '+(lang==='fr'?'gros':'bulk')+'</span>';
 }
 // ⭐ VENDRE LE CONTENU D'UN CONTENANT, POUR UNE VARIANTE PRÉCISE.
 // L'équivalent de `_ajouterLot` (qui, lui, ne sait travailler que sur un
@@ -8507,23 +8510,31 @@ function _chipGros(p){
   // pour cet article — donc là où la question a un sens. Ailleurs, le
   // chemin reste ouvert par le menu de l'article (🔀 Ajouter variante) :
   // rien n'est retiré, on cesse seulement de le crier partout.
-  var connu=0;
-  try{
-    var m=mesureCatalogue(familleCatalogueDe(p.nm)||p.nm);
-    connu=(m&&m.sac>0)?m.sac:0;
-  }catch(e){}
-  if(!connu)return '';
-  // ⚠️⚠️ SA RÈGLE, ET ELLE ÉTAIT ENFREINTE EN SILENCE : « quand on ferme la
-  // modification, si on clique sur la partie grossiste on vend juste en
-  // gros ; si on clique sur l'autre partie on vend juste en détail, c'est
-  // tout. »
-  // Mesuré : verrou fermé, ce repère-là s'affichait quand même, et le
-  // toucher appelait direTailleGros — qui sort EN SILENCE sous verrou.
-  // Un bouton visible qui ne fait rien et n'explique rien : le commerçant
-  // tape, retape, et croit l'app cassée. Il ne s'affiche plus que quand il
-  // y a vraiment quelque chose à régler, donc modifications ouvertes.
-  if(venteVerrouillee&&venteVerrouillee())return '';
-  return '<button class="pgros vide" onclick="direTailleGros(event,'+p.id+')" title="'+(lang==='fr'?'Vendre par '+mot:'Sell by the '+mot)+'">'+_emojiCont(mot)+'</button>';
+  // ⚠️⚠️ IL CHANGE D'AVIS ICI, ET IL A DES RAISONS. JE LE NOTE.
+  //
+  // En 21.10 il m'avait dit : « JE VOIS PARTOUT VENTE EN CARTON. CE N'EST
+  // PAS TOUS LES ARTICLES OÙ ON ACHÈTE EN CARTON. » J'avais donc retiré ce
+  // repère partout sauf là où le catalogue connaissait une taille.
+  //
+  // Aujourd'hui : « TOUT PRODUIT EST VENDABLE EN GROS. Si je n'ai pas mis le
+  // conditionnement, vous pouvez mettre quelque chose pour dire que ça se
+  // vend en gros, modifiable quand même. Si j'essaie de vendre en gros, ça
+  // te ramène automatiquement dans les paramètres en demandant comment tu
+  // veux vendre en gros. »
+  //
+  // Les deux sont vrais, et ce qui a changé entre-temps, c'est CE QUE FAIT
+  // le repère. En 21.10 le repère vide ne savait que réclamer un nombre :
+  // vingt points d'interrogation sur une grille, pour rien. Aujourd'hui il
+  // OUVRE une vente en gros — mot, nombre, prix — et repart avec le carton
+  // au panier. Un chemin utile a le droit d'être partout ; une question,
+  // non.
+  // Il reste donc DISCRET (`.vide` : gris pâle, effacé) pour ne pas se faire
+  // passer pour un conditionnement connu — c'était le fond de sa remarque
+  // de 21.10, et elle tient toujours.
+  var neutre='<button class="pgros vide" onclick="direTailleGros(event,'+p.id+')" title="'
+    +(lang==='fr'?'Vendre en gros':'Sell wholesale')+'">'+_emojiCont(mot)
+    +'<span>'+(lang==='fr'?'gros':'bulk')+'</span></button>';
+  return neutre;
 }
 // ══════════════════════════════════════════════════════════════════
 //  ⭐ « UN CARTON SEULEMENT SUR LA FACTURE, PAS 24, PAS 12 »
@@ -8871,8 +8882,11 @@ function _grosRenderMots(){
   // « Les jus se vendent par PALETTES, certaines boissons en CASIER,
   //   certains produits en PAQUETS ou en LOTS, en carton aussi. »
   // La palette d'abord pour les boissons, et « lot » ajouté : il manquait.
-  var mots=fr?['carton','casier','palette','paquet','lot','sac','bidon','plateau']
-             :['box','crate','pallet','pack','lot','bag','can','tray'];
+  // ⚠️ « Certains savons sont en BOÎTE peut-être, ou en lot. » La boîte
+  // manquait — et la caisse aussi, que les boissons emploient. Le mot qu'il
+  // n'a pas sous les yeux est un mot qu'il ne peut pas choisir.
+  var mots=fr?['carton','boîte','casier','caisse','palette','paquet','lot','sac','bidon','plateau']
+             :['box','tin','crate','case','pallet','pack','lot','bag','can','tray'];
   if(_grosMot&&mots.indexOf(_grosMot)<0)mots.unshift(_grosMot);
   box.innerHTML=mots.map(function(m){
     return '<button class="gros-mot'+(m===_grosMot?' on':'')+'" onclick="grosChoisirMot(\''+m+'\')">'+_emojiCont(m)+' '+m+'</button>';
@@ -8913,7 +8927,19 @@ function corrigerConditionnement(pid,vid){
 function direTailleGros(e,pid,edition,vid){
   if(e)e.stopPropagation();
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
-  if(!edition&&venteVerrouillee&&venteVerrouillee())return;
+  // ⚠️⚠️ LE VERROU NE BARRE PLUS CE CHEMIN, ET C'EST VOULU.
+  // Avant : il sortait EN SILENCE dès que les modifications étaient
+  // bloquées. Or c'est lui qui vient de toucher « vendre en gros » — un
+  // client grossiste est devant lui, et il ne doit pas chercher le cadenas
+  // pour le servir. C'est sa demande : « ça te ramène automatiquement dans
+  // les paramètres en demandant comment tu veux vendre en gros. »
+  // Le verrou protège des modifications ACCIDENTELLES ; une tape sur « vendre
+  // en gros » n'en est pas une.
+  // ⚠️ LE DROIT SUR LES PRODUITS, LUI, RESTE EXIGÉ — et il n'était même pas
+  // vérifié ici avant : un vendeur pouvait poser un conditionnement.
+  if(!edition&&role!=='patron'&&!hasPerm('produits')){
+    showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;
+  }
   var fr=(lang==='fr');
   _grosEdition=!!edition;
   _grosVar=(vid!=null)?((p.vr||[]).find(function(x){return String(x.id)===String(vid);})||null):null;
@@ -8923,12 +8949,20 @@ function direTailleGros(e,pid,edition,vid){
   // proposer « 12 » parce que la famille dit 12, quand cette forme-là part
   // en bidon de 20, c'est fabriquer la faute qu'on vient corriger.
   var n=Number(cible.umSac)||0;
+  // ⚠️ Le repère disait « gros », l'écran répondait « Vendre par carton » —
+  // alors qu'il n'a JAMAIS dit carton. On ne lui met un mot dans la bouche
+  // qu'une fois qu'il l'a choisi.
+  var _motDit=!!(cible.umCont||(function(){try{var m=mesureCatalogue(familleCatalogueDe(p.nm)||p.nm);return m&&m.cont;}catch(x){return false;}})());
   document.getElementById('gros-tit').textContent=edition
     ? ('📦 '+(fr?'Comment tu l\'achètes':'How you buy it'))
-    : ('📦 '+(fr?'Vendre par '+_grosMot:'Sell by the '+_grosMot));
+    : (_emojiCont(_motDit?_grosMot:'')+' '+(_motDit?(fr?'Vendre par '+_grosMot:'Sell by the '+_grosMot)
+                                                  :(fr?'Vendre en gros':'Sell wholesale')));
   document.getElementById('gros-art').textContent=p.nm+(_grosVar?(' — '+(_grosVar.nm||'')):'');
-  document.getElementById('gros-q').textContent=fr?('Combien de '+_uniteMot(p)+' dans un '+_grosMot+' ?')
-                                                  :('How many '+_uniteMot(p)+' in one '+_grosMot+'?');
+  document.getElementById('gros-q').textContent=_motDit
+    ? (fr?('Combien de '+_uniteMot(p)+' dans un '+_grosMot+' ?')
+        :('How many '+_uniteMot(p)+' in one '+_grosMot+'?'))
+    : (fr?('Tu le vends en gros comment ? Choisis, puis dis combien de '+_uniteMot(p)+' dedans.')
+        :('How do you sell it wholesale? Pick one, then say how many inside.'));
   // En correction, on remet ce qu'il avait dit : il corrige au lieu de
   // tout retaper, et il VOIT ce que l'app croyait savoir.
   document.getElementById('gros-inp').value=(edition&&n>1)?String(n):'';
