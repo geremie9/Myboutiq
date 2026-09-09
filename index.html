@@ -2188,7 +2188,26 @@ body{max-width:min(100%,1200px)}
            quatre nombres faux et il devait tous les ignorer. Ils suivent
            maintenant le contenant qu'il vient de choisir. -->
       <div class="qte-grid" style="margin-top:8px" id="gros-rapides"></div>
-      <div class="pig" style="margin-top:12px"><label class="pl" id="gros-lbl">Un autre nombre</label><input class="pi" type="number" step="1" min="2" id="gros-inp" inputmode="numeric" oninput="majApercuGros()"></div>
+      <div class="pig" style="margin-top:12px"><label class="pl" id="gros-lbl">Un autre nombre</label><input class="pi" type="number" step="1" min="2" id="gros-inp" inputmode="numeric" oninput="grosSaisieDirecte()"></div>
+      <!-- ⚠️ « Des choses se vendent dans une boîte dans un carton : beaucoup de
+           paquets dans un carton, un paquet a plusieurs unités. Dans grossiste
+           il y a les sous-grossistes. »
+           La multiplication 12 × 6 = 72, il n'a aucune raison de la faire de
+           tête — et s'il répond 12 en pensant « douze paquets », son prix
+           d'achat unitaire est faux d'un facteur 6. Replié par défaut : ceux
+           qui n'ont qu'un niveau ne voient rien de plus. -->
+      <button type="button" id="gros-par-lien" onclick="grosOuvrirPar()"
+        style="width:100%;background:none;border:none;color:var(--B);font-size:12px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;text-align:left;padding:2px 0 10px;text-decoration:underline"></button>
+      <div id="gros-par-sec" style="display:none;background:var(--BG);border-radius:11px;padding:11px;margin-bottom:11px">
+        <div class="gros-mots" id="gros-par-mots" style="margin-top:0"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end;margin-top:8px">
+          <div class="pig" style="flex:1;margin:0"><label class="pl" id="gros-par-n-l">Combien dedans</label>
+            <input class="pi sm" type="number" inputmode="numeric" id="gros-par-n" oninput="majParGros()"></div>
+          <div class="pig" style="flex:1;margin:0"><label class="pl" id="gros-par-t-l">Chacun contient</label>
+            <input class="pi sm" type="number" inputmode="decimal" step="0.25" id="gros-par-t" oninput="majParGros()"></div>
+        </div>
+        <div id="gros-par-calc" style="font-size:12.5px;font-weight:800;color:var(--G);margin-top:8px;min-height:16px"></div>
+      </div>
       <div id="gros-apercu" style="font-size:13px;font-weight:800;color:var(--G);margin:2px 0 12px;min-height:17px"></div>
       <button class="bnxt" onclick="validerGros()">🛒 <span id="gros-add">Ajouter au panier</span></button>
     </div>
@@ -3420,7 +3439,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.50'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.51'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8468,12 +8487,26 @@ function _badgeVariantes(p){
 //  Il n'apparaît QUE si le lot existe déjà — on ne remet pas un 📦 sur
 //  chaque variante, c'est la leçon du « carton partout ».
 // ══════════════════════════════════════════════════════════════════
-function _lotDeVariante(p,v){
-  if(!p||!v||_estGrosDeVariante(v))return null;
-  return (p.vr||[]).find(function(x){
+// ⚠️⚠️ « DANS GROSSISTE IL Y A LES SOUS-GROSSISTES : beaucoup de paquets dans
+//        un carton, un paquet a plusieurs unites. »
+//
+// MESURE AU BANC, ET LA BONNE NOUVELLE D'ABORD : le stock sait DEJA compter
+// trois niveaux. 720 unites = 120 paquets de 6 = 10 cartons de 72, et le total
+// de la famille ne les compte qu'une fois. Le modele de la 21.13 (`qBase` +
+// `base`) n'avait pas besoin d'etre touche.
+//
+// LE TROU ETAIT DANS L'AFFICHAGE : cette fonction faisait `.find()` — LE
+// PREMIER lot trouve. Avec deux niveaux, le second etait invisible et donc
+// invendable. Il voyait le paquet, jamais le carton.
+// On les rend TOUS, du plus petit au plus grand : c'est l'ordre dans lequel
+// un commercant les nomme (« je vends a l'unite, au paquet, au carton »).
+function _lotsDeVariante(p,v){
+  if(!p||!v||_estGrosDeVariante(v))return [];
+  return (p.vr||[]).filter(function(x){
     return _estGrosDeVariante(x)&&String(x.base)===String(v.id);
-  })||null;
+  }).sort(function(a,b){return getQBase(a)-getQBase(b);});
 }
+function _lotDeVariante(p,v){var l=_lotsDeVariante(p,v);return l.length?l[0]:null;}
 // ⚠️⚠️ « J'AI TROIS SAVONS. QUAND J'ENTRE DANS LES VARIANTES, JE VEUX
 //        VENDRE LE SAVON B EN CARTON — MAIS ÇA NE SE VOIT PAS. »
 //
@@ -8496,12 +8529,28 @@ function _lotDeVariante(p,v){
 //   · le carton existe   -> il l'annonce et le VEND d'une tape ;
 //   · il n'existe pas    -> repère effacé qui l'OUVRE, et seulement
 //     modifications ouvertes. Verrou fermé = on vend, on ne configure pas.
+// Le mot d'un lot precis : « Carton de 72 » porte son mot dans son NOM, et
+// deux niveaux du meme article n'ont pas le meme contenant. Sans ca, le paquet
+// et le carton s'affichaient avec la meme image.
+function _motDeLot(p,v,lot){
+  var nm=txtNorm(lot&&lot.nm||'');
+  var mots=['carton','boite','casier','caisse','palette','paquet','lot','sac','bidon','plateau',
+            'box','tin','crate','case','pallet','pack','bag','can','tray'];
+  for(var i=0;i<mots.length;i++)if(nm.indexOf(mots[i])>=0)return mots[i];
+  return _motContenant(p,v);
+}
 function _chipGrosVariante(p,v,cercle){
   if(!p||!v||_estGrosDeVariante(v))return '';
   var cls=cercle?'vsat-gros':'vt-gros',mot=_motContenant(p,v);
-  var lot=_lotDeVariante(p,v);
-  if(lot)
-    return '<span class="'+cls+'" data-gros="'+lot.id+'" title="'+mot+' de '+fmtQ(getQBase(lot))+'">'+_emojiCont(mot)+' '+fmt(lot.px)+'</span>';
+  // ⭐ UN REPERE PAR NIVEAU. « Paquet de 6 » et « Carton de 72 » vivent cote a
+  // cote : c'est ca, les sous-grossistes. Chacun vend LE SIEN, a SON prix.
+  var lots=_lotsDeVariante(p,v);
+  if(lots.length)
+    return lots.map(function(lot){
+      var ml=_motDeLot(p,v,lot);
+      return '<span class="'+cls+'" data-gros="'+lot.id+'" title="'+(lot.nm||ml)+' — '+fmtQ(getQBase(lot))+'">'
+        +_emojiCont(ml)+' '+fmt(lot.px)+'</span>';
+    }).join('');
   // ⚠️⚠️ CE QUE J'AVAIS CASSÉ EN 21.44, ET IL L'A VU TOUT DE SUITE :
   // « impossible de vendre à l'intérieur des variantes en carton ou tout
   // grossiste. » Mesuré : verrou fermé — SON état de vente normal — aucun
@@ -9119,13 +9168,89 @@ function direTailleGros(e,pid,edition,vid){
   // ouvre la fiche neutre, et elle prend l'identite du contenant qu'il choisit.
   if(!_motDit)_grosMot='';
   _grosMajFiche();
+  // Le niveau du milieu : replié, sauf s'il en a déjà déclaré un.
+  var _cdp=_condDe(p,_grosVar);
+  var _sec=document.getElementById('gros-par-sec');
+  _grosParOublier();
+  if(edition&&_cdp.par>0){
+    _grosParMot=_cdp.parMot||'';
+    if(_sec)_sec.style.display='block';
+    var _n1=document.getElementById('gros-par-n'),_n2=document.getElementById('gros-par-t');
+    if(_n1)_n1.value=_cdp.par; if(_n2)_n2.value=_cdp.parTaille;
+    _grosRenderParMots();majParGros();
+  }else if(_sec)_sec.style.display='none';
+  _majLienPar();
   if(edition&&n>1)majApercuGros();
   document.getElementById('ov-gros').classList.add('show');
   if(!edition){try{parler(fr?('Combien de '+_uniteMot(p)+' dans un '+_grosMot+' ?'):'');}catch(x){}}
 }
 function grosRapide(n){
   var i=document.getElementById('gros-inp');if(!i)return;
-  i.value=n;majApercuGros();
+  i.value=n;_grosParOublier();majApercuGros();
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ LE NIVEAU DU MILIEU — « les sous-grossistes »
+//
+//  Un carton de biscuits contient 12 paquets, chaque paquet 6 unités : 72.
+//  S'il répond « 12 » en pensant « douze paquets », son prix d'achat unitaire
+//  est faux d'un facteur 6 — et un mauvais prix d'achat ne se voit jamais.
+//  C'est exactement le piège mesuré en 21.42 sur l'huile de coton : 15 000 le
+//  carton donnait 1 250 le litre au lieu de 833, et l'app annonçait « tu vends
+//  À PERTE » alors qu'il gagnait.
+//
+//  ⚠️ `umSac` NE CHANGE PAS DE SENS : il reste le nombre d'unités de VENTE
+//  dans le contenant. Le niveau du milieu ne fait que DIRE COMMENT ce nombre
+//  a été obtenu — et il remplit la case du total sous ses yeux.
+// ══════════════════════════════════════════════════════════════════
+var _grosParMot='';
+var MOTS_PAR=['paquet','boîte','sachet','plaquette','bouteille','plateau','sac'];
+function _grosParOublier(){
+  _grosParMot='';
+  ['gros-par-n','gros-par-t'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  var c=document.getElementById('gros-par-calc');if(c)c.textContent='';
+}
+// Taper le total a la main efface la repartition : deux verites pour un seul
+// nombre finiraient toujours par se contredire.
+function grosSaisieDirecte(){_grosParOublier();majApercuGros();}
+function _majLienPar(){
+  var b=document.getElementById('gros-par-lien');if(!b)return;
+  var fr=(lang==='fr'),sec=document.getElementById('gros-par-sec');
+  var ouvert=sec&&sec.style.display!=='none';
+  b.style.display=ouvert?'none':'block';
+  b.textContent=fr?'➗ Il est réparti en paquets, en boîtes ?':'➗ Is it split into packs?';
+}
+function grosOuvrirPar(){
+  var sec=document.getElementById('gros-par-sec');if(!sec)return;
+  sec.style.display='block';
+  _grosRenderParMots();_majLienPar();
+  try{document.getElementById('gros-par-n').focus();}catch(e){}
+}
+function _grosRenderParMots(){
+  var box=document.getElementById('gros-par-mots');if(!box)return;
+  var mots=MOTS_PAR.slice();
+  if(_grosParMot&&mots.indexOf(_grosParMot)<0)mots.unshift(_grosParMot);
+  box.innerHTML=mots.map(function(m){
+    return '<button type="button" class="gros-mot'+(m===_grosParMot?' on':'')+'" onclick="grosChoisirParMot(\''+m+'\')">'+_emojiCont(m)+' '+m+'</button>';
+  }).join('');
+}
+function grosChoisirParMot(m){_grosParMot=m;_grosRenderParMots();majParGros();}
+function majParGros(){
+  var p=_grosArt;if(!p)return;
+  var fr=(lang==='fr');
+  var n=parseFloat(String((document.getElementById('gros-par-n')||{}).value||'').replace(',','.'))||0;
+  var t=parseFloat(String((document.getElementById('gros-par-t')||{}).value||'').replace(',','.'))||0;
+  var mot=_grosParMot||(fr?'paquet':'pack');
+  var l1=document.getElementById('gros-par-n-l'),l2=document.getElementById('gros-par-t-l');
+  if(l1)l1.textContent=fr?('Combien de '+mot+'s'):('How many '+mot+'s');
+  if(l2)l2.textContent=fr?('Chaque '+mot+' contient ('+_uniteMot(p)+')'):('Each holds');
+  var c=document.getElementById('gros-par-calc');
+  if(n>0&&t>0){
+    var tot=Math.round(n*t*100)/100;
+    if(c)c.textContent='🧮 '+fmtQ(n)+' '+mot+(n>1?'s':'')+' × '+fmtQ(t)+' = '+fmtQ(tot)+' '+_uniteMot(p);
+    // Le total remplit la case principale : une seule verite a l'ecran.
+    var i=document.getElementById('gros-inp');if(i)i.value=tot;
+    majApercuGros();
+  }else if(c)c.textContent='';
 }
 function majApercuGros(){
   var p=_grosArt;if(!p)return;
@@ -9158,7 +9283,12 @@ function validerGros(){
   // avait dit « carton de 12 bouteilles de 1,5 L » puis corrige le total à
   // 24, les « 12 bouteilles » ne veulent plus rien dire. Un calcul qui ne
   // tombe plus juste doit disparaître, pas survivre à moitié.
-  _poserCond(cible,n,mot,0,null,0);
+  // ⭐ Les trois niveaux ensemble, par l'écrivain unique : carton (72) =
+  // 12 paquets × 6. `_poserCond` refuse la répartition si elle ne retombe pas
+  // sur le total — un calcul qui ne tombe pas juste ne survit pas.
+  var _pn=parseFloat(String((document.getElementById('gros-par-n')||{}).value||'').replace(',','.'))||0;
+  var _pt=parseFloat(String((document.getElementById('gros-par-t')||{}).value||'').replace(',','.'))||0;
+  _poserCond(cible,n,mot,_pn,_grosParMot||null,_pt);
   journalAjouter('conditionnement',nomCible,(avN>1?(avMot+' de '+fmtQ(avN)):''),mot+' de '+fmtQ(n));
   // ⚠️ LA CORRECTION DOIT ATTEINDRE LES LOTS DÉJÀ CRÉÉS.
   // Sans ça, l'article dirait « palette de 24 » pendant que sa variante
