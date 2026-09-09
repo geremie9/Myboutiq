@@ -3411,7 +3411,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.45'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.46'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8034,6 +8034,23 @@ function _brancherVar(d,p,v){
     // ⭐ Le repère effacé : il n'y a pas encore de carton pour cette forme,
     // et il vient de dire qu'il veut en vendre un. On lui ouvre l'écran, sur
     // ELLE — plus besoin de deviner l'appui long.
+    // ⭐ Taille connue, pas encore de lot : on vend le contenu, à son prix de
+    // détail — exactement ce que fait la tuile dehors sous verrou.
+    var gd=ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-grosdet');
+    if(gd){
+      ev.stopPropagation();
+      var _cd=_condDe(p,v);
+      // Modifications ouvertes : il peut vouloir en fixer LE PRIX de gros
+      // plutôt que vendre au détail. On lui laisse le choix, une seule fois,
+      // comme dehors — sinon on vend, sans rien demander.
+      if(!(venteVerrouillee&&venteVerrouillee())&&(role==='patron'||hasPerm('produits'))){
+        fermerVarInline();
+        setTimeout(function(){try{demanderPrixGros(p,v);}catch(x){}},160);
+        return;
+      }
+      _ajouterLotVariante(p,v,_cd.n,_cd.mot);
+      return;
+    }
     var gn=ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-grosneuf');
     if(gn){
       ev.stopPropagation();
@@ -8376,11 +8393,64 @@ function _chipGrosVariante(p,v,cercle){
   var lot=_lotDeVariante(p,v);
   if(lot)
     return '<span class="'+cls+'" data-gros="'+lot.id+'" title="'+mot+' de '+fmtQ(getQBase(lot))+'">'+_emojiCont(mot)+' '+fmt(lot.px)+'</span>';
-  // Pas encore de carton pour cette forme-là.
-  try{if(venteVerrouillee&&venteVerrouillee())return '';}catch(e){return '';}
+  // ⚠️⚠️ CE QUE J'AVAIS CASSÉ EN 21.44, ET IL L'A VU TOUT DE SUITE :
+  // « impossible de vendre à l'intérieur des variantes en carton ou tout
+  // grossiste. » Mesuré : verrou fermé — SON état de vente normal — aucun
+  // repère, aucun menu (l'appui long répond « modifications bloquées »), donc
+  // AUCUN moyen de vendre un carton depuis l'intérieur. Zéro chemin.
+  //
+  // MON ERREUR : j'ai appliqué sa règle « verrou fermé = on vend, on ne
+  // configure pas » en cachant le repère. Or cette règle disait qu'on ne lui
+  // POSE PAS DE QUESTION pendant qu'il vend — jamais qu'on l'empêche de
+  // VENDRE. Et DEHORS, la tuile faisait déjà la bonne chose depuis la 21.40 :
+  // verrou fermé + taille connue -> elle vend le contenu, sans rien demander.
+  // Dedans, on refusait. Encore l'écart dehors/dedans qu'il me signale
+  // depuis la 21.12.
+  //
+  // On transpose donc la logique de `vendreGros`, telle quelle :
+  //   · taille connue -> le repère vend, verrou fermé comme ouvert ;
+  //   · rien de connu -> il n'ouvre l'écran que modifications ouvertes.
+  var n=_condDe(p,v).n;
+  var verrou=false;try{verrou=!!(venteVerrouillee&&venteVerrouillee());}catch(e){verrou=true;}
+  if(n>1)
+    return '<span class="'+cls+' vide" data-grosdet="'+v.id+'" title="'
+      +(lang==='fr'?('Vendre '+_unGros(mot)+' de '+fmtQ(n)):('Sell 1 '+mot+' of '+fmtQ(n)))+'">'
+      +_emojiCont(mot)+' '+fmtQ(n)+'</span>';
+  if(verrou)return '';
   if(role!=='patron'&&!hasPerm('produits'))return '';
   return '<span class="'+cls+' vide" data-grosneuf="'+v.id+'" title="'
     +(lang==='fr'?('Vendre '+(v.nm||'')+' par '+mot):('Sell by the '+mot))+'">'+_emojiCont(mot)+'</span>';
+}
+// ⭐ VENDRE LE CONTENU D'UN CONTENANT, POUR UNE VARIANTE PRÉCISE.
+// L'équivalent de `_ajouterLot` (qui, lui, ne sait travailler que sur un
+// article sans variantes : il écrit sous la clé « pid-0 », là où le stock
+// d'une famille vit sur ses variantes).
+// ⚠️ Aucun prix inventé : on vend n unités AU PRIX DE DÉTAIL de la variante.
+// Le prix de gros, lui, ne s'écrit que s'il le DIT — c'est le lot, et le
+// repère plein le vend à SON prix.
+function _ajouterLotVariante(p,v,n,mot){
+  var fr=(lang==='fr');
+  if(!(n>1))return;
+  if(!(Number(v.px)>0)){
+    showToast('💰 '+(fr?'Prix manquant — complète cette variante d\'abord':'Missing price'));return;
+  }
+  var cur=varQtys[v.id]||0,dispo=_dispoApresPanier(p,v);
+  var ajout=(p.rt||v.rt)?n:Math.min(n,dispo);
+  if(!(ajout>0)){showToast(t('stockInsuf'));return;}
+  varQtys[v.id]=Math.round((cur+ajout)*100)/100;
+  renderVarLst(p);
+  _varVersPanier(p);
+  // Le marqueur d'affichage : le reçu et la voix diront « 1 carton (24) »
+  // au lieu de « ×24 ». Il ne touche ni la quantité ni le total.
+  var key=p.id+'-'+v.id;
+  if(ajout===n&&cur===0)_grosPanier[key]={n:n,mot:mot,px:Number(v.px)||0};
+  else _oublierGros(key);
+  if(navigator.vibrate)navigator.vibrate(30);
+  var m=_mentionGros(key,varQtys[v.id]);
+  showToast(_emojiCont(mot)+' '+(v.nm||p.nm)+' — '+(m?m.txt:(fmtQ(ajout)+' '+_uniteMot(p)))
+    +(ajout<n?(' · '+(fr?'c\'est tout ce qui reste':'that is all that is left')):''));
+  try{parler(fr?((m?(m.nb>1?(fmtQ(m.nb)+' '+mot+'s '):_unGros(mot)+' '):(fmtQ(ajout)+' '))+'de '+(v.nm||p.nm))
+                :((m?(m.nb+' '+mot+(m.nb>1?'s':'')+' of '):(fmtQ(ajout)+' '))+(v.nm||p.nm)));}catch(e){}
 }
 function _chipGros(p){
   if(!p||articleIncomplet(p))return '';
