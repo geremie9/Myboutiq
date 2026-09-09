@@ -3439,7 +3439,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.51'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.52'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8168,6 +8168,13 @@ function _brancherVar(d,p,v){
     if(gd){
       ev.stopPropagation();
       var _cd=_condDe(p,v);
+      // ⭐ Le repere peut porter SA propre quantite : c'est le niveau du
+      // milieu (« 1 paquet de 6 »), pas le contenant entier.
+      var _gn=parseFloat(ev.target.getAttribute('data-grosn')||'')||0;
+      if(_gn>1){
+        _ajouterLotVariante(p,v,_gn,ev.target.getAttribute('data-grosmot')||_cd.mot);
+        return;
+      }
       // Modifications ouvertes : il peut vouloir en fixer LE PRIX de gros
       // plutôt que vendre au détail. On lui laisse le choix, une seule fois,
       // comme dehors — sinon on vend, sans rien demander.
@@ -8544,9 +8551,17 @@ function _chipGrosVariante(p,v,cercle){
   var cls=cercle?'vsat-gros':'vt-gros',mot=_motContenant(p,v);
   // ⭐ UN REPERE PAR NIVEAU. « Paquet de 6 » et « Carton de 72 » vivent cote a
   // cote : c'est ca, les sous-grossistes. Chacun vend LE SIEN, a SON prix.
+  var cd=_condDe(p,v);
+  // Le niveau du milieu, vendable d'une tape lui aussi. Il s'ajoute aux lots
+  // qui portent leur propre prix comme au repere de taille connue.
+  var mid='';
+  if(cd.par>0&&cd.parTaille>1&&cd.parMot)
+    mid='<span class="'+cls+' vide" data-grosdet="'+v.id+'" data-grosn="'+cd.parTaille+'" data-grosmot="'+String(cd.parMot).replace(/"/g,'')+'" title="'
+      +(lang==='fr'?('Vendre 1 '+cd.parMot+' de '+fmtQ(cd.parTaille)):('Sell 1 '+cd.parMot))+'">'
+      +_emojiCont(cd.parMot)+' '+cd.parMot+'</span>';
   var lots=_lotsDeVariante(p,v);
   if(lots.length)
-    return lots.map(function(lot){
+    return mid+lots.map(function(lot){
       var ml=_motDeLot(p,v,lot);
       return '<span class="'+cls+'" data-gros="'+lot.id+'" title="'+(lot.nm||ml)+' — '+fmtQ(getQBase(lot))+'">'
         +_emojiCont(ml)+' '+fmt(lot.px)+'</span>';
@@ -8571,9 +8586,14 @@ function _chipGrosVariante(p,v,cercle){
   var n=_condDe(p,v).n;
   var verrou=false;try{verrou=!!(venteVerrouillee&&venteVerrouillee());}catch(e){verrou=true;}
   if(n>1)
-    return '<span class="'+cls+' vide" data-grosdet="'+v.id+'" title="'
+    // ⚠️ IL AFFICHAIT LE NOMBRE (« 📦 72 »), ET C'EST MA PROPRE REGLE QUE JE
+    // VIOLAIS : depuis la 21.41, sur une puce de gros UN NOMBRE EST TOUJOURS
+    // UN PRIX. « 72 » est une quantité — a côté d'un « 📦 6 000 » qui est un
+    // montant, c'est exactement la confusion qu'il avait signalée sur ses
+    // captures. Le MOT, comme dehors ; la taille reste dans l'infobulle.
+    return mid+'<span class="'+cls+' vide" data-grosdet="'+v.id+'" title="'
       +(lang==='fr'?('Vendre '+_unGros(mot)+' de '+fmtQ(n)):('Sell 1 '+mot+' of '+fmtQ(n)))+'">'
-      +_emojiCont(mot)+' '+fmtQ(n)+'</span>';
+      +_emojiCont(mot)+' '+mot+'</span>';
   // Rien de connu : le repère NEUTRE, exactement comme dehors. « Tout
   // produit est vendable en gros » — y compris celui dont il n'a jamais
   // dit le conditionnement. Une tape ouvre l'écran qui le demande.
@@ -8589,6 +8609,25 @@ function _chipGrosVariante(p,v,cercle){
 // ⚠️ Aucun prix inventé : on vend n unités AU PRIX DE DÉTAIL de la variante.
 // Le prix de gros, lui, ne s'écrit que s'il le DIT — c'est le lot, et le
 // repère plein le vend à SON prix.
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ VENDRE LE PAQUET D'UNE SEULE TAPE
+//
+//  « Dans grossiste il y a les sous-grossistes. » Depuis la 21.51 l'app SAIT
+//  qu'un carton fait 12 paquets de 6 — mais seul le carton entier se vendait
+//  d'une tape. Le sous-grossiste qui vient chercher DEUX PAQUETS obligeait a
+//  compter 12 unites a la main.
+//  Chaque niveau connu porte donc son repere, et une tape vend CE niveau-la.
+//
+//  ⚠️ AUCUN PRIX INVENTE : on vend n unites au prix de DETAIL. Un prix de
+//  gros propre au paquet ne s'ecrit que s'il le DIT — c'est un lot, et le
+//  repere plein le vend alors a SON prix. Regle inchangee depuis la 21.10.
+// ══════════════════════════════════════════════════════════════════
+function vendreNiveau(e,pid,n,mot){
+  if(e)e.stopPropagation();
+  var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
+  if(!(n>1))return;
+  _ajouterLot(p,n,mot||_motContenant(p,null));
+}
 function _ajouterLotVariante(p,v,n,mot){
   var fr=(lang==='fr');
   if(!(n>1))return;
@@ -8657,7 +8696,16 @@ function _chipGros(p){
   // couleur — et rien ne dit lequel on regarde. Le mot passe donc devant
   // dans les deux cas : ce qui suit est un prix quand il y en a un, et il
   // n'y a plus jamais de « ×24 » nu à confondre avec un montant.
-  if(n>1)return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_libelleCond(p,null)+'">'+_emojiCont(mot)+'<span>'+mot+'</span></button>';
+  if(n>1){
+    var _c=_condDe(p,null);
+    // Le contenant d'abord, puis le niveau du milieu s'il existe : « carton »
+    // et « paquet » cote a cote, chacun vendable d'une tape.
+    var h='<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_libelleCond(p,null)+'">'+_emojiCont(mot)+'<span>'+mot+'</span></button>';
+    if(_c.par>0&&_c.parTaille>1&&_c.parMot)
+      h+='<button class="pgros" onclick="vendreNiveau(event,'+p.id+','+_c.parTaille+',\''+String(_c.parMot).replace(/'/g,"\\'")+'\')" title="'+_c.parMot+' de '+fmtQ(_c.parTaille)+'">'
+        +_emojiCont(_c.parMot)+'<span>'+_c.parMot+'</span></button>';
+    return h;
+  }
   // ⚠️ « JE VOIS PARTOUT VENTE EN CARTON. CE N'EST PAS TOUS LES ARTICLES
   //     OÙ ON ACHÈTE EN CARTON. »
   // Il a raison, et c'était MOI : le repère vide s'affichait sur CHAQUE
