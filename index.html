@@ -3512,7 +3512,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.65'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.66'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9255,14 +9255,15 @@ function _ajouterLotVariante(p,v,n,mot,force){
   // Le marqueur d'affichage : le reçu et la voix diront « 1 carton (24) »
   // au lieu de « ×24 ». Il ne touche ni la quantité ni le total.
   var key=p.id+'-'+v.id;
-  if(ajout===n&&cur===0)_grosPanier[key]={n:n,mot:mot,px:Number(v.px)||0};
+  if(ajout===n&&cur===0)_grosPanier[key]={n:n,mot:mot,px:Number(v.px)||0,um:p.um||''};
   else _oublierGros(key);
   if(navigator.vibrate)navigator.vibrate(30);
   var m=_mentionGros(key,varQtys[v.id]);
   showToast(_emojiCont(mot)+' '+(v.nm||p.nm)+' — '+(m?m.txt:(fmtQ(ajout)+' '+_uniteMot(p)))
     +(ajout<n?(' · '+(fr?'c\'est tout ce qui reste':'that is all that is left')):''));
-  try{parler(fr?((m?(m.nb>1?(fmtQ(m.nb)+' '+mot+'s '):_unGros(mot)+' '):(fmtQ(ajout)+' '))+'de '+(v.nm||p.nm))
-                :((m?(m.nb+' '+mot+(m.nb>1?'s':'')+' of '):(fmtQ(ajout)+' '))+(v.nm||p.nm)));}catch(e){}
+  var _ud=_uniteDite(p),_qd=fmtQ(ajout)+(_ud?(' '+_ud):'')+' ';
+  try{parler(fr?((m?(m.nb>1?(fmtQ(m.nb)+' '+mot+'s '):_unGros(mot)+' '):_qd)+'de '+(v.nm||p.nm))
+                :((m?(m.nb+' '+mot+(m.nb>1?'s':'')+' of '):_qd)+(v.nm||p.nm)));}catch(e){}
 }
 function _chipGros(p){
   if(!p||articleIncomplet(p))return '';
@@ -9386,8 +9387,11 @@ function _mentionGros(key,qty){
   if(Math.abs(nb-Math.round(nb))>0.001)return null;   // entamé : ce n'est plus un carton entier
   nb=Math.round(nb);
   var fr=(lang==='fr');
-  return {nb:nb,mot:g.mot,emo:_emojiCont(g.mot),
-          txt:fmtQ(nb)+' '+g.mot+(nb>1?'s':'')+' ('+fmtQ(qty)+(fr?' × ':' × ')+fmt(g.px||0)+')'};
+  // Le contenu s'écrit avec sa mesure quand il y en a une : « 1 sac
+  // (50 kg × 700) » ne peut plus se lire comme cinquante sachets.
+  var q=(g.um==='kg')?(fmtQ(qty)+' kg'):((g.um==='L')?(fmtQ(qty)+' L'):fmtQ(qty));
+  return {nb:nb,mot:g.mot,emo:_emojiCont(g.mot),um:g.um||'',
+          txt:fmtQ(nb)+' '+g.mot+(nb>1?'s':'')+' ('+q+(fr?' × ':' × ')+fmt(g.px||0)+')'};
 }
 function _ajouterLot(p,n,mot,force){
   var fr=(lang==='fr');
@@ -9402,7 +9406,7 @@ function _ajouterLot(p,n,mot,force){
   panier[key]=cur+ajout;
   // Entier seulement : s'il ne restait pas un carton complet, ce n'est plus
   // un carton et on ne l'écrira pas comme tel.
-  if(ajout===n)_grosPanier[key]={n:n,mot:mot,px:Number(p.px)||0};
+  if(ajout===n)_grosPanier[key]={n:n,mot:mot,px:Number(p.px)||0,um:p.um||''};
   else _oublierGros(key);
   updatePUI(p.id);
   if(navigator.vibrate)navigator.vibrate(30);
@@ -9415,8 +9419,11 @@ function _ajouterLot(p,n,mot,force){
   // cola » : c'est ce qu'il a dit à son client, c'est ce qu'il doit
   // entendre pour vérifier sans regarder l'écran.
   try{
-    parler(fr?((m?(m.nb>1?(fmtQ(m.nb)+' '+mot+'s '):_unGros(mot)+' '):(fmtQ(ajout)+' '))+(fr?'de ':'')+p.nm)
-             :((m?(m.nb+' '+mot+(m.nb>1?'s':'')+' of '):(fmtQ(ajout)+' '))+p.nm));
+    // ⚠️ « cinquante de Riz » ne veut rien dire à l'oreille. Quand ce n'est
+    // pas un contenant entier, la voix dit la mesure : « cinquante kilos ».
+    var _ud=_uniteDite(p),_qd=fmtQ(ajout)+(_ud?(' '+_ud):'')+' ';
+    parler(fr?((m?(m.nb>1?(fmtQ(m.nb)+' '+mot+'s '):_unGros(mot)+' '):_qd)+(fr?'de ':'')+p.nm)
+             :((m?(m.nb+' '+mot+(m.nb>1?'s':'')+' of '):_qd)+p.nm));
   }catch(e){}
 }
 // ⚠️⚠️ « UN CLIENT VIENT ACHETER LES JUS EN PALETTES, UN CARTON D'HUILE.
@@ -11804,13 +11811,36 @@ function _poserCond(cible,n,mot,par,parMot,parTaille){
 // « carton de 12 bouteilles (18 L) » — ce qu'il a dit, et le nombre dont
 // l'app se sert, ensemble. Montrer l'un sans l'autre, c'est soit lui parler
 // une langue qu'il ne reconnaît pas, soit lui cacher le chiffre qui compte.
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ « SI UN ARTICLE SE MESURE EN KG, UN SAC DE 50 C'EST 50 KG,
+//     PAS 50 PIÈCES. »
+//
+//  L'app le COMPTAIT déjà juste — 50 kg entraient bien au panier, et le
+//  reçu écrivait « 1 sac (50 kg) ». Mais partout ailleurs elle se taisait :
+//  « sac de 50 », « 1 sac (50 × 700) ». Cinquante quoi ? Le mot manquait
+//  exactement là où le doute est. Un commerçant qui lit « sac de 50 » sur
+//  du riz peut le comprendre comme cinquante sachets.
+//
+//  ⚠️ ON NE L'ÉCRIT QUE POUR LE KILO ET LE LITRE. « carton de 24 pièces »
+//  alourdirait toutes les autres lignes sans rien lever : c'est la leçon
+//  du « carton partout », appliquée aux mots.
+// ══════════════════════════════════════════════════════════════════
+function _uniteCourt(p){return (p&&p.um==='kg')?'kg':((p&&p.um==='L')?'L':'');}
+function _avecUnite(p,n){var u=_uniteCourt(p);return fmtQ(n)+(u?(' '+u):'');}
+// Ce que la voix doit DIRE : « kg » se prononce mal, « kilos » se comprend.
+function _uniteDite(p){
+  var fr=(lang==='fr');
+  if(p&&p.um==='kg')return fr?'kilos':'kilos';
+  if(p&&p.um==='L')return fr?'litres':'liters';
+  return '';
+}
 function _libelleCond(p,v){
   var fr=(lang==='fr'),cd=_condDe(p,v);
   if(!(cd.n>0))return '';
   if(cd.par>0&&cd.parMot)
     return cd.mot+' '+(fr?'de ':'of ')+fmtQ(cd.par)+' '+cd.parMot+(cd.par>1?'s':'')
            +' ('+fmtQ(cd.n)+' '+_uniteMot(p)+')';
-  return cd.mot+' '+(fr?'de ':'of ')+fmtQ(cd.n);
+  return cd.mot+' '+(fr?'de ':'of ')+_avecUnite(p,cd.n);
 }
 function _motContenant(p,v){
   var fr=(lang==='fr');
