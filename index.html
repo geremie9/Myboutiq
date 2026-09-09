@@ -3465,7 +3465,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.53'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.54'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -10410,14 +10410,72 @@ function proposerRafraichirPhotos(){
     ouvrirRafraichirPhotos();
   };
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « QUAND L'APP ME DIT QUE MES ARTICLES PEUVENT AVOIR DE VRAIES
+//        IMAGES, QUAND J'APPUIE ÇA DONNE PAS. »
+//
+//  LE CODE SE CONTREDISAIT LUI-MÊME, et la preuve est dans photoCatalogue :
+//  la voie de la bibliothèque partagée vérifie que le fichier EXISTE avant de
+//  proposer son adresse — le commentaire le dit mot pour mot, « jamais une
+//  URL qui finirait en 404 ». La voie des 600 photos, elle, rend l'adresse
+//  SANS RIEN VÉRIFIER : `base + slug + .jpg`, que le fichier soit là ou non.
+//
+//  On comptait donc des photos qu'on ne pouvait pas livrer. Il appuyait,
+//  l'app posait des adresses mortes, les cartes retombaient sur leur emoji —
+//  et rien ne se passait sous ses yeux. La promesse était fausse, pas le
+//  geste.
+//
+//  ⚠️ ON NE PROMET PLUS RIEN QU'ON N'AIT VU ARRIVER. L'écran charge chaque
+//  photo pour de vrai avant de l'annoncer, et ne montre que celles qui
+//  répondent. Zéro photo valide -> on le DIT, au lieu d'un bouton qui ne
+//  donne rien.
+// ══════════════════════════════════════════════════════════════════
+var _rafVerifiees=null;
+// Charge une image et dit si elle arrive vraiment. 7 s au maximum : sur une
+// connexion camerounaise lente, on attend un peu — mais on n'attend pas
+// indéfiniment devant un client.
+function _photoArriveVraiment(url){
+  return new Promise(function(res){
+    var img=new Image(),fini=false;
+    var t=setTimeout(function(){if(!fini){fini=true;img.src='';res(false);}},7000);
+    img.onload=function(){if(!fini){fini=true;clearTimeout(t);res((img.naturalWidth||0)>1);}};
+    img.onerror=function(){if(!fini){fini=true;clearTimeout(t);res(false);}};
+    img.src=url;
+  });
+}
 function ouvrirRafraichirPhotos(){
   if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
-  var fr=(lang==='fr'),l=_articlesARafraichir();
+  var fr=(lang==='fr');
+  var c0=document.getElementById('raf-cont');
+  var b0=document.getElementById('raf-btn');
+  if(c0)c0.innerHTML='<div style="text-align:center;padding:22px 0;font-size:13px;color:var(--M);font-weight:700">'
+    +(fr?'🔍 Je vérifie que les photos arrivent vraiment…':'🔍 Checking the photos really load…')+'</div>';
+  if(b0)b0.style.display='none';
+  document.getElementById('ov-raf').classList.add('show');
+  var cand=_articlesARafraichir();
+  Promise.all(cand.map(function(x){
+    return _photoArriveVraiment(x.url).then(function(ok){return ok?x:null;});
+  })).then(function(res){
+    _rafVerifiees=res.filter(Boolean);
+    _rafRendre(_rafVerifiees,cand.length);
+  }).catch(function(){_rafVerifiees=[];_rafRendre([],cand.length);});
+}
+function _rafRendre(l,demandes){
+  var fr=(lang==='fr');
   var c=document.getElementById('raf-cont');if(!c)return;
   if(!l.length){
+    // ⚠️ On le dit franchement, plutôt qu'un bouton qui ne donnerait rien.
+    c.innerHTML='<div style="text-align:center;padding:20px 6px">'
+      +'<div style="font-size:30px;margin-bottom:8px">🖼️</div>'
+      +'<div style="font-size:13px;color:var(--T);font-weight:800;margin-bottom:6px">'
+      +(fr?'Aucune photo n\'est disponible pour l\'instant':'No photo available right now')+'</div>'
+      +'<div style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.5">'
+      +(fr?(demandes?('J\'en attendais '+demandes+', aucune n\'est arrivée. Ce sont des photos du serveur : réessaie quand le réseau va mieux, ou mets tes propres photos (appui long sur un article → Changer photo).')
+                   :'Tes articles ont déjà ce qu\'il leur faut.')
+         :'Nothing arrived. Try again later, or add your own photos.')+'</div></div>';
+  }else{
     c.innerHTML='<div style="text-align:center;padding:22px 0;font-size:13px;color:var(--M);font-weight:700">'
       +(fr?'✅ Tous tes articles ont déjà ce qu\'il leur faut.':'✅ Nothing to add.')+'</div>';
-  }else{
     c.innerHTML='<div style="background:#E8F5E9;border-radius:12px;padding:12px;margin-bottom:13px">'
       +'<div style="font-size:12.5px;font-weight:800;color:#2E7D32;margin-bottom:5px">'+(fr?'Ce qui NE bougera PAS':'What will NOT change')+'</div>'
       +'<div style="font-size:11.5px;color:#2E7D32;font-weight:600;line-height:1.55">'
@@ -10431,17 +10489,23 @@ function ouvrirRafraichirPhotos(){
           +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:800;color:var(--T)">'+x.p.nm+'</div>'
           +'<div style="font-size:10.5px;color:var(--M);font-weight:600">'+fmt(x.p.px||0)+' · '+(fr?'prix inchangé':'price unchanged')+'</div></div></div>';
       }).join('')
-      +(l.length>40?('<div style="font-size:11px;color:var(--M);font-weight:700;padding-top:9px">+ '+(l.length-40)+(fr?' autres':' more')+'</div>'):'');
+      +(l.length>40?('<div style="font-size:11px;color:var(--M);font-weight:700;padding-top:9px">+ '+(l.length-40)+(fr?' autres':' more')+'</div>'):'')
+      // Quand une partie n'est pas arrivée, on ne le cache pas.
+      +((demandes&&demandes>l.length)?('<div style="font-size:11px;color:var(--M);font-weight:700;padding-top:9px">'
+        +(fr?(demandes-l.length)+' autre(s) n\'ont pas pu être chargée(s) — elles ne seront pas posées.'
+            :(demandes-l.length)+' could not be loaded.')+'</div>'):'');
   }
   var btn=document.getElementById('raf-btn');
   if(btn){
     btn.style.display=l.length?'':'none';
     btn.textContent=fr?('✅ Mettre les '+l.length+' photos'):('✅ Apply '+l.length+' photos');
   }
-  document.getElementById('ov-raf').classList.add('show');
 }
 function appliquerRafraichirPhotos(){
-  var fr=(lang==='fr'),l=_articlesARafraichir(),n=0;
+  // ⚠️ On pose UNIQUEMENT ce que la vérification a vu arriver — jamais la
+  // liste brute, qui contient des adresses mortes.
+  var fr=(lang==='fr'),l=_rafVerifiees||[],n=0;
+  if(!l.length){showToast('🖼️ '+(fr?'Aucune photo à poser':'No photo to apply'));return;}
   l.forEach(function(x){x.p.img=x.url;x.p._imgCat=true;n++;});
   if(n){
     save();
