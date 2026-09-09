@@ -3466,7 +3466,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.56'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.57'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7597,18 +7597,28 @@ function ctxSignalerPhoto(){
   var url=p.img;
   // 1) Sa boutique, tout de suite — meme sans reseau.
   delete p.img;delete p._imgCat;
-  p._imgRefus=true;
+  // ⚠️ On note QUELLE photo il a refusée, pas « plus jamais de photo ». La
+  // version d'hier posait un simple drapeau : l'article était alors condamné
+  // à rester sans photo pour toujours, même le jour où une bonne arrive.
+  // C'est cette photo-là qu'il refuse, pas le produit.
+  p._imgNon=(p._imgNon||[]).filter(function(u){return u!==url;}).concat([url]).slice(-8);
+  p._imgRefus=true;                       // gardé : d'anciennes versions le lisent
   save();
   try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
   journalAjouter('photo',p.nm,(fr?'photo du catalogue':'catalogue photo'),(fr?'signalée et retirée':'reported and removed'));
   showToast('🚩 '+(fr?'Photo retirée. Merci — les autres en profiteront.':'Photo removed. Thank you.'));
-  // 2) Le serveur, si on peut. Un echec ici ne change rien pour lui.
-  try{
-    if(supa&&navigator.onLine&&url){
-      supa.from('photos_partagees').update({etat:'signalee'}).eq('url',url)
-        .then(function(){},function(){});
-    }
-  }catch(e){}
+  // 2) La bibliotheque partagee. Sa voix est ecrite sur son telephone et
+  //    repart toute seule au retour du reseau — un echec ici ne change rien
+  //    pour lui, et ne perd rien pour les autres.
+  //
+  //    ⚠️ CE QUE FAISAIT LA VERSION D'HIER NE MARCHAIT PAS. Elle ecrivait
+  //    `etat:'signalee'` directement sur la photo : la base refusait ce mot
+  //    (elle n'accepte que proposee/approuvee/refusee) et, de toute facon,
+  //    aucune boutique n'a le droit de modifier une photo publiee. Le
+  //    signalement ne quittait donc jamais le telephone. Et si cette
+  //    ecriture avait marche, elle aurait ete pire : UNE SEULE boutique
+  //    aurait efface la photo chez toutes les autres.
+  try{_avisPhoto(url,'signale');}catch(e){}
 }
 // Ajouter une vraie photo directement depuis la carte article (pousse vers les photos)
 function ajouterPhotoArticle(e,pid){
@@ -10391,16 +10401,27 @@ async function proposerPhotoPartagee(nomArticle,url){
   try{
     if(!nomArticle||!url)return;
     var fr=(lang==='fr');
-    // Rien à proposer si la photo de cet article existe déjà pour tous.
-    if(photoCatalogue(nomArticle))return;
     // Il faut que l'article soit reconnu au catalogue : sinon on ne saurait
     // pas à QUEL produit rattacher la photo, et elle ne servirait à personne.
     var idx=_indexPhotos(),cle=txtNorm(nomArticle).replace(/\s+/g,' ').trim();
     var slug=(idx.cles[cle]||[])[0];
     if(!slug)return;
+    // ⭐ Une photo existe déjà pour ce produit ? On propose QUAND MÊME.
+    // C'est ainsi que la meilleure finit par gagner : s'il n'y a jamais de
+    // rivale, la première arrivée reste pour toujours, bonne ou mauvaise.
+    // On le lui dit franchement — il propose un remplacement, pas un doublon.
+    var dejaUne=!!photoCatalogue(nomArticle);
+    // Mais une même boutique ne propose pas dix fois le même produit : elle
+    // remplirait l'écran du patron toute seule.
+    var offertes={};
+    try{offertes=JSON.parse(localStorage.getItem('myboutiq_photos_offertes')||'{}')||{};}catch(e){}
+    if(offertes[slug])return;
     if(!confirm(fr
-      ?('📷 Partager cette photo de « '+nomArticle+' » avec les autres commerçants ?\n\nElle sera vérifiée avant d\'être publiée. Ta boutique n\'est pas nommée.')
-      :('Share this photo of "'+nomArticle+'" with other shops?')))return;
+      ?(dejaUne
+        ?('📷 Une photo de « '+nomArticle+' » existe déjà pour tous.\n\nProposer la tienne à la place ?\nCelle que les commerçants gardent le plus l\'emporte. Ta boutique n\'est pas nommée.')
+        :('📷 Partager cette photo de « '+nomArticle+' » avec les autres commerçants ?\n\nElle sera vérifiée avant d\'être publiée. Ta boutique n\'est pas nommée.'))
+      :(dejaUne?('A photo of "'+nomArticle+'" already exists. Offer yours instead?')
+               :('Share this photo of "'+nomArticle+'" with other shops?'))))return;
     assurerConnexionSupa();
     if(!supa||!navigator.onLine){showToast('📡 '+(fr?'Réseau requis':'Network required'));return;}
     var r=await supa.from('photos_partagees').insert({
@@ -10408,8 +10429,105 @@ async function proposerPhotoPartagee(nomArticle,url){
       code_source:(DB&&DB.cfg&&DB.cfg.code)||null
     });
     if(r.error){showToast('❌ '+(fr?'Envoi refusé':'Refused'));return;}
+    try{offertes[slug]=1;localStorage.setItem('myboutiq_photos_offertes',JSON.stringify(offertes));}catch(e){}
     showToast('🙏 '+(fr?'Merci ! Ta photo est proposée à toutes les boutiques.':'Thanks! Your photo is proposed to all shops.'));
   }catch(e){}
+}
+// ════════════════════════════════════════════════════════════════════
+//  ⭐ UNE SEULE PHOTO PAR PRODUIT : LA MEILLEURE
+//
+//  Le conseil qu'on lui a donné et qu'il a validé : la bibliothèque partagée
+//  doit tendre vers UNE photo par produit — la bonne — au lieu d'empiler les
+//  versions de chaque commerçant.
+//
+//  Jusqu'ici, quand plusieurs photos existaient pour un même produit, celle
+//  qui était servie à tout le monde était la DERNIÈRE LIGNE RENVOYÉE PAR LA
+//  BASE — c'est-à-dire au hasard. Et une photo publiée une fois l'était
+//  pour toujours, même si elle montrait le mauvais produit.
+//
+//  Désormais le serveur ne stocke que des FAITS — combien de boutiques ont
+//  gardé cette photo, combien l'ont signalée — et c'est l'application qui
+//  choisit. Toutes les boutiques classent avec la même fonction à partir des
+//  mêmes chiffres, donc toutes voient la même photo.
+// ════════════════════════════════════════════════════════════════════
+// ── La voix d'une boutique ──────────────────────────────────────────
+// ⚠️ SA VOIX NE SE PERD JAMAIS FAUTE DE RÉSEAU. Elle est écrite ici, sur son
+// téléphone, et repart toute seule quand la connexion revient. Au Cameroun le
+// réseau tombe ; un avis perdu, c'est une mauvaise photo qui reste.
+// ⚠️ Et on ne parle qu'une fois par photo — sauf pour passer de « je la
+// garde » à « elle ne correspond pas ». Une boutique = une voix.
+function _avisLus(){try{return JSON.parse(localStorage.getItem('myboutiq_avis_photos')||'{}')||{};}catch(e){return {};}}
+function _avisEcrire(m){try{localStorage.setItem('myboutiq_avis_photos',JSON.stringify(m));}catch(e){}}
+function _avisPhoto(url,avis){
+  if(!url||(avis!=='garde'&&avis!=='signale'))return;
+  var m=_avisLus(),v=m[url];
+  if(v&&(v.a===avis||v.a==='signale'))return;   // déjà dit, ou déjà signalé
+  m[url]={a:avis,e:0};
+  _avisEcrire(m);
+  _avisEnvoyer();
+}
+var _avisEnVol={};
+function _avisEnvoyer(){
+  var m=_avisLus(),restants=Object.keys(m).filter(function(u){return !m[u].e&&!_avisEnVol[u];});
+  if(!restants.length)return;
+  try{assurerConnexionSupa();}catch(e){}
+  if(!supa||!navigator.onLine)return;                 // on réessaiera plus tard
+  var code=(DB&&DB.cfg&&DB.cfg.code)||'';
+  if(!code)return;                                    // pas de boutique, pas de voix
+  restants.forEach(function(u){
+    var id=(_photoManif&&_photoManif._id)?_photoManif._id[u]:null;
+    if(!id)return;                                    // on ne sait pas encore laquelle
+    // ⚠️ Poser quarante photos d'un coup appelle cette fonction quarante
+    // fois : sans ce verrou, la même voix partirait quarante fois.
+    _avisEnVol[u]=1;
+    try{
+      supa.rpc('donner_avis_photo',{p_photo:id,p_code:String(code).slice(0,40),p_avis:m[u].a})
+        .then(function(r){
+          delete _avisEnVol[u];
+          if(r&&r.error)return;                       // refusé : on garde, on retentera
+          var mm=_avisLus(); if(mm[u]){mm[u].e=1;_avisEcrire(mm);}
+        },function(){delete _avisEnVol[u];});
+    }catch(e){delete _avisEnVol[u];}
+  });
+}
+// ⚠️ DEUX BOUTIQUES, PAS UNE. Une photo ne se retire que lorsque deux
+// commerçants indépendants disent qu'elle ne correspond pas, ET qu'ils sont
+// plus nombreux que ceux qui l'ont gardée. Une seule voix ne peut jamais
+// faire disparaître une photo chez mille boutiques : une fausse manœuvre,
+// une mauvaise journée, et tout le monde perdrait une bonne photo.
+var PHOTO_SIGNAL_MIN=2;
+function _photoRetiree(r){
+  var s=+(r&&r.nb_signale||0),g=+(r&&r.nb_garde||0);
+  return s>=PHOTO_SIGNAL_MIN&&s>g;
+}
+// Un signalement pèse plus lourd qu'une garde, et c'est voulu : garder est
+// passif (on accepte ce qu'on nous propose), signaler demande de se lever et
+// de le dire. Quand quelqu'un prend cette peine, on l'écoute.
+function _scorePhoto(r){return (+(r&&r.nb_garde||0))-2*(+(r&&r.nb_signale||0));}
+// ⚠️ L'ORDRE DOIT ÊTRE LE MÊME PARTOUT, ET NE JAMAIS HÉSITER. Si deux photos
+// se valent, il faut quand même que toutes les boutiques désignent la même,
+// sinon la photo d'un article se mettrait à changer toute seule d'un jour à
+// l'autre — et l'écran « tes articles peuvent avoir leur photo » le
+// harcèlerait pour rien. D'où les départages jusqu'à l'identifiant.
+function _comparerPhotos(a,b){
+  var d=_scorePhoto(b)-_scorePhoto(a); if(d)return d;          // le meilleur score
+  var ta=String(a&&a.cree_le||''),tb=String(b&&b.cree_le||'');
+  if(ta<tb)return -1; if(ta>tb)return 1;                       // puis la plus ancienne
+  var ia=String(a&&a.id||''),ib=String(b&&b.id||'');
+  return ia<ib?-1:(ia>ib?1:0);                                 // puis, pour ne jamais hésiter
+}
+// Rend, pour chaque produit, la photo qui doit être servie — et seulement
+// celle-là. Les rivales restent en base : si la gagnante se fait signaler,
+// la suivante prend sa place toute seule, sans que personne n'intervienne.
+function _meilleuresPhotos(lignes){
+  var par={};
+  (lignes||[]).forEach(function(r){
+    if(!r||!r.slug||!r.url)return;
+    if(_photoRetiree(r))return;
+    var d=par[r.slug];
+    if(!d||_comparerPhotos(r,d)<0)par[r.slug]=r;
+  });
+  return par;
 }
 async function chargerManifestePhotos(){
   if(_photoManif)return _photoManif;
@@ -10425,17 +10543,28 @@ async function chargerManifestePhotos(){
   // approuvées. Celles-ci portent leur URL complète — elles ne suivent pas
   // le nom de fichier du catalogue. Sans réseau, on garde ce qu'on avait.
   _photoManif._url={};
+  _photoManif._id={};
   try{
     assurerConnexionSupa();
     if(supa&&navigator.onLine){
-      var q=await supa.from('photos_partagees').select('slug,url').eq('etat','approuvee').limit(2000);
-      if(!q.error&&q.data)q.data.forEach(function(p){
-        if(!p.slug||!p.url)return;
-        _photoManif._set[p.slug]=1;
-        _photoManif._url[p.slug]=p.url;
-      });
+      var q=await supa.from('photos_partagees').select('id,slug,url,nb_garde,nb_signale,cree_le')
+               .eq('etat','approuvee').limit(2000);
+      if(!q.error&&q.data){
+        // On retient l'identifiant de TOUTES les photos publiées, pas
+        // seulement des gagnantes : quand il signale une photo qui vient
+        // d'être détrônée, sa voix doit quand même savoir où aller.
+        q.data.forEach(function(p){if(p&&p.url&&p.id)_photoManif._id[p.url]=p.id;});
+        var gagnantes=_meilleuresPhotos(q.data);
+        Object.keys(gagnantes).forEach(function(s){
+          _photoManif._set[s]=1;
+          _photoManif._url[s]=gagnantes[s].url;
+        });
+      }
     }
   }catch(e){}
+  // Les voix retenues faute de réseau savent enfin de quelle photo elles
+  // parlent : on les fait partir maintenant.
+  try{_avisEnvoyer();}catch(e){}
   return _photoManif;
 }
 // Renvoie l'URL de la photo partagée, ou '' si personne ne l'a encore prise.
@@ -10513,10 +10642,15 @@ function _articlesARafraichir(){
     if(p.img&&!p._imgCat)return;
     // ⚠️ Il a dit « celle-ci ne correspond pas » : on ne la lui repropose
     // JAMAIS. Redemander ce qu'il vient de refuser, c'est ne pas l'écouter.
-    if(p._imgRefus)return;
+    // Mais on ne condamne que LA PHOTO refusée : le jour où une meilleure
+    // prend sa place dans la bibliothèque, il y a droit comme les autres.
+    // (Sans la liste — un vieux drapeau posé par la version d'hier — on ne
+    // sait pas laquelle il refusait : on se tait, c'est le moindre risque.)
+    if(p._imgRefus&&!(p._imgNon&&p._imgNon.length))return;
     var u='';
     try{u=photoCatalogue(p.nm)||'';}catch(e){}
     if(!u||u===p.img)return;
+    if(p._imgNon&&p._imgNon.indexOf(u)>=0)return;
     out.push({p:p,url:u});
   });
   return out;
@@ -10641,7 +10775,11 @@ function appliquerRafraichirPhotos(){
   // liste brute, qui contient des adresses mortes.
   var fr=(lang==='fr'),l=_rafVerifiees||[],n=0;
   if(!l.length){showToast('🖼️ '+(fr?'Aucune photo à poser':'No photo to apply'));return;}
-  l.forEach(function(x){x.p.img=x.url;x.p._imgCat=true;n++;});
+  // ⭐ Il vient de REGARDER cette liste et d'appuyer sur « Mettre les photos ».
+  // C'est ça, garder une photo — un geste, pas un silence. C'est la seule
+  // place où on compte une garde : poser des photos automatiquement à
+  // l'installation ne prouve rien, il ne les a pas encore vues.
+  l.forEach(function(x){x.p.img=x.url;x.p._imgCat=true;try{_avisPhoto(x.url,'garde');}catch(e){}n++;});
   if(n){
     save();
     try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
@@ -16394,6 +16532,8 @@ document.addEventListener('visibilitychange',function(){
   reconnecterTempsReel(true);
 });
 window.addEventListener('online',function(){
+  // Les avis sur les photos qu'il a donnés hors ligne repartent maintenant.
+  try{_avisEnvoyer();}catch(e){}
   if(!supa){assurerConnexionSupa();return;}
   reconnecterTempsReel(true);
 });
@@ -16887,26 +17027,56 @@ async function ouvrirPhotosProposees(){
   document.getElementById('ov-photos-prop').classList.add('show');
   renderPhotosProposees();
 }
+// ⭐ Le patron doit voir DEUX choses, pas une : ce qui attend son avis, et
+// ce que les commerçants pensent de ce qu'il a déjà publié. Sans la seconde
+// moitié, il approuve à l'aveugle et ne sait jamais qu'une de ses photos est
+// contestée sur le terrain.
+function _ligPhotoAdmin(p,fr,publiee){
+  var g=+(p.nb_garde||0),sg=+(p.nb_signale||0);
+  var retiree=publiee&&_photoRetiree(p);
+  var note=publiee
+    ?('<span style="font-size:10.5px;font-weight:800;color:'+(sg?'#C62828':'var(--M)')+'">👍 '+g+' · 🚩 '+sg+'</span>'
+      +(retiree?('<span style="font-size:10px;font-weight:800;color:#C62828;margin-left:7px">'+(fr?'RETIRÉE PAR LES COMMERÇANTS':'PULLED BY SHOPS')+'</span>'):''))
+    :('<span style="font-size:10.5px;color:var(--M);font-weight:600">'+p.slug+'</span>');
+  return '<div style="display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--BD)'+(retiree?';opacity:.62':'')+'">'
+    +'<img src="'+p.url+'" style="width:56px;height:56px;object-fit:cover;border-radius:12px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.25">'
+    +'<div style="flex:1;min-width:0">'
+    +'<div style="font-size:13px;font-weight:800;color:var(--T)">'+p.article_nm+'</div>'
+    +'<div style="margin-top:3px">'+note+'</div></div>'
+    +'<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">'
+    +(publiee?'':'<button class="shct" style="min-height:36px;background:#E8F5E9;color:#2E7D32" onclick="deciderPhoto(\''+p.id+'\',\'approuvee\')">✓ '+(fr?'Publier':'Publish')+'</button>')
+    +'<button class="shct" style="min-height:36px" onclick="deciderPhoto(\''+p.id+'\',\'refusee\')">✕ '+(fr?(publiee?'Retirer':'Refuser'):'Refuser')+'</button>'
+    +'</div></div>';
+}
 async function renderPhotosProposees(){
   var c=document.getElementById('pp-lst');if(!c)return;var fr=(lang==='fr');
   c.innerHTML='<div style="font-size:11.5px;color:var(--M);font-weight:700">'+(fr?'Chargement…':'Loading…')+'</div>';
   try{
-    var r=await supa.from('photos_partagees').select('id,slug,url,article_nm,etat,cree_le')
-             .eq('etat','proposee').order('cree_le',{ascending:true}).limit(60);
+    var r=await supa.from('photos_partagees').select('id,slug,url,article_nm,etat,cree_le,nb_garde,nb_signale')
+             .in('etat',['proposee','approuvee']).order('cree_le',{ascending:true}).limit(300);
     if(r.error){c.innerHTML='<div style="font-size:12px;color:var(--R);font-weight:700">'+(fr?'Lecture refusée':'Read refused')+'</div>';return;}
-    var l=r.data||[];
-    if(!l.length){c.innerHTML='<div style="font-size:12.5px;color:var(--M);font-weight:600;padding:10px 0">'+(fr?'Aucune photo en attente. 🙂':'Nothing waiting.')+'</div>';return;}
-    c.innerHTML=l.map(function(p){
-      return '<div style="display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--BD)">'
-        +'<img src="'+p.url+'" style="width:56px;height:56px;object-fit:cover;border-radius:12px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.25">'
-        +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:13px;font-weight:800;color:var(--T)">'+p.article_nm+'</div>'
-        +'<div style="font-size:10.5px;color:var(--M);font-weight:600;margin-top:2px">'+p.slug+'</div></div>'
-        +'<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">'
-        +'<button class="shct" style="min-height:36px;background:#E8F5E9;color:#2E7D32" onclick="deciderPhoto(\''+p.id+'\',\'approuvee\')">✓ '+(fr?'Publier':'Publish')+'</button>'
-        +'<button class="shct" style="min-height:36px" onclick="deciderPhoto(\''+p.id+'\',\'refusee\')">✕ '+(fr?'Refuser':'Reject')+'</button>'
-        +'</div></div>';
-    }).join('');
+    var tout=r.data||[];
+    var att=tout.filter(function(x){return x.etat==='proposee';});
+    // Les publiées : la plus contestée d'abord — c'est là qu'il doit regarder.
+    var pub=tout.filter(function(x){return x.etat==='approuvee';})
+                .sort(function(a,b){return (+(b.nb_signale||0))-(+(a.nb_signale||0));});
+    var h='';
+    h+='<div class="sth" style="margin-bottom:6px">'+(fr?'En attente de ton avis':'Waiting for you')+'</div>';
+    h+=att.length?att.map(function(p){return _ligPhotoAdmin(p,fr,false);}).join('')
+       :('<div style="font-size:12.5px;color:var(--M);font-weight:600;padding:6px 0 12px">'+(fr?'Aucune photo en attente. 🙂':'Nothing waiting.')+'</div>');
+    if(pub.length){
+      // ⚠️ On dit la règle en toutes lettres : sinon il croira qu'un seul
+      // signalement suffit à faire disparaître une photo, et il paniquera.
+      var contestees=pub.filter(_photoRetiree).length;
+      h+='<div class="sth" style="margin:18px 0 4px">'+(fr?'Déjà publiées':'Already published')+'</div>'
+        +'<div style="font-size:11px;color:var(--M);font-weight:600;line-height:1.5;margin-bottom:8px">'
+        +(fr?('Une photo se retire toute seule quand '+PHOTO_SIGNAL_MIN+' boutiques disent qu\'elle ne correspond pas et qu\'elles sont majoritaires. La suivante prend sa place.'
+              +(contestees?(' ⚠️ '+contestees+' l\'est déjà.'):''))
+            :('A photo is pulled automatically when '+PHOTO_SIGNAL_MIN+' shops report it and outnumber those who kept it.'))
+        +'</div>'
+        +pub.map(function(p){return _ligPhotoAdmin(p,fr,true);}).join('');
+    }
+    c.innerHTML=h;
   }catch(e){c.innerHTML='';}
 }
 async function deciderPhoto(id,etat){
