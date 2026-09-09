@@ -1151,10 +1151,10 @@ body{max-width:min(100%,1200px)}
 </div>
 <div class="ctxm" id="ctxm">
   <div class="ctxi" onclick="ctxPV()">✏️ <span id="cx1">Modifier prix vente</span></div>
-  <div class="ctxi" onclick="ctxRC()">📦 <span id="cx2">Reconfigurer prix</span></div>
+  <div class="ctxi" onclick="ctxRC()">💰 <span id="cx2">Reconfigurer prix</span></div>
   <div class="ctxi" onclick="ctxAV()">🔀 <span id="cx3">Ajouter variante</span></div>
-  <div class="ctxi" onclick="ctxGros()">📦 <span id="cx3b">Vendre par carton</span></div>
-  <div class="ctxi" id="ctxi-cond" onclick="ctxCond()">✎ <span id="cxcond">Corriger le conditionnement</span></div>
+  <div class="ctxi" id="ctxi-gros" onclick="ctxGros()"><span class="ctxi-emo">📦</span> <span id="cx3b">Vendre par carton</span></div>
+  <div class="ctxi" id="ctxi-cond" onclick="ctxCond()"><span class="ctxi-emo">📦</span> <span id="cxcond">Corriger le conditionnement</span></div>
   <div class="ctxi" id="ctxi-fam" onclick="ctxFam()">🔗 <span id="cx8">Mettre dans une famille</span></div>
   <div class="ctxi" onclick="ctxST()">➕ <span id="cx4">Entrée stock</span></div>
   <div class="ctxi" onclick="ctxPhoto()">🖼️ <span id="cx6">Changer photo</span></div>
@@ -3365,7 +3365,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.39'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.40'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7418,21 +7418,41 @@ function showCtx(e,p){
   document.getElementById('cx1').textContent=lang==='fr'?'Modifier prix vente':'Edit sell price';
   document.getElementById('cx2').textContent=lang==='fr'?'Reconfigurer prix':'Reconfigure price';
   document.getElementById('cx3').textContent=lang==='fr'?'Ajouter variante':'Add variant';
+  // Le mot du commerçant, pas « carton » par défaut : c'est la leçon de
+  // « IL NE FAUT PAS QUE ÇA SOIT CARTON PARTOUT », qui n'avait jamais
+  // atteint cette ligne-ci.
+  var _mg=_motContenant(p,null),_eg=document.getElementById('ctxi-gros');
+  var _lg=document.getElementById('cx3b');
+  if(_lg)_lg.textContent=(lang==='fr')?('Vendre par '+_mg):('Sell by the '+_mg);
+  if(_eg){var _ie=_eg.querySelector('.ctxi-emo');if(_ie)_ie.textContent=_emojiCont(_mg);}
   document.getElementById('cx4').textContent=lang==='fr'?'Entrée stock':'Stock entry';
   document.getElementById('cx6').textContent=lang==='fr'?'Changer photo':'Change photo';
   document.getElementById('cx7').textContent=(lang==='fr'?'Vente en rupture':'Sell when out of stock')+' : '+(p.rt?(lang==='fr'?'✅ Activée':'✅ On'):(lang==='fr'?'⛔ Désactivée':'⛔ Off'));
   document.getElementById('cx8').textContent=lang==='fr'?'Mettre dans une famille':'Put into a family';
   var _cf=document.getElementById('ctxi-fam');if(_cf)_cf.style.display=(p.vr.length||estMesure(p))?'none':'flex';
-  // L'entrée de correction ne s'affiche que s'il Y A un conditionnement à
-  // corriger — sinon c'est une ligne de plus qui ne sert à rien.
-  // ⚠️ Ce bloc était écrit DEUX FOIS de suite, la seconde écrasant la
-  // première : deux `var _cc` dans la même fonction, deux textes différents.
-  // Rien de cassé, mais deux vérités pour un seul bouton.
+  // ⚠️⚠️ SA RÈGLE, L'AUTRE MOITIÉ : « quand on dit activation de
+  // modification, LE CARTON AUSSI est modifiable — même le conditionnement,
+  // que ce soit carton, sac ou quoi. Modifiable aussi concernant le prix,
+  // toute la ligne de modification qu'on faisait avant. Donc il y a DEUX
+  // modifications. »
+  //
+  // Il n'y en avait qu'une et demie. Cette entrée ne s'affichait que si un
+  // conditionnement EXISTAIT DÉJÀ (`umSac>1`) : impossible d'en poser un
+  // depuis le menu. Le seul autre chemin était le petit 📦 vide de la
+  // tuile, qui lui-même ne sort que si le CATALOGUE connaît une taille —
+  // donc rien du tout pour un article qu'il a créé lui-même.
+  // Ce menu ne s'ouvre que modifications ouvertes et avec le droit sur les
+  // produits : c'est exactement là que le carton doit être modifiable.
+  // Elle est donc toujours là, et elle dit lequel des deux cas c'est.
   var _cc=document.getElementById('cxcond');
   if(_cc){
-    _cc.textContent=lang==='fr'?('Corriger : '+_motContenant(p,null)+(Number(p.umSac)>1?(' de '+fmtQ(p.umSac)):''))
-                               :('Fix: '+_motContenant(p,null));
-    _cc.parentElement.style.display=(Number(p.umSac)>1)?'flex':'none';
+    var _mc=_motContenant(p,null),_nc=Number(p.umSac)||0;
+    _cc.textContent=(lang==='fr')
+      ?(_nc>1?('Corriger : '+_libelleCond(p,null)):('Dire comment tu l\'achètes'))
+      :(_nc>1?('Fix: '+_libelleCond(p,null)):'Say how you buy it');
+    var _ic=_cc.parentElement.querySelector('.ctxi-emo');
+    if(_ic)_ic.textContent=_emojiCont(_mc);
+    _cc.parentElement.style.display='flex';
   }
   document.getElementById('cx5').textContent=lang==='fr'?'Supprimer':'Delete';
   setTimeout(function(){document.addEventListener('click',function h(){document.getElementById('ctxm').classList.remove('show');document.removeEventListener('click',h);});},100);
@@ -8239,11 +8259,11 @@ function _chipGrosVariante(p,v){
   var lot=_lotDeVariante(p,v);
   if(!lot)return '';
   var mot=_motContenant(p,v);
-  return '<span class="vt-gros" data-gros="'+lot.id+'" title="'+mot+' de '+fmtQ(getQBase(lot))+'">📦 '+fmt(lot.px)+'</span>';
+  return '<span class="vt-gros" data-gros="'+lot.id+'" title="'+mot+' de '+fmtQ(getQBase(lot))+'">'+_emojiCont(mot)+' '+mot+' '+fmt(lot.px)+'</span>';
 }
 function _chipGros(p){
   if(!p||articleIncomplet(p))return '';
-  var mot=_motContenant(p);
+  var mot=_motContenant(p,null);
   // ⚠️ DÉFAUT QUE J'ALLAIS INTRODUIRE : le repère disparaissait dès que
   // l'article avait des variantes — donc juste après que le commerçant ait
   // créé son « casier de 12 ». Le geste qu'on venait de lui apprendre
@@ -8270,13 +8290,19 @@ function _chipGros(p){
     var lots=(p.vr||[]).filter(function(v){return getQBase(v)>1;});
     var unites=(p.vr||[]).filter(function(v){return getQBase(v)<=1;});
     if(lots.length===1&&unites.length<=1)
-      return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+(vg.nm||mot)+'">📦<span>'+fmt(vg.px)+'</span></button>';
+      return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+(vg.nm||mot)+'">'+_emojiCont(mot)+'<span>'+mot+' '+fmt(vg.px)+'</span></button>';
     return '';
   }
   // Les autres familles gardent leur écran de variantes, sans repère.
   if(p.vr&&p.vr.length)return '';
   var n=Number(p.umSac)||0;
-  if(n>1)return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+mot+' de '+fmtQ(n)+'">📦<span>×'+fmtQ(n)+'</span></button>';
+  // ⚠️⚠️ « LE REPÈRE 📦 DIT DEUX CHOSES DIFFÉRENTES SOUS LE MÊME DESSIN. »
+  // Vu sur ses captures : « 📦 ×24 » sur l'huile est une QUANTITÉ, « 📦
+  // F 1 500 » sur le Maggi est un PRIX. Même icône, même place, même
+  // couleur — et rien ne dit lequel on regarde. Le mot passe donc devant
+  // dans les deux cas : ce qui suit est un prix quand il y en a un, et il
+  // n'y a plus jamais de « ×24 » nu à confondre avec un montant.
+  if(n>1)return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_libelleCond(p,null)+'">'+_emojiCont(mot)+'<span>'+mot+'</span></button>';
   // ⚠️ « JE VOIS PARTOUT VENTE EN CARTON. CE N'EST PAS TOUS LES ARTICLES
   //     OÙ ON ACHÈTE EN CARTON. »
   // Il a raison, et c'était MOI : le repère vide s'affichait sur CHAQUE
@@ -8293,21 +8319,79 @@ function _chipGros(p){
     connu=(m&&m.sac>0)?m.sac:0;
   }catch(e){}
   if(!connu)return '';
-  return '<button class="pgros vide" onclick="direTailleGros(event,'+p.id+')" title="'+(lang==='fr'?'Vendre par '+mot:'Sell by the '+mot)+'">📦</button>';
+  // ⚠️⚠️ SA RÈGLE, ET ELLE ÉTAIT ENFREINTE EN SILENCE : « quand on ferme la
+  // modification, si on clique sur la partie grossiste on vend juste en
+  // gros ; si on clique sur l'autre partie on vend juste en détail, c'est
+  // tout. »
+  // Mesuré : verrou fermé, ce repère-là s'affichait quand même, et le
+  // toucher appelait direTailleGros — qui sort EN SILENCE sous verrou.
+  // Un bouton visible qui ne fait rien et n'explique rien : le commerçant
+  // tape, retape, et croit l'app cassée. Il ne s'affiche plus que quand il
+  // y a vraiment quelque chose à régler, donc modifications ouvertes.
+  if(venteVerrouillee&&venteVerrouillee())return '';
+  return '<button class="pgros vide" onclick="direTailleGros(event,'+p.id+')" title="'+(lang==='fr'?'Vendre par '+mot:'Sell by the '+mot)+'">'+_emojiCont(mot)+'</button>';
 }
-function _ajouterLot(p,n){
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ « UN CARTON SEULEMENT SUR LA FACTURE, PAS 24, PAS 12 »
+//
+//  Sa demande, mot pour mot : « quand quelqu'un vend en gros il faut que ce
+//  soit un carton sur la facture, pas que ce soit 24, 12 — ça c'est
+//  bizarre. Et il faut que la voix s'adapte : si je mets en carton, ça me
+//  lit en carton. »
+//
+//  Le commentaire d'à côté disait DÉJÀ le défaut, depuis des versions :
+//  « le reçu annonçait 12 Coca, pas 1 casier ». Il avait été réparé pour le
+//  lot qui porte son propre prix — et laissé intact sur ce chemin-ci, celui
+//  qui vend le CONTENU au détail. Mesuré : panier « 12 », reçu « Coca cola
+//  ×12 », voix « douze Coca cola ». Le casier n'existait nulle part.
+//
+//  ⚠️ ON NE TOUCHE NI LA QUANTITÉ NI LE TOTAL. `_grosPanier` ne retient que
+//  la FAÇON DE LE DIRE : douze bouteilles restent douze bouteilles dans le
+//  stock et dans le calcul, elles s'annoncent seulement « 1 casier
+//  (12 × 500) ». Un marqueur d'affichage ne peut pas fausser un chiffre.
+//  Et il s'efface dès que la quantité change par un autre chemin : mieux
+//  vaut redire « 12 » que d'annoncer un casier qui n'en est plus un.
+// ══════════════════════════════════════════════════════════════════
+var _grosPanier={};
+function _oublierGros(key){try{delete _grosPanier[key];}catch(e){}}
+// Ce qu'il faut dire d'une ligne de panier : « 2 casiers (24 × 500) », ou
+// rien du tout si elle n'a pas été prise au contenant.
+function _mentionGros(key,qty){
+  var g=_grosPanier[key];
+  if(!g||!(g.n>1)||!(qty>0))return null;
+  var nb=qty/g.n;
+  if(Math.abs(nb-Math.round(nb))>0.001)return null;   // entamé : ce n'est plus un carton entier
+  nb=Math.round(nb);
+  var fr=(lang==='fr');
+  return {nb:nb,mot:g.mot,emo:_emojiCont(g.mot),
+          txt:fmtQ(nb)+' '+g.mot+(nb>1?'s':'')+' ('+fmtQ(qty)+(fr?' × ':' × ')+fmt(g.px||0)+')'};
+}
+function _ajouterLot(p,n,mot){
   var fr=(lang==='fr');
   var key=p.id+'-0',cur=panier[key]||0,dispo=getStk(p);
   var place=Math.max(0,dispo-cur);
   var ajout=p.rt?n:Math.min(n,place);
   if(!(ajout>0)){showToast(t('stockInsuf'));return;}
   panier[key]=cur+ajout;
+  mot=mot||_motContenant(p,null);
+  // Entier seulement : s'il ne restait pas un carton complet, ce n'est plus
+  // un carton et on ne l'écrira pas comme tel.
+  if(ajout===n)_grosPanier[key]={n:n,mot:mot,px:Number(p.px)||0};
+  else _oublierGros(key);
   updatePUI(p.id);
   if(navigator.vibrate)navigator.vibrate(30);
+  var m=_mentionGros(key,panier[key]);
   // Le chiffre annoncé est celui réellement mis au panier, jamais celui
   // demandé : s'il ne reste pas un carton entier, il faut le dire.
-  showToast('📦 '+fmtQ(ajout)+' '+p.nm+(ajout<n?(' — '+(fr?'c\'est tout ce qui reste':'that is all that is left')):''));
-  try{parler(fr?(fmtQ(ajout)+' '+p.nm):(fmtQ(ajout)+' '+p.nm));}catch(e){}
+  showToast(_emojiCont(mot)+' '+p.nm+' — '+(m?m.txt:(fmtQ(ajout)+' '+_uniteMot(p)))
+    +(ajout<n?(' · '+(fr?'c\'est tout ce qui reste':'that is all that is left')):''));
+  // ⭐ LA VOIX SUIT LE MOT. « douze Coca cola » devient « un casier de Coca
+  // cola » : c'est ce qu'il a dit à son client, c'est ce qu'il doit
+  // entendre pour vérifier sans regarder l'écran.
+  try{
+    parler(fr?((m?(m.nb>1?(fmtQ(m.nb)+' '+mot+'s '):_unGros(mot)+' '):(fmtQ(ajout)+' '))+(fr?'de ':'')+p.nm)
+             :((m?(m.nb+' '+mot+(m.nb>1?'s':'')+' of '):(fmtQ(ajout)+' '))+p.nm));
+  }catch(e){}
 }
 // ⚠️⚠️ « UN CLIENT VIENT ACHETER LES JUS EN PALETTES, UN CARTON D'HUILE.
 //        COMMENT ON VA LE FACTURER, ÉTANT DONNÉ QU'ON VEND EN DÉTAIL ? »
@@ -8342,6 +8426,26 @@ function _leGros(mot){return (_femGros(mot)?'la ':'le ')+mot;}
 // « Prix DU palette » : la même écorchure que « un palette entière », un cran
 // plus loin. La table du genre existe, elle sert ici aussi.
 function _duGros(mot){return (_femGros(mot)?'de la ':'du ')+mot;}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ L'ILLUSTRATION DU CONTENANT
+//
+//  Sa demande : « des petites affiches en bas — si c'est en carton on met
+//  l'illustration du carton, si c'est en palette on met la palette, si
+//  c'est un sac on met le sac, si c'est un bidon on met le bidon. »
+//
+//  Il a raison, et c'est la suite directe de « IL NE FAUT PAS QUE ÇA SOIT
+//  CARTON PARTOUT » : le mot avait cessé d'être toujours « carton », mais
+//  le DESSIN, lui, était resté un carton pour tout le monde. Un commerçant
+//  qui ne lit pas voit d'abord l'image ; lui montrer une caisse en carton
+//  pour son bidon d'huile, c'est lui parler faux avant même le premier mot.
+// ══════════════════════════════════════════════════════════════════
+var _EMO_CONT={carton:'📦',boite:'🧰',caisse:'🧰',casier:'🧃',palette:'🧱',
+               paquet:'🛍️',sachet:'🛍️',lot:'📚',sac:'🧺',bidon:'🛢️',
+               plateau:'🥚',bouteille:'🍾',fut:'🛢️',
+               box:'📦',crate:'🧃',pallet:'🧱',pack:'🛍️',bag:'🧺',can:'🛢️',tray:'🥚',bottle:'🍾'};
+function _emojiCont(mot){
+  try{return _EMO_CONT[txtNorm(mot||'')]||'📦';}catch(e){return '📦';}
+}
 // ⚠️ Composer _unGros(_grosEntier(mot)) donnait « UN palette ENTIÈRE » : le
 // second appel recevait « palette entière », introuvable dans la table.
 // Une seule fonction construit la phrase entière, en une fois.
@@ -8577,7 +8681,7 @@ function _grosRenderMots(){
              :['box','crate','pallet','pack','lot','bag','can','tray'];
   if(_grosMot&&mots.indexOf(_grosMot)<0)mots.unshift(_grosMot);
   box.innerHTML=mots.map(function(m){
-    return '<button class="gros-mot'+(m===_grosMot?' on':'')+'" onclick="grosChoisirMot(\''+m+'\')">'+m+'</button>';
+    return '<button class="gros-mot'+(m===_grosMot?' on':'')+'" onclick="grosChoisirMot(\''+m+'\')">'+_emojiCont(m)+' '+m+'</button>';
   }).join('');
 }
 function grosChoisirMot(m){_grosMot=m;_grosRenderMots();majApercuGros();
@@ -8737,15 +8841,16 @@ function ouvrirPanier(){
   Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1];if(!qty)return;var parts=key.split('-');var pid=parts[0],vid=parts[1];var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;has=true;var px=v?v.px:p.px;
     var d=document.createElement('div');d.className='pit';
     var step=(estMesure(p)&&!v)?0.5:1;
-    d.innerHTML=(p.img?'<img class="piemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'piemo\',textContent:\''+p.e+'\'}))">':'<span class="piemo">'+p.e+'</span>')+'<div class="piinf"><div class="pinm">'+p.nm+(v?' — '+v.nm:'')+'</div><div class="piun">'+fmt(px)+' × '+fmtQ(qty)+(estMesure(p)&&!v?' '+uniteArt(p):'')+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="pisub">'+fmt(px*qty)+'</span><div class="qctl"><button class="qb m" onclick="chgQ(\''+key+'\',-'+step+')">−</button><span class="qnum">'+fmtQ(qty)+'</span><button class="qb p" onclick="chgQ(\''+key+'\','+step+')">+</button></div></div>';
+    var _mg=_mentionGros(key,qty);
+    d.innerHTML=(p.img?'<img class="piemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'piemo\',textContent:\''+p.e+'\'}))">':'<span class="piemo">'+p.e+'</span>')+'<div class="piinf"><div class="pinm">'+p.nm+(v?' — '+v.nm:'')+'</div><div class="piun">'+(_mg?(_mg.emo+' '+_mg.txt):(fmt(px)+' × '+fmtQ(qty)+(estMesure(p)&&!v?' '+uniteArt(p):'')))+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="pisub">'+fmt(px*qty)+'</span><div class="qctl"><button class="qb m" onclick="chgQ(\''+key+'\',-'+step+')">−</button><span class="qnum">'+fmtQ(qty)+'</span><button class="qb p" onclick="chgQ(\''+key+'\','+step+')">+</button></div></div>';
     l.appendChild(d);
   });
   if(!has)l.innerHTML='<div class="empty"><div class="empty-e">🛒</div><div class="empty-t">'+t('vider')+'</div></div>';
   document.getElementById('pan-tot').textContent=fmt(calcTotal());
   document.getElementById('ov-pan').classList.add('show');
 }
-function chgQ(key,d){panier[key]=Math.round(((panier[key]||0)+d)*100)/100;if(panier[key]<=0)delete panier[key];updatePUI(parseInt(key.split('-')[0]));document.getElementById('pan-tot').textContent=fmt(calcTotal());if(!Object.keys(panier).length)closeSheet('ov-pan');else ouvrirPanier();}
-function viderPanier(){panier={};renderProd(DB.articles);document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');}
+function chgQ(key,d){_oublierGros(key);panier[key]=Math.round(((panier[key]||0)+d)*100)/100;if(panier[key]<=0)delete panier[key];updatePUI(parseInt(key.split('-')[0]));document.getElementById('pan-tot').textContent=fmt(calcTotal());if(!Object.keys(panier).length)closeSheet('ov-pan');else ouvrirPanier();}
+function viderPanier(){panier={};_grosPanier={};renderProd(DB.articles);document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');}
 function procederPmt(){
   closeSheet('ov-pan');
   var total=calcTotal();
@@ -15657,7 +15762,9 @@ encaisser=function(){
   }else{
     paiement={mode:pmntModeVente};
   }
-  Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1],parts=key.split('-'),pid=parts[0],vid=parts[1],_tch=toucheArticle(pid),p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;var px=v?v.px:p.px,pa=v?v.pa:p.pa,qBase=v?getQBase(v):1;var qNorm,qDep;if(v){/* ⚠️ Lisait v.stk : pour un carton qui puise dans une AUTRE variante, v.stk vaut 0, donc TOUTE la vente passait en depassement — et le recalcul exclut les depassements. Le stock ne bougeait jamais. stockVarDispo connait la reserve et couvre les trois modeles. */var dv=Math.max(0,stockVarDispo(p,v));qNorm=Math.min(qty,dv);qDep=qty-qNorm;}else{var dp=Math.max(0,p.stk||0);qNorm=Math.min(qty,dp);qDep=qty-qNorm;}lignes.push({nm:p.nm+(v?' — '+v.nm:''),px:px,pa:pa,qte:qty,qty:qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:qBase,dep:qDep});});
+  Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1],parts=key.split('-'),pid=parts[0],vid=parts[1],_tch=toucheArticle(pid),p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;var px=v?v.px:p.px,pa=v?v.pa:p.pa,qBase=v?getQBase(v):1;var qNorm,qDep;if(v){/* ⚠️ Lisait v.stk : pour un carton qui puise dans une AUTRE variante, v.stk vaut 0, donc TOUTE la vente passait en depassement — et le recalcul exclut les depassements. Le stock ne bougeait jamais. stockVarDispo connait la reserve et couvre les trois modeles. */var dv=Math.max(0,stockVarDispo(p,v));qNorm=Math.min(qty,dv);qDep=qty-qNorm;}else{var dp=Math.max(0,p.stk||0);qNorm=Math.min(qty,dp);qDep=qty-qNorm;}var _mgv=_mentionGros(key,qty);
+    lignes.push({nm:p.nm+(v?' — '+v.nm:''),px:px,pa:pa,qte:qty,qty:qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:qBase,dep:qDep,
+                 gros:_mgv?{nb:_mgv.nb,mot:_mgv.mot}:null});});
   var now=new Date(),h=now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),dateFr=now.toLocaleDateString('fr-FR');
   var ptsGagnes=0,ptsUtilises=Math.round(remisePoints/1000*100),clientId=null,clientNm='';
   if(clientVente){var cl=DB.clients.find(function(c){return c.id===clientVente.id;})||clientVente;clientId=cl.id;clientNm=cl.nm;if(ptsUtilises>0){cl.points=Math.max(0,(cl.points||0)-ptsUtilises);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'points_use',pts:ptsUtilises,amt:remisePoints});}ptsGagnes=pointsGagnesPour(total);cl.points=(cl.points||0)+ptsGagnes;majNiveauClient(cl);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'achat',amt:total,pts:ptsGagnes});
@@ -15670,7 +15777,13 @@ encaisser=function(){
   var _consNet=consigneNette(),_consU=consigneUnitPanier();
   DB.ventes.push({id:genVenteId(),total:total,totalBrut:totalBrut,benefice:ben,ben:ben,lignes:lignes,h:h,heure:h,date:dateFr,vendeur:vendeur,clientId:clientId,clientNom:clientNm,pointsGagnes:ptsGagnes,pointsUtilises:ptsUtilises,reductionPoints:remisePoints,remise:remiseVente||0,paiement:paiement,annulee:false,
     consigne:_consNet,consignePrises:consignePrises,consigneRendues:consigneRendues,consigneUnit:_consU});
-  sauverEtEnvoyerVite();dernierRecu={boutique:DB.cfg.nom,lignes:lignes.map(function(l){var _p=DB.articles.find(function(x){return x.id==l.pid;});var _u=(_p&&estMesure(_p)&&!l.vid)?(' '+uniteArt(_p)):'';return {nm:l.nm+' ×'+fmtQ(l.qte)+_u,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:remiseVente||0,client:clientNm};
+  _grosPanier={};
+  sauverEtEnvoyerVite();dernierRecu={boutique:DB.cfg.nom,lignes:lignes.map(function(l){var _p=DB.articles.find(function(x){return x.id==l.pid;});var _u=(_p&&estMesure(_p)&&!l.vid)?(' '+uniteArt(_p)):'';
+    // ⭐ « UN CARTON SEULEMENT SUR LA FACTURE. » Le contenu reste écrit
+    // entre parenthèses : le client doit pouvoir compter ce qu'il emporte.
+    var _n=l.gros?(l.nm+' — '+fmtQ(l.gros.nb)+' '+l.gros.mot+(l.gros.nb>1?'s':'')+' ('+fmtQ(l.qte)+_u+')')
+                 :(l.nm+' ×'+fmtQ(l.qte)+_u);
+    return {nm:_n,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:remiseVente||0,client:clientNm};
   panier={};remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
   renderProd(DB.articles);renderStock(DB.articles);renderClients();renderDashboard();recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
   document.getElementById('succ-amt').textContent=fmt(total);
