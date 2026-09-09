@@ -3,63 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>MyBoutiQ — Gestion de boutique pour l'Afrique</title>
-<meta name="description" content="MyBoutiQ : application de gestion de boutique et petit commerce. Ventes, stock, clients, rapports — simple, hors-ligne, sans complications. Faite pour l'Afrique francophone.">
-<meta property="og:title" content="MyBoutiQ — Gestion de boutique">
-<meta property="og:description" content="Ventes, stock, clients, rapports. Simple et hors-ligne, faite pour les commerçants africains.">
-<meta property="og:type" content="website">
-<meta property="og:image" content="icon-512.png">
-<!-- ⚠️ « SUR GOOGLE JE VOIS LES DEUX. »
-     Chaque livraison Vercel cree une adresse en .vercel.app qui sert la MEME
-     page. Sans adresse canonique, Google les indexe comme des sites
-     differents : le commercant qui cherche « MyBoutiQ » peut tomber sur une
-     copie de preversion au lieu de la vraie boutique. Cette ligne dit a
-     Google que l'original est ici, et que tout le reste en est une copie. -->
-<link rel="canonical" href="https://myboutiq.online/">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#241257">
-<meta name="google-site-verification" content="I_ezGF81QiedElV5fZf9p3rTKXQFGiqA-AW7WqSTqn4" />
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="MyBoutiQ">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" href="icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "MyBoutiQ",
-  "applicationCategory": "BusinessApplication",
-  "operatingSystem": "Android, iOS, Web",
-  "description": "Application de gestion de boutique, bar et petit commerce : ventes, stock, clients, rapports. Fonctionne hors-ligne, faite pour les commerçants africains.",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "XAF"
-  },
-  "inLanguage": "fr"
-}
-</script>
 <script>
 /* ══════════════════════════════════════════════════════════════════
    DEMANDER L'EMPREINTE AVANT MÊME D'AVOIR LU L'APPLICATION
 
    « Dès qu'on ouvre, ça nous demande en moins de zéro seconde l'empreinte. »
 
-   MESURÉ (PC de bureau, serveur local, aucune latence réseau) :
-       1er octet          15 ms
-       HTML téléchargé    35 ms
-       JS lu et exécuté  335 ms   ← le mur
-   933 Ko de JavaScript mettent ~300 ms à être lus et exécutés, et la
-   demande d'empreinte partait APRÈS tout ça. Sur un téléphone bon marché,
-   comptez trois à cinq fois plus.
+   ⚠️⚠️ CE BLOC ÉTAIT DÉJÀ ÉCRIT, ET IL NE SERVAIT À RIEN : il était placé
+   APRÈS le <link> des polices Google. Or un navigateur n'exécute AUCUN
+   script — même en ligne, même deux lignes — tant qu'une feuille de style
+   déclarée avant lui n'est pas arrivée. La demande d'empreinte attendait
+   donc un aller-retour jusqu'à fonts.googleapis.com.
 
-   Or cette demande n'a besoin de RIEN de l'application : l'identifiant de
-   clé vit dans localStorage (`myboutiq_entree`), pas dans DB. Ce bloc
-   tient en quelques lignes, s'exécute avant le reste, et la fenêtre du
-   capteur s'ouvre PENDANT que l'app se charge derrière.
+   MESURÉ AU BANC, en faisant varier la seule latence des polices :
+       polices en   0 ms  ->  empreinte à     86 ms
+       polices en 300 ms  ->  empreinte à    349 ms
+       polices en 1,5 s   ->  empreinte à  1 550 ms
+       polices en 3 s     ->  empreinte à  3 038 ms
+       polices INJOIGNABLES (hors ligne, réseau mort)
+                          ->  empreinte à 12 700 ms
+   Le capteur ouvrait exactement quand Google répondait. Ni le poids de
+   l'app, ni le téléphone : la file d'attente du navigateur.
+
+   Ce bloc passe donc AVANT tout ce qui touche au réseau, et les polices
+   sont chargées sans bloquer personne. Il n'a besoin de rien de
+   l'application : l'identifiant de clé vit dans localStorage
+   (`myboutiq_entree`), pas dans DB. La fenêtre du capteur s'ouvre
+   PENDANT que l'app se charge derrière.
 
    ⚠️ Le navigateur n'autorise qu'UNE demande WebAuthn à la fois :
    guetterEmpreinte() récupère celle-ci au lieu d'en lancer une seconde.
@@ -88,6 +58,55 @@
     window._bioTot.catch(function(){});            // jamais d'erreur non rattrapée
   }catch(x){}
 })();
+</script>
+<title>MyBoutiQ — Gestion de boutique pour l'Afrique</title>
+<meta name="description" content="MyBoutiQ : application de gestion de boutique et petit commerce. Ventes, stock, clients, rapports — simple, hors-ligne, sans complications. Faite pour l'Afrique francophone.">
+<meta property="og:title" content="MyBoutiQ — Gestion de boutique">
+<meta property="og:description" content="Ventes, stock, clients, rapports. Simple et hors-ligne, faite pour les commerçants africains.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="icon-512.png">
+<!-- ⚠️ « SUR GOOGLE JE VOIS LES DEUX. »
+     Chaque livraison Vercel cree une adresse en .vercel.app qui sert la MEME
+     page. Sans adresse canonique, Google les indexe comme des sites
+     differents : le commercant qui cherche « MyBoutiQ » peut tomber sur une
+     copie de preversion au lieu de la vraie boutique. Cette ligne dit a
+     Google que l'original est ici, et que tout le reste en est une copie. -->
+<link rel="canonical" href="https://myboutiq.online/">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#241257">
+<meta name="google-site-verification" content="I_ezGF81QiedElV5fZf9p3rTKXQFGiqA-AW7WqSTqn4" />
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MyBoutiQ">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<!-- ⚠️ CETTE LIGNE BLOQUAIT TOUT LE DÉMARRAGE. Une feuille de style
+     empêche l'exécution de TOUS les scripts qui la suivent — la demande
+     d'empreinte comme le reste de l'app attendaient Google. Elle se charge
+     maintenant à côté : `media="print"` la rend inoffensive au chargement,
+     et l'`onload` la rebranche dès qu'elle arrive. Avec `display=swap`,
+     l'écran s'affiche tout de suite dans la police de secours et bascule
+     ensuite — on ne voit qu'une chose de plus : la boutique, plus tôt. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all';this.onload=null">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet"></noscript>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "MyBoutiQ",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Android, iOS, Web",
+  "description": "Application de gestion de boutique, bar et petit commerce : ventes, stock, clients, rapports. Fonctionne hors-ligne, faite pour les commerçants africains.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "XAF"
+  },
+  "inLanguage": "fr"
+}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -3474,7 +3493,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.61'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.62'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;

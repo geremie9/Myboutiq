@@ -1,5 +1,9 @@
-const CACHE_NAME='myboutiq-v161';
+const CACHE_NAME='myboutiq-v162';
 const IMG_CACHE='myboutiq-images-v1';
+// ⚠️ Les polices vivaient hors du cache : chaque ouverture repartait les
+// chercher chez Google, et hors ligne la boutique s'affichait dans une police
+// de secours qu'il ne reconnaît pas. Gardées une fois, servies pour toujours.
+const FONT_CACHE='myboutiq-polices-v1';
 // photos-catalogue.json fait partie de la coquille : la boutique doit pouvoir
 // décider hors ligne quelle photo poser, sans redemander au serveur.
 const APP_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png','./photos-catalogue.json','./catalogue-600.json'];
@@ -15,7 +19,7 @@ self.addEventListener('message',function(e){
 });
 self.addEventListener('activate',function(e){
   e.waitUntil(caches.keys().then(function(keys){
-    return Promise.all(keys.filter(function(k){return k!==CACHE_NAME&&k!==IMG_CACHE;}).map(function(k){return caches.delete(k);}));
+    return Promise.all(keys.filter(function(k){return k!==CACHE_NAME&&k!==IMG_CACHE&&k!==FONT_CACHE;}).map(function(k){return caches.delete(k);}));
   }));
   self.clients.claim();
 });
@@ -47,6 +51,23 @@ self.addEventListener('fetch',function(e){
             return res;
           }).catch(function(){return cached;});
           return cached||fetchPromise;
+        });
+      })
+    );
+    return;
+  }
+
+  // Les polices : gardées une fois, servies pour toujours. Elles ne changent
+  // jamais, et elles ne doivent plus jamais faire attendre une ouverture.
+  if(url.hostname==='fonts.googleapis.com'||url.hostname==='fonts.gstatic.com'){
+    e.respondWith(
+      caches.open(FONT_CACHE).then(function(c){
+        return c.match(e.request).then(function(garde){
+          if(garde)return garde;
+          return fetch(e.request).then(function(res){
+            if(res&&(res.status===200||res.type==='opaque'))c.put(e.request,res.clone());
+            return res;
+          }).catch(function(){return garde;});
         });
       })
     );
