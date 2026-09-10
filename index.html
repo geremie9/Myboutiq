@@ -2618,7 +2618,23 @@ body{max-width:min(100%,1200px)}
           <div class="abtn on" id="stk-sens-in" onclick="stkSens('in')" style="flex:1;padding:10px"><span class="aemo">📥</span><span class="albl" id="lbl-sens-in">J'ai reçu</span></div>
           <div class="abtn" id="stk-sens-out" onclick="stkSens('out')" style="flex:1;padding:10px"><span class="aemo">📤</span><span class="albl" id="lbl-sens-out">J'ai perdu</span></div>
         </div>
-        <div class="pig"><label class="pl" id="lbl-qte-recu">Quantité reçue</label><input class="pi" type="number" id="inp-sqte" inputmode="decimal" step="0.25" oninput="majApercuStk()"><div class="shcts" id="stk-shcts"><button class="shct" onclick="setSQ(6)">6</button><button class="shct" onclick="setSQ(12)">12</button><button class="shct" onclick="setSQ(24)">24</button><button class="shct" onclick="setSQ(48)">48</button></div>
+        <div class="pig"><label class="pl" id="lbl-qte-recu">Quantité reçue</label>
+          <!-- ⚠️⚠️ « LES APPROVISIONNEMENTS SE FONT PAR GROS, LES NÉGOCIATIONS
+               EN GROS : 4 cartons, 4 sacs de tel, tu me le vends à combien ? »
+               C'est la tête de la logique d'achat, et l'app la prenait à
+               l'envers : elle demandait un nombre d'unités, et proposait
+               1, 2, 5, 10 contenants. Quatre cartons n'existait pas — il
+               fallait calculer 4 × 24 de tête. Le compteur compte ce qu'il
+               achète VRAIMENT ; les unités se déduisent dessous. -->
+          <div id="stk-cont-row" style="display:none;align-items:center;gap:10px;margin-bottom:9px;background:var(--BG);border-radius:12px;padding:9px 11px">
+            <button type="button" class="qb m" onclick="stkCont(-1)" style="width:38px;height:38px;font-size:19px">−</button>
+            <div style="flex:1;text-align:center;min-width:0">
+              <div id="stk-cont-n" style="font-size:17px;font-weight:900;color:var(--T);line-height:1.15">0</div>
+              <div id="stk-cont-eq" style="font-size:11.5px;font-weight:700;color:var(--M)"></div>
+            </div>
+            <button type="button" class="qb p" onclick="stkCont(1)" style="width:38px;height:38px;font-size:19px">+</button>
+          </div>
+          <input class="pi" type="number" id="inp-sqte" inputmode="decimal" step="0.25" oninput="majApercuStk()"><div class="shcts" id="stk-shcts"><button class="shct" onclick="setSQ(6)">6</button><button class="shct" onclick="setSQ(12)">12</button><button class="shct" onclick="setSQ(24)">24</button><button class="shct" onclick="setSQ(48)">48</button></div>
           <!-- ⚠️ « Les achats se font en gros, les ventes en détail. Si j'ai
                acheté deux cartons de biscuits et que tu me demandes le prix
                par biscuit, je ne peux pas m'en sortir. »
@@ -2653,7 +2669,13 @@ body{max-width:min(100%,1200px)}
           <div style="font-size:10.5px;font-weight:600;color:var(--M);margin-top:4px" id="cons-aide">Bouteille, casier, bidon de gaz : la somme que le client laisse et récupère en rendant l'emballage. Elle n'est jamais comptée dans ton bénéfice.</div>
         </div>
         <div class="pig" id="stk-pa-row"><label class="pl" id="lbl-stk-pa">Prix d'achat</label>
+          <!-- ⚠️ « 4 sacs de tel, tu me le vends à combien ? » — le
+               fournisseur répond un prix PAR SAC. C'était le seul des trois
+               niveaux que l'app ne savait pas entendre : elle offrait
+               l'unité (le mauvais niveau) ou le total (juste, mais il
+               fallait déjà avoir compté les unités). -->
           <div style="display:flex;gap:8px;margin-bottom:7px">
+            <div class="abtn" id="spa-c" onclick="stkPaMode('c')" style="flex:1;padding:8px;display:none"><span class="albl" id="spa-c-l">Le carton</span></div>
             <div class="abtn on" id="spa-u" onclick="stkPaMode('u')" style="flex:1;padding:8px"><span class="albl" id="spa-u-l">Par unité</span></div>
             <div class="abtn" id="spa-t" onclick="stkPaMode('t')" style="flex:1;padding:8px"><span class="albl" id="spa-t-l">Total payé</span></div>
           </div>
@@ -3512,7 +3534,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.67'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.68'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4369,6 +4391,14 @@ function estMesure(p){return !!_umDe(p);}
 // un mot que le commerçant n'emploie jamais. Le nom de l'unité est donc
 // libre, sans toucher au calcul (un tas reste une pièce entière).
 var UNITES_VIVRIER=['tas','botte','cuvette','sceau','panier','régime','boîte','sachet','paquet','bouquet'];
+// « soit 200/unités » écorche la langue. Le singulier quand on dit « par ».
+function uniteArtUn(p){
+  var u=_umDe(p);
+  if(u==='kg')return 'kg';
+  if(u==='L')return 'L';
+  if(p&&p.umNom)return p.umNom;
+  return lang==='fr'?'unité':'unit';
+}
 function uniteArt(p){
   var u=_umDe(p);
   if(u==='kg')return 'kg';
@@ -14238,21 +14268,32 @@ function selArtStk(p){
   // Prix d'achat : on le pré-remplit avec celui déjà connu. C'est ICI que le
   // patron croyait le saisir — le champ n'existait pas, donc le repère
   // « prix d'achat à mettre » ne partait jamais.
-  var _spa=document.getElementById('inp-spa');if(_spa)_spa.value=(p.pa>0?p.pa:'');
   var _sc=document.getElementById('inp-scons');if(_sc)_sc.value=(p.consigne>0?p.consigne:'');
   var _un=document.getElementById('inp-sumnom');if(_un)_un.value=p.umNom||'';
-  stkPaMode('u');
+  stkPaMode('u',true);
+  // ⚠️ APRÈS le changement de niveau, jamais avant : sinon l'ouverture
+  // efface le prix qu'on vient d'écrire. Mesuré au banc, c'était le cas.
+  var _spa=document.getElementById('inp-spa');if(_spa)_spa.value=(p.pa>0?p.pa:'');
   stkSens('in'); // repart toujours sur "J'ai reçu"
   document.getElementById('stk-form').style.display='block';
   document.getElementById('inp-sqte').value='';
   document.getElementById('inp-fourn').value='';
 }
 var _stkPaMode='u';
-function stkPaMode(m){
+// `conserver` : l'ouverture de la fiche remet le niveau à « par unité » et
+// doit GARDER le prix déjà connu. Seul un geste de sa main vide le champ.
+function stkPaMode(m,conserver){
+  var avant=conserver?m:_stkPaMode;
   _stkPaMode=m;
-  var u=document.getElementById('spa-u'),tt=document.getElementById('spa-t');
+  var u=document.getElementById('spa-u'),tt=document.getElementById('spa-t'),c=document.getElementById('spa-c');
   if(u)u.classList.toggle('on',m==='u');
   if(tt)tt.classList.toggle('on',m==='t');
+  if(c)c.classList.toggle('on',m==='c');
+  // ⚠️ CHANGER DE NIVEAU VIDE LE CHAMP. Le prix d'achat pré-rempli est
+  // UNITAIRE : le laisser en place quand il passe sur « le carton » le
+  // ferait lire comme un prix de carton, et le prix d'achat unitaire
+  // deviendrait vingt-quatre fois trop petit — sans que rien ne le dise.
+  if(avant!==m){var i=document.getElementById('inp-spa');if(i)i.value='';}
   majApercuStk();
 }
 // ═══════════════════════════════════════════════════════════════════
@@ -14283,11 +14324,54 @@ function corrigerPrixGros(nomArt,pa,px,unite){
 function stkPaUnit(){
   var v=parseFloat(String((document.getElementById('inp-spa')||{}).value||'').replace(',','.'))||0;
   if(v<=0)return 0;
+  // ⭐ « 4 sacs, tu me le vends à combien ? » — il tape le prix DU SAC.
+  if(_stkPaMode==='c'){var sc=_stkTailleCont();return sc>0?Math.round(v/sc*100)/100:0;}
   if(_stkPaMode!=='t')return v;
   var q=Math.round((parseFloat(String((document.getElementById('inp-sqte')||{}).value||'').replace(',','.'))||0)*100)/100;
   return q>0?Math.round(v/q):0;
 }
 function setSQ(n){document.getElementById('inp-sqte').value=n;majApercuStk();}
+// ⭐ Le compteur de contenants. Il ne remplace pas la quantité — il l'ÉCRIT.
+// `inp-sqte` reste la seule vérité (en unités de vente) : tout le reste de la
+// feuille, l'aperçu, le prix, l'enregistrement, continue de la lire sans rien
+// savoir du compteur. Un étage de plus, zéro calcul déplacé.
+function _stkTailleCont(){
+  var p=artStkCours;if(!p)return 0;
+  // La variante choisie a peut-être SON carton — « Azur, sac de 25 » quand la
+  // famille dit 50. On lit la même source que partout ailleurs.
+  try{var cd=_condDe(p,artStkVarCours||null);return (cd&&cd.n>0)?cd.n:0;}catch(e){}
+  return Number(p.umSac)||0;
+}
+function stkCont(d){
+  var sc=_stkTailleCont();if(!(sc>0))return;
+  var i=document.getElementById('inp-sqte');if(!i)return;
+  var q=Math.round((parseFloat(String(i.value||'').replace(',','.'))||0)*100)/100;
+  var n=Math.max(0,Math.round(q/sc)+d);
+  i.value=n?Math.round(n*sc*100)/100:'';
+  majApercuStk();
+}
+// Ce que le compteur affiche : le nombre de contenants, et ce que ça fait en
+// unités. ⚠️ Une quantité qui ne tombe pas juste (un carton entamé, un reste
+// de kilos) le DIT au lieu d'arrondir en silence.
+function majCompteurCont(){
+  var row=document.getElementById('stk-cont-row');if(!row)return;
+  var p=artStkCours,sc=_stkTailleCont();
+  if(!p||!(sc>0)||_stkSens!=='in'){row.style.display='none';return;}
+  row.style.display='flex';
+  var fr=(lang==='fr'),mot=_motContenant(p,artStkVarCours||null);
+  var q=Math.round((parseFloat(String((document.getElementById('inp-sqte')||{}).value||'').replace(',','.'))||0)*100)/100;
+  var n=q/sc, entier=Math.abs(n-Math.round(n))<0.001;
+  var lblN=document.getElementById('stk-cont-n'),lblE=document.getElementById('stk-cont-eq');
+  var u=' '+uniteArt(p);
+  if(!q){
+    if(lblN)lblN.textContent='0 '+mot;
+    if(lblE)lblE.textContent=fr?('1 '+mot+' = '+fmtQ(sc)+u):('1 '+mot+' = '+fmtQ(sc)+u);
+    return;
+  }
+  if(lblN)lblN.textContent=entier?(fmtQ(Math.round(n))+' '+mot+(Math.round(n)>1?'s':'')):(fmtQ(q)+u);
+  if(lblE)lblE.textContent=entier?('= '+fmtQ(q)+u)
+                                 :(fr?('pas un '+mot+' entier'):('not a whole '+mot));
+}
 // Il dit une fois combien il y a dans son carton : l'app s'en souvient pour
 // cet article, et les raccourcis « 1 carton = 24 · 2 cartons = 48 » arrivent.
 // C'est le même principe que partout ailleurs — on n'invente pas ce nombre,
@@ -14337,6 +14421,12 @@ function stkSens(s){
   var pau=document.getElementById('spa-u-l'),pat=document.getElementById('spa-t-l');
   if(pau)pau.textContent=fr?('Par '+(artStkCours?uniteArt(artStkCours):'unité')):('Per '+(artStkCours?uniteArt(artStkCours):'unit'));
   if(pat)pat.textContent=fr?'Total payé':'Total paid';
+  // Le niveau auquel il négocie, quand l'app sait ce qu'il y a dedans.
+  var pac=document.getElementById('spa-c'),pacl=document.getElementById('spa-c-l');
+  var _sc=0;try{_sc=_stkTailleCont();}catch(e){}
+  if(pac)pac.style.display=(s==='in'&&_sc>0)?'flex':'none';
+  if(pacl&&_sc>0&&artStkCours)pacl.textContent=(fr?'Le ':'Per ')+_motContenant(artStkCours,artStkVarCours||null);
+  if(s!=='in'||!(_sc>0)){if(_stkPaMode==='c')stkPaMode('u');}
   var b=document.getElementById('lbl-enreg-stk');
   if(b)b.textContent=s==='in'?(fr?'Enregistrer l\'entrée':'Save entry'):(fr?'Enregistrer la sortie':'Save removal');
   majApercuStk();
@@ -14349,6 +14439,7 @@ function stkMotif(m){
 function majApercuStk(){
   var box=document.getElementById('stk-apercu');if(!box||!artStkCours)return;
   var q=Math.round((parseFloat(String((document.getElementById('inp-sqte')||{}).value||'').replace(',','.'))||0)*100)/100;
+  try{majCompteurCont();}catch(e){}
   majApercuPaStk(q);
   if(!q){box.style.display='none';return;}
   var cible=(artStkCours.vr.length&&!utiliseStockBase(artStkCours)&&artStkVarCours)?artStkVarCours:artStkCours;
@@ -14369,7 +14460,7 @@ function majApercuStk(){
 // tout de suite si le prix de vente est en dessous.
 function majApercuPaStk(q){
   var inf=document.getElementById('stk-pa-info');if(!inf||!artStkCours)return;
-  var fr=lang==='fr',u=uniteArt(artStkCours),pu=stkPaUnit();
+  var fr=lang==='fr',u=uniteArtUn(artStkCours),pu=stkPaUnit();
   if(_stkSens!=='in'||pu<=0){
     inf.textContent=(_stkSens==='in'&&!(artStkCours.pa>0))
       ? (fr?'Sans lui, l\'app ne peut pas calculer ton bénéfice.':'Without it, profit cannot be computed.')
@@ -14377,6 +14468,23 @@ function majApercuPaStk(q){
     inf.style.color='var(--O)';return;
   }
   if(_stkPaMode==='t'&&!(q>0)){inf.textContent=fr?'Indique d\'abord la quantité reçue.':'Enter the quantity first.';inf.style.color='var(--O)';return;}
+  // « 4 cartons à 10 000 = 40 000 · soit 416,67/pièce » : le calcul qu'il
+  // ferait de tête, écrit sous ses yeux pendant qu'il tape.
+  if(_stkPaMode==='c'){
+    var _sc2=_stkTailleCont(),_pc=parseFloat(String((document.getElementById('inp-spa')||{}).value||'').replace(',','.'))||0;
+    var _mt=_motContenant(artStkCours,artStkVarCours||null),_nb=(_sc2>0&&q>0)?(q/_sc2):0;
+    var _px2=Number(artStkCours.px)||0;
+    if(_px2>0&&pu>=_px2){
+      inf.style.color='var(--R)';
+      inf.textContent='⚠️ '+(fr?'Ça fait ':'That is ')+fmt(pu)+'/'+u+(fr?' et tu vends à ':' and you sell at ')+fmt(_px2)+' : '+(fr?'tu perds':'you lose')+' '+fmt(pu-_px2)+'/'+u;
+      return;
+    }
+    inf.style.color='var(--M)';
+    inf.textContent=(_nb>0?(fmtQ(Math.round(_nb*100)/100)+' '+_mt+(_nb>1?'s':'')+' × '+fmt(_pc)+' = '+fmt(Math.round(_nb*_pc))+' · '):'')
+      +(fr?'soit ':'that is ')+fmt(pu)+'/'+u
+      +(_px2>0?(' · '+(fr?'bénéfice ':'profit ')+fmt(_px2-pu)+'/'+u):'');
+    return;
+  }
   var px=Number(artStkCours.px)||0;
   if(px>0&&pu>=px){
     inf.style.color='var(--R)';
