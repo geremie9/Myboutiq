@@ -1579,6 +1579,14 @@ body{max-width:min(100%,1200px)}
     <div id="topventes" style="display:none"></div>
     <div class="shdr"><span class="stit" id="sec-lbl">⭐</span><button class="sact" id="btn-add" onclick="ouvrirPorteArticles()" style="display:none">+ Ajouter</button></div>
     <div class="cash-guide" id="cash-guide">🟢 Taper = +1 · 💰 Prix · 🔴 ✕ = -1</div>
+    <!-- ⚠️⚠️ 256 ARTICLES SUR 687, DANS LES VRAIES BOUTIQUES, NE PEUVENT PAS
+         ÊTRE VENDUS. Deux boutiques n'ont RIEN de vendable, quatre en ont la
+         moitié. Rien ne le leur disait : les tuiles étaient là, elles avaient
+         l'air normales, et elles ne répondaient pas. On le dit en haut de la
+         caisse, avec le seul geste qui répare. -->
+    <div id="caisse-sansprix" style="display:none;margin:0 15px 10px;background:#FFF3E0;border:1.5px solid #FFB74D;
+         border-radius:12px;padding:10px 12px;font-size:12px;font-weight:800;color:#B45309;cursor:pointer"
+         onclick="ouvrirPrixVite()"></div>
     <div class="pgrid" id="pgrid"></div>
     <div style="height:20px"></div>
   </div>
@@ -2700,7 +2708,21 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>  </div>
 
-  <!-- CATALOGUE REGIONAL -->
+  <!-- LES PRIX QUI MANQUENT, TOUS D'UN COUP -->
+<div class="ov" id="ov-prixvite" onclick="closeOv(event,'ov-prixvite')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="pxv-tit">💰 Leurs prix</div><button class="bcl" onclick="closeSheet('ov-prixvite')">✕</button></div>
+    <div class="pstps">
+      <div style="font-size:12px;font-weight:700;color:var(--M);margin-bottom:11px;line-height:1.5" id="pxv-hint"></div>
+      <div id="pxv-lst" style="max-height:52vh;overflow-y:auto;margin-bottom:12px"></div>
+      <div class="pied-collant">
+        <button class="bnxt" onclick="enregPrixVite()"><span id="pxv-ok">Enregistrer les prix</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CATALOGUE REGIONAL -->
   <div class="ov" id="ov-catalog" onclick="closeOv(event,'ov-catalog')">
     <div class="bsht"><div class="shndl"></div>
       <div class="shhdr"><div class="shtit">🗺️ Modèles de la région</div><button class="bcl" onclick="closeSheet('ov-catalog')">✕</button></div>
@@ -3538,7 +3560,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.74'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.75'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6612,12 +6634,107 @@ function toucheArticle(pid){
 // Dit une seule fois par session : la question « qu'est-ce que tu vends ? »
 // posée à voix haute sur une boutique vide.
 var _ditQuoiVendre=false;
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ LES PRIX QUI MANQUENT, TOUS D'UN COUP
+//
+//  Mesuré sur les 47 boutiques : 256 articles invendables, dont 252 venus
+//  du choix en photos. Ces boutiques-là existent déjà — les corriger un par
+//  un, c'est 256 fois quatre gestes. Ici c'est une liste, un nombre par
+//  ligne, une validation.
+//
+//  ⚠️ CETTE LISTE NE TRAITE QUE CE QU'ELLE SAIT TRAITER : un article simple
+//  dont il ne manque QUE le prix de vente. Une famille (chaque variante a
+//  son prix) et un article encore sans nom demandent autre chose — ils sont
+//  montrés quand même, avec le lien qui ouvre leur vraie fiche. Une liste
+//  qui prétendrait tout réparer d'un nombre mentirait sur deux cas.
+// ══════════════════════════════════════════════════════════════════
+function _articlesSansPrix(){
+  return (DB&&DB.articles||[]).filter(function(p){
+    try{return articleIncomplet(p);}catch(e){return false;}
+  });
+}
+// Le cas simple : un nom vrai, pas de variantes, il ne manque que le prix.
+function _prixSeulManque(p){
+  if(!p||(p.vr&&p.vr.length))return false;
+  if(p._autoNm&&txtNorm(p.nm)===txtNorm(p._autoNm))return false;
+  return !(p.px>0);
+}
+function majBandeauSansPrix(){
+  var z=document.getElementById('caisse-sansprix');if(!z||!DB)return;
+  if(!(role==='patron'||hasPerm('produits'))){z.style.display='none';return;}
+  var n=_articlesSansPrix().length,fr=(lang==='fr');
+  if(!n){z.style.display='none';z.textContent='';return;}
+  z.style.display='block';
+  z.textContent='⚠️ '+n+' '+(fr?('article'+(n>1?'s':'')+' que tu ne peux pas vendre — '+(n>1?'mets leurs prix':'mets son prix')+' ›')
+                               :('item'+(n>1?'s':'')+' cannot be sold — set '+(n>1?'their prices':'its price')+' ›'));
+}
+var _pxvIds=[];
+function ouvrirPrixVite(){
+  if(!(role==='patron'||hasPerm('produits'))){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  var fr=(lang==='fr'),lst=_articlesSansPrix();
+  if(!lst.length){showToast('👍 '+(fr?'Tous tes articles ont un prix':'All items have a price'));return;}
+  _pxvIds=[];
+  document.getElementById('pxv-hint').textContent=fr
+    ?('Ces articles ne partent pas au panier tant qu\'ils n\'ont pas de prix. Écris ce que tu vends, ligne par ligne — le reste est déjà là.')
+    :('These items cannot be sold until they have a price.');
+  document.getElementById('pxv-ok').textContent=fr?'Enregistrer les prix':'Save the prices';
+  document.getElementById('pxv-lst').innerHTML=lst.map(function(p){
+    var media='';
+    try{media=p.img?('<img src="'+p.img+'" style="width:34px;height:34px;border-radius:9px;object-fit:cover;flex-shrink:0">')
+                   :('<span style="width:34px;height:34px;border-radius:9px;background:var(--BG);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">'+(p.e||'📦')+'</span>');}catch(e){}
+    if(_prixSeulManque(p)){
+      _pxvIds.push(p.id);
+      return '<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--BG)">'
+        +media+'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:800;color:var(--T);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.nm+'</div>'
+        +(Number(getStk(p))>0?('<div style="font-size:10px;font-weight:700;color:var(--M)">'+fmtQ(getStk(p))+' '+uniteArt(p)+' '+(fr?'en stock':'in stock')+'</div>'):'')
+        +'</div>'
+        +'<input class="pi sm" type="number" inputmode="numeric" data-pxv="'+p.id+'" placeholder="'+(fr?'Prix':'Price')+'" style="width:96px;margin:0;flex-shrink:0;text-align:right">'
+        +'</div>';
+    }
+    // Famille, ou nom jamais personnalisé : sa fiche, pas un nombre.
+    return '<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--BG)">'
+      +media+'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:800;color:var(--T)">'+p.nm+'</div>'
+      +'<div style="font-size:10px;font-weight:700;color:var(--M)">'+(fr?((p.vr&&p.vr.length)?'chaque variante a son prix':'il manque son nom'):'needs its own screen')+'</div></div>'
+      +'<button type="button" class="mini-btn blue" onclick="pxvOuvrirFiche('+p.id+')">'+(fr?'Ouvrir':'Open')+'</button>'
+      +'</div>';
+  }).join('');
+  document.getElementById('ov-prixvite').classList.add('show');
+}
+function pxvOuvrirFiche(id){
+  var p=(DB.articles||[]).find(function(x){return x.id===id;});if(!p)return;
+  closeSheet('ov-prixvite');
+  ouvrirCompleterArticle(p);
+}
+function enregPrixVite(){
+  var fr=(lang==='fr'),n=0;
+  Array.prototype.forEach.call(document.querySelectorAll('#pxv-lst [data-pxv]'),function(inp){
+    var v=Math.round((parseFloat(String(inp.value||'').replace(',','.'))||0)*100)/100;
+    if(!(v>0))return;
+    var p=(DB.articles||[]).find(function(x){return x.id===Number(inp.dataset.pxv);});
+    if(!p)return;
+    var av=Number(p.px)||0;
+    p.px=v;
+    // ⚠️ Le nom auto ne doit plus faire passer l'article pour incomplet une
+    // fois qu'il a un prix : sinon la tuile resterait rouge sans raison.
+    delete p._autoNm;delete p._srcName;
+    try{journalAjouter('prix',p.nm,fmt(av),fmt(v));}catch(e){}
+    n++;
+  });
+  if(!n){showToast('💰 '+(fr?'Écris au moins un prix':'Type at least one price'));return;}
+  save();
+  renderProd(DB.articles);renderStock(DB.articles);
+  closeSheet('ov-prixvite');
+  var reste=_articlesSansPrix().length;
+  showToast('✅ '+n+' '+(fr?('prix enregistré'+(n>1?'s':'')):('price'+(n>1?'s':'')+' saved'))
+    +(reste?(' · '+reste+' '+(fr?'restant'+(reste>1?'s':''):'left')):''));
+}
 function renderProd(lst){
   // La grille est reconstruite : le panneau des variantes n'y survivrait pas,
   // on le referme proprement plutôt que d'en garder une référence morte.
   try{fermerVarInline();}catch(e){}
   try{renderTopVentes();}catch(e){}
   lst=appliquerOrdrePrio(lst);
+  try{majBandeauSansPrix();}catch(e){}
   var g=document.getElementById('pgrid');g.innerHTML='';
   if(!lst.length){
     var fr=lang==='fr';
@@ -6683,7 +6800,7 @@ function renderProd(lst){
       var livePq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
       // Nom jamais personnalisé -> pas de vente possible : on complète d'abord
       if(articleIncomplet(p)){
-        if(role==='patron'||hasPerm('produits'))ouvrirCompleterArticle(p);
+        if(role==='patron'||hasPerm('produits'))ouvrirCompleterArticle(p,null,true);
         else showToast('⏳ '+(lang==='fr'?'Article en préparation — demande au patron':'Item being prepared — ask the owner'));
         return;
       }
@@ -6900,8 +7017,29 @@ function cmpModifierNom(){
 // séparées (ctxvNom, ctxvPrix, ctxvAchat, ctxvStock…), chacune un prompt().
 // On branche donc la variante sur le formulaire existant, au lieu d'en
 // écrire un troisième. `vidFocus` dit sur laquelle se poser.
-function ouvrirCompleterArticle(p,vidFocus){
-  _cmpArt=p;
+// ⚠️⚠️ MESURÉ SUR LES 47 BOUTIQUES RÉELLES, le 10 septembre :
+//   256 articles sur 687 NE PEUVENT PAS ÊTRE VENDUS — ils n'ont pas de prix.
+//   252 d'entre eux (98 %) viennent du choix en photos : 63 % de ce qui est
+//   choisi en photos est une tuile morte, contre 1 % de ce qui est saisi à
+//   la main. 58 de ces articles ont même du stock enregistré — il a fait le
+//   travail de ranger sa marchandise dans un article qu'il ne peut pas vendre.
+//   Deux boutiques n'ont RIEN de vendable. Quatre en ont la moitié ou plus.
+//   Et treize boutiques ont vendu UN SEUL JOUR : 22 articles installés,
+//   2 ventes, puis un mois à rouvrir l'app sans jamais revendre.
+//
+//   Voilà ce qu'il voit devant son client : il touche l'article, et au lieu
+//   d'une vente il reçoit un formulaire. Une fois. Deux fois. Il range le
+//   téléphone.
+//
+// ⭐ LE PRIX EST LA SEULE CHOSE QUE L'APP NE PEUT PAS DEVINER — mais elle
+//   peut ne demander QUE ça, et rendre la vente tout de suite après. C'est
+//   le sens de `_cmpVendreApres` : quand la fiche s'ouvre depuis la caisse,
+//   l'article part au panier dès que le prix est écrit. La vente ne s'arrête
+//   plus, elle attend un nombre.
+var _cmpVendreApres=false;
+function ouvrirCompleterArticle(p,vidFocus,pourVendre){
+  _cmpArt=_memeArt(p);p=_cmpArt;
+  _cmpVendreApres=!!pourVendre;
   var fr=lang==='fr',fam=!!(p.vr&&p.vr.length);
   var nomAuto=!!(p._autoNm&&txtNorm(p.nm)===txtNorm(p._autoNm));
   // ⚠️ ON NE RÉCLAME QUE CE QUI MANQUE VRAIMENT.
@@ -7700,8 +7838,29 @@ function validerCompleter(){
   save();if(typeof initTabs==='function')initTabs();
   renderProd(DB.articles);renderStock(DB.articles);
   closeSheet('ov-completer');
+  // ⭐ LA VENTE REPREND OÙ ELLE S'ÉTAIT ARRÊTÉE. Avant, l'app disait « prêt à
+  // vendre ! » et laissait le panier vide : il fallait retoucher la tuile.
+  // Devant un client, ce deuxième geste est celui qu'on ne fait pas.
+  if(_cmpVendreApres&&!articleIncomplet(p)){
+    _cmpVendreApres=false;
+    showToast('✅ '+p.nm+((p.px>0)?(' — '+fmt(p.px)):'')+(fr?' · on continue':' · carry on'));
+    try{_reprendreVente(p);}catch(e){}
+    try{_proposerRattrapagePrixAchat(p);}catch(e){}
+    return;
+  }
+  _cmpVendreApres=false;
   showToast('✅ '+p.nm+' — '+(fr?'prêt à vendre !':'ready to sell!'));
   try{_proposerRattrapagePrixAchat(p);}catch(e){}
+}
+// Le même geste que la tuile de la caisse, une fois l'article complet : une
+// famille ouvre ses variantes, un article au kilo demande sa quantité, tout
+// le reste part directement au panier.
+function _reprendreVente(p){
+  if(!p)return;
+  var d=document.getElementById('pc-'+p.id);
+  if(p.vr&&p.vr.length){if(d)ouvrirVarInline(p,d);return;}
+  if(estMesure(p)){ouvrirQteMesure(p);return;}
+  addPanier(p,null);
 }
 // ⚠️ CE QUE J'AVAIS RATÉ, ET QUI RENDAIT LE BOUTON « CORRIGER » MENSONGER.
 // Le rapport lit le prix d'achat inscrit SUR LA VENTE au moment où elle a
@@ -12881,6 +13040,10 @@ function initCatGrid(){var g=document.getElementById('cgrd');g.innerHTML='';var 
 // sont devinées, et l'article est vendable tout de suite.
 // ═══════════════════════════════════════════
 var _expListe=[];
+// Combien d'articles sans prix ont déjà été signalés : la deuxième tape sur
+// le bouton doit être un choix, pas un réflexe — et si la liste change entre
+// les deux, on re-signale.
+var _expForcer=-1;
 // ⚠️⚠️ LE DÉFAUT LE PLUS GRAVE DE TOUT CE PARCOURS, ET IL ÉTAIT INVISIBLE.
 // `_expListe=[]` en première ligne. Or DEUX écrans remplissent cette liste
 // puis appellent cette fonction pour la montrer : le choix en images (600
@@ -12898,6 +13061,7 @@ function expOuvrirSaisie(){
   var c=document.getElementById('exp-nm');if(c)try{c.focus();}catch(e){}
 }
 function ouvrirAjoutExpress(garder){
+  _expForcer=-1;
   if(!(role==='patron'||hasPerm('produits')))return;
   if(!garder)_expListe=[];
   ['exp-nm','exp-pa','exp-pv','exp-stk','exp-parc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
@@ -13202,6 +13366,7 @@ var _expOuvert=-1;
 function expRender(){
   var fr=lang==='fr',box=document.getElementById('exp-liste'),c=document.getElementById('exp-compte');
   var btn=document.getElementById('exp-valider'),lbl=document.getElementById('exp-valider-l');
+  _expForcer=-1;   // la liste change : le bouton redit ce qu'il fait
   if(!_expListe.length){
     box.innerHTML='';c.textContent='';
     if(btn)btn.style.display='none';
@@ -13300,15 +13465,37 @@ function expCreerTous(){
   // il ne comprend pas pourquoi. On le dit AVANT, on nomme les articles
   // concernés, et on le laisse décider : refuser bloquerait quelqu'un qui
   // veut vraiment finir plus tard.
+  // ⚠️⚠️ LA MISE EN GARDE NE SUFFISAIT PAS, ET LA MESURE LE DIT.
+  // Elle existe depuis le 6 septembre. La seule boutique créée APRÈS elle a
+  // huit articles choisis en photos — et huit sans prix. Un `confirm()` du
+  // navigateur ne peut recevoir qu'un « OK » : c'est le geste le plus facile
+  // de l'écran, plus facile que d'écrire le nombre. On ne peut pas gagner
+  // contre ça avec un texte.
+  //
+  // Alors on ne demande plus la permission : on l'AMÈNE au premier champ
+  // vide. Le curseur s'y pose, les champs manquants passent en rouge, et le
+  // bouton dit exactement ce qu'il fera au coup suivant. Refuser tout net
+  // bloquerait celui qui veut vraiment finir plus tard — il lui reste donc
+  // une deuxième tape, mais elle est délibérée, pas distraite.
   var _sansPx=_expListe.filter(function(a){return !(a.px>0);});
-  if(_sansPx.length){
-    var _noms=_sansPx.slice(0,4).map(function(a){return '· '+a.nm;}).join('\n')
-              +(_sansPx.length>4?('\n· … et '+(_sansPx.length-4)+' autres'):'');
-    if(!confirm((fr?(_sansPx.length===1?'Cet article n\'a pas de prix de vente :':(_sansPx.length+' articles n\'ont pas de prix de vente :'))
-                  :(_sansPx.length+' item(s) have no sell price:'))+'\n\n'+_noms+'\n\n'
-      +(fr?'Sans prix, ils ne pourront pas être vendus et resteront marqués en orange.\n\nLes créer quand même ?'
-          :'Without a price they cannot be sold.\n\nCreate them anyway?')))return;
+  if(_sansPx.length&&_expForcer!==_sansPx.length){
+    _expForcer=_sansPx.length;
+    try{
+      var _vides=Array.prototype.filter.call(
+        document.querySelectorAll('#ov-express input[type=number]'),
+        function(x){return /Prix de vente|Sell price/i.test(x.placeholder||'')&&!(parseFloat(x.value)>0);});
+      _vides.forEach(function(x){x.style.borderColor='var(--R)';x.style.background='#FFF5F5';});
+      if(_vides[0]){_vides[0].scrollIntoView({block:'center'});_vides[0].focus();}
+    }catch(e){}
+    var _b=document.getElementById('exp-valider-l');
+    if(_b)_b.textContent=fr?('Créer quand même — '+_sansPx.length+' sans prix')
+                           :('Create anyway — '+_sansPx.length+' without price');
+    showToast('💰 '+(fr?(_sansPx.length===1?'Un article n\'a pas de prix : il ne pourra pas être vendu'
+                                           :(_sansPx.length+' articles n\'ont pas de prix : ils ne pourront pas être vendus'))
+                      :(_sansPx.length+' without price — they cannot be sold')));
+    return;
   }
+  _expForcer=-1;
   var sansPa=0,dejaLa=[];
   _expListe.forEach(function(a){
     // ⚠️ Ce chemin ne vérifiait RIEN. L'ajout à la main et le choix en photos
