@@ -1255,8 +1255,14 @@ body{max-width:min(100%,1200px)}
   <input type="file" id="inp-photo-var-ctx" accept="image/*" style="display:none" onchange="uploadPhotoVarCtx(event)">
 </div>
 <div class="ctxm" id="ctxm">
-  <div class="ctxi" onclick="ctxPV()">✏️ <span id="cx1">Modifier prix vente</span></div>
-  <div class="ctxi" onclick="ctxRC()">💰 <span id="cx2">Reconfigurer prix</span></div>
+  <!-- ⚠️ DEUX ENTRÉES POUR LE PRIX, ET RIEN NE DISAIT LA DIFFÉRENCE.
+       « Modifier prix vente » ouvrait la fiche à deux champs ; « Reconfigurer
+       prix » ouvrait un calculateur d'achat par carton. Deux noms, deux
+       écrans, aucune explication — et depuis la 21.68 ce calcul se fait
+       mieux au moment de l'achat, dans la fiche de stock.
+       Une seule entrée : « Prix ». Le calculateur reste à UNE tape de là,
+       dans la fiche, sous un nom qui dit à quoi il sert. -->
+  <div class="ctxi" onclick="ctxPV()">💰 <span id="cx1">Prix</span></div>
   <div class="ctxi" onclick="ctxAV()">🔀 <span id="cx3">Ajouter variante</span></div>
   <div class="ctxi" id="ctxi-gros" onclick="ctxGros()"><span class="ctxi-emo">📦</span> <span id="cx3b">Vendre par carton</span></div>
   <div class="ctxi" id="ctxi-cond" onclick="ctxCond()"><span class="ctxi-emo">📦</span> <span id="cxcond">Corriger le conditionnement</span></div>
@@ -2371,7 +2377,7 @@ body{max-width:min(100%,1200px)}
              reste collée en bas, toujours sous le pouce. -->
         <div class="pied-collant">
           <button class="bnxt" onclick="saveR()" id="btn-save-r">💾 <span id="lbl-save-r">Enregistrer</span></button>
-          <button class="bbk" style="margin-top:7px;justify-content:center;width:100%" onclick="selArt(artCours,false)" id="btn-reconf">Reconfigurer →</button>
+          <button class="bbk" style="margin-top:7px;justify-content:center;width:100%" onclick="selArt(artCours,false)" id="btn-reconf">Je connais seulement le prix du carton →</button>
         </div>
       </div>
       <!-- Step 1 -->
@@ -3534,7 +3540,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.68'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.69'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7955,8 +7961,7 @@ function showCtx(e,p){
   var m=document.getElementById('ctxm');m.classList.add('show');
   var x=Math.min(e.clientX,window.innerWidth-195),y=Math.min(e.clientY,window.innerHeight-290);
   m.style.left=x+'px';m.style.top=y+'px';
-  document.getElementById('cx1').textContent=lang==='fr'?'Modifier prix vente':'Edit sell price';
-  document.getElementById('cx2').textContent=lang==='fr'?'Reconfigurer prix':'Reconfigure price';
+  document.getElementById('cx1').textContent=lang==='fr'?'Prix':'Price';
   document.getElementById('cx3').textContent=lang==='fr'?'Ajouter variante':'Add variant';
   // Le mot du commerçant, pas « carton » par défaut : c'est la leçon de
   // « IL NE FAUT PAS QUE ÇA SOIT CARTON PARTOUT », qui n'avait jamais
@@ -8006,6 +8011,9 @@ function showCtx(e,p){
   setTimeout(function(){document.addEventListener('click',function h(){document.getElementById('ctxm').classList.remove('show');document.removeEventListener('click',h);});},100);
 }
 function ctxPV(){if(!artCtx||!peutModifierPrix())return;document.getElementById('ctxm').classList.remove('show');artCours=artCtx;ouvrirModifR(artCtx);}
+// Le calculateur d'achat par carton. Il n'a plus d'entrée dans le menu — on
+// y arrive depuis la fiche Prix, sous « Je connais seulement le prix du
+// carton ». La fonction reste : c'est un chemin, pas un doublon.
 function ctxRC(){if(!artCtx||!peutModifierPrix())return;document.getElementById('ctxm').classList.remove('show');artCours=artCtx;selArt(artCtx,false);document.getElementById('ov-prix').classList.add('show');}
 function ctxPhoto(){if(!artCtx)return;document.getElementById('inp-photo-real-ctx').click();}
 // ══════════════════════════════════════════════════════════════════
@@ -17469,7 +17477,17 @@ function suggererArchivage(){
 var _logoutBase=logout;logout=function(){clientVente=null;remisePoints=0;remiseVente=0;_logoutBase();};
 viderPanier=function(){panier={};remisePoints=0;remiseVente=0;consignePrises=0;consigneRendues=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');};
 function renderClientVenteList(){var c=document.getElementById('client-vente-list');if(!c||!DB)return;c.innerHTML=DB.clients.length?DB.clients.map(function(cl){majNiveauClient(cl);return '<div class="hist-sale" onclick="choisirClientVente('+cl.id+')"><div class="hist-h"><div><div class="hist-d">'+cl.nm+'</div><div class="hist-s">'+cl.niveau+' · '+(cl.points||0)+' pts</div></div><div class="hist-t">'+fmt(cl.credit||0)+'</div></div></div>';}).join(''):'<div class="dash-empty">Aucun client enregistré</div>'; }
-function ouvrirClientVente(){renderClientVenteList();document.getElementById('ov-client-vente').classList.add('show');}
+// ⚠️⚠️ « LE CARNET EST VIDE » — MESURÉ DANS L'ÉTUDE DE PARCOURS :
+// une vente comptant coûte 4 gestes, la première vente à crédit en coûtait
+// ONZE. Au septième, l'app le conduisait à une liste de ZÉRO client avec un
+// bouton « ➕ Nouveau client » à trouver — pendant qu'un client attend
+// devant le comptoir. On l'avait mené jusqu'à une porte fermée.
+// Quand il n'y a personne dans le carnet, il n'y a rien à choisir : on ouvre
+// directement sur la création, champ « Nom » et clavier. Onze gestes → huit.
+function ouvrirClientVente(){
+  if(DB&&DB.clients&&!DB.clients.length){nouveauClientPourVente();return;}
+  renderClientVenteList();document.getElementById('ov-client-vente').classList.add('show');
+}
 function choisirClientVente(id){clientVente=DB.clients.find(function(c){return c.id===id;})||null;remisePoints=0;updateClientVenteUI();closeSheet('ov-client-vente');showToast(clientVente?'👤 '+clientVente.nm+' sélectionné':'Client retiré');}
 function retirerClientVente(){clientVente=null;remisePoints=0;updateClientVenteUI();closeSheet('ov-client-vente');showToast('Client retiré');}
 // ═══ Créer le client SANS quitter la vente ═══
