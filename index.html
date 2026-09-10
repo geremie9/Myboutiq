@@ -3540,7 +3540,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.69'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.70'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -14593,12 +14593,16 @@ function renderRpt(){
   var c=document.getElementById('rpt-cont');if(!c)return;
   // Top articles DU JOUR (cohérent avec le résumé du jour affiché juste au-dessus).
   // Avant : p.vd = total DEPUIS TOUJOURS, ce qui ne disait rien de la journée.
-  var qteJour=qteVendueParArticle(0);
+  // ⭐ Toutes les cartes lisent CETTE liste et CE nombre de jours. Une seule
+  // source pour l'écran entier : impossible qu'une carte parle d'hier pendant
+  // qu'une autre parle du mois.
+  var _vp=_rptVentes(), _jp=_rptJours(), _motP=_rptMot();
+  var qteJour=qteVendueParArticle(_jp);
   var top5=Array.from(DB.articles).filter(function(p){return (qteJour[p.id]||0)>0;})
             .sort(function(a,b){return (qteJour[b.id]||0)-(qteJour[a.id]||0);}).slice(0,5);
   var maxVd=Math.max.apply(null,top5.map(function(p){return qteJour[p.id]||0;}).concat([1]));
   var al=DB.articles.filter(function(p){var ts=getStk(p);return ts<=p.al&&p.al>0;});
-  var vr=DB.ventes.slice(-5).reverse();
+  var vr=_vp.slice(-5).reverse();
   var barColors=['#4A6CF7','#27AE60','#F5A623','#E74C3C','#9B59B6'];
   var topChartHtml='<div class="bchart-wrap">'+(top5.map(function(p,i){
     var q=qteJour[p.id]||0;
@@ -14623,17 +14627,23 @@ function renderRpt(){
   // Coût des ventes DU JOUR : on additionne le prix d'achat figé sur chaque ligne
   // vendue aujourd'hui. (Avant : pa × vd = coût DEPUIS TOUJOURS, comparé au CA du
   // jour -> marge et camembert faux dès que la boutique avait de l'historique.)
-  var ta=getCaisseSales().reduce(function(s,v){
+  var ta=_vp.reduce(function(s,v){
     return s+(v.lignes||[]).reduce(function(x,l){return x+(Number(l.pa)||0)*(Number(l.qte||l.qty)||0);},0);
   },0);
-  var m=totalV>0?Math.round(totalB/totalV*100):0;
+  // ⚠️ On ne lit plus totalV/totalB/nbT : ces variables-là ne connaissent que
+  // la caisse du jour. Sur « ce mois », elles auraient affiché le chiffre
+  // d'aujourd'hui à côté des ventes du mois — deux périodes sur une carte.
+  var _V=_vp.reduce(function(a2,v){return a2+Number(v.total||0);},0);
+  var _B=_vp.reduce(function(a2,v){return a2+getSaleBenef(v);},0);
+  var _N=_vp.length;
+  var m=_V>0?Math.round(_B/_V*100):0;
   // DU JOUR, et non depuis toujours. Avant, ça ne se voyait pas parce que la
   // clôture vidait la liste ; maintenant qu'on garde l'historique, additionner
   // tout retrancherait les dépenses de l'année au bénéfice d'aujourd'hui.
-  var totalDep=totalDepJour();
-  var benNet=totalB-totalDep;
+  var totalDep=_rptDepenses().reduce(function(s2,d){return s2+(Number(d.amt)||0);},0);
+  var benNet=_B-totalDep;
   // Donut CA = coût + bénéfice
-  var coutPct=totalV>0?Math.round(ta/totalV*100):0;
+  var coutPct=_V>0?Math.round(ta/_V*100):0;
   // ── Graphique évolution 7 jours ──
   var days7=[],today=new Date();
   for(var dd=6;dd>=0;dd--){var d2=new Date(today);d2.setDate(d2.getDate()-dd);days7.push(d2.toLocaleDateString('fr-FR'));}
@@ -14649,14 +14659,18 @@ function renderRpt(){
     var clr=isToday?'var(--A)':'var(--B)';
     return '<div class="evo-bar-col"><div class="evo-val">'+(evo7[i]>0?(evo7[i]>=1000?Math.round(evo7[i]/1000)+'k':evo7[i]):'')+'</div><div class="evo-bar" style="height:'+Math.max(4,pct)+'%;background:'+(evo7[i]>0?clr:'var(--BD)')+'"></div><div class="evo-day" style="color:'+(isToday?'var(--A)':'var(--M)')+'">'+nm+'</div></div>';
   }).join('');
-  var evoHtml='<div class="rcd"><div class="rctit">📈 '+(lang==='fr'?'Évolution 7 jours':'7-day trend')+'</div><div class="evo-wrap"><div class="evo-bars">'+evoBarsHtml+'</div></div></div>';
+  // La courbe des 7 jours reste ce qu'elle est : sept jours. Sur « ce mois »
+  // elle raconterait une autre période que les cartes au-dessus — on le DIT
+  // dans son titre plutôt que de la faire mentir ou de la cacher.
+  var evoHtml='<div class="rcd"><div class="rctit">📈 '+(lang==='fr'?'Évolution — 7 derniers jours':'Trend — last 7 days')+'</div><div class="evo-wrap"><div class="evo-bars">'+evoBarsHtml+'</div></div></div>';
   var benPct=100-coutPct;
   var donGrad='conic-gradient(#E74C3C 0% '+coutPct+'%, #27AE60 '+coutPct+'% 100%)';
   c.innerHTML=
-    '<div class="rcd"><div class="rctit">📊 '+(lang==='fr'?'Résumé du jour':'Daily Summary')+'</div>'+
-    '<div class="rrow"><span class="rlbl">💰 '+(lang==='fr'?'Chiffre d\'affaires':'Revenue')+'</span><span class="rval a">'+fmt(totalV)+'</span></div>'+
+    _rptBarrePeriodes()+
+    '<div class="rcd"><div class="rctit">📊 '+(lang==='fr'?('Résumé '+_motP):('Summary '+_motP))+'</div>'+
+    '<div class="rrow"><span class="rlbl">💰 '+(lang==='fr'?'Chiffre d\'affaires':'Revenue')+'</span><span class="rval a">'+fmt(_V)+'</span></div>'+
     '<div class="rrow"><span class="rlbl">🛒 '+(lang==='fr'?'Coût des ventes':'Cost of sales')+'</span><span class="rval r">-'+fmt(ta)+'</span></div>'+
-    '<div class="rrow"><span class="rlbl">📈 '+(lang==='fr'?'Bénéfice brut':'Gross profit')+'</span><span class="rval '+(totalB<0?'r':'g')+'">'+fmt(totalB)+'</span></div>'+
+    '<div class="rrow"><span class="rlbl">📈 '+(lang==='fr'?'Bénéfice brut':'Gross profit')+'</span><span class="rval '+(_B<0?'r':'g')+'">'+fmt(_B)+'</span></div>'+
     // Un bénéfice négatif vient presque toujours d'un prix d'achat qui est en
     // réalité celui du gros. On NOMME les coupables au lieu de laisser le
     // patron douter de toute son application.
@@ -14673,7 +14687,7 @@ function renderRpt(){
     (function(){
       // Honnêteté : on montre la part du chiffre d'affaires dont le bénéfice
       // est inconnu, au lieu de la compter comme du bénéfice.
-      var inc=getCaisseSales().reduce(function(s,v){return s+getSaleCAInconnu(v);},0);
+      var inc=_vp.reduce(function(s,v){return s+getSaleCAInconnu(v);},0);
       if(inc<=0)return '';
       // La ligne n'était qu'un constat. Elle ouvre maintenant la réparation.
       return '<div class="rrow" style="cursor:pointer" onclick="ouvrirReparerBenefice()"><span class="rlbl" style="color:var(--O)">⚠️ '+(lang==='fr'?'Ventes sans prix d\'achat':'Sales without cost')+'<div style="font-size:9.5px;font-weight:600;color:var(--B);text-decoration:underline">'+(lang==='fr'?'bénéfice inconnu — touche pour corriger':'profit unknown — tap to fix')+'</div></span><span class="rval" style="color:var(--O)">'+fmt(inc)+'</span></div>';
@@ -14683,10 +14697,10 @@ function renderRpt(){
       // l'argent qu'on garde pour le rendre. On l'affiche à part, avec ce
       // qu'il reste à devoir depuis toujours.
       var fr=lang==='fr';
-      var jour=getCaisseSales().reduce(function(s,v){return s+(Number(v.consigne)||0);},0);
+      var jour=_vp.reduce(function(s,v){return s+(Number(v.consigne)||0);},0);
       var total=(DB.ventes||[]).reduce(function(s,v){return s+((v&&!v.annulee)?(Number(v.consigne)||0):0);},0);
       if(!jour&&!total)return '';
-      return '<div class="rrow"><span class="rlbl" style="color:#B45309">🍾 '+(fr?'Consignes du jour':'Deposits today')
+      return '<div class="rrow"><span class="rlbl" style="color:#B45309">🍾 '+(fr?('Consignes '+_motP):'Deposits')
         +'<div style="font-size:9.5px;font-weight:600;color:var(--M)">'+(fr?'argent gardé pour être rendu — ni chiffre d\'affaires ni bénéfice':'held to be returned')
         +(total?('<br>'+(fr?'tu dois en tout : ':'you owe in total: ')+fmt(total)):'')
         +'</div></span><span class="rval" style="color:#B45309">'+(jour>=0?'+':'')+fmt(jour)+'</span></div>';
@@ -14694,9 +14708,9 @@ function renderRpt(){
     '<div class="rrow"><span class="rlbl">💸 '+(lang==='fr'?'Dépenses':'Expenses')+'</span><span class="rval r">-'+fmt(totalDep)+'</span></div>'+
     '<div class="rrow"><span class="rlbl">💎 '+(lang==='fr'?'Bénéfice NET':'NET Profit')+'</span><span class="rval '+(benNet<0?'r':'g')+'" style="font-size:17px;font-weight:900">'+fmt(benNet)+'</span></div>'+
     '<div class="rrow"><span class="rlbl">📉 '+(lang==='fr'?'Marge':'Margin')+'</span><span class="rval">'+m+'%</span></div>'+
-    '<div class="rrow"><span class="rlbl">🧾 '+(lang==='fr'?'Transactions':'Transactions')+'</span><span class="rval">'+nbT+'</span></div></div>'+
+    '<div class="rrow"><span class="rlbl">🧾 '+(lang==='fr'?'Transactions':'Transactions')+'</span><span class="rval">'+_N+'</span></div></div>'+
     (function(){
-      var pb=paiementBreakdownJour();
+      var pb=paiementBreakdown(_vp);
       var rows=[
         ['💵',lang==='fr'?'Espèces':'Cash',pb.especes],
         ['🟠','Orange Money',pb.orange],
@@ -14715,14 +14729,14 @@ function renderRpt(){
       if(!rows.length)return '';
       return '<div class="rcd"><div class="rctit">💳 '+(lang==='fr'?'Répartition par moyen de paiement':'Breakdown by payment method')+'</div>'+
         rows.map(function(r){return '<div class="rrow"><span class="rlbl">'+r[0]+' '+r[1]+'</span><span class="rval">'+fmt(r[2])+'</span></div>';}).join('')+ligneCons+
-        '<div class="rrow" style="border-top:1px solid var(--BD);margin-top:6px;padding-top:9px"><span class="rlbl" style="font-weight:800">'+(lang==='fr'?'💰 Espèces en caisse (à compter)':'💰 Cash in drawer (to count)')+'</span><span class="rval a" style="font-weight:900">'+fmt(pb.especes)+'</span></div>'+
+        ((_rptPer==='jour')?('<div class="rrow" style="border-top:1px solid var(--BD);margin-top:6px;padding-top:9px"><span class="rlbl" style="font-weight:800">'+(lang==='fr'?'💰 Espèces en caisse (à compter)':'💰 Cash in drawer (to count)')+'</span><span class="rval a" style="font-weight:900">'+fmt(pb.especes)+'</span></div>'):'')+
         '</div>';
     })()+
     evoHtml+
     '<div class="rcd"><div class="rctit">🥧 '+(lang==='fr'?'Répartition du chiffre d\'affaires':'Revenue breakdown')+'</div>'+
-    '<div class="don-wrap"><div style="width:84px;height:84px;border-radius:50%;background:'+(totalV>0?donGrad:'var(--BG)')+'"></div>'+
-    '<div class="don-legend"><div class="don-lg-row"><span class="don-dot" style="background:#E74C3C"></span>'+(lang==='fr'?'Coût':'Cost')+' ('+coutPct+'%)</div><div class="don-lg-row"><span class="don-dot" style="background:#27AE60"></span>'+(lang==='fr'?'Bénéfice':'Profit')+' ('+(totalV>0?benPct:0)+'%)</div></div></div></div>'+
-    '<div class="rcd"><div class="rctit">🏆 '+(lang==='fr'?'Top articles aujourd\'hui':'Top items today')+'</div>'+topChartHtml+'</div>'+
+    '<div class="don-wrap"><div style="width:84px;height:84px;border-radius:50%;background:'+(_V>0?donGrad:'var(--BG)')+'"></div>'+
+    '<div class="don-legend"><div class="don-lg-row"><span class="don-dot" style="background:#E74C3C"></span>'+(lang==='fr'?'Coût':'Cost')+' ('+coutPct+'%)</div><div class="don-lg-row"><span class="don-dot" style="background:#27AE60"></span>'+(lang==='fr'?'Bénéfice':'Profit')+' ('+(_V>0?benPct:0)+'%)</div></div></div></div>'+
+    '<div class="rcd"><div class="rctit">🏆 '+(lang==='fr'?('Top articles '+_motP):('Top items '+_motP))+'</div>'+topChartHtml+'</div>'+
     '<div class="rcd"><div class="rctit">⚠️ '+(lang==='fr'?'Alertes stock':'Stock alerts')+'</div>'+
     (al.map(function(p){var ts=getStk(p);return '<div class="tit"><div class="temo">'+p.e+'</div><div class="tinf"><div class="tnm">'+p.nm+'</div><div class="tqt" style="color:'+(ts<=0?'var(--R)':'var(--O)')+'">'+( ts<=0?'⛔ '+(lang==='fr'?'Épuisé':'Out'):'⚠️ '+ts+(lang==='fr'?' restant':'left'))+'</div></div><button onclick="ouvrirStk(DB.articles.find(function(x){return x.id==='+p.id+'}))" style="background:var(--B);color:#fff;border:none;border-radius:7px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">+</button></div>';}).join('')||'<div style="text-align:center;padding:11px;color:var(--G);font-weight:700">'+t('stockOk')+'</div>')+
     '</div>'+
@@ -15413,9 +15427,82 @@ function totalEspecesJour(){
     return s;
   },0);
 }
-function paiementBreakdownJour(){
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ LA PÉRIODE DES RAPPORTS
+//
+//  Diagnostic du 10 septembre : « trois horizons, trois endroits, aucun
+//  choix ». Rapports ne parlait que d'aujourd'hui ; la semaine était dans un
+//  Dashboard éteint par défaut ; les mois dans les Réglages. Un commerçant
+//  qui veut savoir ce qu'il a fait ce mois-ci devait deviner où chercher.
+//
+//  Une seule ligne en haut de l'écran, et TOUTES les cartes suivent : le
+//  résumé, les moyens de paiement, le camembert, les meilleurs articles, les
+//  dernières ventes. Aucune carte n'est ajoutée — on leur donne des bornes.
+//
+//  ⚠️ « CE MOIS » EST LE MOIS DU CALENDRIER, pas trente jours glissants.
+//  Un commerçant dit « mon mois » en pensant du 1er à aujourd'hui : c'est ce
+//  qu'il compare avec le mois d'avant, et c'est ce que dit son cahier.
+//  ⚠️ ET « AUJOURD'HUI » RESTE LA CAISSE OUVERTE (hors ventes clôturées) :
+//  c'est le chiffre qu'il rapproche du tiroir le soir. Les autres périodes
+//  comptent toutes les ventes, clôturées ou non — sinon un mois entier
+//  disparaîtrait au premier soir clôturé.
+// ══════════════════════════════════════════════════════════════════
+var _rptPer='jour';
+// Le nombre de jours que couvre la période, au sens de qteVendueParArticle :
+// 0 = aujourd'hui, sinon N jours en arrière, aujourd'hui compris.
+function _rptJours(){
+  if(_rptPer==='7j')return 7;
+  if(_rptPer==='mois')return new Date().getDate();
+  return 0;
+}
+function _rptVentes(){
+  if(_rptPer==='jour')return getCaisseSales();
+  var d=new Date();d.setHours(0,0,0,0);
+  if(_rptPer==='mois')d.setDate(1); else d.setDate(d.getDate()-6);
+  var lim=d.getTime();
+  return (DB.ventes||[]).filter(function(v){
+    if(!v||v.annulee)return false;
+    try{return getSaleDateObj(v).getTime()>=lim;}catch(e){return false;}
+  });
+}
+function _rptDepenses(){
+  if(_rptPer==='jour')return depensesDuJour();
+  var d=new Date();d.setHours(0,0,0,0);
+  if(_rptPer==='mois')d.setDate(1); else d.setDate(d.getDate()-6);
+  var lim=d.getTime();
+  return (DB.depenses||[]).filter(function(x){
+    if(!x)return false;
+    var t=x.ts?new Date(x.ts).getTime():(parseDateFR(x.date)||{getTime:function(){return 0;}}).getTime();
+    return t>=lim;
+  });
+}
+// « du jour » · « des 7 derniers jours » · « de ce mois » — le même mot dans
+// toutes les cartes, sinon l'écran raconte deux périodes à la fois.
+function _rptMot(){
+  var fr=(lang==='fr');
+  if(_rptPer==='7j')return fr?'des 7 derniers jours':'of the last 7 days';
+  if(_rptPer==='mois')return fr?'de ce mois':'of this month';
+  return fr?'du jour':'today';
+}
+function rptPeriode(per){
+  if(per==='annee'){try{ouvrirAnnee();}catch(e){}return;}
+  _rptPer=per;renderRpt();
+  try{var c=document.querySelector('#s-rapports .mcont');if(c)c.scrollTop=0;}catch(e){}
+}
+function _rptBarrePeriodes(){
+  var fr=(lang==='fr');
+  var opts=[['jour',fr?'Aujourd\'hui':'Today'],['7j',fr?'7 jours':'7 days'],
+            ['mois',fr?'Ce mois':'This month'],['annee',fr?'📅 Mon année':'📅 My year']];
+  return '<div class="stkf-row" style="margin-bottom:11px">'+opts.map(function(o){
+    return '<button class="stkf'+(o[0]===_rptPer?' on':'')+'" onclick="rptPeriode(\''+o[0]+'\')">'+o[1]+'</button>';
+  }).join('')+'</div>';
+}
+function paiementBreakdownJour(){return paiementBreakdown(getCaisseSales());}
+// Le même calcul, sur la liste qu'on lui donne : la clôture garde le jour,
+// les rapports prennent leur période.
+function paiementBreakdown(liste){
   var b={especes:0,orange:0,mtn:0,moov:0,credit:0,remises:0,consignes:0};
-  getCaisseSales().forEach(function(v){
+  (liste||[]).forEach(function(v){
     var p=v.paiement,c=Number(v.consigne)||0;
     b.remises+=(v.remise||0);
     b.consignes+=c;
