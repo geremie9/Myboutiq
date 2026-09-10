@@ -2725,7 +2725,29 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>  </div>
 
-  <!-- LES PRIX QUI MANQUENT, TOUS D'UN COUP -->
+  <!-- ⚠️⚠️ « PAQUET ET CARTON CÔTE À CÔTE, ÇA PEUT PERTURBER LA VENTE EN GROS »
+     MESURÉ, et c'est pire que « perturber » : les deux repères tombaient
+     empilés à 121 px et 143 px, hauts de 19 px — TROIS PIXELS entre deux
+     cibles tactiles, quand un pouce en fait quarante-cinq. Rien ne disait
+     lequel était le carton : même forme, même couleur, même taille, un
+     emoji de 10 px pour seule différence, et le mot seulement dans une
+     infobulle qu'un doigt ne voit jamais. Le prix d'une erreur de tape :
+     540 F au lieu de 6 000, un facteur dix.
+     La tuile fait 119 px de large et les deux repères en réclamaient 154 :
+     il n'y a pas la place pour deux cibles lisibles. Alors un seul repère,
+     et quand l'article a deux étages, il DEMANDE lequel — en toutes
+     lettres, sur des lignes qu'on ne peut pas manquer. -->
+<div class="ov" id="ov-etage" onclick="closeOv(event,'ov-etage')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="etg-tit">📦 Vendre en gros</div><button class="bcl" onclick="closeSheet('ov-etage')">✕</button></div>
+    <div class="pstps">
+      <div style="font-size:12px;font-weight:700;color:var(--M);margin-bottom:12px" id="etg-art"></div>
+      <div id="etg-lst"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LES PRIX QUI MANQUENT, TOUS D'UN COUP -->
 <div class="ov" id="ov-prixvite" onclick="closeOv(event,'ov-prixvite')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="pxv-tit">💰 Leurs prix</div><button class="bcl" onclick="closeSheet('ov-prixvite')">✕</button></div>
@@ -3577,7 +3599,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.77'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.78'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9116,6 +9138,9 @@ function _brancherVar(d,p,v){
       setTimeout(function(){try{demanderPrixGros(p,v);}catch(x){}},160);
       return;
     }
+    var et=ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-etage');
+    if(et){ev.stopPropagation();fermerVarInline();
+      setTimeout(function(){try{choisirEtageGros(null,p.id,et);}catch(x){}},120);return;}
     var gv=ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-grosv');
     if(gv){
       ev.stopPropagation();
@@ -9485,7 +9510,12 @@ function _chipGrosVariante(p,v,cercle){
   // qui portent leur propre prix comme au repere de taille connue.
   var mid='';
   if(cd.par>0&&cd.parTaille>1&&cd.parMot)
-    {var _mv=_milieuDe(p,v);
+    {var _mv=_milieuDe(p,v),_gvv=_grosDe(p,v);
+     // Deux étages sur une variante : une seule puce, qui demande lequel.
+     if(_gvv.n>1&&_mv.n>1)
+       return '<span class="'+cls+'" data-etage="'+v.id+'" title="'
+         +_gvv.mot+' de '+fmtQ(_gvv.n)+' · '+_mv.mot+' de '+fmtQ(_mv.n)+'">'
+         +_emojiCont(_gvv.mot)+' '+(lang==='fr'?'gros ▾':'bulk ▾')+'</span>';
      mid='<span class="'+cls+(_mv.px>0?'':' vide')+'" data-grosdet="'+v.id+'" data-grosn="'+cd.parTaille+'" data-grosmot="'+String(cd.parMot).replace(/"/g,'')+'" title="'
       +(lang==='fr'?('Vendre 1 '+cd.parMot+' de '+fmtQ(cd.parTaille)):('Sell 1 '+cd.parMot))+'">'
       +_emojiCont(cd.parMot)+' '+(_mv.px>0?fmt(_mv.px):cd.parMot)+'</span>';}
@@ -9559,6 +9589,65 @@ function _chipGrosVariante(p,v,cercle){
 //  gros propre au paquet ne s'ecrit que s'il le DIT — c'est un lot, et le
 //  repere plein le vend alors a SON prix. Regle inchangee depuis la 21.10.
 // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ QUAND UN ARTICLE A DEUX ÉTAGES, ON DEMANDE LEQUEL
+//
+//  Sa question : « paquet et carton côte à côte, ça peut perturber la vente
+//  en gros. » Il avait raison, et la mesure l'a aggravé : trois pixels
+//  entre les deux cibles, aucun mot pour les distinguer, et dix fois le
+//  prix d'écart en cas d'erreur.
+//
+//  ⚠️ UN SEUL ÉTAGE NE PASSE PAS PAR ICI. L'immense majorité des articles
+//  n'a qu'un contenant : leur repère vend toujours d'une tape, avec son
+//  prix écrit dessus. On n'ajoute un geste QUE là où il y a une ambiguïté
+//  réelle à lever — jamais « au cas où ».
+// ══════════════════════════════════════════════════════════════════
+var _etgArt=null,_etgVar=null;
+function choisirEtageGros(e,pid,vid){
+  if(e)e.stopPropagation();
+  var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
+  var v=(vid!=null)?((p.vr||[]).find(function(x){return String(x.id)===String(vid);})||null):null;
+  _etgArt=p;_etgVar=v;
+  var fr=(lang==='fr'),g=_grosDe(p,v),m=_milieuDe(p,v);
+  var etages=[];
+  if(g.n>1)etages.push({n:g.n,mot:g.mot,px:g.px});
+  if(m.n>1)etages.push({n:m.n,mot:m.mot,px:m.px});
+  // Un seul étage : rien à demander, on vend.
+  if(etages.length<2){
+    if(g.n>1){if(v)_ajouterLotVariante(p,v,g.n,g.mot);else _ajouterLot(p,g.n,g.mot);}
+    return;
+  }
+  etages.sort(function(a,b){return b.n-a.n;});          // le plus gros en haut
+  document.getElementById('etg-tit').textContent='📦 '+(fr?'Vendre en gros':'Sell in bulk');
+  document.getElementById('etg-art').textContent=p.nm+(v?(' — '+(v.nm||'')):'')
+    +' · '+(fr?'tu vends à':'you sell at')+' '+fmt(Number(v?v.px:p.px)||0)+' '+(fr?'l\'':'per ')+uniteArtUn(p);
+  document.getElementById('etg-lst').innerHTML=etages.map(function(x){
+    // ⚠️ LE MOT EN TOUTES LETTRES, LE CONTENU, ET LE PRIX. C'est exactement
+    // ce que la tuile ne pouvait pas dire dans 119 pixels.
+    return '<div class="stit2" style="cursor:pointer" onclick="etgVendre('+x.n+',\''+String(x.mot).replace(/'/g,"\\'")+'\')">'
+      +'<div class="stico" style="background:#FFF8E1;font-size:20px">'+_emojiCont(x.mot)+'</div>'
+      +'<div class="stii"><div class="stitl">1 '+x.mot+'</div>'
+      +'<div class="stisub">'+fmtQ(x.n)+' '+uniteArt(p)
+      +(x.px>0?('  ·  '+(fr?'au détail ça ferait ':'retail would be ')+fmt((Number(v?v.px:p.px)||0)*x.n)):'')+'</div></div>'
+      +'<span style="font-size:15px;font-weight:900;color:'+(x.px>0?'var(--B)':'var(--O)')+'">'
+      +(x.px>0?fmt(x.px):(fr?'prix ?':'price?'))+'</span></div>';
+  }).join('');
+  document.getElementById('ov-etage').classList.add('show');
+}
+function etgVendre(n,mot){
+  var p=_etgArt,v=_etgVar;
+  closeSheet('ov-etage');
+  if(!p||!(n>1))return;
+  // Pas encore de prix pour cet étage : on le demande plutôt que de vendre
+  // au détail multiplié en silence.
+  var px=_prixDuLot(p,v,n).px;
+  if(!(px>0)&&(role==='patron'||hasPerm('produits'))&&!(venteVerrouillee&&venteVerrouillee())){
+    showToast('💰 '+(lang==='fr'?('Dis à combien tu vends 1 '+mot):'Set its price'));
+    setTimeout(function(){try{ouvrirModifR(p);}catch(e){}},180);
+    return;
+  }
+  if(v)_ajouterLotVariante(p,v,n,mot);else _ajouterLot(p,n,mot);
+}
 function vendreNiveau(e,pid,n,mot){
   if(e)e.stopPropagation();
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
@@ -9603,16 +9692,15 @@ function _chipGros(p){
   if(!(p.vr&&p.vr.length)){
     var _g=_grosDe(p,null);
     if(_g.px>0&&_g.n>1){
-      var _h='<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+mot+' de '+fmtQ(_g.n)+'">'
-             +_emojiCont(mot)+'<span>'+fmt(_g.px)+'</span></button>';
-      // ⚠️ ET LE NIVEAU DU MILIEU AVEC : ce retour anticipé le faisait
-      // disparaître de la tuile dès qu'un prix de carton existait — mesuré
-      // au banc, une puce sur deux.
+      // ⭐ UN SEUL REPÈRE. Deux étages ⇒ il ouvre le choix au lieu de vendre
+      // à l'aveugle ; un seul étage ⇒ il vend, comme avant, sans rien ajouter.
       var _m2=_milieuDe(p,null);
       if(_m2.n>1)
-        _h+='<button class="pgros" onclick="vendreNiveau(event,'+p.id+','+_m2.n+',\''+String(_m2.mot).replace(/'/g,"\\'")+'\')" title="'+_m2.mot+' de '+fmtQ(_m2.n)+'">'
-           +_emojiCont(_m2.mot)+'<span>'+(_m2.px>0?fmt(_m2.px):_m2.mot)+'</span></button>';
-      return _h;
+        return '<button class="pgros" onclick="choisirEtageGros(event,'+p.id+')" title="'
+               +mot+' de '+fmtQ(_g.n)+' · '+_m2.mot+' de '+fmtQ(_m2.n)+'">'
+               +_emojiCont(mot)+'<span>'+(lang==='fr'?'gros':'bulk')+' ▾</span></button>';
+      return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+mot+' de '+fmtQ(_g.n)+'">'
+             +_emojiCont(mot)+'<span>'+fmt(_g.px)+'</span></button>';
     }
   }
   // ⚠️ DÉFAUT QUE J'ALLAIS INTRODUIRE : le repère disparaissait dès que
