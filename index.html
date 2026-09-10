@@ -3538,7 +3538,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.73'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.74'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -11538,6 +11538,10 @@ function _photo600(img){
   return (_cat600.base||'')+img+(_cat600.ext||'.jpg');
 }
 var _catIdx=null;
+// La table de réponses du catalogue et sa mémoire vivent AVEC l'index : elles
+// naissent et meurent avec lui. (⚠️ Déclarées plus bas, leur « =null » aurait
+// pu s'exécuter APRÈS la construction de l'index et l'effacer en silence.)
+var _catMes=null,_catSac=null,_mesCache=null,_mesCacheIdx=null;
 function catalogueIndex(){
   if(_catIdx)return _catIdx;
   _catIdx=[];
@@ -11596,6 +11600,34 @@ function catalogueIndex(){
         k:txtNorm(nm)});
     });
   }catch(e){}
+  // ⚠️⚠️ MESURÉ : la caisse mettait 519 ms à s'afficher à 661 articles, et
+  // 258 de ces millisecondes partaient dans UNE fonction — mesureCatalogue,
+  // appelée une fois par tuile par le repère 📦. Elle relisait les 361
+  // entrées de l'index et RE-NORMALISAIT le nom de chacune à chaque appel :
+  // 661 × 361 = deux cent trente-huit mille txtNorm() pour dessiner un écran.
+  // Les noms de l'index ne changent jamais : on les normalise ici, une fois.
+  _catIdx.forEach(function(e){
+    e._nf=txtNorm(e.nm||'');
+    e._ff=txtNorm(e.fam||'');
+    e._pf=txtNorm(e.plein||'');
+  });
+  // ⚠️ ET LA RECHERCHE EXACTE DEVIENT UN COUP D'ŒIL, plus un balayage.
+  // Le calcul d'origine parcourait les entrées DANS L'ORDRE et s'arrêtait à
+  // la première qui répondait à l'une de ses quatre règles — donc c'est
+  // l'ORDRE DES ENTRÉES qui tranche, et les règles ne départagent qu'à
+  // l'intérieur d'une même entrée. On construit la table dans exactement cet
+  // ordre-là, sans jamais écraser une réponse déjà posée : le vainqueur est
+  // le même, nom par nom. (Vérifié contre l'ancien calcul sur tout le
+  // catalogue, deux fois, dans t50.)
+  _catMes={};_catSac=[];
+  var poser=function(k,v){if(k&&_catMes[k]===undefined)_catMes[k]=v;};
+  _catIdx.forEach(function(e){
+    if(e.fam)                 poser(e._ff,{um:e.um,sac:e.sac||0,cont:e.cont||null});
+    if(!e.fam)                poser(e._nf,{um:e.um,sac:e.sac||0,cont:e.cont||null});
+    if(e.fam&&e.sac>0)        poser(e._nf,{um:e.um,sac:e.sac,cont:e.cont||null});
+    if(e.sac>0&&e.plein)      poser(e._pf,{um:e.um,sac:e.sac,cont:e.cont||null});
+    if(e.sac)_catSac.push(e);   // le rattrapage par préfixe ne regarde que ceux-là
+  });
   return _catIdx;
 }
 // ═══════════════════════════════════════════════════════════════════
@@ -11962,26 +11994,46 @@ function _motContenant(p,v){
   }catch(e){}
   return estMesure(p)?(fr?'sac':'bag'):(fr?'carton':'box');
 }
+// La réponse ne dépend que du nom et de l'index — deux choses qui ne bougent
+// pas d'un dessin à l'autre. On la retient donc, et on la jette entièrement
+// quand l'index est refait (l'arrivée des 600 à photo).
 function mesureCatalogue(fam){
-  var f=txtNorm(fam||''),r=null;
+  var f=txtNorm(fam||'');
   if(!f)return null;
-  catalogueIndex().some(function(e){
+  var idx=catalogueIndex();
+  if(_mesCacheIdx!==idx){_mesCache={};_mesCacheIdx=idx;}
+  var v=_mesCache[f];
+  if(v!==undefined)return v?{um:v.um,sac:v.sac,cont:v.cont}:null;   // copie : personne ne peut abîmer la mémoire
+  v=_mesureCatalogueCalc(f,idx);
+  _mesCache[f]=v;
+  return v?{um:v.um,sac:v.sac,cont:v.cont}:null;
+}
+// ⚠️ `f` arrive DÉJÀ normalisé. Le calcul lui-même n'a pas changé d'un mot :
+// il lit simplement les noms que l'index a normalisés une fois pour toutes.
+function _mesureCatalogueCalc(f,idx){
+  var r=_catMes?_catMes[f]:undefined;
+  if(r!==undefined)return r;
+  r=null;
+  // Le balayage reste écrit ici, en secours : si la table n'a pas été bâtie
+  // (index vide, catalogue absent), on retombe sur le calcul d'origine mot
+  // pour mot plutôt que de répondre « inconnu » à tort.
+  if(!_catMes)idx.some(function(e){
     // Familles à variantes (« Riz » → « Parfumé »)…
-    if(e.fam&&txtNorm(e.fam)===f){r={um:e.um,sac:e.sac||0,cont:e.cont||null};return true;}
+    if(e.fam&&e._ff===f){r={um:e.um,sac:e.sac||0,cont:e.cont||null};return true;}
     // …ET articles seuls, sans variante (« Œuf », « Gari », « Sel »). Ils
     // étaient invisibles ici : leur nom vit dans `nm`, pas dans `fam`. Un
     // plateau de 30 œufs ne servait donc à personne.
-    if(!e.fam&&txtNorm(e.nm)===f){r={um:e.um,sac:e.sac||0,cont:e.cont||null};return true;}
+    if(!e.fam&&e._nf===f){r={um:e.um,sac:e.sac||0,cont:e.cont||null};return true;}
     // ⚠️ ET les articles QUI ONT une famille. « Fanta orange » porte déjà
     // casier:12 sur sa propre entrée, mais son nom n'était comparé que si
     // l'entrée n'avait PAS de famille : on tenait la réponse et on allait
     // la chercher ailleurs. « Coca-Cola » passait, « Fanta orange » non.
-    if(e.fam&&e.sac>0&&txtNorm(e.nm)===f){r={um:e.um,sac:e.sac,cont:e.cont||null};return true;}
+    if(e.fam&&e.sac>0&&e._nf===f){r={um:e.um,sac:e.sac,cont:e.cont||null};return true;}
     // …et par son LIBELLÉ COMPLET (« Djino pamplemousse »), qui est le seul
     // nom sous lequel le commerçant le connaît. Sans lui il fallait passer
     // par la famille — et « Djino » désigne AUSSI la canette 33 cl en carton
     // de 24, donc la bouteille héritait du carton des canettes.
-    if(e.sac>0&&e.plein&&txtNorm(e.plein)===f){r={um:e.um,sac:e.sac,cont:e.cont||null};return true;}
+    if(e.sac>0&&e.plein&&e._pf===f){r={um:e.um,sac:e.sac,cont:e.cont||null};return true;}
     return false;
   });
   // ⚠️ Le nom EXACT ne suffit pas. Un commerçant ne dit jamais « Savon de
@@ -11991,12 +12043,12 @@ function mesureCatalogue(fam){
   // et on prend la plus courte — la plus générale.
   if(!r&&f.length>=3){
     var cands=[];
-    catalogueIndex().forEach(function(e){
+    (_catSac||idx).forEach(function(e){
       if(!e.sac)return;
       // On cherche des DEUX côtés : la famille (« Savon de lessive ») ET la
       // variante (« Coca-Cola »). Le commerçant dit « coca », pas
       // « Sucrerie 60 cl » — le nom de la famille ne lui parle pas.
-      [txtNorm(e.fam||''),txtNorm(e.nm||'')].forEach(function(nf){
+      [e._ff,e._nf].forEach(function(nf){
         if(!nf)return;
         if(nf===f||nf.indexOf(f+' ')===0||nf.indexOf(f+'-')===0||f.indexOf(nf+' ')===0)
           cands.push({n:nf,um:e.um,sac:e.sac,cont:e.cont||null});
