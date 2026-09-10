@@ -2365,6 +2365,14 @@ body{max-width:min(100%,1200px)}
           <input class="pi" type="number" id="inp-npg" oninput="calcBenR()" inputmode="numeric" placeholder="—">
           <div style="font-size:10.5px;font-weight:700;color:var(--M);margin-top:4px" id="npg-aide"></div>
         </div>
+        <!-- ⭐ « PAQUET DE 6 » ET « CARTON DE 72 » CÔTE À CÔTE : les
+             sous-grossistes vendent les deux, chacun à SON prix. Le niveau
+             du milieu existait déjà dans le conditionnement ; il lui
+             manquait son prix, ici, à côté des autres. -->
+        <div class="pig" id="npm-row" style="display:none"><label class="pl" id="lbl-npm">Prix du paquet</label>
+          <input class="pi" type="number" id="inp-npm" oninput="calcBenR()" inputmode="numeric" placeholder="—">
+          <div style="font-size:10.5px;font-weight:700;color:var(--M);margin-top:4px" id="npm-aide"></div>
+        </div>
         <div class="bcard bon" id="bc-r" style="display:none"><div><div class="blbl" id="bl-r">📈 Bénéfice</div><div style="font-size:10px;font-weight:700;margin-top:2px;color:#2E7D32" id="bs-r">Marge</div></div><div class="bamt" id="ba-r">+0</div></div>
         <!-- ⚠️⚠️ MESURÉ SUR UN TÉLÉPHONE 360×640 — celui de ses commerçants :
              le bouton « Enregistrer » tombait à 701 px sur un écran de 640,
@@ -3569,7 +3577,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.76'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.77'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7394,6 +7402,8 @@ function _replierSiUneVariante(p,muet){
   // n'aurait retrouvée que dans une vente facturée au détail.
   if(Number(v.pxGros)>0)p.pxGros=Number(v.pxGros);
   if(Number(v.paGros)>0)p.paGros=Number(v.paGros);
+  if(Number(v.pxPar)>0)p.pxPar=Number(v.pxPar);
+  if(Number(v.paPar)>0)p.paPar=Number(v.paPar);
   p.stk0=Math.round(((Number(p.stk0)||0)+(Number(v.stk0)||0))*100)/100;
   if(!p.vfus)p.vfus={};
   p.vfus[v.id]=1;
@@ -9475,9 +9485,10 @@ function _chipGrosVariante(p,v,cercle){
   // qui portent leur propre prix comme au repere de taille connue.
   var mid='';
   if(cd.par>0&&cd.parTaille>1&&cd.parMot)
-    mid='<span class="'+cls+' vide" data-grosdet="'+v.id+'" data-grosn="'+cd.parTaille+'" data-grosmot="'+String(cd.parMot).replace(/"/g,'')+'" title="'
+    {var _mv=_milieuDe(p,v);
+     mid='<span class="'+cls+(_mv.px>0?'':' vide')+'" data-grosdet="'+v.id+'" data-grosn="'+cd.parTaille+'" data-grosmot="'+String(cd.parMot).replace(/"/g,'')+'" title="'
       +(lang==='fr'?('Vendre 1 '+cd.parMot+' de '+fmtQ(cd.parTaille)):('Sell 1 '+cd.parMot))+'">'
-      +_emojiCont(cd.parMot)+' '+cd.parMot+'</span>';
+      +_emojiCont(cd.parMot)+' '+(_mv.px>0?fmt(_mv.px):cd.parMot)+'</span>';}
   // ⭐ Le prix du carton vit maintenant SUR la variante : la puce le lit là,
   // et aucune quatrième forme n'encombre la liste. (Les boutiques qui ont
   // encore un lot en variante gardent la puce d'en dessous.)
@@ -9573,9 +9584,8 @@ function _ajouterLotVariante(p,v,n,mot,force){
   // Le marqueur d'affichage : le reçu et la voix diront « 1 carton (24) »
   // au lieu de « ×24 ». Il ne touche ni la quantité ni le total.
   var key=p.id+'-'+v.id;
-  var _gv=_grosDe(p,v);
-  if(ajout===n&&cur===0)_grosPanier[key]={n:n,mot:mot,px:Number(v.px)||0,um:_umDe(p),
-                                          pxGros:(_gv.n===n?_gv.px:0),paGros:(_gv.n===n?_gv.pa:0)};
+  var _gv=_prixDuLot(p,v,n);
+  if(ajout===n)_grosPanier[key]=_empilerLot(_grosPanier[key],n,mot,_gv,Number(v.px)||0,_umDe(p));
   else _oublierGros(key);
   if(navigator.vibrate)navigator.vibrate(30);
   var m=_mentionGros(key,varQtys[v.id]);
@@ -9592,9 +9602,18 @@ function _chipGros(p){
   // sans qu'aucune variante n'ait eu besoin d'exister pour le porter.
   if(!(p.vr&&p.vr.length)){
     var _g=_grosDe(p,null);
-    if(_g.px>0&&_g.n>1)
-      return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+mot+' de '+fmtQ(_g.n)+'">'
+    if(_g.px>0&&_g.n>1){
+      var _h='<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+mot+' de '+fmtQ(_g.n)+'">'
              +_emojiCont(mot)+'<span>'+fmt(_g.px)+'</span></button>';
+      // ⚠️ ET LE NIVEAU DU MILIEU AVEC : ce retour anticipé le faisait
+      // disparaître de la tuile dès qu'un prix de carton existait — mesuré
+      // au banc, une puce sur deux.
+      var _m2=_milieuDe(p,null);
+      if(_m2.n>1)
+        _h+='<button class="pgros" onclick="vendreNiveau(event,'+p.id+','+_m2.n+',\''+String(_m2.mot).replace(/'/g,"\\'")+'\')" title="'+_m2.mot+' de '+fmtQ(_m2.n)+'">'
+           +_emojiCont(_m2.mot)+'<span>'+(_m2.px>0?fmt(_m2.px):_m2.mot)+'</span></button>';
+      return _h;
+    }
   }
   // ⚠️ DÉFAUT QUE J'ALLAIS INTRODUIRE : le repère disparaissait dès que
   // l'article avait des variantes — donc juste après que le commerçant ait
@@ -9642,9 +9661,11 @@ function _chipGros(p){
     // Le contenant d'abord, puis le niveau du milieu s'il existe : « carton »
     // et « paquet » cote a cote, chacun vendable d'une tape.
     var h='<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_libelleCond(p,null)+'">'+_emojiCont(mot)+'<span>'+mot+'</span></button>';
-    if(_c.par>0&&_c.parTaille>1&&_c.parMot)
+    if(_c.par>0&&_c.parTaille>1&&_c.parMot){
+      var _mi=_milieuDe(p,null);
       h+='<button class="pgros" onclick="vendreNiveau(event,'+p.id+','+_c.parTaille+',\''+String(_c.parMot).replace(/'/g,"\\'")+'\')" title="'+_c.parMot+' de '+fmtQ(_c.parTaille)+'">'
-        +_emojiCont(_c.parMot)+'<span>'+_c.parMot+'</span></button>';
+        +_emojiCont(_c.parMot)+'<span>'+(_mi.px>0?fmt(_mi.px):_c.parMot)+'</span></button>';
+    }
     return h;
   }
   // ⚠️ « JE VOIS PARTOUT VENTE EN CARTON. CE N'EST PAS TOUS LES ARTICLES
@@ -9705,6 +9726,14 @@ function _chipGros(p){
 //  vaut redire « 12 » que d'annoncer un casier qui n'en est plus un.
 // ══════════════════════════════════════════════════════════════════
 var _grosPanier={};
+// Ajoute un lot à ce que la ligne porte déjà, sans effacer les précédents.
+function _empilerLot(m,n,mot,prix,pxU,um){
+  if(!m||!m.lots)m={lots:[]};
+  m.lots.push({n:n,mot:mot,px:Number(prix&&prix.px)||0,pa:Number(prix&&prix.pa)||0});
+  m.n=n;m.mot=mot;m.px=pxU;m.um=um;
+  m.pxGros=Number(prix&&prix.px)||0;m.paGros=Number(prix&&prix.pa)||0;
+  return m;
+}
 function _oublierGros(key){try{delete _grosPanier[key];}catch(e){}}
 // Ce qu'il faut dire d'une ligne de panier : « 2 casiers (24 × 500) », ou
 // rien du tout si elle n'a pas été prise au contenant.
@@ -9746,6 +9775,36 @@ function _grosDe(p,v){
   var pa=Number((v&&v.paGros)||0)||Number((!v&&p&&p.paGros)||0);
   return {n:n, px:px, pa:pa, mot:(cd&&cd.mot)||_motContenant(p,v||null)};
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ LES DEUX NIVEAUX DE GROS SUR LA MÊME ENTRÉE
+//
+//  « Paquet de 6 » ET « carton de 72 » — les sous-grossistes vendent les
+//  deux, chacun à SON prix. Le modèle du milieu existait déjà (`umPar`,
+//  `umParMot`, `umParTaille`) : ce qui manquait, c'était son PRIX. Il
+//  s'écrit maintenant à côté de l'autre, sur la même entrée : `pxGros`
+//  pour le contenant, `pxPar` pour le niveau du milieu, `px` pour l'unité.
+//
+//  Trois prix, une entrée, zéro variante. C'était le dernier morceau de
+//  « une seule peut gérer les deux ».
+// ══════════════════════════════════════════════════════════════════
+function _milieuDe(p,v){
+  var cd=null;try{cd=_condDe(p,v||null);}catch(e){}
+  if(!cd||!(cd.par>0&&cd.parTaille>1&&cd.parMot))return {n:0,mot:'',px:0,pa:0};
+  var src=v||p;
+  return {n:cd.parTaille, mot:cd.parMot,
+          px:Number(src&&src.pxPar)||0, pa:Number(src&&src.paPar)||0};
+}
+// ⭐ LE PRIX D'UN LOT DE `n` UNITÉS, quel que soit son étage. C'est l'unique
+// question que se posent la caisse et le panier : « il vient de mettre n
+// unités d'un coup — est-ce que ce paquet-là a un prix négocié ? »
+function _prixDuLot(p,v,n){
+  if(!(n>1))return {px:0,pa:0};
+  var g=_grosDe(p,v||null);
+  if(g.n===n&&g.px>0)return {px:g.px,pa:g.pa};
+  var m=_milieuDe(p,v||null);
+  if(m.n===n&&m.px>0)return {px:m.px,pa:m.pa};
+  return {px:0,pa:0};
+}
 function _aPrixGros(p,v){var g=_grosDe(p,v);return g.px>0&&g.n>1;}
 // Écrire le prix du gros — un seul endroit, pour que la taille et le prix
 // ne puissent jamais partir chacun de leur côté.
@@ -9766,18 +9825,33 @@ function _poserPrixGros(p,v,n,mot,px,pa){
 function _ligneMontant(key,p,v,qty){
   var pxU=Number(v?v.px:p.px)||0, paU=Number(v?v.pa:p.pa)||0;
   var g=_grosPanier[key];
-  var n=g?(Number(g.n)||0):0, pxG=g?(Number(g.pxGros)||0):0;
-  if(!(pxG>0&&n>1))
-    return {total:pxU*qty, cout:paU*qty, benConnu:(paU>0?(pxU-paU)*qty:0), nbGros:0, qDetail:qty};
-  var nb=Math.floor(qty/n+1e-9), qG=nb*n, qD=Math.round((qty-qG)*100)/100;
-  // Le prix d'achat du contenant : le sien s'il l'a dit, sinon celui de
-  // l'unité multiplié — jamais l'inverse, on ne divise pas un prix qu'on
-  // n'a pas.
-  var paG=Number(g.paGros)||0; if(!(paG>0)&&paU>0)paG=paU*n;
-  return {total:nb*pxG + qD*pxU,
-          cout:nb*paG + qD*paU,
-          benConnu:(paG>0?nb*(pxG-paG):0) + (paU>0?qD*(pxU-paU):0),
-          nbGros:nb, qDetail:qD, pxGros:pxG, paGros:paG, n:n};
+  // ⚠️⚠️ UNE LIGNE PEUT PORTER PLUSIEURS ÉTAGES — « un carton, un paquet et
+  // une pièce ». Le marqueur ne retenait que le DERNIER lot posé : les 79
+  // biscuits repartaient tous au prix du paquet, 7 120 F au lieu de 6 640.
+  // Il retient donc maintenant CHAQUE lot posé, dans l'ordre où il l'a
+  // touché, et la ligne se facture étage par étage.
+  var lots=(g&&g.lots&&g.lots.length)?g.lots.slice()
+          :((g&&Number(g.n)>1&&Number(g.pxGros)>0)?[{n:Number(g.n),px:Number(g.pxGros),pa:Number(g.paGros)||0,mot:g.mot}]:[]);
+  lots=lots.filter(function(l){return l&&l.n>1&&l.px>0;});
+  if(!lots.length)
+    return {total:pxU*qty, cout:paU*qty, benConnu:(paU>0?(pxU-paU)*qty:0),
+            nbGros:0, qDetail:qty, lots:[]};
+  // Les plus gros d'abord : si la quantité a été corrigée à la main, ce sont
+  // les contenants entiers qui survivent, pas les miettes.
+  lots.sort(function(a,b){return b.n-a.n;});
+  var reste=qty,total=0,cout=0,ben=0,pris=[];
+  lots.forEach(function(l){
+    if(reste+1e-9<l.n)return;
+    var pa=Number(l.pa)>0?Number(l.pa):(paU>0?paU*l.n:0);
+    total+=l.px; cout+=pa; if(pa>0)ben+=(l.px-pa);
+    reste=Math.round((reste-l.n)*100)/100;
+    pris.push({n:l.n,px:l.px,pa:pa,mot:l.mot});
+  });
+  total+=reste*pxU; cout+=reste*paU; if(paU>0)ben+=reste*(pxU-paU);
+  return {total:total, cout:cout, benConnu:ben,
+          nbGros:pris.length, qDetail:reste, lots:pris,
+          pxGros:pris.length?pris[0].px:0, paGros:pris.length?pris[0].pa:0,
+          n:pris.length?pris[0].n:0};
 }
 // Le raccourci des quatre calculateurs : retrouver p et v depuis la clé.
 function _ligneDe(key,qty){
@@ -9789,6 +9863,36 @@ function _ligneDe(key,qty){
 function _mentionGros(key,qty){
   var g=_grosPanier[key];
   if(!g||!(g.n>1)||!(qty>0))return null;
+  // ⚠️ PLUSIEURS ÉTAGES DANS LA MÊME LIGNE : « 1 carton + 1 paquet ». Le
+  // texte lisait le DERNIER lot posé et annonçait « 13 paquets » pour un
+  // carton et un paquet — le total était juste, la phrase mentait.
+  var _ls=(g.lots&&g.lots.length)?g.lots.filter(function(l){return l&&l.n>1;}):[];
+  if(_ls.length){
+    _ls=_ls.slice().sort(function(a,b){return b.n-a.n;});
+    var _r=qty,_grp={},_ord=[];
+    _ls.forEach(function(l){
+      if(_r+1e-9<l.n)return;
+      _r=Math.round((_r-l.n)*100)/100;
+      var k=l.n+'|'+(l.mot||'');
+      if(!_grp[k]){_grp[k]={n:l.n,mot:l.mot||g.mot,nb:0};_ord.push(k);}
+      _grp[k].nb++;
+    });
+    if(!_ord.length)return null;
+    if(_r>0.001)return null;                       // entamé : plus un compte rond
+    if(_ord.length>1){
+      var _fr2=(lang==='fr');
+      var _q2=(g.um==='kg')?(fmtQ(qty)+' kg'):((g.um==='L')?(fmtQ(qty)+' L'):fmtQ(qty));
+      var _t2=_ord.map(function(k){var G=_grp[k];return fmtQ(G.nb)+' '+G.mot+(G.nb>1?'s':'');}).join(' + ');
+      var _nb2=_ord.reduce(function(s2,k){return s2+_grp[k].nb;},0);
+      return {nb:_nb2,mot:_grp[_ord[0]].mot,emo:_emojiCont(_grp[_ord[0]].mot),um:g.um||'',
+              txt:_t2+' ('+_q2+')'};
+    }
+    // un seul étage : on garde la phrase d'avant, avec son prix
+    var _G=_grp[_ord[0]];
+    var _q3=(g.um==='kg')?(fmtQ(qty)+' kg'):((g.um==='L')?(fmtQ(qty)+' L'):fmtQ(qty));
+    return {nb:_G.nb,mot:_G.mot,emo:_emojiCont(_G.mot),um:g.um||'',
+            txt:fmtQ(_G.nb)+' '+_G.mot+(_G.nb>1?'s':'')+' ('+_q3+' × '+fmt(g.px||0)+')'};
+  }
   var nb=qty/g.n;
   if(Math.abs(nb-Math.round(nb))>0.001)return null;   // entamé : ce n'est plus un carton entier
   nb=Math.round(nb);
@@ -9812,9 +9916,8 @@ function _ajouterLot(p,n,mot,force){
   panier[key]=cur+ajout;
   // Entier seulement : s'il ne restait pas un carton complet, ce n'est plus
   // un carton et on ne l'écrira pas comme tel.
-  var _gg=_grosDe(p,null);
-  if(ajout===n)_grosPanier[key]={n:n,mot:mot,px:Number(p.px)||0,um:_umDe(p),
-                                 pxGros:(_gg.n===n?_gg.px:0),paGros:(_gg.n===n?_gg.pa:0)};
+  var _gg=_prixDuLot(p,null,n);
+  if(ajout===n)_grosPanier[key]=_empilerLot(_grosPanier[key],n,mot,_gg,Number(p.px)||0,_umDe(p));
   else _oublierGros(key);
   updatePUI(p.id);
   if(navigator.vibrate)navigator.vibrate(30);
@@ -10492,10 +10595,20 @@ function ouvrirPanier(){
     var _mg=_mentionGros(key,qty);
     var _mo=_ligneMontant(key,p,v,qty);
     // « 5 000 le casier » quand il l'a négocié, « 500 × 12 » sinon.
-    var _sous=(_mo.nbGros>0)
-      ?(fmt(_mo.pxGros)+' × '+fmtQ(_mo.nbGros)+' '+((_grosPanier[key]||{}).mot||'')+(_mo.nbGros>1?'s':'')
-        +(_mo.qDetail>0?(' + '+fmt(px)+' × '+fmtQ(_mo.qDetail)):''))
-      :(_mg?(_mg.emo+' '+_mg.txt):(fmt(px)+' × '+fmtQ(qty)+(estMesure(p)&&!v?' '+uniteArt(p):'')));
+    var _sous;
+    if(_mo.lots&&_mo.lots.length){
+      // Chaque étage avec SON prix : « 6 000 × 1 carton + 540 × 1 paquet + 100 × 1 »
+      var _gp={},_od=[];
+      _mo.lots.forEach(function(l){
+        var k3=l.n+'|'+l.px;
+        if(!_gp[k3]){_gp[k3]={px:l.px,mot:l.mot||'',nb:0};_od.push(k3);}
+        _gp[k3].nb++;
+      });
+      var _pts=_od.map(function(k3){var G=_gp[k3];
+        return fmt(G.px)+' × '+fmtQ(G.nb)+' '+G.mot+(G.nb>1?'s':'');});
+      if(_mo.qDetail>0)_pts.push(fmt(px)+' × '+fmtQ(_mo.qDetail));
+      _sous=_pts.join(' + ');
+    }else _sous=(_mg?(_mg.emo+' '+_mg.txt):(fmt(px)+' × '+fmtQ(qty)+(estMesure(p)&&!v?' '+uniteArt(p):'')));
     d.innerHTML=(p.img?'<img class="piemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'piemo\',textContent:\''+p.e+'\'}))">':'<span class="piemo">'+p.e+'</span>')+'<div class="piinf"><div class="pinm">'+p.nm+(v?' — '+v.nm:'')+'</div><div class="piun">'+_sous+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="pisub">'+fmt(_mo.total)+'</span><div class="qctl"><button class="qb m" onclick="chgQ(\''+key+'\',-'+step+')">−</button><span class="qnum">'+fmtQ(qty)+'</span><button class="qb p" onclick="chgQ(\''+key+'\','+step+')">+</button></div></div>';
     l.appendChild(d);
   });
@@ -10938,6 +11051,18 @@ function majPrixGrosModif(p){
   if(inp)inp.value=g.px>0?g.px:'';
   if(aide)aide.textContent=(fr?('1 '+g.mot+' = '+fmtQ(g.n)+' '+uniteArt(p)+(Number(p.px)>0?(' · au détail ça ferait '+fmt(Number(p.px)*g.n)):''))
                               :('1 '+g.mot+' = '+fmtQ(g.n)));
+  // Et le niveau du milieu, quand il existe.
+  var mrow=document.getElementById('npm-row'),minp=document.getElementById('inp-npm'),
+      mlbl=document.getElementById('lbl-npm'),maide=document.getElementById('npm-aide');
+  var m=null;try{m=_milieuDe(p,null);}catch(e){}
+  if(!mrow)return;
+  if(!m||!(m.n>1)){mrow.style.display='none';if(minp)minp.value='';return;}
+  mrow.style.display='block';
+  if(mlbl)mlbl.textContent=(fr?'Prix du ':'Price per ')+m.mot;
+  if(minp)minp.value=m.px>0?m.px:'';
+  if(maide)maide.textContent=(fr?('1 '+m.mot+' = '+fmtQ(m.n)+' '+uniteArt(p)
+                                  +' · 1 '+g.mot+' = '+fmtQ(g.n/m.n)+' '+m.mot+(g.n/m.n>1?'s':''))
+                                :('1 '+m.mot+' = '+fmtQ(m.n)));
 }
 // ── La photo d'un article doit le suivre PARTOUT ──
 // Le commerçant reconnaît sa marchandise à l'image, pas au dessin générique.
@@ -11001,6 +11126,16 @@ function saveR(){
       if(Number(_g.px||0)!==_pg){
         journalAjouter('vente en gros',artCours.nm,(_g.px>0?fmt(_g.px):''),(_pg>0?fmt(_pg):(lang==='fr'?'retiré':'removed')));
         artCours.pxGros=(_pg>0)?_pg:null;
+      }
+    }
+    var _inm=document.getElementById('inp-npm');
+    if(_inm&&document.getElementById('npm-row').style.display!=='none'){
+      var _m=_milieuDe(artCours,null);
+      var _pm=parseFloat(String(_inm.value||'').replace(',','.'));
+      if(isNaN(_pm))_pm=0;
+      if(Number(_m.px||0)!==_pm){
+        journalAjouter('vente en gros',artCours.nm+' — '+_m.mot,(_m.px>0?fmt(_m.px):''),(_pm>0?fmt(_pm):(lang==='fr'?'retiré':'removed')));
+        artCours.pxPar=(_pm>0)?_pm:null;
       }
     }
     save();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();
@@ -18496,29 +18631,31 @@ encaisser=function(){
     // forme qu'une variante de gros, sans la variante. Le reçu, le stock et
     // le bénéfice la lisent déjà comme ça.
     var _mm=_ligneMontant(key,p,v,qty);
-    if(_mm.nbGros>0&&v){
-      var _motv=(_grosPanier[key]||{}).mot||_motContenant(p,v);
-      var _qGv=_mm.nbGros*_mm.n;
-      lignes.push({nm:p.nm+' — '+(v.nm||'')+' — '+_motv+' de '+fmtQ(_mm.n),px:_mm.pxGros,pa:_mm.paGros,
-                   qte:_mm.nbGros,qty:_mm.nbGros,pid:p.id,vid:vid,qBase:_mm.n,
-                   dep:Math.max(0,Math.min(qDep,_qGv))/_mm.n,gros:{nb:_mm.nbGros,mot:_motv}});
-      if(_mm.qDetail>0)
-        lignes.push({nm:p.nm+' — '+(v.nm||''),px:px,pa:pa,qte:_mm.qDetail,qty:_mm.qDetail,pid:p.id,vid:vid,
-                     qBase:1,dep:Math.max(0,qDep-_qGv),gros:null});
-      return;
-    }
-    if(_mm.nbGros>0&&!v){
-      var _mot=(_grosPanier[key]||{}).mot||_motContenant(p,null);
-      var _qG=_mm.nbGros*_mm.n;
-      // Le dépassement (vendu au-delà du stock) reste compté d'abord sur le
+    if(_mm.nbGros>0){
+      // ⭐ UNE LIGNE PAR ÉTAGE : « 1 carton de 72 » et « 1 paquet de 6 » se
+      // lisent séparément sur le reçu, chacun avec son prix. Les lots de
+      // même taille sont regroupés — deux cartons font une ligne « ×2 ».
+      var _nomV=p.nm+(v?(' — '+(v.nm||'')):'');
+      var _grp={},_ordre=[];
+      _mm.lots.forEach(function(l){
+        var k2=l.n+'|'+(l.px);
+        if(!_grp[k2]){_grp[k2]={n:l.n,px:l.px,pa:l.pa,mot:l.mot||_motContenant(p,v||null),nb:0};_ordre.push(k2);}
+        _grp[k2].nb++;
+      });
+      // Le dépassement (vendu au-delà du stock) se compte d'abord sur le
       // détail : c'est ce que la caisse a réellement laissé passer.
-      var _depG=Math.max(0,Math.min(qDep,_qG))/_mm.n;
-      lignes.push({nm:p.nm+' — '+_mot+' de '+fmtQ(_mm.n),px:_mm.pxGros,pa:_mm.paGros,
-                   qte:_mm.nbGros,qty:_mm.nbGros,pid:p.id,vid:null,qBase:_mm.n,dep:_depG,
-                   gros:{nb:_mm.nbGros,mot:_mot}});
+      var _depRest=qDep;
+      var _detDep=Math.min(_depRest,_mm.qDetail);_depRest-=_detDep;
+      _ordre.forEach(function(k2){
+        var G=_grp[k2],_qG=G.nb*G.n;
+        var _dG=Math.min(_depRest,_qG);_depRest-=_dG;
+        lignes.push({nm:_nomV+' — '+G.mot+' de '+fmtQ(G.n),px:G.px,pa:G.pa,
+                     qte:G.nb,qty:G.nb,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:G.n,
+                     dep:Math.round(_dG/G.n*100)/100,gros:{nb:G.nb,mot:G.mot}});
+      });
       if(_mm.qDetail>0)
-        lignes.push({nm:p.nm,px:px,pa:pa,qte:_mm.qDetail,qty:_mm.qDetail,pid:p.id,vid:null,
-                     qBase:1,dep:Math.max(0,qDep-_qG),gros:null});
+        lignes.push({nm:_nomV,px:px,pa:pa,qte:_mm.qDetail,qty:_mm.qDetail,pid:p.id,
+                     vid:vid&&vid!=='0'?vid:null,qBase:1,dep:_detDep,gros:null});
       return;
     }
     lignes.push({nm:p.nm+(v?' — '+v.nm:''),px:px,pa:pa,qte:qty,qty:qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:qBase,dep:qDep,
