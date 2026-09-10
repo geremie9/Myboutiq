@@ -2614,11 +2614,27 @@ body{max-width:min(100%,1200px)}
                1, 2, 5, 10 contenants. Quatre cartons n'existait pas — il
                fallait calculer 4 × 24 de tête. Le compteur compte ce qu'il
                achète VRAIMENT ; les unités se déduisent dessous. -->
+          <!-- ⭐ « PAR DÉFAUT LE COMMERÇANT ACHÈTE TOUJOURS EN GROS : Diamaor 2,
+               ça sous-entend 2 cartons ; riz 2, deux sacs. »
+               C'est vrai, et l'app le prenait à l'envers : elle enregistrait
+               2 bouteilles en écrivant poliment « pas un carton entier ».
+               Elle AVAIT le doute, elle l'écrivait, et elle ne faisait rien.
+               ⚠️ MAIS ON NE LE DEVINE PAS EN SILENCE. Un nombre qui veut dire
+               « cartons » sans le dire, c'est 2 qui devient 100 kg le jour où
+               le conditionnement enregistré est faux — et une erreur de stock
+               de cette taille attend l'inventaire pour se voir. Donc le champ
+               DIT ce qu'il compte : « Combien de cartons ? », le total en
+               unités écrit dessous en direct, et « En unités » à une tape. -->
+          <div id="stk-qmode-row" style="display:none;gap:8px;margin-bottom:7px">
+            <div class="abtn on" id="sq-c" onclick="stkQMode('c')" style="flex:1;padding:8px"><span class="albl" id="sq-c-l">Par carton</span></div>
+            <div class="abtn" id="sq-u" onclick="stkQMode('u')" style="flex:1;padding:8px"><span class="albl" id="sq-u-l">En unités</span></div>
+          </div>
           <div id="stk-cont-row" style="display:none;align-items:center;gap:10px;margin-bottom:9px;background:var(--BG);border-radius:12px;padding:9px 11px">
             <button type="button" class="qb m" onclick="stkCont(-1)" style="width:38px;height:38px;font-size:19px">−</button>
             <div style="flex:1;text-align:center;min-width:0">
-              <div id="stk-cont-n" style="font-size:17px;font-weight:900;color:var(--T);line-height:1.15">0</div>
-              <div id="stk-cont-eq" style="font-size:11.5px;font-weight:700;color:var(--M)"></div>
+              <input class="pi" type="number" id="inp-scont" inputmode="decimal" step="1" placeholder="0" oninput="stkContSaisi()"
+                     style="margin:0;text-align:center;font-size:19px;font-weight:900;padding:7px 4px">
+              <div id="stk-cont-eq" style="font-size:11.5px;font-weight:700;color:var(--M);margin-top:4px">&nbsp;</div>
             </div>
             <button type="button" class="qb p" onclick="stkCont(1)" style="width:38px;height:38px;font-size:19px">+</button>
           </div>
@@ -3522,7 +3538,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.72'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.73'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -14380,6 +14396,7 @@ function selArtStk(p){
   artStkCours=p;var ts=getStk(p);
   // Chaque ouverture repart en mode "entrée" (le cas le plus fréquent)
   var _si=document.getElementById('inp-sqte');if(_si)_si.value='';
+  var _sc0=document.getElementById('inp-scont');if(_sc0)_sc0.value='';
   var _sm=document.getElementById('inp-motif');if(_sm)_sm.value='';
   var _sa=document.getElementById('stk-apercu');if(_sa)_sa.style.display='none';
   // Même identité visuelle que la liste : la vraie photo d'abord, sinon la vignette icône
@@ -14398,7 +14415,11 @@ function selArtStk(p){
       p.vr.forEach(function(v){
         var b=document.createElement('button');b.type='button';b.className='stkvchip';
         b.innerHTML=(v.img?'<img src="'+v.img+'">':'<span style="font-size:19px">'+p.e+'</span>')+'<span class="stkv-nm">'+(v.nm||'?')+'</span><span class="stkv-s">'+fmtQ(v.stk)+'</span>';
-        b.onclick=function(){artStkVarCours=v;vrow.querySelectorAll('.stkvchip').forEach(function(x){x.classList.remove('on');});b.classList.add('on');document.getElementById('stk-cur').textContent=fmtQ(v.stk);majApercuStk();};
+        b.onclick=function(){artStkVarCours=v;vrow.querySelectorAll('.stkvchip').forEach(function(x){x.classList.remove('on');});b.classList.add('on');document.getElementById('stk-cur').textContent=fmtQ(v.stk);
+        // La variante a peut-être SON contenant : on remet le mode et le
+        // libellé à jour, sinon « Combien de cartons ? » compterait des sacs.
+        try{stkQMode(_stkTailleCont()>0?'c':'u',true);majLibelleQte();}catch(e){}
+        majApercuStk();};
         vrow.appendChild(b);
       });
     }
@@ -14519,27 +14540,60 @@ function stkCont(d){
   i.value=n?Math.round(n*sc*100)/100:'';
   majApercuStk();
 }
+// ⭐ LE MODE DE SAISIE DE LA QUANTITÉ — « c » : il tape des CONTENANTS.
+// ⚠️ `inp-sqte` reste la seule vérité, toujours en unités de vente : le
+// champ des cartons ne fait que l'alimenter. Tout ce qui suit — l'aperçu,
+// le prix, l'enregistrement, le recalcul du stock — continue de le lire
+// sans rien savoir de ce mode. Un étage de plus, zéro calcul déplacé.
+var _stkQMode='u';
+function stkQMode(m,silencieux){
+  var sc=0;try{sc=_stkTailleCont();}catch(e){}
+  if(m==='c'&&(!(sc>0)||_stkSens!=='in'))m='u';   // pas de contenant connu : pas de mode contenant
+  _stkQMode=m;
+  var bc=document.getElementById('sq-c'),bu=document.getElementById('sq-u');
+  if(bc)bc.classList.toggle('on',m==='c');
+  if(bu)bu.classList.toggle('on',m==='u');
+  var row=document.getElementById('stk-qmode-row');
+  if(row)row.style.display=(sc>0&&_stkSens==='in')?'flex':'none';
+  var qi=document.getElementById('inp-sqte'),sh=document.getElementById('stk-shcts');
+  if(qi)qi.style.display=(m==='c')?'none':'';
+  if(sh)sh.style.display=(m==='c')?'none':'';
+  try{majLibelleQte();}catch(e){}
+  if(!silencieux)majApercuStk();
+}
+// Il tape « 4 » : quatre CARTONS. On écrit les unités dans la seule vérité.
+function stkContSaisi(){
+  var sc=_stkTailleCont();if(!(sc>0))return;
+  var c=document.getElementById('inp-scont'),i=document.getElementById('inp-sqte');
+  if(!c||!i)return;
+  var n=parseFloat(String(c.value||'').replace(',','.'));
+  if(!(n>0)){i.value='';majApercuStk();return;}
+  i.value=Math.round(n*sc*100)/100;
+  majApercuStk();
+}
 // Ce que le compteur affiche : le nombre de contenants, et ce que ça fait en
 // unités. ⚠️ Une quantité qui ne tombe pas juste (un carton entamé, un reste
 // de kilos) le DIT au lieu d'arrondir en silence.
 function majCompteurCont(){
   var row=document.getElementById('stk-cont-row');if(!row)return;
   var p=artStkCours,sc=_stkTailleCont();
-  if(!p||!(sc>0)||_stkSens!=='in'){row.style.display='none';return;}
+  if(!p||!(sc>0)||_stkSens!=='in'||_stkQMode!=='c'){row.style.display='none';return;}
   row.style.display='flex';
   var fr=(lang==='fr'),mot=_motContenant(p,artStkVarCours||null);
   var q=Math.round((parseFloat(String((document.getElementById('inp-sqte')||{}).value||'').replace(',','.'))||0)*100)/100;
-  var n=q/sc, entier=Math.abs(n-Math.round(n))<0.001;
-  var lblN=document.getElementById('stk-cont-n'),lblE=document.getElementById('stk-cont-eq');
+  var n=Math.round(q/sc*100)/100, entier=Math.abs(n-Math.round(n))<0.001;
+  var c=document.getElementById('inp-scont'),lblE=document.getElementById('stk-cont-eq');
   var u=' '+uniteArt(p);
-  if(!q){
-    if(lblN)lblN.textContent='0 '+mot;
-    if(lblE)lblE.textContent=fr?('1 '+mot+' = '+fmtQ(sc)+u):('1 '+mot+' = '+fmtQ(sc)+u);
-    return;
-  }
-  if(lblN)lblN.textContent=entier?(fmtQ(Math.round(n))+' '+mot+(Math.round(n)>1?'s':'')):(fmtQ(q)+u);
-  if(lblE)lblE.textContent=entier?('= '+fmtQ(q)+u)
-                                 :(fr?('pas un '+mot+' entier'):('not a whole '+mot));
+  // ⚠️ On ne réécrit JAMAIS le champ pendant qu'il y tape : les raccourcis et
+  // les boutons − / + le remplissent, ses doigts ont la priorité.
+  if(c&&document.activeElement!==c)c.value=q?String(n).replace('.',','):'';
+  if(!lblE)return;
+  if(!q){lblE.textContent=(fr?'1 ':'1 ')+mot+' = '+fmtQ(sc)+u;return;}
+  // Le total en unités est TOUJOURS écrit : c'est le garde-fou. Une erreur
+  // de conditionnement se voit là, avant l'enregistrement, pas à l'inventaire.
+  lblE.textContent=entier
+    ?('= '+fmtQ(q)+u)
+    :(fmtQ(q)+u+' — '+(fr?('pas un '+mot+' entier'):('not a whole '+mot)));
 }
 // Il dit une fois combien il y a dans son carton : l'app s'en souvient pour
 // cet article, et les raccourcis « 1 carton = 24 · 2 cartons = 48 » arrivent.
@@ -14561,6 +14615,8 @@ function stkPoserCarton(){
   save();
   var r=document.getElementById('stk-cart-row');if(r)r.style.display='none';
   var c=document.getElementById('inp-scart');if(c)c.value='';
+  // Il vient de dire comment il achète : on compte tout de suite là-dedans.
+  try{stkSens(_stkSens);}catch(e){}
   majApercuStk();
   showToast('📦 1 '+(p.umCont||(fr?'carton':'box'))+' = '+fmtQ(n)+' '+(fr?'— je m\'en souviendrai':'— remembered'));
 }
@@ -14569,15 +14625,32 @@ function stkPoserCarton(){
 // comptée en rayon. La sortie est un événement d'appro négatif, donc le stock
 // reste recalculable et la fusion multi-téléphones continue de fonctionner.
 var _stkSens='in';
+// Ce que le champ compte, écrit au-dessus de lui. C'est TOUT le contrat :
+// tant que la question est « Combien de cartons ? », le 2 qu'il tape ne peut
+// pas vouloir dire autre chose que deux cartons.
+function majLibelleQte(){
+  var lbl=document.getElementById('lbl-qte-recu');if(!lbl)return;
+  var fr=(lang==='fr');
+  if(_stkQMode==='c'&&artStkCours&&_stkSens==='in'){
+    var mot=_motContenant(artStkCours,artStkVarCours||null);
+    lbl.textContent=fr?('Combien de '+mot+'s ?'):('How many '+mot+'es?');
+    return;
+  }
+  var uni=artStkCours&&estMesure(artStkCours)?(' ('+uniteArt(artStkCours)+')'):'';
+  lbl.textContent=(_stkSens==='in'?(fr?'Quantité reçue':'Quantity received')
+                                  :(fr?'Quantité perdue':'Quantity lost'))+uni;
+}
 function stkSens(s){
   _stkSens=s;
   var i=document.getElementById('stk-sens-in'),o=document.getElementById('stk-sens-out');
   if(i)i.classList.toggle('on',s==='in');
   if(o)o.classList.toggle('on',s==='out');
   var fr=lang==='fr';
-  var lbl=document.getElementById('lbl-qte-recu');
-  var uni=artStkCours&&estMesure(artStkCours)?(' ('+uniteArt(artStkCours)+')'):'';
-  if(lbl)lbl.textContent=(s==='in'?(fr?'Quantité reçue':'Quantity received'):(fr?'Quantité perdue':'Quantity lost'))+uni;
+  // ⭐ L'approvisionnement se pense en gros : sur une ENTRÉE, dès que l'app
+  // connaît le contenant, c'est lui qu'on compte par défaut.
+  var _scq=0;try{_scq=_stkTailleCont();}catch(e){}
+  try{stkQMode((s==='in'&&_scq>0)?'c':'u',true);}catch(e){}
+  majLibelleQte();
   var mr=document.getElementById('stk-motif-row');if(mr)mr.style.display=s==='out'?'block':'none';
   var frw=document.getElementById('stk-fourn-row');if(frw)frw.style.display=s==='in'?'block':'none';
   // Le prix d'achat n'a de sens que quand on REÇOIT de la marchandise.
@@ -14595,6 +14668,9 @@ function stkSens(s){
   var _sc=0;try{_sc=_stkTailleCont();}catch(e){}
   if(pac)pac.style.display=(s==='in'&&_sc>0)?'flex':'none';
   if(pacl&&_sc>0&&artStkCours)pacl.textContent=(fr?'Le ':'Per ')+_motContenant(artStkCours,artStkVarCours||null);
+  var sqcl=document.getElementById('sq-c-l'),squl=document.getElementById('sq-u-l');
+  if(sqcl&&_sc>0&&artStkCours)sqcl.textContent=(fr?'Par ':'Per ')+_motContenant(artStkCours,artStkVarCours||null);
+  if(squl)squl.textContent=fr?('En '+(artStkCours?uniteArt(artStkCours):'unités')):('In '+(artStkCours?uniteArt(artStkCours):'units'));
   if(s!=='in'||!(_sc>0)){if(_stkPaMode==='c')stkPaMode('u');}
   var b=document.getElementById('lbl-enreg-stk');
   if(b)b.textContent=s==='in'?(fr?'Enregistrer l\'entrée':'Save entry'):(fr?'Enregistrer la sortie':'Save removal');
