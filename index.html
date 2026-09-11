@@ -3599,7 +3599,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.79'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.80'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4580,6 +4580,29 @@ function _demarrerApp(){
       appliquerLang();
       setModeEntree('old');
       goScreen('s-login');
+      // ══════════════════════════════════════════════════════════════
+      //  ⚠️⚠️ LE CAPTEUR S'OUVRAIT EN 30 ms, ET PERSONNE NE LISAIT LE DOIGT.
+      //
+      //  MESURÉ, les trois états d'un téléphone dont l'empreinte est posée :
+      //    porte classique (pas de liste serveur) → capteur à 32 ms, doigt
+      //        reçu à 432 ms, PROMESSE JAMAIS ATTENDUE : il tape son PIN.
+      //    porte rapide, `entree.bio` absent      → pareil, doigt ignoré.
+      //    porte rapide + `entree.bio:true`       → caisse en 613 ms. ✅
+      //  Et en appelant le guetteur à la main : la caisse s'ouvre en ~620 ms
+      //  DEPUIS TOUTES LES PORTES, hors ligne comprise. La machinerie était
+      //  bonne ; elle n'était jamais appelée.
+      //
+      //  DEUX VERROUS PÉRIMÉS l'expliquaient : le guetteur ne vivait QUE dans
+      //  la porte rapide, et derrière `entree.bio` — une COPIE de
+      //  l'interrupteur, restée là après la 21.63 qui l'a déménagé sur
+      //  l'APPAREIL (`myboutiq_bio`). « Je veux que ce soit juste à la porte
+      //  d'entrée, que ce soit le patron ou le vendeur » : c'est exactement
+      //  cet interrupteur-là qu'il faut lire, et lui seul.
+      //
+      //  ⚠️ `_guetteEmpreinte` empêche le doublon si la porte rapide l'appelle
+      //  aussi : le navigateur n'accepte qu'une demande WebAuthn à la fois.
+      // ══════════════════════════════════════════════════════════════
+      try{if(bioActif())requestAnimationFrame(function(){setTimeout(guetterEmpreinte,60);});}catch(e){}
       if(_invitationCode)ouvrirInvitationVendeur();
     } else if(_invitationCode){
       // Arrivée par un lien d'invitation : droit à la connexion vendeur
@@ -4792,10 +4815,47 @@ function entreeRapideVendeur(){
   var e=lireEntree();
   return !!(e&&e.role==='vendeur'&&e.code&&e.nom);
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ LA PORTE RAPIDE ATTENDAIT UNE PERMISSION DU SERVEUR.
+//
+//  `e.boutiques` n'est écrit QUE par `listerBoutiquesDuCompte()`, qui exige
+//  Supabase chargé, une session authentifiée ET `navigator.onLine`. Sans les
+//  trois, la liste n'arrive jamais — et la porte rapide ne s'ouvre JAMAIS.
+//  Le commerçant hors réseau retape donc son numéro de téléphone à chaque
+//  ouverture, vingt fois par jour, alors que l'appareil connaît déjà sa
+//  boutique : `memoriserEntree` y écrit `code` et `boutique` à chaque
+//  connexion, et la boutique elle-même est dans `myboutiq_v6`.
+//
+//  MESURÉ : porte classique = 2 champs (téléphone + PIN) + le choix
+//  Patron/Vendeur + l'indicatif pays ; porte rapide = 1 champ (le PIN).
+//  On ne demande donc plus la permission du serveur pour montrer ce que le
+//  téléphone sait déjà. La liste du serveur reste la bienvenue : elle ajoute
+//  les AUTRES boutiques, elle ne conditionne plus l'ouverture de celle-ci.
+// ══════════════════════════════════════════════════════════════════
+function _boutiqueLocaleConnue(){
+  var e=lireEntree()||{};
+  var code=e.code||'',nom=e.boutique||'';
+  try{
+    var d=JSON.parse(localStorage.getItem('myboutiq_v6')||'null');
+    if(d&&d.cfg&&d.cfg.code){code=code||d.cfg.code;nom=nom||d.cfg.nom||'';}
+  }catch(x){}
+  return code?{code:code,nom:nom||formatShopCode(code)}:null;
+}
+// La liste qu'on montre : celle du serveur si elle est là, sinon celle que
+// l'appareil connaît. Jamais vide quand une boutique est sur le téléphone.
+function _mesBoutiquesConnues(){
+  var e=lireEntree()||{};
+  var l=(e.boutiques&&e.boutiques.length)?e.boutiques.slice():[];
+  var loc=_boutiqueLocaleConnue();
+  if(loc&&!l.some(function(b){return String(b.code)===String(loc.code);}))l.push(loc);
+  return l;
+}
 function entreeRapidePossible(){
   var e=lireEntree();
   if(entreeRapideVendeur())return true;
-  return !!(e&&e.role==='patron'&&e.tel&&e.boutiques&&e.boutiques.length);
+  if(!(e&&e.role==='patron'&&e.tel))return false;
+  if(e.boutiques&&e.boutiques.length)return true;
+  return !!_boutiqueLocaleConnue();
 }
 // Le PIN d'abord, les boutiques ensuite. Le PIN n'appartient pas à UNE
 // boutique : c'est la clé du COMPTE, la même pour toutes. Le demander après
@@ -4835,7 +4895,12 @@ function majEntreeRapide(){
   document.getElementById('er-btn').textContent=fr?'Ouvrir':'Open';
   var ret=document.getElementById('er-retour');if(ret)ret.parentNode.style.display='none';
   var bio=document.getElementById('er-bio');
-  if(bio)bio.style.display=(window.PublicKeyCredential&&e.bio)?'block':'none';
+  // ⚠️ L'INTERRUPTEUR EST CELUI DE L'APPAREIL. `e.bio` n'est qu'une copie
+  // écrite à la connexion du patron : un vendeur, ou un patron dont la
+  // dernière connexion date d'avant la pose de l'empreinte, ne l'avait pas —
+  // et le bouton restait caché alors que le capteur venait de s'ouvrir.
+  var _bioOn=false;try{_bioOn=bioActif()||!!e.bio;}catch(x){_bioOn=!!e.bio;}
+  if(bio)bio.style.display=(window.PublicKeyCredential&&_bioOn)?'block':'none';
   // Il ne devrait pas avoir à TOUCHER un bouton pour poser son doigt.
   // On demande au téléphone de guetter l'empreinte tout seul, dès que
   // l'écran s'ouvre. Le bouton reste, pour qui préfère le geste explicite.
@@ -4843,7 +4908,7 @@ function majEntreeRapide(){
   // perdu à chaque ouverture, sur un geste qu'il fait vingt fois par jour.
   // Le délai n'existe que pour laisser l'écran se peindre : on attend donc la
   // PEINTURE elle-même, plus un nombre choisi au jugé.
-  if(window.PublicKeyCredential&&e.bio){
+  if(window.PublicKeyCredential&&_bioOn){
     try{requestAnimationFrame(function(){setTimeout(guetterEmpreinte,60);});}
     catch(x){setTimeout(guetterEmpreinte,120);}
   }
