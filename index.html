@@ -3703,7 +3703,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.83'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.84'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -12084,6 +12084,87 @@ async function chargerManifestePhotos(){
   return _photoManif;
 }
 // Renvoie l'URL de la photo partagée, ou '' si personne ne l'a encore prise.
+// ⚠️⚠️ « SEAU » EST DANS « CISEAUX », ET « EAU » DANS « BEAUFORT ».
+//
+//  La recherche de photo demandait `e.k.indexOf(mot)>=0` : une simple
+//  suite de lettres. Mesuré sur les 1 290 noms que l'app peut illustrer,
+//  ça donnait :
+//    Seau 10 L  → une paire de CISEAUX      (seau est dans ci-SEAU-x)
+//    Eau 2 L    → une bière BEAUFORT        (eau est dans b-EAU-fort)
+//    Carpe      → un TAPIS                  (carpe est dans carpet)
+//    Verre      → du PAPIER ABRASIF         (papier de verre)
+//    Pince      → une ÉPINGLE À CHEVEUX
+//    Torchon    → une SERPILLÈRE
+//    Sel        → de l'ACIDE CHLORHYDRIQUE  (« esprit de sel »)
+//  Et les bonnes photos existaient déjà dans la bibliothèque : seau.jpg,
+//  sel-de-cuisine-1kg.jpg, verre-a-boire.jpg, torchon-de-cuisine.jpg.
+//  Personne ne les trouvait.
+//
+//  DEUX CORRECTIONS, une seule idée : comparer des MOTS.
+//   1. Un mot doit être un mot entier des mots-clés, plus une suite de
+//      lettres trouvée n'importe où dedans.
+//   2. Les deux côtés se découpent PAREIL. « Sachet d'eau » donnait
+//      « d'eau » d'un côté et « d » + « eau » de l'autre : douze articles
+//      à apostrophe (huile d'arachide, jus d'ananas, sac d'école) ne
+//      trouvaient jamais leur photo, qui était pourtant là.
+//
+//  Et quand plusieurs entrées répondent, ce n'est plus la PREMIÈRE DE
+//  L'INDEX qui gagne : c'est celle qui porte le mot dans son NOM plutôt
+//  que dans la queue de ses mots-clés. C'est ce qui départage le sel de
+//  l'esprit de sel.
+//
+//  MESURÉ APRÈS : 8 photos fausses corrigées, 12 articles qui n'en
+//  avaient aucune en reçoivent une, 2 la perdent — le thé à la menthe
+//  (qui montrait un sirop) et « Grill » (des arachides grillées). Les
+//  deux la perdent à juste titre.
+// ⚠️ ELLE NORMALISE ELLE-MÊME, et ce n'est pas de la ceinture-bretelles :
+// la découpe se fait sur [^a-z0-9], donc un « S » majuscule ou un « é »
+// compte comme un séparateur. « Sachet d'eau » rendait « achet » + « eau »,
+// sans rien signaler. Ses deux appelants lui passent déjà du texte normalisé
+// — mais le troisième, un jour, ne le saura pas.
+function _motsDe(t){
+  var o={},l=txtNorm(String(t||'')).replace(/(\d)([a-z])/g,'$1 $2').replace(/([a-z])(\d)/g,'$1 $2')
+          .split(/[^a-z0-9]+/);
+  for(var i=0;i<l.length;i++)if(l[i].length>=3)o[l[i]]=1;
+  return o;
+}
+// ⚠️ ET ELLE SE RETIENT. La règle ci-dessus coûte plus cher que l'ancienne :
+// l'ancienne s'arrêtait à la première entrée qui répondait, la nouvelle doit
+// toutes les voir pour savoir laquelle répond LE MIEUX. Mesuré : 0,7 ms par
+// appel — et appliquerPhotosCatalogue() en fait un par article et par
+// variante. C'est exactement la faute de mesureCatalogue, qui avait coûté
+// 258 ms à l'ouverture de la caisse. On ne la refait pas : la réponse ne
+// dépend que du nom et de l'index, on la garde, et on la jette avec l'index.
+// ⚠️ Seule la réponse du catalogue visuel est gardée. Celle de la
+// bibliothèque des commerçants ne l'est pas : une photo approuvée pendant
+// la session doit pouvoir apparaître sans redémarrer.
+var _phCache=null,_phCacheIdx=null;
+function _chercherPhoto600(cle,idx){
+  // Le nom exact d'abord : c'est la seule réponse qui ne se discute pas.
+  var trouve=null;
+  idx.some(function(e){
+    if(!e.img600)return false;
+    if(e._pf===cle||e._nf===cle){trouve=e;return true;}
+    return false;
+  });
+  if(!trouve){
+    var mots=Object.keys(_motsDe(cle));
+    if(mots.length){
+      var meilleur=-1;
+      idx.forEach(function(e){
+        if(!e.img600||!e._km)return;
+        var sc=0;
+        for(var i=0;i<mots.length;i++){
+          if(!e._km[mots[i]])return;          // un mot manque : ce n'est pas elle
+          sc+=(e._nm&&e._nm[mots[i]])?2:1;    // dans son nom, ou seulement dans sa queue
+        }
+        // À égalité, l'ordre de l'index tranche, comme avant.
+        if(sc>meilleur){meilleur=sc;trouve=e;}
+      });
+    }
+  }
+  return trouve?_photo600(trouve.img600):'';
+}
 function photoCatalogue(nom){
   var cle=txtNorm(nom).replace(/\s+/g,' ').trim();
   if(!cle)return '';
@@ -12093,22 +12174,10 @@ function photoCatalogue(nom){
   // recevoir les nouvelles photos sur ses articles existants.
   try{
     if(_cat600&&_cat600.entrees){
-      var trouve=null;
-      catalogueIndex().some(function(e){
-        if(!e.img600)return false;
-        if(txtNorm(e.plein)===cle||txtNorm(e.nm)===cle){trouve=e;return true;}
-        return false;
-      });
-      if(!trouve){
-        var mots=cle.replace(/(\d)([a-z])/g,'$1 $2').replace(/([a-z])(\d)/g,'$1 $2')
-                    .split(' ').filter(function(m){return m.length>=3;});
-        if(mots.length)catalogueIndex().some(function(e){
-          if(!e.img600)return false;
-          if(mots.every(function(m){return e.k.indexOf(m)>=0;})){trouve=e;return true;}
-          return false;
-        });
-      }
-      if(trouve)return _photo600(trouve.img600);
+      var _idx=catalogueIndex();
+      if(_phCacheIdx!==_idx){_phCache={};_phCacheIdx=_idx;}
+      if(_phCache[cle]===undefined)_phCache[cle]=_chercherPhoto600(cle,_idx);
+      if(_phCache[cle])return _phCache[cle];
     }
   }catch(e){}
   if(!_photoManif||!_photoManif.base)return '';
@@ -12480,6 +12549,11 @@ function catalogueIndex(){
     e._nf=txtNorm(e.nm||'');
     e._ff=txtNorm(e.fam||'');
     e._pf=txtNorm(e.plein||'');
+    // ⭐ ET SES MOTS, découpés une fois. photoCatalogue en a besoin à
+    // chaque tuile : les recalculer là-bas referait le coup des deux cent
+    // trente-huit mille txtNorm.
+    e._km=_motsDe(e.k||'');
+    e._nm=_motsDe(e._pf+' '+e._nf+' '+e._ff);
   });
   // ⚠️ ET LA RECHERCHE EXACTE DEVIENT UN COUP D'ŒIL, plus un balayage.
   // Le calcul d'origine parcourait les entrées DANS L'ORDRE et s'arrêtait à
