@@ -509,6 +509,15 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
      -webkit-tap-highlight-color:transparent}
 .pgo:active{transform:scale(.985)}
 .pgo-e{font-size:19px;flex-shrink:0}
+/* ⚠️ LA MARGE DU BAS N'EST PAS DE L'ESPACEMENT, C'EST UNE SÉCURITÉ. Rendre
+   le prix touchable a posé une petite cible à 4 px des boutons − et + :
+   un doigt qui vise « + » ouvrait la négociation. C'est t56 qui l'a vu,
+   pas moi. */
+.pisub.touchable{cursor:pointer;padding:3px 7px;margin:0 -7px 7px -7px;border-radius:8px;
+  border:1px dashed rgba(0,0,0,.16);-webkit-tap-highlight-color:transparent}
+.pisub.touchable:active{background:var(--BG)}
+.pinego{color:var(--O)}
+.pibarre{display:block;font-size:10px;font-weight:700;color:var(--M);text-decoration:line-through}
 .pgo-t{flex:1;font-size:11.5px;font-weight:600;color:#7A4A00;line-height:1.4}
 .pgo-t b{font-weight:900;color:var(--T)}
 .pgo-b{flex-shrink:0;font-size:11.5px;font-weight:900;color:#fff;background:var(--O);
@@ -2445,6 +2454,22 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- PRIX NÉGOCIÉ SUR UNE LIGNE — « les trois casiers, tu me fais 19 000 » -->
+<div class="ov" id="ov-nego" onclick="closeOv(event,'ov-nego')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="ng-tit">🤝 Prix négocié</div><button class="bcl" onclick="closeSheet('ov-nego')">✕</button></div>
+    <div style="padding:16px 19px 20px">
+      <div style="font-size:15px;font-weight:800;color:var(--T);margin-bottom:3px" id="ng-nm">Article</div>
+      <div style="font-size:12px;font-weight:600;color:var(--M);margin-bottom:15px" id="ng-sub">Prix normal</div>
+      <div class="pig"><label class="pl" id="ng-lbl">Prix pour ce client</label>
+        <input class="pi" type="number" id="ng-inp" oninput="calcNego()" inputmode="numeric" placeholder="0"></div>
+      <div id="ng-info" style="display:none;font-size:12px;font-weight:700;padding:10px 12px;border-radius:11px;margin:11px 0 14px;line-height:1.45"></div>
+      <button class="bpay" style="margin-bottom:9px" onclick="validerNego()" id="ng-ok">✅ Appliquer ce prix</button>
+      <button class="bvid" onclick="annulerNego()" id="ng-eff" style="display:none">↩️ Remettre le prix normal</button>
+    </div>
+  </div>
+</div>
+
 <!-- PRIX -->
 <div class="ov" id="ov-prix" onclick="closeOv(event,'ov-prix')">
   <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
@@ -3718,7 +3743,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.85'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.86'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -10254,6 +10279,10 @@ function _montantDesLots(lots,pxU,paU,qty){
 // ══════════════════════════════════════════════════════════════════
 function _offreGros(key,p,v,qty){
   if(!p||!(qty>0))return null;
+  // ⚠️ IL A DÉJÀ TRANCHÉ LE PRIX DE CETTE LIGNE. Lui proposer « 6 500 au
+  // lieu de 7 200 » serait comparer à un prix qui n'est plus le sien — et
+  // appliquer l'étage ferait sauter sa négociation sans un mot.
+  try{if(_negoDe(key)!==null)return null;}catch(e){}
   var pxU=Number(v?v.px:p.px)||0;
   if(!(pxU>0))return null;
   var paU=Number(v?v.pa:p.pa)||0;
@@ -11122,7 +11151,17 @@ function ouvrirPanier(){
       if(_mo.qDetail>0)_pts.push(fmt(px)+' × '+fmtQ(_mo.qDetail));
       _sous=_pts.join(' + ');
     }else _sous=(_mg?(_mg.emo+' '+_mg.txt):(fmt(px)+' × '+fmtQ(qty)+(estMesure(p)&&!v?' '+uniteArt(p):'')));
-    d.innerHTML=(p.img?'<img class="piemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'piemo\',textContent:\''+p.e+'\'}))">':'<span class="piemo">'+p.e+'</span>')+'<div class="piinf"><div class="pinm">'+p.nm+(v?' — '+v.nm:'')+'</div><div class="piun">'+_sous+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="pisub">'+fmt(_mo.total)+'</span><div class="qctl"><button class="qb m" onclick="chgQ(\''+key+'\',-'+step+')">−</button><span class="qnum">'+fmtQ(qty)+'</span><button class="qb p" onclick="chgQ(\''+key+'\','+step+')">+</button></div></div>';
+    // ⭐ LE PRIX SE TOUCHE. Un grossiste négocie article par article, et la
+    // remise, elle, s'applique au total de la vente : s'il prend aussi du
+    // riz, il fallait calculer le montant de tête.
+    var _ng=_negoDe(key), _peut=false;try{_peut=_peutRemise();}catch(x){}
+    // Un prix négocié au-dessus du prix normal ne retire rien (_negoTotal
+    // ne descend jamais sous zéro) : il ne doit donc rien afficher non plus.
+    if(_ng!==null&&!(_ng<_mo.total-0.001))_ng=null;
+    var _affPrix=(_ng!==null)
+      ?('<span class="pinego">'+fmt(_ng)+'</span><span class="pibarre">'+fmt(_mo.total)+'</span>')
+      :fmt(_mo.total);
+    d.innerHTML=(p.img?'<img class="piemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'piemo\',textContent:\''+p.e+'\'}))">':'<span class="piemo">'+p.e+'</span>')+'<div class="piinf"><div class="pinm">'+p.nm+(v?' — '+v.nm:'')+'</div><div class="piun">'+_sous+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="pisub'+(_peut?' touchable':'')+'"'+(_peut?(' onclick="ouvrirNego(\''+key+'\')"'):'')+'>'+_affPrix+'</span><div class="qctl"><button class="qb m" onclick="chgQ(\''+key+'\',-'+step+')">−</button><span class="qnum">'+fmtQ(qty)+'</span><button class="qb p" onclick="chgQ(\''+key+'\','+step+')">+</button></div></div>';
     l.appendChild(d);
     // ⭐ « 12 = un casier à 6 500 — 700 de moins ». Elle n'apparaît que
     // lorsqu'un étage ferait BAISSER ce total-là. Voir _offreGros.
@@ -11148,8 +11187,8 @@ function ouvrirPanier(){
 // facturer une ligne mixte (deux cartons plus trois pièces), et
 // `_mentionGros` continue de ne l'ÉCRIRE « carton » que si le compte tombe
 // juste. Le marqueur peut donc rester.
-function chgQ(key,d){panier[key]=Math.round(((panier[key]||0)+d)*100)/100;if(panier[key]<=0)delete panier[key];updatePUI(parseInt(key.split('-')[0]));document.getElementById('pan-tot').textContent=fmt(calcTotal());if(!Object.keys(panier).length)closeSheet('ov-pan');else ouvrirPanier();}
-function viderPanier(){panier={};_grosPanier={};renderProd(DB.articles);document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');}
+function chgQ(key,d){panier[key]=Math.round(((panier[key]||0)+d)*100)/100;if(panier[key]<=0){delete panier[key];_oublierNego(key);}updatePUI(parseInt(key.split('-')[0]));document.getElementById('pan-tot').textContent=fmt(calcTotal());if(!Object.keys(panier).length)closeSheet('ov-pan');else ouvrirPanier();}
+function viderPanier(){panier={};_grosPanier={};_negoLigne={};renderProd(DB.articles);document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');}
 function procederPmt(){
   closeSheet('ov-pan');
   var total=calcTotal();
@@ -17700,11 +17739,135 @@ function qteVendueParArticle(jours){
 function saleLinesLabel(v){return (v.lignes||[]).map(function(l){return l.nm||'Article';}).join(', ');}
 function saleArticleBaseName(nm){return String(nm||'').replace(/\s×\d+$/,'').split(' — ')[0].trim();}
 function findArticleByLineName(nm){var base=saleArticleBaseName(nm);return (DB.articles||[]).find(function(a){return a.nm===base||String(nm||'').indexOf(a.nm)===0;})||null;}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ LE PRIX NÉGOCIÉ SUR UNE LIGNE — « diminuer pour un grossiste »
+//
+//  Il négocie article par article : « les trois casiers, tu me fais
+//  19 000 ». La remise existante s'applique au TOTAL de la vente : s'il
+//  prend aussi du riz, il fallait calculer le montant de tête.
+//
+//  ⚠️⚠️ CE QUE JE N'AI PAS FAIT, ET POURQUOI.
+//  Le geste naturel serait d'écraser le prix dans le calcul des lots.
+//  C'est exactement là qu'il ne faut pas toucher : _montantDesLots est le
+//  cœur de CHAQUE vente de la flotte, lots empilés compris, et la
+//  proposition de gros s'appuie dessus pour promettre un chiffre qui doit
+//  être celui encaissé. Un prix négocié qui passerait par là mettrait en
+//  jeu toutes les ventes pour servir un cas.
+//  Le prix négocié emprunte donc LE RAIL QUI EXISTE DÉJÀ : celui de la
+//  remise. Il se retranche au même endroit que `remiseVente`, dans les
+//  deux seules fonctions qui font le total et le bénéfice. Le calcul des
+//  lots, le reçu et les lignes de vente ne changent pas d'une virgule.
+//
+//  TROIS GARDES, parce que baisser un prix est le geste le plus cher de
+//  l'app :
+//   1. MÊME PERMISSION QUE LA REMISE. Un vendeur que le patron n'a pas
+//      autorisé ne peut pas négocier — et sa négociation vaut zéro même
+//      si le champ est atteint autrement (deuxième barrière, comme pour
+//      la remise : c'est la leçon de calcRemiseVente).
+//   2. ELLE DIT LA PERTE. En dessous du prix d'achat, l'app l'écrit en
+//      rouge avec le chiffre. Elle ne bloque pas — c'est son commerce —
+//      mais il ne peut pas ne pas l'avoir vu.
+//   3. ELLE NE TOUCHE JAMAIS À L'ARTICLE. Le prix négocié vit dans le
+//      panier et meurt avec lui, exactement comme _grosPanier. Un prix
+//      d'un jour ne doit jamais devenir le prix de l'article : c'est la
+//      règle qui protège déjà la boutique d'exemple.
+// ══════════════════════════════════════════════════════════════════
+var _negoLigne={};                  // clé de panier → total négocié
+var _negoArt=null;                  // la ligne en cours de négociation
+function _negoDe(key){
+  var n=_negoLigne[key];
+  return (typeof n==='number'&&isFinite(n)&&n>=0)?n:null;
+}
+// Ce que les négociations retirent au total. Une seule addition, lue par
+// calcTotal et calcBenTotal — les deux mêmes endroits que la remise.
+function _negoTotal(){
+  if(!_peutRemise())return 0;       // deuxième barrière
+  var s=0;
+  Object.keys(_negoLigne).forEach(function(key){
+    var qty=panier[key];if(!(qty>0))return;
+    var n=_negoDe(key);if(n===null)return;
+    var d=_ligneDe(key,qty);if(!d)return;
+    s+=Math.max(0,d.m.total-n);     // jamais négatif : on ne MONTE pas un prix ici
+  });
+  return Math.round(s*100)/100;
+}
+function _oublierNego(key){try{delete _negoLigne[key];}catch(e){}}
+// Une ligne qui disparaît du panier emporte sa négociation : sinon elle
+// reviendrait s'appliquer au prochain article qui prendrait la même clé.
+function _nettoyerNego(){
+  Object.keys(_negoLigne).forEach(function(key){
+    if(!(panier[key]>0))_oublierNego(key);
+  });
+}
+function ouvrirNego(key){
+  if(!_peutRemise())return _refusPerm(lang==='fr'?'négocier les prix':'negotiate prices');
+  var qty=panier[key]||0;if(!(qty>0))return;
+  var d=_ligneDe(key,qty);if(!d)return;
+  var fr=(lang==='fr');
+  _negoArt={key:key,normal:d.m.total,cout:d.m.cout,qty:qty,p:d.p,v:d.v};
+  document.getElementById('ng-nm').textContent=d.p.nm+(d.v?(' — '+d.v.nm):'');
+  document.getElementById('ng-sub').textContent=(fr?'Prix normal : ':'Normal price: ')
+    +fmt(d.m.total)+' · '+fmtQ(qty)+' '+_uniteMot(d.p);
+  var i=document.getElementById('ng-inp');
+  i.value=(_negoDe(key)!==null)?_negoDe(key):'';
+  i.placeholder=String(Math.round(d.m.total));
+  document.getElementById('ng-eff').style.display=(_negoDe(key)!==null)?'block':'none';
+  calcNego();
+  document.getElementById('ov-nego').classList.add('show');
+  setTimeout(function(){try{i.focus();}catch(e){}},150);
+}
+function calcNego(){
+  if(!_negoArt)return;
+  var fr=(lang==='fr'),val=parseFloat((document.getElementById('ng-inp')||{}).value);
+  var info=document.getElementById('ng-info');
+  if(!(val>=0)||!isFinite(val)){info.style.display='none';return;}
+  var ben=val-_negoArt.cout, baisse=_negoArt.normal-val;
+  info.style.display='block';
+  if(val>_negoArt.normal){
+    info.style.background='#FFF3E0';info.style.color='#E65100';
+    info.textContent='⚠️ '+(fr?'C\'est PLUS cher que le prix normal. Ici on ne fait que baisser — touche « remettre le prix normal » si tu t\'es trompé.'
+                             :'That is MORE than the normal price. This screen only lowers prices.');
+    return;
+  }
+  if(_negoArt.cout>0&&ben<0){
+    info.style.background='#FFEBEE';info.style.color='var(--R)';
+    info.textContent='⚠️ '+(fr?('À ce prix tu vends À PERTE ('+fmt(ben)+'). Tu as payé '+fmt(_negoArt.cout)+'.')
+                             :('At this price you sell AT A LOSS ('+fmt(ben)+'). You paid '+fmt(_negoArt.cout)+'.'));
+    return;
+  }
+  info.style.background='#E8F5E9';info.style.color='#1B5E20';
+  info.textContent='✅ '+(fr?(fmt(baisse)+' de moins'+(_negoArt.cout>0?(' · bénéfice restant '+fmt(ben)):''))
+                           :(fmt(baisse)+' less'+(_negoArt.cout>0?(' · profit left '+fmt(ben)):'')));
+}
+function validerNego(){
+  if(!_negoArt)return;
+  var val=parseFloat((document.getElementById('ng-inp')||{}).value);
+  if(!(val>=0)||!isFinite(val)){closeSheet('ov-nego');_negoArt=null;return;}
+  // On ne MONTE pas un prix depuis cet écran : le prix de vente d'un
+  // article se règle dans Modification, là où il est visible et durable.
+  if(val>_negoArt.normal){
+    showToast('⚠️ '+(lang==='fr'?'Ici on ne fait que baisser un prix':'This only lowers prices'));
+    return;
+  }
+  _negoLigne[_negoArt.key]=Math.round(val*100)/100;
+  var baisse=_negoArt.normal-val;
+  closeSheet('ov-nego');_negoArt=null;
+  try{showToast('🤝 '+(lang==='fr'?'Prix négocié — ':'Negotiated — ')+fmt(baisse)+(lang==='fr'?' de moins':' less'));}catch(e){}
+  if(navigator.vibrate)navigator.vibrate(25);
+  ouvrirPanier();
+}
+function annulerNego(){
+  if(!_negoArt)return;
+  _oublierNego(_negoArt.key);
+  closeSheet('ov-nego');_negoArt=null;
+  showToast('↩️ '+(lang==='fr'?'Prix normal remis':'Normal price restored'));
+  ouvrirPanier();
+}
 function calcTotalBrut(){return Object.entries(panier).reduce(function(s,e){var l=_ligneDe(e[0],e[1]);return s+(l?l.m.total:0);},0);}
 // Ne compte que ce dont on connaît le prix d'achat : sans lui, le bénéfice est
 // inconnu, pas égal au prix de vente.
 function calcBenBrut(){return Object.entries(panier).reduce(function(s,e){var l=_ligneDe(e[0],e[1]);return s+(l?l.m.benConnu:0);},0);}
-calcTotal=function(){return Math.max(0,calcTotalBrut()-remisePoints-(remiseVente||0));};
+calcTotal=function(){return Math.max(0,calcTotalBrut()-remisePoints-(remiseVente||0)-_negoTotal());};
 // ═══════════════════════════════════════════════════════════════════
 // LA CONSIGNE — de l'argent qui passe par la caisse SANS t'appartenir
 // La bouteille de bière, le casier, la bouteille de gaz sont consignés :
@@ -17753,7 +17916,7 @@ function majConsigneUI(){
   var l=document.getElementById('cons-lbl');
   if(l)l.textContent=(fr?'Consigne ':'Deposit ')+fmt(u)+(fr?' / emballage — ce n\'est pas ton bénéfice':' each — not your profit');
 }
-calcBenTotal=function(){return calcBenBrut()-remisePoints-(remiseVente||0);};
+calcBenTotal=function(){return calcBenBrut()-remisePoints-(remiseVente||0)-_negoTotal();};
 function pointsGagnesPour(total){return Math.floor((total||0)/100);}
 function clientProgressData(cl){var pts=cl&&cl.points||0;if(pts>=2000)return {pct:100,next:'Niveau maximum atteint',cur:pts+' pts',lvl:cl.niveau||niveauClient(pts)};var next=pts>=500?2000:500;var prev=pts>=500?500:0;var pct=Math.max(0,Math.min(100,Math.round(((pts-prev)/(next-prev))*100)));return {pct:pct,next:(next-pts)+' pts avant '+(pts>=500?'Or 🥇':'Argent 🥈'),cur:pts+' pts',lvl:cl.niveau||niveauClient(pts)};}
 function histClientHTML(cl){return (cl.hist||[]).slice().reverse().map(function(h){var type=h.type||'payment',ico='💵',lbl='Paiement',clr='var(--G)',val='';if(type==='credit'){ico='💳';lbl='Crédit';clr='var(--R)';val='+'+fmt(h.amt||0);}else if(type==='payment'){ico='💵';lbl='Paiement';clr='var(--G)';val='-'+fmt(h.amt||0);}else if(type==='achat'){ico='🛍️';lbl='Achat';clr='var(--B)';val=fmt(h.amt||0)+(h.pts?' · +'+h.pts+' pts':'');}else if(type==='points_use'){ico='⭐';lbl='Points utilisés';clr='var(--A)';val='-'+(h.pts||0)+' pts · '+fmt(h.amt||0);}return '<div class="hist-it"><span class="hist-dt">'+(h.date||'')+' · '+lbl+'</span><span class="hist-tp '+(type==='credit'?'cr':'pm')+'">'+ico+'</span><span class="hist-amt" style="color:'+clr+'">'+val+'</span></div>';}).join('')||'<div style="color:var(--M);font-size:12px;font-weight:600">N/A</div>';}
@@ -19255,7 +19418,7 @@ function suggererArchivage(){
   setTimeout(function(){showToast('🧹 '+(lang==='fr'?'Beaucoup de ventes en mémoire — Réglages › Alléger l\'application pour rester rapide':'Many sales in memory — Settings › Lighten the app'));},2500);
 }
 var _logoutBase=logout;logout=function(){clientVente=null;remisePoints=0;remiseVente=0;_logoutBase();};
-viderPanier=function(){panier={};remisePoints=0;remiseVente=0;consignePrises=0;consigneRendues=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');};
+viderPanier=function(){panier={};_grosPanier={};_negoLigne={};remisePoints=0;remiseVente=0;consignePrises=0;consigneRendues=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');};
 function renderClientVenteList(){var c=document.getElementById('client-vente-list');if(!c||!DB)return;c.innerHTML=DB.clients.length?DB.clients.map(function(cl){majNiveauClient(cl);return '<div class="hist-sale" onclick="choisirClientVente('+cl.id+')"><div class="hist-h"><div><div class="hist-d">'+cl.nm+'</div><div class="hist-s">'+cl.niveau+' · '+(cl.points||0)+' pts</div></div><div class="hist-t">'+fmt(cl.credit||0)+'</div></div></div>';}).join(''):'<div class="dash-empty">Aucun client enregistré</div>'; }
 // ⚠️⚠️ « LE CARNET EST VIDE » — MESURÉ DANS L'ÉTUDE DE PARCOURS :
 // une vente comptant coûte 4 gestes, la première vente à crédit en coûtait
@@ -19338,6 +19501,11 @@ encaisser=function(){
     majCredClientBox();ouvrirClientVente();return;
   }
   var totalBrut=calcTotalBrut(),total=calcTotal(),ben=calcBenTotal(),lignes=[];
+  // ⚠️ LU AVANT QUE LE PANIER SOIT VIDÉ. Ce qu'il a lâché en négociant est
+  // enregistré AVEC la remise de la vente : c'est la même chose du point de
+  // vue de ses rapports — de l'argent qu'il a choisi de ne pas prendre. Les
+  // lignes du reçu, elles, gardent leurs vrais prix, casiers compris.
+  var _negoV=0;try{_negoV=_negoTotal();}catch(e){}
   var paiement;
   if(pmntModeVente==='credit'){
     var avCr=Math.min(total,Math.max(0,parseFloat((document.getElementById('cred-avance')||{}).value)||0));
@@ -19393,15 +19561,15 @@ encaisser=function(){
   // n'est ni un chiffre d'affaires ni un bénéfice. On garde aussi le détail
   // pris/rendu pour pouvoir expliquer la somme au commerçant.
   var _consNet=consigneNette(),_consU=consigneUnitPanier();
-  DB.ventes.push({id:genVenteId(),total:total,totalBrut:totalBrut,benefice:ben,ben:ben,lignes:lignes,h:h,heure:h,date:dateFr,vendeur:vendeur,clientId:clientId,clientNom:clientNm,pointsGagnes:ptsGagnes,pointsUtilises:ptsUtilises,reductionPoints:remisePoints,remise:remiseVente||0,paiement:paiement,annulee:false,
+  DB.ventes.push({id:genVenteId(),total:total,totalBrut:totalBrut,benefice:ben,ben:ben,lignes:lignes,h:h,heure:h,date:dateFr,vendeur:vendeur,clientId:clientId,clientNom:clientNm,pointsGagnes:ptsGagnes,pointsUtilises:ptsUtilises,reductionPoints:remisePoints,remise:(remiseVente||0)+_negoV,negocie:_negoV||0,paiement:paiement,annulee:false,
     consigne:_consNet,consignePrises:consignePrises,consigneRendues:consigneRendues,consigneUnit:_consU});
-  _grosPanier={};
+  _grosPanier={};_negoLigne={};
   sauverEtEnvoyerVite();dernierRecu={boutique:DB.cfg.nom,lignes:lignes.map(function(l){var _p=DB.articles.find(function(x){return x.id==l.pid;});var _u=(_p&&estMesure(_p)&&!l.vid)?(' '+uniteArt(_p)):'';
     // ⭐ « UN CARTON SEULEMENT SUR LA FACTURE. » Le contenu reste écrit
     // entre parenthèses : le client doit pouvoir compter ce qu'il emporte.
     var _n=l.gros?(l.nm+' — '+fmtQ(l.gros.nb)+' '+l.gros.mot+(l.gros.nb>1?'s':'')+' ('+fmtQ(l.qte)+_u+')')
                  :(l.nm+' ×'+fmtQ(l.qte)+_u);
-    return {nm:_n,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:remiseVente||0,client:clientNm};
+    return {nm:_n,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:(remiseVente||0)+_negoV,client:clientNm};
   panier={};remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
   renderProd(DB.articles);renderStock(DB.articles);renderClients();recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
   document.getElementById('succ-amt').textContent=fmt(total);
