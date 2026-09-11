@@ -3703,7 +3703,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.82'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.83'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -18238,10 +18238,10 @@ function _sauvEcrire(l){try{localStorage.setItem(_SAUV_CLE,JSON.stringify(l));re
 //  seul article. Elles se sont toutes arrêtées sur l'écran vide. On lui
 //  montre donc une boutique qui marche AVANT de lui demander du travail.
 //
-//  ⚠️ AUCUN CHIFFRE N'EST INVENTÉ. Les 170 articles, leurs prix d'achat,
-//  leurs prix de vente et leurs conditionnements viennent tous de
-//  CATALOGUE_CM, déjà embarqué et déjà renseigné. Je ne sais pas ce que
-//  coûte un savon à Douala et je ne fais pas semblant.
+//  ⚠️ AUCUN CHIFFRE N'EST INVENTÉ. Les prix d'achat, les prix de vente,
+//  l'unité et le conditionnement viennent tous de CATALOGUE_CM, déjà
+//  embarqué et déjà renseigné. Je ne sais pas ce que coûte un savon à
+//  Douala et je ne fais pas semblant.
 //
 //  ⚠️ TROIS RÈGLES DE SÉCURITÉ, nées du défaut du jour — il s'est retrouvé
 //  dans la boutique d'un client parce que deux commerces cohabitaient sur
@@ -18255,73 +18255,126 @@ function _sauvEcrire(l){try{localStorage.setItem(_SAUV_CLE,JSON.stringify(l));re
 var DEMO_CODE='00000 00000';
 function estDemo(){try{return !!(DB&&DB.cfg&&DB.cfg.demo);}catch(e){return false;}}
 
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ LES ARTICLES CHOISIS UN PAR UN
+//
+//  « Boutique test est très dense, il faut quelques articles sélectionnés
+//    avec soin avec leurs images. »
+//
+//  MESURÉ AVANT DE TOUCHER : 89 articles et 122 variantes — 211 lignes à
+//  parcourir pour quelqu'un qui ouvre l'app pour la première fois. Et
+//  48 des 89 articles n'avaient AUCUNE photo.
+//
+//  La cause : on prenait TOUT ce que le catalogue savait chiffrer. Donc
+//  aussi ses étiquettes de rangement — « Condiments en sachet »,
+//  « Conserve de poisson », « Plastique & ustensile », « Anti-moustique &
+//  insecticide ». Personne ne vend ça. Ce sont des noms de rayon. La
+//  démonstration ressemblait à l'inventaire d'un grossiste, pas à une
+//  boutique de quartier.
+//
+//  MAINTENANT : 14 articles, nommés comme au marché, et CHACUN porte sa
+//  photo. Deux sont des familles — les sucreries et les bières — parce
+//  que c'est là qu'un commerçant voit ce que sont les variantes. Un se
+//  vend au kilo, un au litre, un au plateau de 30. Un est volontairement
+//  presque épuisé, pour que « À commander » ait quelque chose à dire.
+//
+//  ⚠️ LA RÈGLE TIENT : aucun chiffre n'est inventé. La liste ci-dessous
+//  ne donne que des NOMS, des STOCKS et un emoji de secours. Les prix
+//  d'achat, les prix de vente, l'unité et le conditionnement continuent
+//  d'être lus dans CATALOGUE_CM. Un stock n'est pas de l'argent : un
+//  nombre d'unités en rayon ne peut tromper personne sur une marge.
+//
+//  ⚠️ L'EMOJI N'EST PAS DÉCORATIF. C'est ce qui s'affiche quand la photo
+//  ne charge pas — et le premier jour, justement, elle ne charge pas
+//  toujours : l'app s'ouvre hors ligne avant que les images soient en
+//  cache. Un 📦 gris sur quatorze tuiles, c'est la boutique vide qu'on
+//  voulait éviter. Chacun a donc le sien.
+// ══════════════════════════════════════════════════════════════════
+var DEMO_RAYON=[
+  // [nom exact dans CATALOGUE_CM, stock]
+  {nm:'Sucrerie 60 cl',e:'🥤',al:12,vr:[
+    ['Fanta orange 60 cl',24],['Sprite 60 cl',18],
+    ['Top ananas 60 cl',24],['Djino cocktail 60 cl',12]]},
+  {nm:'Bière 65 cl',e:'🍺',al:12,vr:[
+    ['33 Export 65 cl',24],['Castel Beer 65 cl',12],['Mützig 65 cl',18]]},
+  {nm:'Eau Tangui 50 cl',   e:'💧', stk:36,  al:12},
+  {nm:"Sachet d'eau 50 cl", e:'💦', stk:240, al:60},
+  {nm:'Riz parfumé 1 kg',   e:'🍚', stk:80,  al:25},
+  {nm:'Huile végétale 1 L', e:'🛢️', stk:24,  al:10},
+  {nm:'Sucre en poudre 1 kg',e:'🍬',stk:45,  al:15},
+  {nm:'Pain baguette',      e:'🥖', stk:14,  al:6},
+  {nm:'Œuf',                e:'🥚', stk:60,  al:30},
+  {nm:'Petits pois en boîte',e:'🥫',stk:18,  al:6},
+  {nm:'Eau de javel 1 L',   e:'🧴', stk:15,  al:6},
+  {nm:'Dentifrice Colgate 75 ml',e:'🪥',stk:22,al:8},
+  {nm:'Briquet',            e:'🔥', stk:40,  al:12},
+  // Celui-ci est presque fini, et c'est voulu : sans lui, le bouton
+  // « À commander » s'ouvrirait sur une liste vide le jour de la visite.
+  {nm:'Ampoule LED 9 W',    e:'💡', stk:3,   al:6}
+];
+
 function _articlesDemo(){
   var idx=[];try{idx=catalogueIndex()||[];}catch(e){}
-  // On ne garde que ce qui porte DÉJÀ ses deux prix : rien à inventer.
-  var src=idx.filter(function(x){return x&&x.pa>0&&x.px>0&&x.plein;});
-  var vus={},arts=[],id=100;
-  // Le stock n'est pas de l'argent : un nombre d'unités en rayon ne peut
-  // pas tromper sur une marge. Il suit le conditionnement quand on le
-  // connaît (2 casiers de 12 = 24), sinon il reste rond et lisible.
-  var _stkDe=function(x){return (x.sac>1)?(x.sac*2):((x.um==='kg'||x.um==='L')?20:24);};
-  var _photo=function(nom){try{return photoCatalogue(nom)||'';}catch(e){return '';}};
-  // ⚠️⚠️ « DANS NOTRE BOUTIQUE EXEMPLE, ON NE PEUT PAS REGROUPER LES
-  //        ARTICLES. IL FALLAIT QUE TOUS CES ÉLÉMENTS CAPTIVANTS SOIENT
-  //        INCLUS DANS LA BOUTIQUE TEST. »
-  // MESURÉ : la démonstration créait 170 articles PLATS, zéro famille. Le
-  // commerçant qui découvre l'app n'y voyait donc jamais les variantes —
-  // alors que c'est la boutique d'exemple qui sert de première porte.
-  // Le catalogue porte pourtant 41 familles regroupables (Sucrerie 60 cl a
-  // dix parfums, Bière 65 cl huit marques, Eau minérale trois formats).
-  // On les monte comme le ferait un vrai commerçant : UN article, des
-  // variantes qui gardent chacune leur prix, leur photo et leur stock.
-  var parFam={},seuls=[];
-  src.forEach(function(x){
+  // On ne retient que ce qui porte DÉJÀ ses deux prix : rien à inventer.
+  // Le premier trouvé gagne, comme partout ailleurs dans l'index.
+  var parNom={};
+  idx.forEach(function(x){
+    if(!(x.plein&&x.pa>0&&x.px>0))return;
     var k=txtNorm(x.plein);
-    if(vus[k])return;vus[k]=1;
-    if(x.fam)(parFam[x.fam]=parFam[x.fam]||[]).push(x);
-    else seuls.push(x);
+    if(!parNom[k])parNom[k]=x;
   });
-  Object.keys(parFam).forEach(function(f){
-    var membres=parFam[f];
-    // Une « famille » d'un seul membre n'en est pas une : elle deviendrait
-    // un article à ouvrir pour rien.
-    if(membres.length<2){seuls.push(membres[0]);return;}
-    var ref=membres[0];
-    var a={id:id++,nm:f,e:'📦',cat:CAT_IDX_N.indexOf(ref.cat),
-           px:0,pa:0,stk:0,stk0:0,vr:[],rt:false,vd:0};
-    if(a.cat<0)a.cat=0;
-    if(ref.um&&ref.um!=='pc')a.um=ref.um;
-    // ⚠️ NE JAMAIS CHERCHER LA PHOTO PAR LE NOM DE FAMILLE.
-    // Mesuré : « Sucrerie 60 cl » recevait bonbon-sachet.jpg — une
-    // confiserie sur une famille de sodas, parce que « sucrerie » ressemble
-    // à « sucre ». Un nom de famille est une étiquette de rangement, pas un
-    // produit : il n'a pas de photo à lui.
-    // La vignette d'une famille est celle d'un de ses MEMBRES — un produit
-    // qui s'y trouve vraiment. Sinon, l'emoji.
-    var ph='';
-    for(var _i=0;_i<membres.length&&!ph;_i++)ph=_photo(membres[_i].plein);
-    if(ph)a.img=ph;
-    membres.forEach(function(x,n){
-      var st=_stkDe(x);
-      var v={id:n+1,nm:x.nm||x.plein,px:x.px,pa:x.pa,stk:st,stk0:st,qBase:1};
-      var vp=_photo(x.plein);if(vp)v.img=vp;
-      a.vr.push(v);
-    });
-    arts.push(a);
+  var _photo=function(nom){try{return photoCatalogue(nom)||'';}catch(e){return '';}};
+  var arts=[],id=100,manquants=[];
+  DEMO_RAYON.forEach(function(s){
+    if(s.vr&&s.vr.length){
+      var membres=[];
+      s.vr.forEach(function(l){
+        var x=parNom[txtNorm(l[0])];
+        if(x)membres.push({x:x,stk:l[1]});else manquants.push(l[0]);
+      });
+      if(!membres.length)return;
+      var ref=membres[0].x;
+      // ⚠️ LE RAYON EST UN NOM, PAS UN NUMÉRO. On écrivait ici
+      // CAT_IDX_N.indexOf(cat) — donc un entier. Or initTabs() affiche
+      // p.cat TEL QUEL : tous ceux qui ont ouvert la boutique d'exemple
+      // lisaient « 📦 0  📦 1  📦 2 » en haut de leur caisse, au lieu de
+      // « 🥤 Boissons  🍺 Alcool  🍚 Alimentation ». Six mois de première
+      // impression gâchés par un indexOf.
+      var a={id:id++,nm:s.nm,e:s.e||'📦',cat:ref.cat||'Autre',
+             px:0,pa:0,stk:0,stk0:0,al:s.al||0,vr:[],rt:false,vd:0};
+      if(ref.um&&ref.um!=='pc')a.um=ref.um;
+      // ⚠️ NE JAMAIS CHERCHER LA PHOTO PAR LE NOM DE FAMILLE.
+      // Mesuré : « Sucrerie 60 cl » recevait bonbon-sachet.jpg — une
+      // confiserie sur une famille de sodas, parce que « sucrerie »
+      // ressemble à « sucre ». Un nom de famille est une étiquette de
+      // rangement, pas un produit : il n'a pas de photo à lui.
+      var ph='';
+      for(var i=0;i<membres.length&&!ph;i++)ph=_photo(membres[i].x.plein);
+      if(ph)a.img=ph;
+      membres.forEach(function(m,n){
+        var v={id:n+1,nm:m.x.nm||m.x.plein,px:m.x.px,pa:m.x.pa,
+               stk:m.stk,stk0:m.stk,qBase:1};
+        if(m.x.sac>0){v.umSac=m.x.sac;v.umCont=m.x.cont||null;}
+        var vp=_photo(m.x.plein);if(vp)v.img=vp;
+        a.vr.push(v);
+      });
+      arts.push(a);
+    }else{
+      var x=parNom[txtNorm(s.nm)];
+      if(!x){manquants.push(s.nm);return;}
+      var a2={id:id++,nm:x.plein,e:s.e||'📦',cat:x.cat||'Autre',
+              px:x.px,pa:x.pa,stk:s.stk||0,stk0:s.stk||0,al:s.al||0,
+              vr:[],rt:false,vd:0};
+      if(x.um&&x.um!=='pc')a2.um=x.um;
+      if(x.sac>0){a2.umSac=x.sac;a2.umCont=x.cont||null;}
+      var ph2=_photo(x.plein);if(ph2)a2.img=ph2;
+      arts.push(a2);
+    }
   });
-  seuls.forEach(function(x){
-    var st=_stkDe(x);
-    var a={id:id++,nm:x.plein,e:'📦',cat:CAT_IDX_N.indexOf(x.cat),
-           px:x.px,pa:x.pa,stk:st,stk0:st,vr:[],rt:false,vd:0};
-    if(a.cat<0)a.cat=0;
-    if(x.um&&x.um!=='pc')a.um=x.um;
-    if(x.sac>0){a.umSac=x.sac;a.umCont=x.cont||null;}
-    // La photo n'est posée que si le catalogue 600 la connaît vraiment :
-    // on ne met pas la photo d'un autre produit pour faire joli.
-    var ph=_photo(x.plein);if(ph)a.img=ph;
-    arts.push(a);
-  });
+  // Un nom qui ne répond plus, c'est le catalogue qui a bougé sous la
+  // liste. Silencieux en boutique, visible au banc : c'est exactement ce
+  // qu'un test doit pouvoir lire.
+  try{window.__demoManquants=manquants;}catch(e){}
   return arts;
 }
 
