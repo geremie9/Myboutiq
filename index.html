@@ -499,6 +499,21 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .qb{width:26px;height:26px;border-radius:7px;border:none;font-size:16px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center}
 .qb:active{transform:scale(.88)}.qb.m{background:#FFE0E0;color:var(--R)}.qb.p{background:#E0FFE8;color:var(--G)}
 .qnum{font-size:14px;font-weight:900;min-width:18px;text-align:center}
+/* La proposition de gros : sous sa ligne, jamais à sa place. Elle porte la
+   séparation à la place du .pit, sinon elle semblerait appartenir à
+   l'article suivant. */
+.pit.sans-b{border-bottom:none;padding-bottom:2px}
+.pgo{display:flex;align-items:center;gap:9px;margin:0 0 9px;padding:10px 11px;
+     border-radius:13px;background:linear-gradient(135deg,#FFF8E8,#FFF0D4);
+     border:1.5px solid var(--O);border-bottom-width:1.5px;cursor:pointer;
+     -webkit-tap-highlight-color:transparent}
+.pgo:active{transform:scale(.985)}
+.pgo-e{font-size:19px;flex-shrink:0}
+.pgo-t{flex:1;font-size:11.5px;font-weight:600;color:#7A4A00;line-height:1.4}
+.pgo-t b{font-weight:900;color:var(--T)}
+.pgo-b{flex-shrink:0;font-size:11.5px;font-weight:900;color:#fff;background:var(--O);
+       border:none;border-radius:10px;padding:12px 14px;font-family:'Outfit',sans-serif;
+       cursor:pointer;white-space:nowrap}
 .pftr{padding:13px 19px 0}
 .trow{background:var(--BG);border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .tlbl{font-size:13px;font-weight:700;color:var(--M)}.tamt{font-size:24px;font-weight:900;color:var(--T)}
@@ -3703,7 +3718,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.84'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.85'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -10168,13 +10183,21 @@ function _ligneMontant(key,p,v,qty){
   // touché, et la ligne se facture étage par étage.
   var lots=(g&&g.lots&&g.lots.length)?g.lots.slice()
           :((g&&Number(g.n)>1&&Number(g.pxGros)>0)?[{n:Number(g.n),px:Number(g.pxGros),pa:Number(g.paGros)||0,mot:g.mot}]:[]);
-  lots=lots.filter(function(l){return l&&l.n>1&&l.px>0;});
+  return _montantDesLots(lots,pxU,paU,qty);
+}
+// ⚠️ LE CALCUL EST SORTI DE LÀ POUR UNE RAISON PRÉCISE : la proposition de
+// gros (plus bas) doit pouvoir demander « et si on ajoutait ce lot-là, ça
+// ferait combien ? » sans toucher au panier. Si elle refaisait le calcul de
+// son côté, les deux finiraient par ne plus dire la même chose — et c'est
+// le total encaissé qui trancherait, après coup, devant le client.
+function _montantDesLots(lots,pxU,paU,qty){
+  lots=(lots||[]).filter(function(l){return l&&l.n>1&&l.px>0;});
   if(!lots.length)
     return {total:pxU*qty, cout:paU*qty, benConnu:(paU>0?(pxU-paU)*qty:0),
             nbGros:0, qDetail:qty, lots:[]};
   // Les plus gros d'abord : si la quantité a été corrigée à la main, ce sont
   // les contenants entiers qui survivent, pas les miettes.
-  lots.sort(function(a,b){return b.n-a.n;});
+  lots=lots.slice().sort(function(a,b){return b.n-a.n;});
   var reste=qty,total=0,cout=0,ben=0,pris=[];
   lots.forEach(function(l){
     if(reste+1e-9<l.n)return;
@@ -10188,6 +10211,160 @@ function _ligneMontant(key,p,v,qty){
           nbGros:pris.length, qDetail:reste, lots:pris,
           pxGros:pris.length?pris[0].px:0, paGros:pris.length?pris[0].pa:0,
           n:pris.length?pris[0].n:0};
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ « AU LIEU DE DOUZE, IL MET DANS LE PANIER QUINZE,
+//     COMMENT DIMINUÉE ? »
+//
+//  Réponse mesurée — et elle a sorti deux défauts au lieu d'un.
+//
+//  Quinze n'est pas « un casier et demi ». L'app prend le plus gros lot
+//  qui tient dedans et facture le reste au détail : 6 500 + 3 × 600 =
+//  8 300 F, en deux lignes sur le reçu. Ça, c'était déjà juste.
+//
+//  CE QUI NE L'ÉTAIT PAS :
+//
+//  1. LE MÊME PANIER AVAIT DEUX PRIX SELON LE BOUTON PRESSÉ.
+//     Le repère 📦 gros → 12 bouteilles = 6 500 F.
+//     La tuile tapée douze fois → 7 200 F.
+//     Sept cents francs d'écart pour exactement la même vente, et RIEN à
+//     l'écran ne le disait. Un vendeur qui ignore le repère fait payer
+//     plein tarif à un client venu prendre un casier : c'est la
+//     discussion au comptoir, et c'est le patron qui la perd.
+//
+//  2. ONZE COÛTAIT PLUS CHER QUE DOUZE.
+//     11 × 600 = 6 600. Le casier de 12 = 6 500. Une bouteille de plus,
+//     cent francs de moins. Le calcul est juste — on n'a pas le prix du
+//     casier sans prendre le casier — mais c'est exactement l'instant où
+//     il veut le savoir, et l'app se taisait.
+//
+//  UNE SEULE RÈGLE RÈGLE LES DEUX, ET ELLE N'A AUCUN SEUIL ARBITRAIRE :
+//  on propose un étage QUAND IL FAIT BAISSER LE TOTAL. Rien d'autre.
+//  À 10 bouteilles, le casier coûterait 500 de plus : rien ne s'affiche.
+//  À 11, il coûte 100 de moins : on le dit. Le seuil se calcule tout
+//  seul à partir des prix qu'il a lui-même posés — je n'ai pas eu à
+//  inventer « à partir de tant pour cent du contenant ».
+//
+//  ⚠️⚠️ JAMAIS APPLIQUÉ TOUT SEUL. Il vend peut-être vraiment douze
+//  bouteilles à douze clients différents dans la même minute. Baisser
+//  son prix en silence serait pire que le défaut : sa recette fondrait
+//  sans qu'il comprenne pourquoi, et c'est exactement le genre de perte
+//  qu'un commerçant ne voit jamais. Il lit le calcul, il décide, ça tient
+//  en une tape.
+// ══════════════════════════════════════════════════════════════════
+function _offreGros(key,p,v,qty){
+  if(!p||!(qty>0))return null;
+  var pxU=Number(v?v.px:p.px)||0;
+  if(!(pxU>0))return null;
+  var paU=Number(v?v.pa:p.pa)||0;
+  var g=_grosPanier[key];
+  var dejaLots=(g&&g.lots&&g.lots.length)?g.lots.slice()
+              :((g&&Number(g.n)>1&&Number(g.pxGros)>0)?[{n:Number(g.n),px:Number(g.pxGros),pa:Number(g.paGros)||0,mot:g.mot}]:[]);
+  var actuel=_montantDesLots(dejaLots,pxU,paU,qty);
+  var etages=[];try{etages=_etagesGros(p,v);}catch(e){}
+  etages=etages.filter(function(et){return et&&et.n>1&&et.px>0;});
+  if(!etages.length)return null;
+  var dispo=0;try{dispo=v?_dispoApresPanier(p,v):Math.max(0,getStk(p)-qty);}catch(e){}
+  // Le prix d'achat d'un étage, pour que le bénéfice reste juste.
+  var _pa=function(n){var r=null;try{r=_prixDuLot(p,v,n);}catch(e){}return (r&&r.pa)||0;};
+  // Autant de contenants qu'il en tient, de TOUS les étages. C'est
+  // _montantDesLots qui range : il prend les plus gros d'abord et laisse
+  // tomber ceux qui ne rentrent plus. On lui en donne donc largement.
+  var _remplir=function(cible,seul){
+    var out=[];
+    etages.forEach(function(et){
+      if(seul&&et.n!==seul.n)return;
+      var k=Math.floor((cible+1e-9)/et.n);
+      for(var i=0;i<k;i++)out.push({n:et.n,mot:et.mot,px:et.px,pa:_pa(et.n)});
+    });
+    return out;
+  };
+  var _peser=function(cible,seul){
+    var ajout=_remplir(cible,seul);
+    if(!ajout.length)return null;
+    var apres=_montantDesLots(dejaLots.concat(ajout),pxU,paU,cible);
+    // ⚠️ Le lot doit VRAIMENT être pris dans le calcul : s'il ne rentre pas
+    // (deux casiers déjà posés, trois bouteilles de reste), apres vaut
+    // actuel et il n'y a rien à proposer.
+    if(apres.nbGros<=actuel.nbGros)return null;
+    if(!(apres.total<actuel.total-0.001))return null;
+    return {cible:cible, manque:Math.max(0,cible-qty),
+            avant:actuel.total, apres:apres.total,
+            gain:Math.round((actuel.total-apres.total)*100)/100,
+            pris:apres.lots.slice(actuel.lots.length), reste:apres.qDetail};
+  };
+  var best=null,_garder=function(o){
+    if(o&&(!best||o.gain>best.gain||(o.gain===best.gain&&o.manque<best.manque)))best=o;
+  };
+  // ── 1. CE QU'IL A DÉJÀ : quels étages tiennent dedans, tous ensemble ?
+  // « 78 biscuits » vaut un carton ET un paquet — proposer le carton seul
+  // laissait les six derniers au prix de détail, 6 600 au lieu de 6 540.
+  _garder(_peser(qty,null));
+  // ── 2. « UNE DE PLUS ET C'EST UN CASIER » : un seul étage à la fois,
+  // sinon la phrase ne veut plus rien dire.
+  etages.forEach(function(et){
+    if(et.n<=qty)return;
+    if(!p.rt&&(et.n-qty)>dispo)return;   // un casier qu'il n'a pas en rayon
+    _garder(_peser(et.n,et));
+  });
+  if(!best)return null;
+  best.n=best.pris.length?best.pris[0].n:etages[0].n;
+  best.mot=(best.pris.length?best.pris[0].mot:etages[0].mot)||_motContenant(p,v||null);
+  return best;
+}
+// Il a dit oui. On pose le lot comme si le repère avait été touché — même
+// marqueur, même prix, même reçu : rien ne distingue les deux chemins.
+function appliquerOffreGros(key,n,mot){
+  var d=_ligneDe(key,panier[key]||0);if(!d)return;
+  var p=d.p,v=d.v;
+  var of=_offreGros(key,p,v,panier[key]||0);
+  // L'offre a pu changer entre l'affichage et la tape (une autre ligne
+  // corrigée, un stock qui bouge). On revérifie avant d'écrire.
+  if(!of||of.n!==n){ouvrirPanier();return;}
+  if(of.manque>0)panier[key]=Math.round((panier[key]+of.manque)*100)/100;
+  // Exactement les lots qui ont servi à calculer le total annoncé — pas un
+  // étage deviné à partir de sa taille. C'est ce qui garantit que la caisse
+  // encaisse le chiffre qu'elle a montré.
+  of.pris.forEach(function(l){
+    _grosPanier[key]=_empilerLot(_grosPanier[key],l.n,l.mot||of.mot,
+                      {px:l.px,pa:l.pa},Number(v?v.px:p.px)||0,_umDe(p));
+  });
+  try{updatePUI(p.id);}catch(e){}
+  try{showToast(_emojiCont(of.mot)+' '+_unGros(of.mot)+' — '+fmt(of.apres)
+      +' ('+(lang==='fr'?'au lieu de ':'instead of ')+fmt(of.avant)+')');}catch(e){}
+  if(navigator.vibrate)navigator.vibrate(30);
+  ouvrirPanier();
+}
+// Le texte de la proposition. Deux formes, parce que ce sont deux
+// situations différentes : « ce que tu as tient déjà dans un casier » et
+// « une de plus et c'est un casier ».
+function _texteOffreGros(of,p){
+  var fr=(lang==='fr');
+  // « 2 casiers », « 1 carton + 1 paquet + 3 » — ce que la ligne deviendra,
+  // dit comme il le dirait. Écrire « 15 = un casier » serait faux : quinze
+  // n'est pas un casier, c'est un casier ET trois bouteilles.
+  var grp={},ord=[];
+  of.pris.forEach(function(l){
+    var k=l.n+'|'+(l.mot||'');
+    if(!grp[k]){grp[k]={mot:l.mot||of.mot,nb:0};ord.push(k);}
+    grp[k].nb++;
+  });
+  var quoi=ord.map(function(k){var G=grp[k];
+    return fmtQ(G.nb)+' '+G.mot+(G.nb>1?'s':'');}).join(' + ');
+  if(of.reste>0.001)quoi+=' + '+fmtQ(of.reste);
+  if(of.manque>0)
+    return {txt:(fr
+      ?(fmtQ(of.manque)+' de plus et c\'est '+_unGros(of.mot)+' : <b>'+fmt(of.apres)+'</b>'
+        +' au lieu de '+fmt(of.avant))
+      :(fmtQ(of.manque)+' more makes one '+of.mot+': <b>'+fmt(of.apres)+'</b>'
+        +' instead of '+fmt(of.avant))),
+      btn:(fr?('Mettre '+fmtQ(of.cible)):('Make it '+fmtQ(of.cible)))};
+  return {txt:(fr
+    ?(quoi+' : <b>'+fmt(of.apres)+'</b> au lieu de '+fmt(of.avant)
+      +' — '+fmt(of.gain)+' de moins')
+    :(quoi+': <b>'+fmt(of.apres)+'</b> instead of '+fmt(of.avant)
+      +' — '+fmt(of.gain)+' less')),
+    btn:(fr?'Appliquer':'Apply')};
 }
 // Le raccourci des quatre calculateurs : retrouver p et v depuis la clé.
 function _ligneDe(key,qty){
@@ -10947,6 +11124,19 @@ function ouvrirPanier(){
     }else _sous=(_mg?(_mg.emo+' '+_mg.txt):(fmt(px)+' × '+fmtQ(qty)+(estMesure(p)&&!v?' '+uniteArt(p):'')));
     d.innerHTML=(p.img?'<img class="piemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'piemo\',textContent:\''+p.e+'\'}))">':'<span class="piemo">'+p.e+'</span>')+'<div class="piinf"><div class="pinm">'+p.nm+(v?' — '+v.nm:'')+'</div><div class="piun">'+_sous+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="pisub">'+fmt(_mo.total)+'</span><div class="qctl"><button class="qb m" onclick="chgQ(\''+key+'\',-'+step+')">−</button><span class="qnum">'+fmtQ(qty)+'</span><button class="qb p" onclick="chgQ(\''+key+'\','+step+')">+</button></div></div>';
     l.appendChild(d);
+    // ⭐ « 12 = un casier à 6 500 — 700 de moins ». Elle n'apparaît que
+    // lorsqu'un étage ferait BAISSER ce total-là. Voir _offreGros.
+    var _of=null;try{_of=_offreGros(key,p,v,qty);}catch(x){}
+    if(_of){
+      d.classList.add('sans-b');
+      var _tx=_texteOffreGros(_of,p);
+      var _o=document.createElement('div');_o.className='pgo';
+      _o.innerHTML='<span class="pgo-e">'+_emojiCont(_of.mot)+'</span>'
+        +'<div class="pgo-t">'+_tx.txt+'</div>'
+        +'<button class="pgo-b">'+_tx.btn+'</button>';
+      _o.onclick=function(){appliquerOffreGros(key,_of.n,_of.mot);};
+      l.appendChild(_o);
+    }
   });
   if(!has)l.innerHTML='<div class="empty"><div class="empty-e">🛒</div><div class="empty-t">'+t('vider')+'</div></div>';
   document.getElementById('pan-tot').textContent=fmt(calcTotal());
