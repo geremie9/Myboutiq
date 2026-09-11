@@ -3599,7 +3599,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.78'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.79'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9508,14 +9508,16 @@ function _chipGrosVariante(p,v,cercle){
   var cd=_condDe(p,v);
   // Le niveau du milieu, vendable d'une tape lui aussi. Il s'ajoute aux lots
   // qui portent leur propre prix comme au repere de taille connue.
+  // ⭐ LA MÊME RÈGLE DEDANS QUE DEHORS, et elle couvre aussi les anciens
+  // LOTS en variante : dès qu'il y a plus d'un étage, une seule puce.
+  var _etv=_etagesGros(p,v);
+  if(_etv.length>1)
+    return '<span class="'+cls+'" data-etage="'+v.id+'" title="'
+      +_etv.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
+      +_emojiCont(_etv[0].mot)+' '+(lang==='fr'?'gros ▾':'bulk ▾')+'</span>';
   var mid='';
   if(cd.par>0&&cd.parTaille>1&&cd.parMot)
-    {var _mv=_milieuDe(p,v),_gvv=_grosDe(p,v);
-     // Deux étages sur une variante : une seule puce, qui demande lequel.
-     if(_gvv.n>1&&_mv.n>1)
-       return '<span class="'+cls+'" data-etage="'+v.id+'" title="'
-         +_gvv.mot+' de '+fmtQ(_gvv.n)+' · '+_mv.mot+' de '+fmtQ(_mv.n)+'">'
-         +_emojiCont(_gvv.mot)+' '+(lang==='fr'?'gros ▾':'bulk ▾')+'</span>';
+    {var _mv=_milieuDe(p,v);
      mid='<span class="'+cls+(_mv.px>0?'':' vide')+'" data-grosdet="'+v.id+'" data-grosn="'+cd.parTaille+'" data-grosmot="'+String(cd.parMot).replace(/"/g,'')+'" title="'
       +(lang==='fr'?('Vendre 1 '+cd.parMot+' de '+fmtQ(cd.parTaille)):('Sell 1 '+cd.parMot))+'">'
       +_emojiCont(cd.parMot)+' '+(_mv.px>0?fmt(_mv.px):cd.parMot)+'</span>';}
@@ -9603,21 +9605,52 @@ function _chipGrosVariante(p,v,cercle){
 //  réelle à lever — jamais « au cas où ».
 // ══════════════════════════════════════════════════════════════════
 var _etgArt=null,_etgVar=null;
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ TOUS LES ÉTAGES DE GROS D'UNE ENTRÉE — UN SEUL ENDROIT QUI DÉCIDE
+//
+//  Sa capture du Cube Maggi : « carton » et « paquet » encore côte à côte.
+//  La 21.78 n'avait corrigé QU'UN chemin — celui où un prix de gros existe.
+//  Or la tuile pose deux repères depuis QUATRE endroits différents, et trois
+//  d'entre eux restaient à deux doigts d'écart. C'est la leçon du cadenas,
+//  encore : corriger un bouton à la fois laisse toujours celui qu'on oublie.
+//
+//  Donc une seule fonction dit quels étages existent, et une seule règle
+//  s'applique partout : zéro étage → le repère vide qui invite à le dire ;
+//  UN étage → il vend d'une tape, comme toujours ; DEUX ou plus → un seul
+//  repère, qui DEMANDE lequel.
+// ══════════════════════════════════════════════════════════════════
+function _etagesGros(p,v){
+  var out=[];
+  if(!p)return out;
+  var g=null,m=null;
+  try{g=_grosDe(p,v||null);}catch(e){}
+  try{m=_milieuDe(p,v||null);}catch(e){}
+  if(g&&g.n>1)out.push({n:g.n,mot:g.mot,px:g.px||0});
+  if(m&&m.n>1)out.push({n:m.n,mot:m.mot,px:m.px||0});
+  // Les anciens LOTS en variante comptent aussi comme des étages : une
+  // boutique qui en a encore ne doit pas voir deux puces collées non plus.
+  if(v)try{
+    _lotsDeVariante(p,v).forEach(function(lot){
+      var q=getQBase(lot);
+      if(!(q>1))return;
+      if(out.some(function(x){return x.n===q;}))return;
+      out.push({n:q,mot:_motDeLot(p,v,lot)||_motContenant(p,v),px:Number(lot.px)||0,lot:lot.id});
+    });
+  }catch(e){}
+  out.sort(function(a,b){return b.n-a.n;});     // le plus gros d'abord
+  return out;
+}
 function choisirEtageGros(e,pid,vid){
   if(e)e.stopPropagation();
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
   var v=(vid!=null)?((p.vr||[]).find(function(x){return String(x.id)===String(vid);})||null):null;
   _etgArt=p;_etgVar=v;
-  var fr=(lang==='fr'),g=_grosDe(p,v),m=_milieuDe(p,v);
-  var etages=[];
-  if(g.n>1)etages.push({n:g.n,mot:g.mot,px:g.px});
-  if(m.n>1)etages.push({n:m.n,mot:m.mot,px:m.px});
+  var fr=(lang==='fr'),etages=_etagesGros(p,v);
   // Un seul étage : rien à demander, on vend.
   if(etages.length<2){
-    if(g.n>1){if(v)_ajouterLotVariante(p,v,g.n,g.mot);else _ajouterLot(p,g.n,g.mot);}
+    if(etages.length===1)etgVendreDirect(p,v,etages[0]);
     return;
   }
-  etages.sort(function(a,b){return b.n-a.n;});          // le plus gros en haut
   document.getElementById('etg-tit').textContent='📦 '+(fr?'Vendre en gros':'Sell in bulk');
   document.getElementById('etg-art').textContent=p.nm+(v?(' — '+(v.nm||'')):'')
     +' · '+(fr?'tu vends à':'you sell at')+' '+fmt(Number(v?v.px:p.px)||0)+' '+(fr?'l\'':'per ')+uniteArtUn(p);
@@ -9634,10 +9667,20 @@ function choisirEtageGros(e,pid,vid){
   }).join('');
   document.getElementById('ov-etage').classList.add('show');
 }
+// Vendre un étage précis : le lot en variante passe par son chemin d'avant,
+// tout le reste par le lot posé sur l'entrée.
+function etgVendreDirect(p,v,x){
+  if(!p||!x||!(x.n>1))return;
+  if(x.lot!=null&&v){var _l=(p.vr||[]).find(function(z){return String(z.id)===String(x.lot);});
+    if(_l){chgVQ(_l.id,p.id,1,!!p.rt);return;}}
+  if(v)_ajouterLotVariante(p,v,x.n,x.mot);else _ajouterLot(p,x.n,x.mot);
+}
 function etgVendre(n,mot){
   var p=_etgArt,v=_etgVar;
   closeSheet('ov-etage');
   if(!p||!(n>1))return;
+  var _x=_etagesGros(p,v).find(function(z){return z.n===n;});
+  if(_x&&_x.lot!=null){etgVendreDirect(p,v,_x);return;}
   // Pas encore de prix pour cet étage : on le demande plutôt que de vendre
   // au détail multiplié en silence.
   var px=_prixDuLot(p,v,n).px;
@@ -9689,19 +9732,19 @@ function _chipGros(p){
   var mot=_motContenant(p,null);
   // ⭐ Le prix du contenant vit sur l'article lui-même : le repère le dit,
   // sans qu'aucune variante n'ait eu besoin d'exister pour le porter.
+  // ⭐ UN SEUL REPÈRE DÈS QU'IL Y A PLUSIEURS ÉTAGES — que les prix soient
+  // posés ou non. C'était le trou de la 21.78 : sa capture du Cube Maggi
+  // montrait « carton » et « paquet » collés, parce qu'AUCUN des deux
+  // n'avait encore de prix et que ce chemin-là n'était pas corrigé.
   if(!(p.vr&&p.vr.length)){
-    var _g=_grosDe(p,null);
-    if(_g.px>0&&_g.n>1){
-      // ⭐ UN SEUL REPÈRE. Deux étages ⇒ il ouvre le choix au lieu de vendre
-      // à l'aveugle ; un seul étage ⇒ il vend, comme avant, sans rien ajouter.
-      var _m2=_milieuDe(p,null);
-      if(_m2.n>1)
-        return '<button class="pgros" onclick="choisirEtageGros(event,'+p.id+')" title="'
-               +mot+' de '+fmtQ(_g.n)+' · '+_m2.mot+' de '+fmtQ(_m2.n)+'">'
-               +_emojiCont(mot)+'<span>'+(lang==='fr'?'gros':'bulk')+' ▾</span></button>';
-      return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+mot+' de '+fmtQ(_g.n)+'">'
-             +_emojiCont(mot)+'<span>'+fmt(_g.px)+'</span></button>';
-    }
+    var _et=_etagesGros(p,null);
+    if(_et.length>1)
+      return '<button class="pgros" onclick="choisirEtageGros(event,'+p.id+')" title="'
+             +_et.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
+             +_emojiCont(_et[0].mot)+'<span>'+(lang==='fr'?'gros':'bulk')+' ▾</span></button>';
+    if(_et.length===1&&_et[0].px>0)
+      return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_et[0].mot+' de '+fmtQ(_et[0].n)+'">'
+             +_emojiCont(_et[0].mot)+'<span>'+fmt(_et[0].px)+'</span></button>';
   }
   // ⚠️ DÉFAUT QUE J'ALLAIS INTRODUIRE : le repère disparaissait dès que
   // l'article avait des variantes — donc juste après que le commerçant ait
@@ -9745,16 +9788,14 @@ function _chipGros(p){
   // dans les deux cas : ce qui suit est un prix quand il y en a un, et il
   // n'y a plus jamais de « ×24 » nu à confondre avec un montant.
   if(n>1){
-    var _c=_condDe(p,null);
-    // Le contenant d'abord, puis le niveau du milieu s'il existe : « carton »
-    // et « paquet » cote a cote, chacun vendable d'une tape.
-    var h='<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_libelleCond(p,null)+'">'+_emojiCont(mot)+'<span>'+mot+'</span></button>';
-    if(_c.par>0&&_c.parTaille>1&&_c.parMot){
-      var _mi=_milieuDe(p,null);
-      h+='<button class="pgros" onclick="vendreNiveau(event,'+p.id+','+_c.parTaille+',\''+String(_c.parMot).replace(/'/g,"\\'")+'\')" title="'+_c.parMot+' de '+fmtQ(_c.parTaille)+'">'
-        +_emojiCont(_c.parMot)+'<span>'+(_mi.px>0?fmt(_mi.px):_c.parMot)+'</span></button>';
-    }
-    return h;
+    // ⚠️ ICI ÉTAIT SA CAPTURE : « carton » et « paquet » posés côte à côte
+    // parce qu'aucun n'a encore de prix. Même règle que partout ailleurs.
+    var _e1=_etagesGros(p,null);
+    if(_e1.length>1)
+      return '<button class="pgros" onclick="choisirEtageGros(event,'+p.id+')" title="'
+             +_e1.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
+             +_emojiCont(_e1[0].mot)+'<span>'+(lang==='fr'?'gros':'bulk')+' ▾</span></button>';
+    return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_libelleCond(p,null)+'">'+_emojiCont(mot)+'<span>'+mot+'</span></button>';
   }
   // ⚠️ « JE VOIS PARTOUT VENTE EN CARTON. CE N'EST PAS TOUS LES ARTICLES
   //     OÙ ON ACHÈTE EN CARTON. »
