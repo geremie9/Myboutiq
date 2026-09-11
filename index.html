@@ -498,7 +498,8 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .qctl{display:flex;align-items:center;gap:5px;background:var(--BG);border-radius:10px;padding:3px}
 .qb{width:26px;height:26px;border-radius:7px;border:none;font-size:16px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center}
 .qb:active{transform:scale(.88)}.qb.m{background:#FFE0E0;color:var(--R)}.qb.p{background:#E0FFE8;color:var(--G)}
-.qnum{font-size:14px;font-weight:900;min-width:18px;text-align:center}
+.qnum{font-size:14px;font-weight:900;min-width:18px;text-align:center;line-height:1.05}
+.qmot{display:block;font-size:8.5px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.2px}
 /* La proposition de gros : sous sa ligne, jamais à sa place. Elle porte la
    séparation à la place du .pit, sinon elle semblerait appartenir à
    l'article suivant. */
@@ -3743,7 +3744,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.86'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.87'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9963,9 +9964,9 @@ function _ajouterLotVariante(p,v,n,mot,force){
   // Le marqueur d'affichage : le reçu et la voix diront « 1 carton (24) »
   // au lieu de « ×24 ». Il ne touche ni la quantité ni le total.
   var key=p.id+'-'+v.id;
+  // Même règle du côté des variantes : voir _ajouterLot.
   var _gv=_prixDuLot(p,v,n);
   if(ajout===n)_grosPanier[key]=_empilerLot(_grosPanier[key],n,mot,_gv,Number(v.px)||0,_umDe(p));
-  else _oublierGros(key);
   if(navigator.vibrate)navigator.vibrate(30);
   var m=_mentionGros(key,varQtys[v.id]);
   showToast(_emojiCont(mot)+' '+(v.nm||p.nm)+' — '+(m?m.txt:(fmtQ(ajout)+' '+_uniteMot(p)))
@@ -10458,9 +10459,18 @@ function _ajouterLot(p,n,mot,force){
   panier[key]=cur+ajout;
   // Entier seulement : s'il ne restait pas un carton complet, ce n'est plus
   // un carton et on ne l'écrira pas comme tel.
+  // ⚠️⚠️ ON N'OUBLIE PLUS LES CONTENANTS DÉJÀ POSÉS. `_oublierGros(key)`
+  // était ici : il effaçait TOUT le marqueur de la ligne, pas seulement le
+  // contenant qu'on n'a pas pu ajouter. Mesuré sur un savon à 300 la pièce,
+  // carton de 72 à 18 000, 100 en rayon : un carton pris, puis « + ». Il ne
+  // reste que 28 — on les ajoute, et le carton déjà vendu repartait au
+  // détail. 30 000 F au lieu de 26 400. Le client payait 3 600 de plus
+  // pour un geste qui ajoutait de la marchandise.
+  // Le marqueur est une LISTE depuis la 21.79 : les lots déjà là restent,
+  // et ce qui ne fait pas un contenant entier compte au détail — c'est
+  // exactement ce que _ligneMontant sait facturer.
   var _gg=_prixDuLot(p,null,n);
   if(ajout===n)_grosPanier[key]=_empilerLot(_grosPanier[key],n,mot,_gg,Number(p.px)||0,_umDe(p));
-  else _oublierGros(key);
   updatePUI(p.id);
   if(navigator.vibrate)navigator.vibrate(30);
   var m=_mentionGros(key,panier[key]);
@@ -11154,6 +11164,10 @@ function ouvrirPanier(){
     // ⭐ LE PRIX SE TOUCHE. Un grossiste négocie article par article, et la
     // remise, elle, s'applique au total de la vente : s'il prend aussi du
     // riz, il fallait calculer le montant de tête.
+    // ⚠️ LE COMPTEUR DIT CE QUE LES BOUTONS DÉPLACENT. Afficher « 144 »
+    // au-dessus d'un « − » qui enlève un carton, c'est promettre 143.
+    var _pl=_pasLigne(key,qty);
+    var _qnum=_pl.lot?(fmtQ(Math.round(qty/_pl.lot.n))+'<span class="qmot">'+_pl.lot.mot+(qty/_pl.lot.n>1?'s':'')+'</span>'):fmtQ(qty);
     var _ng=_negoDe(key), _peut=false;try{_peut=_peutRemise();}catch(x){}
     // Un prix négocié au-dessus du prix normal ne retire rien (_negoTotal
     // ne descend jamais sous zéro) : il ne doit donc rien afficher non plus.
@@ -11161,7 +11175,7 @@ function ouvrirPanier(){
     var _affPrix=(_ng!==null)
       ?('<span class="pinego">'+fmt(_ng)+'</span><span class="pibarre">'+fmt(_mo.total)+'</span>')
       :fmt(_mo.total);
-    d.innerHTML=(p.img?'<img class="piemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'piemo\',textContent:\''+p.e+'\'}))">':'<span class="piemo">'+p.e+'</span>')+'<div class="piinf"><div class="pinm">'+p.nm+(v?' — '+v.nm:'')+'</div><div class="piun">'+_sous+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="pisub'+(_peut?' touchable':'')+'"'+(_peut?(' onclick="ouvrirNego(\''+key+'\')"'):'')+'>'+_affPrix+'</span><div class="qctl"><button class="qb m" onclick="chgQ(\''+key+'\',-'+step+')">−</button><span class="qnum">'+fmtQ(qty)+'</span><button class="qb p" onclick="chgQ(\''+key+'\','+step+')">+</button></div></div>';
+    d.innerHTML=(p.img?'<img class="piemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'piemo\',textContent:\''+p.e+'\'}))">':'<span class="piemo">'+p.e+'</span>')+'<div class="piinf"><div class="pinm">'+p.nm+(v?' — '+v.nm:'')+'</div><div class="piun">'+_sous+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="pisub'+(_peut?' touchable':'')+'"'+(_peut?(' onclick="ouvrirNego(\''+key+'\')"'):'')+'>'+_affPrix+'</span><div class="qctl"><button class="qb m" onclick="chgQLot(\''+key+'\',-1)">−</button><span class="qnum">'+_qnum+'</span><button class="qb p" onclick="chgQLot(\''+key+'\',1)">+</button></div></div>';
     l.appendChild(d);
     // ⭐ « 12 = un casier à 6 500 — 700 de moins ». Elle n'apparaît que
     // lorsqu'un étage ferait BAISSER ce total-là. Voir _offreGros.
@@ -11187,6 +11201,67 @@ function ouvrirPanier(){
 // facturer une ligne mixte (deux cartons plus trois pièces), et
 // `_mentionGros` continue de ne l'ÉCRIRE « carton » que si le compte tombe
 // juste. Le marqueur peut donc rester.
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ « QUAND JE VEUX DIMINUER UN CARTON DANS UN PANIER,
+//     ÇA SE DIMINUE EN PIÈCE. »
+//
+//  MESURÉ, et c'est pire que « ça enlève une pièce » : ça fait MONTER
+//  le prix. Deux cartons de 72 biscuits, 12 000 F. Une tape sur « − » :
+//    144 → 143, et le total passe à 13 100 F.
+//  Le deuxième carton n'est plus entier, donc ses 71 biscuits restants
+//  repartent à 100 pièce au lieu de 6 000 le carton. Le client paie
+//  1 100 F DE PLUS parce qu'on lui a enlevé un biscuit.
+//
+//  Personne ne compte des biscuits à l'unité quand il en vend deux
+//  cartons. Le « − » doit enlever ce que la ligne compte : un carton.
+//
+//  LA RÈGLE : le pas de la ligne est celui de sa PLUS PETITE UNITÉ
+//  RÉELLE. Deux cartons entiers → le pas est le carton. Un carton et
+//  trois biscuits → le pas est le biscuit, parce qu'en enlever un ne
+//  casse rien. Un carton et un paquet → le pas est le paquet.
+//
+//  ⚠️ ET LE « + » DOIT POSER UN VRAI LOT, pas seulement compter. Sans
+//  ça, deux cartons + une tape = 216 biscuits dont 72 facturés au
+//  détail : 7 200 au lieu de 6 000 pour le troisième carton. Il passe
+//  donc par _ajouterLot, le chemin déjà éprouvé — celui qui pose le
+//  marqueur, demande la rupture et annonce le geste à voix haute.
+// ══════════════════════════════════════════════════════════════════
+function _pasLigne(key,qty){
+  var d=_ligneDe(key,qty);
+  if(!d)return {pas:1,lot:null};
+  var fin=(estMesure(d.p)&&!d.v)?0.5:1;
+  var m=d.m;
+  // Des pièces qui traînent : en enlever une ne casse aucun contenant.
+  if(!m.lots.length||m.qDetail>0.001)return {pas:fin,lot:null};
+  // Que des contenants entiers : le pas est le plus petit d'entre eux.
+  var pt=m.lots[m.lots.length-1];
+  return {pas:pt.n,lot:pt,p:d.p,v:d.v};
+}
+// Enlever ou ajouter UN contenant — le geste que la ligne raconte.
+function chgQLot(key,sens){
+  var qty=panier[key]||0;if(!(qty>0))return;
+  var info=_pasLigne(key,qty);
+  if(!info.lot){chgQ(key,sens*info.pas);return;}
+  var n=info.lot.n;
+  if(sens>0){
+    // Une variante passe par son propre chemin (varQtys) : on ne s'en mêle
+    // pas ici, elle garde le pas fin.
+    if(String(key).split('-')[1]!=='0'){chgQ(key,1);return;}
+    _ajouterLot(info.p,n,info.lot.mot);
+    if(document.getElementById('ov-pan').classList.contains('show'))ouvrirPanier();
+    return;
+  }
+  // On retire le contenant ET son marqueur : sinon la ligne garderait un
+  // lot qui ne correspond plus à rien.
+  var g=_grosPanier[key];
+  if(g&&g.lots&&g.lots.length){
+    for(var i=g.lots.length-1;i>=0;i--){
+      if(g.lots[i]&&g.lots[i].n===n){g.lots.splice(i,1);break;}
+    }
+    if(!g.lots.length)_oublierGros(key);
+  }
+  chgQ(key,-n);
+}
 function chgQ(key,d){panier[key]=Math.round(((panier[key]||0)+d)*100)/100;if(panier[key]<=0){delete panier[key];_oublierNego(key);}updatePUI(parseInt(key.split('-')[0]));document.getElementById('pan-tot').textContent=fmt(calcTotal());if(!Object.keys(panier).length)closeSheet('ov-pan');else ouvrirPanier();}
 function viderPanier(){panier={};_grosPanier={};_negoLigne={};renderProd(DB.articles);document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');}
 function procederPmt(){
