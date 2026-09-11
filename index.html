@@ -3599,7 +3599,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.80'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.81'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5112,8 +5112,10 @@ async function guetterEmpreinte(){
     _guetteEmpreinte=true;
     _guetteAbort=window._bioTotAbort||null;
     var att=window._bioTot;window._bioTot=null;
+    try{_chronoBio('demande',window._bioTotDebut||0);}catch(x){}
     try{
       var dejaLa=await att;
+      try{_chronoBio('fin');}catch(x){}
       if(dejaLa)await _ouvrirApresEmpreinte();
     }catch(e){_noterBio('guet',e);}
     _guetteEmpreinte=false;
@@ -5147,7 +5149,9 @@ async function guetterEmpreinte(){
                         userVerification:'required',timeout:60000}};
     var cles=_clesEmpreinte();
     if(cles)dem.publicKey.allowCredentials=cles;
+    try{_chronoBio('demande');}catch(x){}
     var ok=await navigator.credentials.get(dem);
+    try{_chronoBio('fin');}catch(x){}
     if(ok)await _ouvrirApresEmpreinte();
   }catch(e){
     // Refus, abandon, ou pas de clé : on ne dit rien ICI. Il tape son PIN,
@@ -5185,7 +5189,40 @@ async function entreeEmpreinte(){
 }
 // Ce que le navigateur a VRAIMENT répondu, dit en français.
 var _bioDernier=null;
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ LE TÉLÉPHONE SE CHRONOMÈTRE LUI-MÊME
+//
+//  « L'empreinte prend toujours le temps de charger avant d'apparaître. »
+//  Mesuré au banc, service worker actif, processeur ralenti jusqu'à ×12 :
+//  le capteur est demandé entre 20 et 380 ms, la page se peint entre 56 et
+//  590 ms, et l'app réessaie déjà toute seule si la première demande est
+//  refusée. J'ai aussi essayé de couper le bloc CSS en deux pour peindre
+//  plus tôt : mesuré sur cinq passages par réglage, le gain oscille entre
+//  +16 et −68 ms — c'est du bruit, pas un gain. Le découpage a été annulé.
+//
+//  Ce qui reste hors de portée de mon banc : le lancement de l'application
+//  par Android, le réveil du service worker, et la fenêtre du capteur
+//  elle-même. Alors on ne devine pas : SON téléphone note ses propres
+//  temps, et l'écran « L'empreinte ne marche pas ? » les lui montre.
+//  Rien ne part sur le réseau — ces chiffres restent sur l'appareil.
+// ══════════════════════════════════════════════════════════════════
+function _chronoBio(etape,t){
+  try{
+    var c=JSON.parse(localStorage.getItem('myboutiq_bio_chrono')||'{}');
+    if(etape==='demande'&&c.demande!=null&&c.fin==null)return;   // on garde la 1re
+    c[etape]=Math.round(t!=null?t:((performance&&performance.now)?performance.now():0));
+    if(etape==='demande'){c.fin=null;c.quand=Date.now();
+      try{var fp=performance.getEntriesByType('paint').find(function(x){return x.name==='first-paint';});
+          c.peinture=fp?Math.round(fp.startTime):null;}catch(x){}}
+    if(etape==='fin'){
+      try{var fp2=performance.getEntriesByType('paint').find(function(x){return x.name==='first-paint';});
+          if(fp2)c.peinture=Math.round(fp2.startTime);}catch(x){}
+    }
+    localStorage.setItem('myboutiq_bio_chrono',JSON.stringify(c));
+  }catch(x){}
+}
 function _noterBio(quoi,e){
+  try{_chronoBio('fin');}catch(x){}
   _bioDernier={quoi:quoi,nom:(e&&e.name)||'',msg:String((e&&e.message)||'').slice(0,200),quand:Date.now()};
   try{localStorage.setItem('myboutiq_bio_diag',JSON.stringify(_bioDernier));}catch(x){}
 }
@@ -16036,11 +16073,41 @@ async function ouvrirDiagBio(){
   // Elle aurait annoncé « oui — pas besoin de toucher le bouton » à propos
   // d'un mécanisme qui n'existe plus. Ce qui déclenche vraiment la demande au
   // lancement, c'est qu'une clé soit enregistrée SUR CET APPAREIL.
+  // ⚠️ CETTE LIGNE MENTAIT. Elle lisait `entree.bio`, la COPIE écrite à la
+  // connexion du patron — la même que celle corrigée en 21.80 ailleurs.
+  // Un vendeur, ou un patron dont la dernière connexion précédait la pose de
+  // l'empreinte, s'entendait dire « ce téléphone n'a pas encore de clé »
+  // alors que la clé était là. Un diagnostic qui se trompe est pire que pas
+  // de diagnostic : il envoie réparer ce qui marche.
   var memBio=null;try{memBio=lireEntree();}catch(e){}
-  var auto=!!(memBio&&memBio.bio&&_clesEmpreinte());
+  var _actifApp=false;try{_actifApp=bioActif();}catch(e){}
+  var auto=!!((_actifApp||(memBio&&memBio.bio))&&_clesEmpreinte());
   h+=_liLigne(auto?true:null,fr?'Le doigt est demandé dès l\'ouverture':'Prompted at launch',
       auto?(fr?'oui — sans rien toucher':'yes')
           :(fr?'non — ce téléphone n\'a pas encore de clé : éteins puis rallume l\'empreinte':'no — no key on this phone yet'));
+
+  // ⭐ LES VRAIS TEMPS DE CE TÉLÉPHONE-CI, à la dernière ouverture. Mon banc
+  // ne peut pas mesurer le lancement d'Android ni la fenêtre du capteur :
+  // l'appareil les note lui-même, et on les lit ici.
+  try{
+    var ch=JSON.parse(localStorage.getItem('myboutiq_bio_chrono')||'null');
+    if(ch&&ch.demande!=null){
+      var _at=function(v){return (v==null)?(fr?'—':'—'):(v<1000?(v+' ms'):((Math.round(v/100)/10)+' s'));};
+      var _txt=(fr?'capteur demandé à ':'sensor asked at ')+_at(ch.demande)
+        +(ch.peinture!=null?(' · '+(fr?'écran peint à ':'painted at ')+_at(ch.peinture)):'')
+        +(ch.fin!=null?(' · '+(fr?'réponse à ':'answered at ')+_at(ch.fin)):(' · '+(fr?'aucune réponse':'no answer')));
+      var _lent=(ch.demande>1200)||(ch.fin!=null&&ch.fin-ch.demande>3000);
+      h+=_liLigne(_lent?false:true,fr?'⏱️ La dernière ouverture, sur CE téléphone':'⏱️ Last launch, this phone',_txt);
+      if(ch.fin!=null&&ch.demande!=null){
+        var _att=Math.max(0,ch.fin-ch.demande);
+        h+=_liLigne(null,fr?'dont l\'attente du doigt':'waiting for the finger',
+          _at(_att)+(fr?' — c\'est le temps que met la fenêtre d\'Android à s\'ouvrir puis toi à poser le doigt':''));
+      }
+    }else{
+      h+=_liLigne(null,fr?'⏱️ La dernière ouverture, sur CE téléphone':'⏱️ Last launch, this phone',
+        fr?'rien de mesuré encore — ferme l\'app, rouvre-la, puis reviens ici':'nothing measured yet');
+    }
+  }catch(e){}
 
   var sur=_origineSure();
   h+=_liLigne(sur,fr?'Adresse sécurisée':'Secure origin',location.protocol+'//'+location.hostname);
