@@ -2478,6 +2478,23 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- LE CODE PERSONNEL DU VENDEUR -->
+<div class="ov" id="ov-codev">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="cv-tit">🔒 Ton code</div></div>
+    <div style="padding:16px 19px 20px">
+      <div style="font-size:15px;font-weight:800;color:var(--T);margin-bottom:4px" id="cv-nm">Vendeur</div>
+      <div style="font-size:12px;font-weight:600;color:var(--M);margin-bottom:15px;line-height:1.5" id="cv-sub"></div>
+      <div class="pig"><input class="pi" type="password" id="cv-1" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" style="text-align:center;letter-spacing:9px;font-size:20px;font-weight:900" onkeydown="if(event.key==='Enter')validerCodeVendeur()"></div>
+      <div class="pig" id="cv-2-wrap" style="display:none"><input class="pi" type="password" id="cv-2" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" style="text-align:center;letter-spacing:9px;font-size:20px;font-weight:900" onkeydown="if(event.key==='Enter')validerCodeVendeur()"></div>
+      <div id="cv-err" style="display:none;font-size:12px;font-weight:700;color:var(--R);background:#FFEBEE;padding:10px 12px;border-radius:11px;margin:2px 0 12px"></div>
+      <button class="bpay" style="margin-bottom:9px" onclick="validerCodeVendeur()" id="cv-ok">Ouvrir</button>
+      <button class="bvid" id="cv-plus-tard" style="display:none" onclick="plusTardCodeVendeur()">Plus tard</button>
+      <button class="bvid" id="cv-pas-moi" style="display:none;background:transparent;color:var(--M)" onclick="_cvPasMoi()">↩︎ Ce n'est pas moi</button>
+    </div>
+  </div>
+</div>
+
 <!-- PRIX NÉGOCIÉ SUR UNE LIGNE — « les trois casiers, tu me fais 19 000 » -->
 <div class="ov" id="ov-nego" onclick="closeOv(event,'ov-nego')">
   <div class="bsht"><div class="shndl"></div>
@@ -3767,7 +3784,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.88'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.89'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6233,6 +6250,184 @@ function applyRolePerms(){
 // ⚠️ Avant, un vendeur DÉSACTIVÉ par le patron se réactivait tout seul en se
 // reconnectant (existant.actif=true) : l'interrupteur de « Mon équipe » ne
 // servait à rien. Même faute que les permissions branchées sur du vide.
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ CHAQUE VENDEUR SON CODE
+//
+//  « Si un autre vendeur connaît le code équipe, il peut entrer dans la
+//   caisse d'un autre vendeur pour lui créer des problèmes. »
+//
+//  Il a raison, et le défaut est plus large que ça : le vendeur tape son
+//  nom EN TOUTES LETTRES. Ce nom n'est pas vérifié, il est DÉCLARÉ. Avec
+//  le code équipe on pouvait donc non seulement entrer sous le nom d'un
+//  collègue, mais s'inventer un nom qui n'existe pas et se faire inscrire
+//  tout seul dans l'équipe.
+//  MESURÉ en production : 11 boutiques sur 47 ont plus d'un vendeur, et
+//  2 255 ventes sur 2 255 portent un nom de vendeur. Ce nom sert à
+//  quelqu'un — il devait vouloir dire quelque chose.
+//
+//  ⚠️⚠️ CE QUE JE N'AI PAS FAIT : un code « indépendant même du patron ».
+//  Il l'a demandé, et c'est le seul point où je ne l'ai pas suivi. Un code
+//  que le patron ne peut pas réinitialiser le prend en otage : le vendeur
+//  part fâché et le poste est bloqué ; il oublie son code et il n'y a ni
+//  e-mail ni SMS par vendeur pour le lui rendre. C'est sa boutique, ses
+//  ventes, son argent.
+//  LA RÈGLE EST DONC : LE PATRON PEUT RÉINITIALISER, IL NE PEUT PAS LIRE.
+//  Le vendeur est protégé de ses collègues — ce qu'il voulait — sans que
+//  le patron perde la main sur son propre commerce.
+//
+//  ⚠️ DEUX CLÉS QUI NE SERVENT PAS À LA MÊME CHOSE :
+//    le CODE ÉQUIPE ouvre LA BOUTIQUE (il la télécharge, le serveur le
+//      vérifie) ;
+//    le CODE PERSONNEL ouvre SON IDENTITÉ dans cette boutique.
+//  Une fois la boutique sur le téléphone, le code équipe est retenu par
+//  l'appareil et le vendeur ne tape plus que le sien : une seule saisie,
+//  comme avant, mais c'est la sienne.
+//
+//  ⚠️ CE QUE LE HACHAGE PROTÈGE, ET CE QU'IL NE PROTÈGE PAS. Le code est
+//  dérivé par PBKDF2-SHA256, 150 000 tours, avec un sel par vendeur : il
+//  est illisible, même dans une sauvegarde exportée. Mais quatre chiffres
+//  font dix mille possibilités — ce n'est PAS une protection contre
+//  quelqu'un qui aurait la base de données et du temps. Les 150 000 tours
+//  rendent chaque essai coûteux, et c'est ce qu'il faut contre la menace
+//  réelle : le collègue debout à côté du comptoir.
+// ══════════════════════════════════════════════════════════════════
+// ⚠️ LE BON TEST EST `isSecureContext`, PAS `_origineSure()`. La deuxième
+// ne reconnaît que « localhost » ; crypto.subtle, lui, existe dans tout
+// contexte sûr — https, localhost ET 127.0.0.1. Utiliser la mauvaise
+// question faisait répondre « pas de chiffrement ici » là où il y en a,
+// et la serrure se serait ouverte toute seule au banc d'essai.
+function _cryptoPret(){
+  try{
+    if(!(window.crypto&&crypto.subtle&&crypto.subtle.importKey))return false;
+    return (typeof isSecureContext==='boolean')?isSecureContext:_origineSure();
+  }catch(e){return false;}
+}
+function _b64(u8){var s='';for(var i=0;i<u8.length;i++)s+=String.fromCharCode(u8[i]);return btoa(s);}
+async function _hachCode(code,selB64){
+  var enc=new TextEncoder();
+  var sel=Uint8Array.from(atob(selB64),function(c){return c.charCodeAt(0);});
+  var k=await crypto.subtle.importKey('raw',enc.encode(String(code)),{name:'PBKDF2'},false,['deriveBits']);
+  var bits=await crypto.subtle.deriveBits(
+    {name:'PBKDF2',salt:sel,iterations:150000,hash:'SHA-256'},k,256);
+  return _b64(new Uint8Array(bits));
+}
+function _selNeuf(){return _b64(crypto.getRandomValues(new Uint8Array(16)));}
+// Le membre d'équipe, retrouvé par son nom — la seule clé qu'on ait.
+function _membreEquipe(nm){
+  if(!DB||!Array.isArray(DB.equipe))return null;
+  var n=txtNorm(nm||'');
+  return DB.equipe.find(function(v){return v.role==='vendeur'&&txtNorm(v.nm)===n;})||null;
+}
+function aCodePerso(nm){var m=_membreEquipe(nm);return !!(m&&m.pinH&&m.pinSel);}
+async function _codePersoJuste(nm,code){
+  var m=_membreEquipe(nm);
+  if(!m||!m.pinH||!m.pinSel)return false;
+  try{return (await _hachCode(code,m.pinSel))===m.pinH;}catch(e){return false;}
+}
+async function _poserCodePerso(nm,code){
+  var m=_membreEquipe(nm);if(!m)return false;
+  var sel=_selNeuf();
+  m.pinSel=sel;m.pinH=await _hachCode(code,sel);m.pinPose=new Date().toISOString().slice(0,10);
+  try{save();}catch(e){}
+  return true;
+}
+// ⚠️ LA TRACE. « Il peut entrer dans la caisse d'un autre vendeur pour lui
+// créer des problèmes » : refuser ne suffit pas, il faut que le patron le
+// SACHE. On garde les dix dernières tentatives, jamais le code essayé.
+function _noterTentative(nm){
+  try{
+    if(!DB||!DB.cfg)return;
+    var l=DB.cfg.tentativesVendeur;if(!Array.isArray(l))l=[];
+    l.unshift({nm:String(nm||'').slice(0,30),q:Date.now()});
+    DB.cfg.tentativesVendeur=l.slice(0,10);
+    // ⚠️ ET DANS LA VRAIE LISTE D'ALERTES, celle que le patron ouvre en
+    // touchant la cloche. La garder seulement dans cfg, c'était la ranger
+    // là où personne ne regarde.
+    try{
+      if(typeof addLocalNotif==='function')
+        addLocalNotif('🔒 '+(lang==='fr'
+          ?('Quelqu\'un a essayé d\'ouvrir la caisse de '+nm+' avec un mauvais code')
+          :('Someone tried to open '+nm+'\'s till with a wrong code')));
+    }catch(e){}
+    save();
+  }catch(e){}
+}
+// ── La feuille : soit il donne son code, soit il le pose ──────────
+var _cvNom='',_cvSuite=null,_cvMode='';
+function _cvFermer(){closeSheet('ov-codev');_cvNom='';_cvSuite=null;}
+function ouvrirCodeVendeur(nm,mode,suite){
+  var fr=(lang==='fr');
+  _cvNom=nm;_cvMode=mode;_cvSuite=suite||null;
+  var poser=(mode==='poser');
+  document.getElementById('cv-tit').textContent=poser
+    ?('🔒 '+(fr?'Ton code à toi':'Your own code'))
+    :('🔒 '+(fr?'Ton code':'Your code'));
+  document.getElementById('cv-nm').textContent=nm;
+  document.getElementById('cv-sub').textContent=poser
+    ?(fr?'Choisis 4 chiffres que toi seul connais. Ils protègent ta caisse — même de tes collègues. Ton patron ne les verra pas ; il pourra seulement les remettre à zéro si tu les oublies.'
+        :'Pick 4 digits only you know. Your manager cannot see them, only reset them.')
+    :(fr?'Entre ton code personnel pour ouvrir ta caisse.':'Enter your personal code.');
+  document.getElementById('cv-2-wrap').style.display=poser?'block':'none';
+  document.getElementById('cv-1').value='';document.getElementById('cv-2').value='';
+  document.getElementById('cv-err').style.display='none';
+  document.getElementById('cv-ok').textContent=poser?(fr?'Enregistrer mon code':'Save my code'):(fr?'Ouvrir':'Open');
+  var pt=document.getElementById('cv-plus-tard');
+  if(pt)pt.style.display=poser?'block':'none';
+  // ⚠️ UNE SORTIE, TOUJOURS. Sans elle, celui qui se trompe de nom se
+  // retrouve devant une feuille qu'il ne peut ni remplir ni fermer.
+  var pm=document.getElementById('cv-pas-moi');
+  if(pm)pm.style.display=poser?'none':'block';
+  document.getElementById('ov-codev').classList.add('show');
+  setTimeout(function(){try{document.getElementById('cv-1').focus();}catch(e){}},160);
+}
+function _cvErr(msg){
+  var e=document.getElementById('cv-err');
+  e.textContent=msg;e.style.display='block';
+  if(navigator.vibrate)navigator.vibrate([40,60,40]);
+}
+async function validerCodeVendeur(){
+  var fr=(lang==='fr');
+  var a=(document.getElementById('cv-1').value||'').trim();
+  if(!/^\d{4,6}$/.test(a))return _cvErr(fr?'Quatre chiffres au moins.':'At least four digits.');
+  if(_cvMode==='poser'){
+    var b=(document.getElementById('cv-2').value||'').trim();
+    if(a!==b)return _cvErr(fr?'Les deux ne sont pas pareils.':'The two do not match.');
+    // ⚠️ Le code équipe ne fait pas un code personnel : il le connaît déjà,
+    // et tous les autres aussi. C'est exactement ce qu'on essaie de quitter.
+    try{if(DB&&DB.cfg&&String(DB.cfg.pinVendeur||'')===a)
+      return _cvErr(fr?'C\'est le code équipe — tout le monde le connaît. Prends-en un autre.':'That is the team code.');}catch(e){}
+    var ok=await _poserCodePerso(_cvNom,a);
+    if(!ok)return _cvErr(fr?'Impossible d\'enregistrer.':'Could not save.');
+    showToast('🔒 '+(fr?'C\'est posé. Ta caisse n\'ouvre plus qu\'avec ton code.':'Done — your till now needs your code.'));
+    var s=_cvSuite;_cvFermer();if(s)s(true);
+    return;
+  }
+  var juste=await _codePersoJuste(_cvNom,a);
+  if(!juste){
+    _noterTentative(_cvNom);
+    return _cvErr(fr?'Ce n\'est pas ton code.':'Wrong code.');
+  }
+  var s2=_cvSuite;_cvFermer();if(s2)s2(true);
+}
+function _cvPasMoi(){
+  _cvFermer();
+  try{role='';nomVendeur='';}catch(e){}
+  try{goScreen('s-login');prefillEntree();}catch(e){}
+}
+function plusTardCodeVendeur(){
+  var s=_cvSuite;_cvFermer();if(s)s(true);
+}
+// ⭐ LA SERRURE. Les deux portes du vendeur passent par ici : celle où il
+// tape tout, et la rapide. Un seul endroit à garder.
+function _passerPorteVendeur(nm,suite){
+  var fr=(lang==='fr');
+  if(!_cryptoPret()){suite(true);return;}          // pas d'https : on ne bloque personne
+  if(aCodePerso(nm)){ouvrirCodeVendeur(nm,'donner',suite);return;}
+  // Pas encore de code : il entre, et on le lui propose tout de suite.
+  // On ne le force pas — un vendeur bloqué dehors le premier jour est un
+  // vendeur qui n'utilise plus l'app. Le patron voit qui ne l'a pas posé.
+  ouvrirCodeVendeur(nm,'poser',suite);
+}
 function registerVendeurEquipe(nm){
   if(!DB.equipe)DB.equipe=[];
   var nmNorm=txtNorm(nm);
@@ -6647,6 +6842,11 @@ function _finishLoginV(nm,code){
     showToast('🚫 '+(fr?'Cette boutique a déjà tous ses vendeurs. Demande au patron.':'This shop already has all its sellers.'));
     return;
   }
+  // ⭐ LA SERRURE PERSONNELLE — voir « CHAQUE VENDEUR SON CODE ».
+  // Le code équipe a ouvert LA BOUTIQUE ; il reste à prouver QUI entre.
+  _passerPorteVendeur(nm,function(ok){if(ok)_ouvrirCaisseVendeur(nm,code);});
+}
+function _ouvrirCaisseVendeur(nm,code){
   role='vendeur';nomVendeur=nm;
   document.getElementById('u-nm').textContent=nm;
   document.getElementById('u-role').textContent=t('vendeur');
@@ -16405,7 +16605,32 @@ function appelCli(){if(cliCours&&cliCours.tel&&cliCours.tel!=='N/A')window.open(
 // ═══════════════════════════════════════════
 function renderEquipe(){var c=document.getElementById('equipe-lst');if(!c)return;
   var _mv=document.getElementById('inp-maxv');
-  if(_mv&&document.activeElement!==_mv)_mv.value=(DB&&DB.cfg&&DB.cfg.maxVendeurs)||0;var rl={patron:lang==='fr'?'👑 Patron':'👑 Owner',vendeur:lang==='fr'?'👦 Vendeur':'👦 Seller',gerant:lang==='fr'?'👨‍💼 Gérant':'👨‍💼 Manager'};var rc={patron:'var(--A)',vendeur:'var(--B)',gerant:'var(--PU)'};c.innerHTML=DB.equipe.map(function(v,i){return '<div class="vit3"><div class="vav" style="background:'+v.bg+';color:'+v.tc+'">'+v.nm[0]+'</div><div class="vinf3"><div class="vnm3">'+v.nm+'</div><div class="vrl" style="color:'+rc[v.role]+'">'+rl[v.role]+'</div></div>'+(v.role!=='patron'?'<button onclick="inviterVendeur('+i+')" title="'+(lang==='fr'?'Envoyer son lien':'Send invite')+'" style="background:#E8F5E9;color:var(--G);border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:6px">📤</button><button onclick="ouvrirPerm('+i+')" style="background:#F0F4FF;color:var(--B);border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:8px">🔐</button><button class="tog '+(v.actif?'on':'off')+'" onclick="togV('+i+')" style="width:38px;height:22px"></button>':'<span style="font-size:10px;font-weight:700;background:#E8F5E9;color:var(--G);padding:2px 8px;border-radius:20px">'+(lang==='fr'?'Actif':'Active')+'</span>')+'</div>';}).join('')+'<div class="stit2" style="justify-content:center;color:var(--B);font-weight:800;font-size:13px;cursor:pointer;padding:12px" onclick="inviterVendeur()">+ '+(lang==='fr'?'Inviter un vendeur':'Invite a seller')+'</div>';}
+  if(_mv&&document.activeElement!==_mv)_mv.value=(DB&&DB.cfg&&DB.cfg.maxVendeurs)||0;var rl={patron:lang==='fr'?'👑 Patron':'👑 Owner',vendeur:lang==='fr'?'👦 Vendeur':'👦 Seller',gerant:lang==='fr'?'👨‍💼 Gérant':'👨‍💼 Manager'};var rc={patron:'var(--A)',vendeur:'var(--B)',gerant:'var(--PU)'};c.innerHTML=DB.equipe.map(function(v,i){return '<div class="vit3"><div class="vav" style="background:'+v.bg+';color:'+v.tc+'">'+v.nm[0]+'</div><div class="vinf3"><div class="vnm3">'+v.nm+'</div><div class="vrl" style="color:'+rc[v.role]+'">'+rl[v.role]+'</div></div>'+(v.role!=='patron'?'<button onclick="inviterVendeur('+i+')" title="'+(lang==='fr'?'Envoyer son lien':'Send invite')+'" style="background:#E8F5E9;color:var(--G);border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:6px">📤</button><button onclick="razCodeVendeur('+i+')" title="'+(v.pinH?(lang==='fr'?'Code personnel posé — remettre à zéro':'Personal code set — reset'):(lang==='fr'?'Pas encore de code personnel':'No personal code yet'))+'" style="background:'+(v.pinH?'#E8F5E9':'#FFF3E0')+';color:'+(v.pinH?'var(--G)':'var(--O)')+';border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:6px">'+(v.pinH?'🔒':'🔓')+'</button><button onclick="ouvrirPerm('+i+')" style="background:#F0F4FF;color:var(--B);border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:8px">🔐</button><button class="tog '+(v.actif?'on':'off')+'" onclick="togV('+i+')" style="width:38px;height:22px"></button>':'<span style="font-size:10px;font-weight:700;background:#E8F5E9;color:var(--G);padding:2px 8px;border-radius:20px">'+(lang==='fr'?'Actif':'Active')+'</span>')+'</div>';}).join('')+'<div class="stit2" style="justify-content:center;color:var(--B);font-weight:800;font-size:13px;cursor:pointer;padding:12px" onclick="inviterVendeur()">+ '+(lang==='fr'?'Inviter un vendeur':'Invite a seller')+'</div>';}
+// ── Le patron : il remet à zéro, il ne lit jamais ─────────────────
+function razCodeVendeur(i){
+  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Patron only'));return;}
+  var v=DB.equipe[i];if(!v)return;
+  var fr=(lang==='fr');
+  if(!v.pinH){
+    showToast('🔓 '+(fr?v.nm+' n\'a pas encore posé de code — il le choisira à sa prochaine entrée':'No personal code yet'));
+    return;
+  }
+  if(!confirm(fr
+    ?('Remettre à zéro le code de '+v.nm+' ?\n\nIl choisira un nouveau code à sa prochaine entrée, avec le code équipe.\n\nTu ne verras jamais son code — tu ne fais que lui rendre la porte.')
+    :('Reset '+v.nm+'\'s code?\n\nThey will pick a new one on next entry.')))return;
+  delete v.pinH;delete v.pinSel;delete v.pinPose;
+  save();renderEquipe();
+  showToast('🔓 '+(fr?'Code remis à zéro — '+v.nm+' en choisira un nouveau':'Code reset'));
+}
+// ⚠️ CE QUE LE PATRON DOIT SAVOIR SANS AVOIR À CHERCHER : quelqu'un a
+// essayé d'ouvrir la caisse d'un de ses vendeurs. Refuser ne suffisait pas.
+function _tentativesRecentes(){
+  try{
+    var l=(DB&&DB.cfg&&DB.cfg.tentativesVendeur)||[];
+    var limite=Date.now()-7*864e5;
+    return l.filter(function(t){return t&&t.q>limite;});
+  }catch(e){return [];}
+}
 // ── PERMISSIONS VENDEUR ──
 var PERM_LIST=[
   {k:'vente',e:'🛒',fr:'Encaisser des ventes',en:'Process sales'},
@@ -19509,7 +19734,13 @@ updateNotifBadge=function(){
   if(!badge||!DB)return;
   var al=(DB.articles||[]).filter(function(p){var ts=getStk(p);return p.al>0&&ts<=p.al;});
   var cr=(DB.clients||[]).filter(function(c){var d=Math.ceil((new Date(c.date)-new Date())/864e5);return c.credit>0&&d<=3;});
-  var total=al.length+cr.length;
+  // ⚠️⚠️ J'AVAIS ÉCRIT ÇA DANS UNE VERSION MORTE. updateNotifBadge et
+  // showNotifs sont toutes deux REDÉFINIES ici, plus bas dans le fichier :
+  // mes deux premières retouches n'ont jamais été exécutées, et le test l'a
+  // dit tout de suite (la cloche restait à zéro avec une tentative en
+  // mémoire). Une caisse qu'on essaie d'ouvrir se compte ICI.
+  var tv=0;try{tv=(role==='patron')?_tentativesRecentes().length:0;}catch(e){}
+  var total=al.length+cr.length+tv;
   badge.textContent=total;
   badge.classList.toggle('show',total>0);
 };
