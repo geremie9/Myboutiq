@@ -3899,7 +3899,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.94'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.95'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -10160,26 +10160,26 @@ function _chipGrosVariante(p,v,cercle){
   if(_etv.length>1)
     return '<span class="'+cls+'" data-etage="'+v.id+'" title="'
       +_etv.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-      +_emojiCont(_etv[0].mot)+' '+(lang==='fr'?'gros ▾':'bulk ▾')+'</span>';
+      +_MARQUE_GROS+' '+(lang==='fr'?'gros ▾':'bulk ▾')+'</span>';
   var mid='';
   if(cd.par>0&&cd.parTaille>1&&cd.parMot)
     {var _mv=_milieuDe(p,v);
      mid='<span class="'+cls+(_mv.px>0?'':' vide')+'" data-grosdet="'+v.id+'" data-grosn="'+cd.parTaille+'" data-grosmot="'+String(cd.parMot).replace(/"/g,'')+'" title="'
       +(lang==='fr'?('Vendre 1 '+cd.parMot+' de '+fmtQ(cd.parTaille)):('Sell 1 '+cd.parMot))+'">'
-      +_emojiCont(cd.parMot)+' '+(_mv.px>0?fmt(_mv.px):cd.parMot)+'</span>';}
+      +_MARQUE_GROS+' '+_texteGros(cd.parMot,_mv.px)+'</span>';}
   // ⭐ Le prix du carton vit maintenant SUR la variante : la puce le lit là,
   // et aucune quatrième forme n'encombre la liste. (Les boutiques qui ont
   // encore un lot en variante gardent la puce d'en dessous.)
   var _gv=_grosDe(p,v);
   if(_gv.px>0&&_gv.n>1)
     return mid+'<span class="'+cls+'" data-grosv="'+v.id+'" data-grosvn="'+_gv.n+'" title="'
-      +_gv.mot+' de '+fmtQ(_gv.n)+'">'+_emojiCont(_gv.mot)+' '+fmt(_gv.px)+'</span>';
+      +_gv.mot+' de '+fmtQ(_gv.n)+'">'+_MARQUE_GROS+' '+_texteGros(_gv.mot,_gv.px)+'</span>';
   var lots=_lotsDeVariante(p,v);
   if(lots.length)
     return mid+lots.map(function(lot){
       var ml=_motDeLot(p,v,lot);
       return '<span class="'+cls+'" data-gros="'+lot.id+'" title="'+(lot.nm||ml)+' — '+fmtQ(getQBase(lot))+'">'
-        +_emojiCont(ml)+' '+fmt(lot.px)+'</span>';
+        +_MARQUE_GROS+' '+_texteGros(ml,lot.px)+'</span>';
     }).join('');
   // ⚠️⚠️ CE QUE J'AVAIS CASSÉ EN 21.44, ET IL L'A VU TOUT DE SUITE :
   // « impossible de vendre à l'intérieur des variantes en carton ou tout
@@ -10387,10 +10387,10 @@ function _chipGros(p){
     if(_et.length>1)
       return '<button class="pgros" onclick="choisirEtageGros(event,'+p.id+')" title="'
              +_et.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-             +_emojiCont(_et[0].mot)+'<span>'+(lang==='fr'?'gros':'bulk')+' ▾</span></button>';
+             +_MARQUE_GROS+'<span>'+(lang==='fr'?'gros':'bulk')+' ▾</span></button>';
     if(_et.length===1&&_et[0].px>0)
       return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_et[0].mot+' de '+fmtQ(_et[0].n)+'">'
-             +_emojiCont(_et[0].mot)+'<span>'+fmt(_et[0].px)+'</span></button>';
+             +_MARQUE_GROS+'<span>'+_texteGros(_et[0].mot,_et[0].px)+'</span></button>';
   }
   // ⚠️ DÉFAUT QUE J'ALLAIS INTRODUIRE : le repère disparaissait dès que
   // l'article avait des variantes — donc juste après que le commerçant ait
@@ -10421,7 +10421,7 @@ function _chipGros(p){
       // L'image dit le contenant, le texte ne dit qu'un PRIX. C'est la règle
       // qui lève sa confusion pour de bon : sur une puce de gros, un nombre
       // est toujours un montant, jamais une quantité.
-      return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+(vg.nm||mot)+'">'+_emojiCont(mot)+'<span>'+fmt(vg.px)+'</span></button>';
+      return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+(vg.nm||mot)+'">'+_MARQUE_GROS+'<span>'+_texteGros(mot,vg.px)+'</span></button>';
     return '';
   }
   // Les autres familles gardent leur écran de variantes, sans repère.
@@ -10440,8 +10440,8 @@ function _chipGros(p){
     if(_e1.length>1)
       return '<button class="pgros" onclick="choisirEtageGros(event,'+p.id+')" title="'
              +_e1.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-             +_emojiCont(_e1[0].mot)+'<span>'+(lang==='fr'?'gros':'bulk')+' ▾</span></button>';
-    return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_libelleCond(p,null)+'">'+_emojiCont(mot)+'<span>'+mot+'</span></button>';
+             +_MARQUE_GROS+'<span>'+(lang==='fr'?'gros':'bulk')+' ▾</span></button>';
+    return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_libelleCond(p,null)+'">'+_MARQUE_GROS+'<span>'+mot+'</span></button>';
   }
   // ⚠️ « JE VOIS PARTOUT VENTE EN CARTON. CE N'EST PAS TOUS LES ARTICLES
   //     OÙ ON ACHÈTE EN CARTON. »
@@ -10475,7 +10475,7 @@ function _chipGros(p){
   // passer pour un conditionnement connu — c'était le fond de sa remarque
   // de 21.10, et elle tient toujours.
   var neutre='<button class="pgros vide" onclick="direTailleGros(event,'+p.id+')" title="'
-    +(lang==='fr'?'Vendre en gros':'Sell wholesale')+'">'+_emojiCont(mot)
+    +(lang==='fr'?'Vendre en gros':'Sell wholesale')+'">'+_MARQUE_GROS
     +'<span>'+(lang==='fr'?'gros':'bulk')+'</span></button>';
   return neutre;
 }
@@ -10939,6 +10939,37 @@ var _EMO_CONT={carton:'📦',boite:'🧰',caisse:'🧰',casier:'🧃',palette:'�
                box:'📦',crate:'🧃',pallet:'🧱',pack:'🛍️',bag:'🧺',can:'🛢️',tray:'🥚',bottle:'🍾'};
 function _emojiCont(mot){
   try{return _EMO_CONT[txtNorm(mot||'')]||'📦';}catch(e){return '📦';}
+}
+// ⭐⭐ « AJUSTER UN PEU LE BOUTON GROSSISTE DE FAÇON PROFESSIONNELLE »
+//
+// Sa capture montrait quatre repères côte à côte qui ne se ressemblaient
+// pas : « 🧃 F 6 000 » sur la bière, « 🧱 F 2 500 » sur le jus, « 📦 gros ▾ »
+// sur le cube, « 📦 carton » sur le pain. Trois emojis différents pour la
+// même idée — un berlingot de jus pour un casier, une BRIQUE pour une
+// palette — et tantôt un prix, tantôt un mot.
+//
+// L'emoji varié reste très bien dans les PHRASES : le reçu et la voix
+// disent « 1 casier », et l'image aide à la lecture. Mais aligné quatre
+// fois sur une grille, ça fait bazar, pas commerce.
+//
+// LA RÈGLE DU REPÈRE, la même partout :
+//   une seule marque, 📦, pour tous les contenants ;
+//   le MOT d'abord — c'est lui qui dit quoi, pas un dessin ;
+//   le prix ensuite quand il est connu ;
+//   « gros ▾ » dès qu'il y a plusieurs étages à choisir.
+var _MARQUE_GROS='📦';
+// « carton · 6 000 », ou « carton » seul tant que le prix n'est pas posé.
+// ⚠️ SANS LA DEVISE. Avec elle, « casier · FCFA 6 000 » ne tenait pas dans
+// la puce et finissait en « casier · FCF… » — le prix, c'est-à-dire la
+// seule chose qu'il regarde, était coupé. Elle est déjà écrite juste
+// au-dessus, sur le prix à l'unité : la répéter coûtait le chiffre.
+function _sansDevise(v){
+  try{return String(fmt(v)).replace(/[^\d\s\u00a0\u202f.,-]/g,'').trim();}
+  catch(e){return String(v);}
+}
+function _texteGros(mot,px){
+  var m=String(mot||'').trim();
+  return px>0?(m+' · '+_sansDevise(px)):m;
 }
 // ⚠️ Composer _unGros(_grosEntier(mot)) donnait « UN palette ENTIÈRE » : le
 // second appel recevait « palette entière », introuvable dans la table.
