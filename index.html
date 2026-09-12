@@ -1890,6 +1890,12 @@ body{max-width:min(100%,1200px)}
           <input type="number" id="inp-maxv" min="0" max="50" inputmode="numeric" onchange="definirMaxVendeurs(this.value)"
                  style="width:62px;text-align:center;font-size:15px;font-weight:900;padding:7px;border-radius:9px;border:1.5px solid var(--BD);font-family:Outfit,sans-serif">
         </div>
+        <div class="stit2" onclick="toggleDoigtVendeur()">
+          <div class="stico" style="background:#E3F2FD">👆</div>
+          <div class="stii"><div class="stitl" id="st-dv">Le doigt remplace le code du vendeur</div>
+            <div class="stisub" id="st-dv-s">À couper si tes vendeurs partagent un téléphone</div></div>
+          <button class="tog on" id="tog-dv" onclick="event.stopPropagation();toggleDoigtVendeur()"></button>
+        </div>
       </div>
     </div>
     <!-- La sécurité mérite sa propre section : « Changer mon PIN » était rangé
@@ -3784,7 +3790,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.89'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.90'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6419,9 +6425,24 @@ function plusTardCodeVendeur(){
 }
 // ⭐ LA SERRURE. Les deux portes du vendeur passent par ici : celle où il
 // tape tout, et la rapide. Un seul endroit à garder.
+function _doigtPourLui(nm){
+  // Le doigt ne vaut que pour CELUI qui a posé la clé, et sur SA boutique.
+  var d=_doigtValide;_doigtValide=false;        // une seule fois
+  if(!d)return false;
+  // Le patron peut l'interdire à ses vendeurs — c'est le bon réglage quand
+  // le téléphone est celui du comptoir et que plusieurs doigts y sont.
+  try{if(DB&&DB.cfg&&DB.cfg.doigtVendeur===false)return false;}catch(e){}
+  var o=null;try{o=bioLu();}catch(e){}
+  if(!o||!o.pour)return false;
+  if(txtNorm(o.pour)!==txtNorm(nm||''))return false;
+  try{if(o.bq&&DB&&DB.cfg&&DB.cfg.code&&normalizeShopCode(o.bq)!==normalizeShopCode(DB.cfg.code))return false;}catch(e){}
+  return true;
+}
 function _passerPorteVendeur(nm,suite){
   var fr=(lang==='fr');
   if(!_cryptoPret()){suite(true);return;}          // pas d'https : on ne bloque personne
+  // ⭐ SON DOIGT, SON NOM, SA BOUTIQUE : il entre d'un seul geste.
+  if(_doigtPourLui(nm)){suite(true);return;}
   if(aCodePerso(nm)){ouvrirCodeVendeur(nm,'donner',suite);return;}
   // Pas encore de code : il entre, et on le lui propose tout de suite.
   // On ne le force pas — un vendeur bloqué dehors le premier jour est un
@@ -16604,8 +16625,30 @@ function appelCli(){if(cliCours&&cliCours.tel&&cliCours.tel!=='N/A')window.open(
 // ÉQUIPE
 // ═══════════════════════════════════════════
 function renderEquipe(){var c=document.getElementById('equipe-lst');if(!c)return;
+  try{majTogDoigtVendeur();}catch(e){}
   var _mv=document.getElementById('inp-maxv');
   if(_mv&&document.activeElement!==_mv)_mv.value=(DB&&DB.cfg&&DB.cfg.maxVendeurs)||0;var rl={patron:lang==='fr'?'👑 Patron':'👑 Owner',vendeur:lang==='fr'?'👦 Vendeur':'👦 Seller',gerant:lang==='fr'?'👨‍💼 Gérant':'👨‍💼 Manager'};var rc={patron:'var(--A)',vendeur:'var(--B)',gerant:'var(--PU)'};c.innerHTML=DB.equipe.map(function(v,i){return '<div class="vit3"><div class="vav" style="background:'+v.bg+';color:'+v.tc+'">'+v.nm[0]+'</div><div class="vinf3"><div class="vnm3">'+v.nm+'</div><div class="vrl" style="color:'+rc[v.role]+'">'+rl[v.role]+'</div></div>'+(v.role!=='patron'?'<button onclick="inviterVendeur('+i+')" title="'+(lang==='fr'?'Envoyer son lien':'Send invite')+'" style="background:#E8F5E9;color:var(--G);border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:6px">📤</button><button onclick="razCodeVendeur('+i+')" title="'+(v.pinH?(lang==='fr'?'Code personnel posé — remettre à zéro':'Personal code set — reset'):(lang==='fr'?'Pas encore de code personnel':'No personal code yet'))+'" style="background:'+(v.pinH?'#E8F5E9':'#FFF3E0')+';color:'+(v.pinH?'var(--G)':'var(--O)')+';border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:6px">'+(v.pinH?'🔒':'🔓')+'</button><button onclick="ouvrirPerm('+i+')" style="background:#F0F4FF;color:var(--B);border:none;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-right:8px">🔐</button><button class="tog '+(v.actif?'on':'off')+'" onclick="togV('+i+')" style="width:38px;height:22px"></button>':'<span style="font-size:10px;font-weight:700;background:#E8F5E9;color:var(--G);padding:2px 8px;border-radius:20px">'+(lang==='fr'?'Actif':'Active')+'</span>')+'</div>';}).join('')+'<div class="stit2" style="justify-content:center;color:var(--B);font-weight:800;font-size:13px;cursor:pointer;padding:12px" onclick="inviterVendeur()">+ '+(lang==='fr'?'Inviter un vendeur':'Invite a seller')+'</div>';}
+// ⚠️ L'INTERRUPTEUR DU PATRON. Quand les vendeurs partagent le téléphone
+// du comptoir, plusieurs doigts y sont enregistrés et le capteur ne les
+// distingue pas : le doigt ne doit alors JAMAIS remplacer le code. Par
+// défaut il le remplace (chacun son téléphone, c'est le cas courant) ;
+// couper cette ligne referme la porte pour tous les vendeurs d'un coup.
+function toggleDoigtVendeur(){
+  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Patron only'));return;}
+  if(!DB||!DB.cfg)return;
+  var on=(DB.cfg.doigtVendeur!==false);
+  DB.cfg.doigtVendeur=!on;
+  save();majTogDoigtVendeur();
+  var fr=(lang==='fr');
+  showToast(DB.cfg.doigtVendeur
+    ?('👆 '+(fr?'Tes vendeurs peuvent entrer avec leur doigt':'Sellers may enter with their finger'))
+    :('🔒 '+(fr?'Tes vendeurs taperont toujours leur code':'Sellers will always type their code')));
+}
+function majTogDoigtVendeur(){
+  var t=document.getElementById('tog-dv');if(!t)return;
+  var on=!(DB&&DB.cfg&&DB.cfg.doigtVendeur===false);
+  t.className='tog '+(on?'on':'off');
+}
 // ── Le patron : il remet à zéro, il ne lit jamais ─────────────────
 function razCodeVendeur(i){
   if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Patron only'));return;}
@@ -16803,7 +16846,21 @@ async function activerBiometrieFlow(){
       // ⚠️ DANS L'APPAREIL, PAS DANS LA BOUTIQUE. Écrire ça dans DB.cfg le
       // faisait voyager vers les autres téléphones — et changer d'une
       // boutique à l'autre sur le même.
-      bioEcrire({on:true,id:b64(cred.rawId),dec:!dur,refus:0});
+      // ⭐⭐ LA CLÉ PORTE LE NOM DE CELUI QUI L'A POSÉE.
+      // « Le vendeur peut-il utiliser l'empreinte pour déverrouiller ? »
+      // Oui — mais l'empreinte enregistrée ici est une clé DE L'APPAREIL,
+      // pas d'une personne : il n'y en a qu'une par téléphone, et Android
+      // laisse enregistrer plusieurs doigts sur le même appareil. Le
+      // capteur répond « un doigt autorisé de ce téléphone », jamais « le
+      // doigt d'Awa ». Sans ce nom, laisser le doigt remplacer le code
+      // personnel ouvrait la caisse d'Awa au doigt d'Ibrahim — exactement
+      // ce qu'on venait de fermer.
+      // On retient donc POUR QUI la clé a été faite, et sur quelle
+      // boutique. Rien d'autre : ni son code, ni son doigt.
+      var _pour='',_bq='';
+      try{if(role==='vendeur'&&nomVendeur)_pour=String(nomVendeur);}catch(e){}
+      try{_bq=(DB&&DB.cfg&&DB.cfg.code)||'';}catch(e){}
+      bioEcrire({on:true,id:b64(cred.rawId),dec:!dur,refus:0,pour:_pour,bq:_bq});
       return true;
     }
   }catch(e){
@@ -16985,6 +17042,22 @@ function toggleBiometrie(){
   if(!window.PublicKeyCredential){showToast('⛔ '+(lang==='fr'?'Ce téléphone ne gère pas l\'empreinte':'This phone has no biometrics'));return;}
   if(!bioActif()){
     if(!DB){showToast('⛔ '+(lang==='fr'?'Connecte-toi d\'abord':'Sign in first'));return;}
+    // ⚠️⚠️ ON LE LUI DIT AVANT, PAS EN PETIT GRIS APRÈS. Android laisse
+    // enregistrer plusieurs doigts sur un même téléphone, et le capteur ne
+    // sait pas les distinguer : sur un appareil de comptoir, le doigt d'un
+    // collègue ouvrira sa caisse. C'est vrai, c'est court, et c'est à lui
+    // de décider en connaissance — comme le dit n'importe quelle
+    // application de banque.
+    if(role==='vendeur'){
+      var _fr=(lang==='fr');
+      if(!confirm(_fr
+        ?('👆 Entrer avec ton doigt, sans taper ton code.\n\n'
+          +'⚠️ N\'active ça que sur TON téléphone.\n\n'
+          +'Si d\'autres doigts sont enregistrés sur cet appareil, ils ouvriront ta caisse.\n\nContinuer ?')
+        :('👆 Enter with your finger, no code.\n\n'
+          +'⚠️ Only enable this on YOUR phone.\n\n'
+          +'Any other finger enrolled on this device will open your till.\n\nContinue?')))return;
+    }
     activerBiometrieFlow().then(function(ok){
       _majTogBio(ok);
       if(ok)showToast('✅ '+(lang==='fr'?'Empreinte activée — pour CE téléphone, et pour toutes tes boutiques':'Biometrics enabled on this phone'));
@@ -17037,8 +17110,13 @@ async function loginBiometrique(){
 // VÉRIFIÉE ne protégeait donc rien : n'importe qui pouvait déjà le lire.
 // Après l'empreinte, on l'emploie exactement comme s'il l'avait tapé — en
 // repassant par le chemin normal, qui gère déjà le hors-ligne.
+// Vrai le temps d'une ouverture : le doigt vient d'être accepté. La
+// serrure du vendeur le lit UNE fois, puis l'éteint — sinon il resterait
+// allumé et ouvrirait la porte suivante sans que personne n'ait rien posé.
+var _doigtValide=false;
 async function _ouvrirApresEmpreinte(){
   var fr=(lang==='fr');
+  _doigtValide=true;
   // ⚠️ « LE CAPTEUR D'EMPREINTE N'EST PAS TRÈS RAPIDE » — et ce n'était PAS le
   // capteur. L'ORDRE ÉTAIT À L'ENVERS ici.
   // Le commentaire annonçait « le chemin le plus court d'abord » : c'était le
