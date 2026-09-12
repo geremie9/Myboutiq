@@ -509,6 +509,29 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
      border:1.5px solid var(--O);border-bottom-width:1.5px;cursor:pointer;
      -webkit-tap-highlight-color:transparent}
 .pgo:active{transform:scale(.985)}
+/* ⭐ « ENLEVER L'ÉCRITURE QUI DIT EMPREINTE À L'ENTRÉE, JUSTE UN SIGNE
+   BIEN PLACÉ. » Un bouton pleine largeur qui écrit « Empreinte / Face ID »
+   dit deux fois la même chose et prend la place du PIN. Le signe est rond,
+   au-dessus du champ : on pose le doigt, ou on tape — dans cet ordre, qui
+   est celui qu'il a demandé. Il bat doucement tant que le capteur écoute :
+   c'est ce battement qui dit « vas-y », pas un mot. */
+.bio-sig{display:none;margin:4px auto 12px;width:64px;height:64px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.34);background:rgba(255,255,255,.10);padding:0;
+  align-items:center;justify-content:center;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:transform .12s}
+.bio-sig.on{display:flex}
+.bio-sig:active{transform:scale(.92)}
+.bio-sig svg{width:33px;height:33px;fill:none;stroke:#fff;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+.bio-sig.clair{border-color:rgba(0,0,0,.14);background:var(--BG)}
+.bio-sig.clair svg{stroke:var(--B)}
+.bio-sig.ecoute{animation:bioBat 2s ease-in-out infinite}
+@keyframes bioBat{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,.42)}
+                  55%{box-shadow:0 0 0 13px rgba(245,166,35,0)}}
+/* Posée sur un autre téléphone : le signe est là mais éteint — il explique
+   au lieu de disparaître sans un mot. */
+.bio-sig.eteint{opacity:.4}
+.bio-sig.eteint svg{stroke-dasharray:2.5 3}
 .pgo-e{font-size:19px;flex-shrink:0}
 /* ⚠️ LA MARGE DU BAS N'EST PAS DE L'ESPACEMENT, C'EST UNE SÉCURITÉ. Rendre
    le prix touchable a posé une petite cible à 4 px des boutons − et + :
@@ -1613,9 +1636,9 @@ body{max-width:min(100%,1200px)}
       <div id="er-lst" style="max-height:36vh;overflow-y:auto;margin-bottom:14px"></div>
       <div id="er-pin-wrap" style="display:none">
         <div id="er-cible" style="font-size:13px;font-weight:800;color:#fff;margin-bottom:9px;display:flex;align-items:center;gap:8px"></div>
+        <button class="bio-sig" id="er-bio" onclick="toucherSigneBio('er-bio')" title="Empreinte" aria-label="Empreinte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>
         <input class="fi" type="password" id="er-pin" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" style="text-align:center;letter-spacing:10px;font-size:22px;font-weight:900" onkeydown="if(event.key==='Enter')validerEntreeRapide()">
         <button class="btn-login" style="margin-top:10px" onclick="validerEntreeRapide()"><span id="er-btn">Entrer</span></button>
-        <button class="btn-login" id="er-bio" onclick="entreeEmpreinte()" style="display:none;margin-top:8px;background:rgba(255,255,255,.12);color:#fff">👆 <span id="er-bio-l">Empreinte / Face ID</span></button>
         <button class="btn-login" onclick="retourListeBoutiques()" style="margin-top:8px;background:transparent;color:rgba(255,255,255,.6);box-shadow:none">↩︎ <span id="er-retour">Choisir une autre boutique</span></button>
       </div>
       <div style="display:flex;gap:14px;justify-content:center;padding-top:6px">
@@ -1637,7 +1660,7 @@ body{max-width:min(100%,1200px)}
       <div class="fg"><label class="fl">🔐 PIN</label><input class="fi" type="password" placeholder="••••••" maxlength="6" id="p-pin" inputmode="numeric" autocomplete="new-password"></div>
       <button class="btn-login" id="btn-lp" onclick="loginP()">Connexion 👑</button>
       <button class="btn-login" id="btn-forgot-pin" onclick="ouvrirResetPin()" style="margin-top:8px;background:rgba(255,255,255,.12);color:#fff">🔁 PIN oublié ?</button>
-      <button class="btn-login" id="btn-bio-login" onclick="loginBiometrique()" style="display:none;margin-top:8px;background:var(--BG);color:var(--T)">🔐 <span id="lbl-bio-login">Empreinte / Face ID</span></button>
+      <button class="bio-sig clair" id="btn-bio-login" onclick="toucherSigneBio('btn-bio-login')" title="Empreinte" aria-label="Empreinte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>
     </div>
     <div id="fv" style="width:100%;display:none">
       <div class="fg"><label class="fl" id="lbl-code">🏪 Code boutique</label><input class="fi" type="text" id="v-code" style="letter-spacing:3px;font-weight:800;text-transform:uppercase" placeholder="12345 67890" autocomplete="off"></div>
@@ -3744,7 +3767,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.87'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.88'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4996,6 +5019,40 @@ function _mesBoutiquesConnues(){
   if(loc&&!l.some(function(b){return String(b.code)===String(loc.code);}))l.push(loc);
   return l;
 }
+// ⭐ L'ÉTAT DU SIGNE D'EMPREINTE — un seul endroit pour les deux portes.
+// Trois états, et le troisième est celui qui manquait :
+//   allumé   : la clé est sur CET appareil, le capteur écoute, le signe bat.
+//   éteint   : la boutique se souvient d'une empreinte, mais elle a été
+//              posée sur un AUTRE téléphone. Avant, le signe disparaissait
+//              sans un mot : il avait allumé l'empreinte, elle n'était plus
+//              là, et rien ne le lui disait. Il reste maintenant, en creux,
+//              et il explique quand on le touche.
+//   absent   : rien n'a jamais été posé — on ne montre rien.
+// ⚠️ On n'ALLUME PAS depuis DB.cfg : cette clé peut appartenir à un autre
+// appareil, et ouvrir un capteur qui ne reconnaîtra jamais rien serait pire
+// que de ne rien ouvrir. C'est la règle de bioLu, et elle tient.
+function _majSigneBio(id,forceOn){
+  var el=document.getElementById(id);if(!el)return false;
+  var peut=!!window.PublicKeyCredential;
+  var actif=false;try{actif=bioActif();}catch(e){}
+  if(forceOn)actif=actif||!!forceOn;
+  var ailleurs=false;
+  try{ailleurs=!actif&&!!(DB&&DB.cfg&&DB.cfg.biometrie&&DB.cfg.bioCredId);}catch(e){}
+  el.classList.toggle('on',!!(peut&&(actif||ailleurs)));
+  el.classList.toggle('eteint',!!(peut&&!actif&&ailleurs));
+  el.classList.toggle('ecoute',!!(peut&&actif));
+  return !!(peut&&actif);
+}
+function toucherSigneBio(id){
+  var el=document.getElementById(id);
+  if(el&&el.classList.contains('eteint')){
+    var fr=(lang==='fr');
+    showToast('👆 '+(fr?'Empreinte posée sur un autre téléphone — ouvre avec ton PIN, puis Réglages → Empreinte pour la poser ici'
+                      :'Fingerprint was set on another phone — open with your PIN, then Settings → Fingerprint'));
+    return;
+  }
+  if(id==='er-bio')entreeEmpreinte();else loginBiometrique();
+}
 function entreeRapidePossible(){
   var e=lireEntree();
   if(entreeRapideVendeur())return true;
@@ -5046,7 +5103,7 @@ function majEntreeRapide(){
   // dernière connexion date d'avant la pose de l'empreinte, ne l'avait pas —
   // et le bouton restait caché alors que le capteur venait de s'ouvrir.
   var _bioOn=false;try{_bioOn=bioActif()||!!e.bio;}catch(x){_bioOn=!!e.bio;}
-  if(bio)bio.style.display=(window.PublicKeyCredential&&_bioOn)?'block':'none';
+  _majSigneBio('er-bio',_bioOn);
   // Il ne devrait pas avoir à TOUCHER un bouton pour poser son doigt.
   // On demande au téléphone de guetter l'empreinte tout seul, dès que
   // l'écran s'ouvre. Le bouton reste, pour qui préfère le geste explicite.
@@ -6014,8 +6071,7 @@ function appliquerLang(){
   var _sne2=document.getElementById('st-noemoji-s');if(_sne2)_sne2.textContent=lang==='fr'?'Remplace les emojis par une pastille sobre (initiale)':'Replace emojis with a plain tile (initial)';
   // Biométrie — bouton visible si activée, toggle synchronisé
   var _bio=false;try{_bio=bioActif();}catch(e){}
-  var bioBtn=document.getElementById('btn-bio-login');
-  if(bioBtn)bioBtn.style.display=(_bio?'flex':'none');
+  _majSigneBio('btn-bio-login');
   document.getElementById('tog-bio').className='tog '+(_bio?'on':'off');
   var tb2=document.getElementById('tog-bio2');if(tb2)tb2.className='tog '+(_bio?'on':'off');
   var _sb=document.getElementById('st-bio2-s');
@@ -16646,7 +16702,7 @@ async function reactiverEmpreinte(){
 }
 function _majTogBio(on){
   ['tog-bio','tog-bio2'].forEach(function(id){var e=document.getElementById(id);if(e)e.className='tog '+(on?'on':'off');});
-  var b=document.getElementById('btn-bio-login');if(b)b.style.display=on?'flex':'none';
+  _majSigneBio('btn-bio-login',on);_majSigneBio('er-bio',on);
   // ⚠️ On ne passe plus par memoriserEntree : cette fonction est CLASSÉE PAR
   // RÔLE et repart d'une ardoise vide quand le rôle change. Elle forçait ici
   // « patron » — un vendeur qui touchait l'empreinte effaçait donc, sans le
