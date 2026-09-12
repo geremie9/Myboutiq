@@ -3899,7 +3899,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.95'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.96'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6758,6 +6758,11 @@ async function loginP(){
 var _pinPatronValide=null;
 function _terminerLoginPatron(remoteDB,tel,email){
   if(remoteDB){
+    // ⚠️ LA MÊME GARDE QUE LA PORTE DU VENDEUR, qui manquait ici depuis
+    // toujours : il ouvre une AUTRE de ses boutiques, celle d'avant est
+    // encore en mémoire. Sans ça, ce que la première avait en plus entrait
+    // dans la seconde. Voir mergeDB.
+    try{if(remoteDB.cfg&&remoteDB.cfg.code)assurerBoutiqueLocale(remoteDB.cfg.code);}catch(e){}
     DB=migrateDBData(mergeDB(remoteDB,DB));_artSnapApresFusion();
     _suppressSync=true;
     localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
@@ -18958,7 +18963,42 @@ function _artSnapApresFusion(){
     _artSnap=m;localStorage.setItem(_SNAP_CLE,JSON.stringify(m));
   }catch(e){}
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ DEUX BOUTIQUES NE SE FUSIONNENT JAMAIS
+//
+//  MESURÉ EN PRODUCTION, et c'est ce qu'il a vu sur sa caisse : une même
+//  photo — `APP/products/47020 07051-1784116189217-1897.jpg`, téléversée
+//  par UNE boutique — se retrouvait sur DIX-HUIT autres, sous trois noms
+//  d'articles différents : « Farine (kg) », « huile diamaor », et même
+//  « Screenshot 20260709 113553 ». D'où le Coca sur la « Bière locale »,
+//  la bière brune sur le « Jus », le logo d'un cabinet de conseil sur le
+//  « Riz ».
+//
+//  LA CAUSE : les articles se fusionnent PAR NUMÉRO, et les numéros
+//  repartent de 1 dans chaque boutique. L'article n° 7 de l'une n'a rien
+//  à voir avec l'article n° 7 de l'autre. Or `_terminerLoginPatron`
+//  appelait `mergeDB(boutiqueDemandée, boutiqueEncoreOuverte)` sans
+//  vérifier que c'était la même : le patron ouvrait sa deuxième boutique,
+//  et tout ce que la première avait EN PLUS y entrait — articles, prix,
+//  photos. `loginV` avait bien la garde (`assurerBoutiqueLocale`) ; le
+//  chemin patron ne l'avait jamais eue.
+//
+//  La garde est posée ICI plutôt qu'aux six appels : c'est la seule
+//  manière qu'un septième, écrit plus tard, soit protégé lui aussi. Deux
+//  codes connus et différents → l'autre côté est ignoré, entièrement.
+//  On ne fusionne rien qu'on ne puisse pas rattacher.
+function _memeBoutique(a,b){
+  try{
+    var ca=a&&a.cfg&&a.cfg.code, cb=b&&b.cfg&&b.cfg.code;
+    if(!ca||!cb)return true;                 // l'un des deux ne dit pas : on ne bloque pas
+    return normalizeShopCode(ca)===normalizeShopCode(cb);
+  }catch(e){return true;}
+}
 function mergeDB(base,other){
+  if(!_memeBoutique(base,other)){
+    try{console.warn('[MyBoutiQ] fusion refusée : deux boutiques différentes');}catch(e){}
+    return base;
+  }
   if(!base)return other;
   if(!other)return base;
   if(!base.cfg||!other.cfg||normalizeShopCode(base.cfg.code)!==normalizeShopCode(other.cfg.code))return base;
