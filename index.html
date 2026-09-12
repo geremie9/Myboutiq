@@ -65,6 +65,30 @@
     window._bioTot.catch(function(){});            // jamais d'erreur non rattrapée
   }catch(x){}
 })();
+/* ══════════════════════════════════════════════════════════════════
+   ATTRAPER L'INVITATION À INSTALLER, AVANT QUE LE NAVIGATEUR LA JETTE
+
+   « Il faut que le site incite à installer l'application. »
+
+   ⚠️ `beforeinstallprompt` NE SE PRODUIT QU'UNE FOIS, tôt, et si personne
+   n'écoute à cet instant précis, Chrome affiche sa propre petite barre —
+   que le commerçant ferme sans lire — et l'occasion est perdue pour la
+   session entière. On ne peut pas l'attendre depuis un script de 1,3 Mo
+   lu plus bas : le listener est donc ici, en quatre lignes, avant tout
+   le reste. `preventDefault()` garde la main : c'est NOUS qui choisirons
+   le moment et les mots, pas la barre grise du navigateur.
+   ══════════════════════════════════════════════════════════════════ */
+window._pwaInvite=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  try{e.preventDefault();}catch(x){}
+  window._pwaInvite=e;
+  try{if(typeof majBoutonsInstaller==='function')majBoutonsInstaller();}catch(x){}
+});
+window.addEventListener('appinstalled',function(){
+  window._pwaInvite=null;
+  try{localStorage.setItem('myboutiq_installee','1');}catch(x){}
+  try{if(typeof majBoutonsInstaller==='function')majBoutonsInstaller();}catch(x){}
+});
 </script>
 <title>MyBoutiQ — Gestion de boutique pour l'Afrique</title>
 <meta name="description" content="MyBoutiQ : application de gestion de boutique et petit commerce. Ventes, stock, clients, rapports — simple, hors-ligne, sans complications. Faite pour l'Afrique francophone.">
@@ -515,6 +539,7 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
    au-dessus du champ : on pose le doigt, ou on tape — dans cet ordre, qui
    est celui qu'il a demandé. Il bat doucement tant que le capteur écoute :
    c'est ce battement qui dit « vas-y », pas un mot. */
+.vt-act.install{background:rgba(255,255,255,.13);color:#fff;border:1.5px solid rgba(255,255,255,.30)}
 .vt-neuf{margin:18px auto 0;max-width:420px;background:rgba(255,255,255,.09);
   border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:13px 15px;text-align:left}
 .vt-neuf-t{font-size:12px;font-weight:600;color:rgba(255,255,255,.82);line-height:1.5}
@@ -1372,6 +1397,7 @@ body{max-width:min(100%,1200px)}
      font-size:11.5px;font-weight:900;box-shadow:0 2px 8px rgba(0,0,0,.18)">
   <span style="font-size:14px">👀</span>
   <span id="bandeau-demo-t" style="flex:1;line-height:1.25">BOUTIQUE D'EXEMPLE — rien n'est réel</span>
+  <button onclick="installerApp()" id="bandeau-demo-i" style="display:none;background:#241257;color:#FFD489;border:none;border-radius:8px;padding:10px 11px;font-size:11px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;margin-right:5px">📲 Installer</button>
   <button onclick="quitterDemo()" id="bandeau-demo-q"
     style="background:#241257;color:#fff;border:none;border-radius:8px;padding:6px 11px;
            font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">Créer ma boutique</button>
@@ -1482,6 +1508,7 @@ body{max-width:min(100%,1200px)}
     <div class="vt-note" id="vt-note">Sans compte, sans numéro. Tu regardes, tu ressors.</div>
     <button class="vt-act creer" onclick="ouvrirDepuisVitrine('new')" id="vt-b2">Créer ma boutique — c'est gratuit</button>
     <button class="vt-act deja" onclick="ouvrirDepuisVitrine('old')" id="vt-b3">J'ai déjà une boutique</button>
+    <button class="vt-act install" onclick="installerApp()" id="vt-install" style="display:none">📲 Installer l'application</button>
 
     <!-- ⭐ CE QUI VIENT D'ARRIVER, et un moyen de répondre. Le visiteur du
          site n'a pas l'app : il ne peut rien tester, mais il peut parler —
@@ -1756,6 +1783,16 @@ body{max-width:min(100%,1200px)}
     <div id="caisse-sansprix" style="display:none;margin:0 15px 10px;background:#FFF3E0;border:1.5px solid #FFB74D;
          border-radius:12px;padding:10px 12px;font-size:12px;font-weight:800;color:#B45309;cursor:pointer"
          onclick="ouvrirPrixVite()"></div>
+    <!-- ⭐ « À CHAQUE FOIS UN PEU PARTOUT » — mais refermable. Celui qui
+         travaille dans un onglet de navigateur perd l'app dès qu'il ferme
+         l'onglet ; celui qui a dit non une fois n'a pas à le redire. -->
+    <div id="cai-install" style="display:none;margin:0 15px 10px;background:#E8F5E9;border:1.5px solid #66BB6A;
+         border-radius:12px;padding:10px 12px;display:none;align-items:center;gap:10px">
+      <span style="font-size:18px;flex-shrink:0">📲</span>
+      <div style="flex:1;min-width:0;font-size:11.5px;font-weight:700;color:#1B5E20;line-height:1.4" id="cai-install-t"></div>
+      <button onclick="installerApp()" style="flex-shrink:0;background:#2E7D32;color:#fff;border:none;border-radius:9px;padding:10px 12px;font-size:11.5px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap" id="cai-install-b">Installer</button>
+      <button onclick="_fermerInstallCaisse()" aria-label="Fermer" style="flex-shrink:0;background:transparent;border:none;color:#1B5E20;font-size:15px;font-weight:900;cursor:pointer;padding:8px 4px">✕</button>
+    </div>
     <div class="pgrid" id="pgrid"></div>
     <div style="height:20px"></div>
   </div>
@@ -2067,6 +2104,7 @@ body{max-width:min(100%,1200px)}
              confort, c'est la règle RLS qui protège vraiment. -->
         <div class="stit2" id="row-annonce" style="display:none" onclick="ouvrirEcrireAnnonce()"><div class="stico" style="background:#E8EAF6">📣</div><div class="stii"><div class="stitl">Écrire une annonce</div><div class="stisub">Un message à tous les commerçants</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-photos-prop" style="display:none" onclick="ouvrirPhotosProposees()"><div class="stico" style="background:#E0F2F1">📷</div><div class="stii"><div class="stitl">Photos proposées</div><div class="stisub" id="pp-sub">Ce que les commerçants offrent à tous</div></div><span class="starr">›</span></div>
+        <div class="stit2" id="row-install" onclick="installerApp()"><div class="stico" style="background:#E8F5E9">📲</div><div class="stii"><div class="stitl" id="st-install">Installer l'application</div><div class="stisub" id="st-install-s">Elle s'ouvre plein écran et démarre plus vite</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirArchivage()"><div class="stico" style="background:#E1F5FE">📦</div><div class="stii"><div class="stitl">Ranger les vieilles ventes</div><div class="stisub" id="st-archive-s">Elles sortent du détail, tes totaux ne bougent pas</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirSupprBoutique()"><div class="stico" style="background:#FFEBEE">⛔</div><div class="stii"><div class="stitl" id="st-sup" style="color:var(--R)">Supprimer ma boutique</div><div class="stisub" id="st-sup-s">Tout effacer de nos serveurs, définitivement</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirRaz()"><div class="stico" style="background:#FFEBEE">🗑️</div><div class="stii"><div class="stitl" id="st-raz" style="color:var(--R)">Effacer toutes mes ventes</div><div class="stisub" id="st-raz-s">Sans retour. Ton stock et tes articles restent intacts.</div></div><span class="starr">›</span></div>
@@ -2497,6 +2535,18 @@ body{max-width:min(100%,1200px)}
       <div style="font-size:13px;font-weight:600;color:var(--M);margin-bottom:18px;line-height:1.5" id="neg-msg">Stock épuisé. Tu peux quand même vendre et te ravitailler après.</div>
       <button class="bpay" style="margin-bottom:9px" onclick="vendreMalgre()" id="btn-vendre">✅ Vendre quand même</button>
       <button class="bvid" onclick="closeSheet('ov-neg')" id="btn-ann-neg">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMMENT GARDER L'APP SUR SON ÉCRAN -->
+<div class="ov" id="ov-installer" onclick="closeOv(event,'ov-installer')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="ins-tit">📲 Garder MyBoutiQ sur ton écran</div><button class="bcl" onclick="closeSheet('ov-installer')">✕</button></div>
+    <div style="padding:16px 19px 22px">
+      <div id="ins-pas" style="font-size:13.5px;font-weight:600;color:var(--T);line-height:1.6;background:var(--BG);padding:15px 16px;border-radius:13px"></div>
+      <div id="ins-pq" style="font-size:12px;font-weight:600;color:var(--M);line-height:1.5;margin-top:13px"></div>
+      <button class="bpay" style="margin-top:15px" onclick="closeSheet('ov-installer')">C'est compris</button>
     </div>
   </div>
 </div>
@@ -3807,7 +3857,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.91'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.92'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4823,6 +4873,7 @@ function _demarrerApp(){
       renderSecGrid('sec-grid','boutique');
       try{_vitrineLangue();}catch(e){}
       try{majBandeVitrine();}catch(e){}
+      try{majBoutonsInstaller();}catch(e){}
       goScreen('s-landing');
     }
 }
@@ -19355,6 +19406,9 @@ function majBandeauDemo(){
   if(t)t.textContent=fr?'BOUTIQUE D\'EXEMPLE — rien n\'est réel':'EXAMPLE SHOP — nothing is real';
   var q=document.getElementById('bandeau-demo-q');
   if(q)q.textContent=fr?'Créer ma boutique':'Create my shop';
+  var i=document.getElementById('bandeau-demo-i');
+  if(i)i.textContent=fr?'📲 Installer':'📲 Install';
+  try{majBoutonsInstaller();}catch(e){}
 }
 
 function sauvegarderAvant(motif){
@@ -19864,7 +19918,7 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
@@ -20325,6 +20379,126 @@ function majBandeVitrine(){
   var q=_quoiDeNeuf(),en=_enVitrine();
   t.innerHTML='<b>'+q.titre+' · </b>'+q.texte;
   if(b)b.textContent=en?'💬 An idea? Write to me':'💬 Une idée ? Écris-moi';
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ INSTALLER L'APPLICATION — « un peu partout »
+//
+//  « Il faut que le site incite à installer la PWA. Il faut que ça incite
+//   à installer le raccourci. À chaque fois un peu partout, même après
+//   être entré pour tester. »
+//
+//  RIEN N'EXISTAIT. Pas de capture de `beforeinstallprompt`, pas de
+//  bouton, pas de détection. L'app ne pouvait s'installer que par le menu
+//  à trois points du navigateur, « Ajouter à l'écran d'accueil » — que
+//  personne ne va chercher. Le commerçant visitait le site, essayait, et
+//  repartait sans rien garder : le lendemain il fallait retrouver
+//  l'adresse. C'est la première raison de ne jamais revenir.
+//
+//  ⚠️ TROIS CHEMINS, PARCE QUE LES TÉLÉPHONES NE SE RESSEMBLENT PAS :
+//    Android/Chrome → l'invitation native, en une tape (la vraie, celle
+//      qui pose l'icône sur l'écran d'accueil) ;
+//    iPhone/Safari  → AUCUN événement n'existe, Apple ne le fournit pas.
+//      Il faut le lui MONTRER : Partager, puis « Sur l'écran d'accueil ».
+//      Une feuille qui le dit en deux lignes vaut mieux qu'un bouton qui
+//      ne fait rien ;
+//    déjà installée → on ne montre RIEN. Rien n'est plus agaçant qu'une
+//      app installée qui demande à être installée.
+// ══════════════════════════════════════════════════════════════════
+function _dejaInstallee(){
+  try{
+    if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)return true;
+    if(window.navigator&&window.navigator.standalone===true)return true;   // iOS
+    if(localStorage.getItem('myboutiq_installee')==='1')return true;
+  }catch(e){}
+  return false;
+}
+function _estIOS(){
+  try{
+    var u=navigator.userAgent||'';
+    if(/iPad|iPhone|iPod/.test(u))return true;
+    // iPad récent se fait passer pour un Mac : l'écran tactile le trahit.
+    return /Macintosh/.test(u)&&navigator.maxTouchPoints>1;
+  }catch(e){return false;}
+}
+// Peut-on proposer quelque chose d'utile ? Sur iPhone, oui : la marche à
+// suivre. Ailleurs, seulement si le navigateur a donné son invitation.
+function _peutInstaller(){
+  if(_dejaInstallee())return false;
+  if(window._pwaInvite)return true;
+  return _estIOS();
+}
+async function installerApp(){
+  var fr=(lang!=='en');
+  if(_dejaInstallee()){
+    showToast('✅ '+(fr?'Elle est déjà installée sur ce téléphone':'Already installed on this phone'));
+    majBoutonsInstaller();return;
+  }
+  if(window._pwaInvite){
+    try{
+      var e=window._pwaInvite;window._pwaInvite=null;
+      e.prompt();
+      var r=await e.userChoice;
+      if(r&&r.outcome==='accepted'){
+        try{localStorage.setItem('myboutiq_installee','1');}catch(x){}
+        showToast('✅ '+(fr?'Installée — ouvre-la par son icône, elle démarre plus vite':'Installed — open it from its icon'));
+      }else{
+        // Refusée : le navigateur ne redonnera pas l'invitation de la
+        // session. On ne la redemande pas non plus — on n'insiste pas.
+        showToast(fr?'D\'accord. Le bouton reste là si tu changes d\'avis.':'All right, the button stays.');
+      }
+    }catch(x){}
+    majBoutonsInstaller();
+    return;
+  }
+  if(_estIOS()){ouvrirCommentInstaller();return;}
+  ouvrirCommentInstaller();
+}
+function ouvrirCommentInstaller(){
+  var fr=(lang!=='en'),ios=_estIOS();
+  document.getElementById('ins-tit').textContent=fr?'📲 Garder MyBoutiQ sur ton écran':'📲 Keep MyBoutiQ on your screen';
+  document.getElementById('ins-pas').innerHTML=ios
+    ?(fr?'<b>1.</b> Touche <b>Partager</b> en bas de Safari (le carré avec la flèche ↑)<br><br><b>2.</b> Descends et touche <b>« Sur l\'écran d\'accueil »</b><br><br><b>3.</b> Touche <b>Ajouter</b>'
+        :'<b>1.</b> Tap <b>Share</b> at the bottom of Safari<br><br><b>2.</b> Scroll and tap <b>“Add to Home Screen”</b><br><br><b>3.</b> Tap <b>Add</b>')
+    :(fr?'<b>1.</b> Touche le menu <b>⋮</b> en haut à droite du navigateur<br><br><b>2.</b> Touche <b>« Installer l\'application »</b> ou <b>« Ajouter à l\'écran d\'accueil »</b>'
+        :'<b>1.</b> Tap the <b>⋮</b> menu of your browser<br><br><b>2.</b> Tap <b>“Install app”</b> or <b>“Add to Home screen”</b>');
+  document.getElementById('ins-pq').textContent=fr
+    ?'Elle s\'ouvre alors comme une vraie application : plein écran, plus rapide, et elle marche sans réseau.'
+    :'It then opens like a real app: full screen, faster, and it works with no network.';
+  document.getElementById('ov-installer').classList.add('show');
+}
+// ⚠️ UN SEUL ENDROIT DÉCIDE. Les boutons sont à quatre endroits — la
+// vitrine, le bandeau d'exemple, la caisse, les réglages — et le pire
+// serait qu'ils ne disent pas tous la même chose au même moment.
+function _fermerInstallCaisse(){
+  try{localStorage.setItem('myboutiq_install_ferme','1');}catch(e){}
+  var c=document.getElementById('cai-install');if(c)c.style.display='none';
+}
+function majBoutonsInstaller(){
+  var montrer=_peutInstaller(),fr=(lang!=='en');
+  var txt=fr?'📲 Installer l\'application':'📲 Install the app';
+  var v=document.getElementById('vt-install');
+  if(v){v.style.display=montrer?'':'none';v.textContent=txt;}
+  var d=document.getElementById('bandeau-demo-i');
+  if(d)d.style.display=montrer?'':'none';
+  // La caisse : la même chose, mais il peut la refermer pour de bon.
+  var c=document.getElementById('cai-install');
+  if(c){
+    var ferme=false;try{ferme=localStorage.getItem('myboutiq_install_ferme')==='1';}catch(e){}
+    c.style.display=(montrer&&!ferme)?'flex':'none';
+    var ct=document.getElementById('cai-install-t');
+    if(ct)ct.textContent=fr?'Garde MyBoutiQ sur ton écran d\'accueil — elle s\'ouvre plus vite, et sans réseau.'
+                           :'Keep MyBoutiQ on your home screen — faster, and offline.';
+    var cb=document.getElementById('cai-install-b');
+    if(cb)cb.textContent=fr?'Installer':'Install';
+  }
+  var r=document.getElementById('row-install');
+  if(r){
+    r.style.display=_dejaInstallee()?'none':'';
+    var sub=document.getElementById('st-install-s');
+    if(sub)sub.textContent=fr
+      ?(montrer?'Elle s\'ouvre plein écran et démarre plus vite':'Voir comment faire depuis ton navigateur')
+      :(montrer?'Full screen, faster to open':'How to do it from your browser');
+  }
 }
 function _annoncesVues(){
   try{return JSON.parse(localStorage.getItem('myboutiq_annonces_vues')||'[]');}catch(e){return [];}
