@@ -515,6 +515,14 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
    au-dessus du champ : on pose le doigt, ou on tape — dans cet ordre, qui
    est celui qu'il a demandé. Il bat doucement tant que le capteur écoute :
    c'est ce battement qui dit « vas-y », pas un mot. */
+.vt-neuf{margin:18px auto 0;max-width:420px;background:rgba(255,255,255,.09);
+  border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:13px 15px;text-align:left}
+.vt-neuf-t{font-size:12px;font-weight:600;color:rgba(255,255,255,.82);line-height:1.5}
+.vt-neuf-t b{color:#F5A623;font-weight:900}
+.vt-neuf-b{margin-top:10px;width:100%;background:rgba(255,255,255,.13);color:#fff;border:none;
+  border-radius:11px;padding:11px;font-size:12px;font-weight:800;cursor:pointer;
+  font-family:'Outfit',sans-serif;-webkit-tap-highlight-color:transparent}
+.vt-neuf-b:active{transform:scale(.985)}
 .bio-sig{display:none;margin:4px auto 12px;width:64px;height:64px;border-radius:50%;
   border:2px solid rgba(255,255,255,.34);background:rgba(255,255,255,.10);padding:0;
   align-items:center;justify-content:center;cursor:pointer;
@@ -1475,6 +1483,14 @@ body{max-width:min(100%,1200px)}
     <button class="vt-act creer" onclick="ouvrirDepuisVitrine('new')" id="vt-b2">Créer ma boutique — c'est gratuit</button>
     <button class="vt-act deja" onclick="ouvrirDepuisVitrine('old')" id="vt-b3">J'ai déjà une boutique</button>
 
+    <!-- ⭐ CE QUI VIENT D'ARRIVER, et un moyen de répondre. Le visiteur du
+         site n'a pas l'app : il ne peut rien tester, mais il peut parler —
+         et personne ne le lui demandait. -->
+    <div class="vt-neuf">
+      <div class="vt-neuf-t" id="vn-txt"></div>
+      <button class="vt-neuf-b" id="vn-btn" onclick="ecrireAMyboutiq('vitrine')"></button>
+    </div>
+
     <!-- Des chiffres VRAIS et vérifiables dans le fichier, jamais de traction
          inventée : 465 articles à photo et 873 trouvables dans le catalogue
          embarqué, tous gardés sur le téléphone. -->
@@ -1717,6 +1733,7 @@ body{max-width:min(100%,1200px)}
       <div style="font-size:13px;font-weight:800;color:var(--T)" id="annonce-titre"></div>
       <div style="font-size:12px;font-weight:600;color:var(--M);margin-top:3px;line-height:1.45" id="annonce-msg"></div>
     </div>
+    <button id="annonce-dis" onclick="ecrireAMyboutiq('annonce')" style="flex-shrink:0;align-self:center;background:#E8F5E9;color:#1B7A3A;border:none;border-radius:9px;padding:11px 12px;font-size:11.5px;font-weight:900;cursor:pointer;font-family:Outfit,sans-serif;white-space:nowrap">💬 Dis-moi</button>
     <button class="bcl" style="width:34px;height:34px;font-size:15px;background:transparent" onclick="fermerAnnonce()" aria-label="Fermer">✕</button>
   </div>
   <div class="mcont">
@@ -3790,7 +3807,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.90'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.91'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4805,6 +4822,7 @@ function _demarrerApp(){
       renderPaysLst('pays-lst','pays-src',PAYS,null);
       renderSecGrid('sec-grid','boutique');
       try{_vitrineLangue();}catch(e){}
+      try{majBandeVitrine();}catch(e){}
       goScreen('s-landing');
     }
 }
@@ -20242,6 +20260,72 @@ renderFourn=function(){var c=document.getElementById('fourn-lst');if(!c)return;c
 // n'arrivent que si l'app est installée sur l'écran d'accueil AVEC permission
 // accordée. Ici : une table lue par tous, un bandeau, zéro permission.
 var _annonceCourante=null,_annonceDerniereVerif=0;
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ « DIS-MOI CE QUI TE MANQUE » N'EST PAS UN CANAL
+//
+//  « Les rassurer du travail intense, et qu'on veut les voir donner des
+//   suggestions. Une annonce passagère. »
+//
+//  Le bandeau d'annonces existait déjà, et il est bon : il se ferme, il ne
+//  revient jamais deux fois, il ne s'affiche jamais par-dessus une vente.
+//  Ce qui manquait est ailleurs — il n'y avait AUCUN moyen, dans l'app,
+//  de lui répondre. Le commerçant lit « donne-nous ton avis », il est
+//  d'accord, et il ne fait rien : il n'y a rien à toucher.
+//
+//  ⚠️ ET LA FORMULATION DÉCIDE DE TOUT. « On travaille dur pour finaliser »
+//  s'entend, chez un commerçant, comme « ce n'est pas fini » — et celui qui
+//  hésite à confier la recette de sa journée y lit une raison d'attendre.
+//  On ne dit donc pas qu'on travaille : on MONTRE ce qui vient d'arriver.
+//  Deux lignes livrées prouvent le travail mieux que de l'annoncer, et
+//  donnent une raison de rouvrir l'app maintenant, pas « à la fin ».
+//
+//  WhatsApp et pas un formulaire : c'est ce qu'ils ouvrent déjà vingt fois
+//  par jour. Un formulaire, c'est une page de plus à charger et une réponse
+//  qu'il n'aura jamais.
+// ══════════════════════════════════════════════════════════════════
+var WA_MYBOUTIQ='237689335389';
+// ⚠️ CE TEXTE SE MET À JOUR À CHAQUE VERSION. C'est le seul endroit :
+// la vitrine et le bandeau y puisent tous les deux.
+var QUOI_DE_NEUF={
+  fr:{titre:'Cette semaine',
+      texte:'Le prix se négocie ligne par ligne pour tes clients en gros, et chaque vendeur a maintenant son propre code.'},
+  en:{titre:'This week',
+      texte:'Prices can be negotiated line by line for wholesale customers, and every seller now has their own code.'}
+};
+// ⚠️ SUR LA VITRINE, `lang` VAUT ENCORE « fr ». Il n'y a pas de boutique,
+// donc pas de langue choisie : c'est le TÉLÉPHONE qui tranche, exactement
+// comme _vitrineLangue le fait pour tout le reste de la page. Lire `lang`
+// ici laissait la bande en français devant un visiteur anglophone —
+// pendant que les dix lignes au-dessus, elles, étaient en anglais.
+function _enVitrine(){
+  try{if(DB&&DB.cfg&&DB.cfg.lang)return DB.cfg.lang==='en';}catch(e){}
+  try{return /^en/i.test(navigator.language||(navigator.languages||[])[0]||'');}catch(e){}
+  return false;
+}
+function _quoiDeNeuf(){return QUOI_DE_NEUF[_enVitrine()?'en':'fr']||QUOI_DE_NEUF.fr;}
+// Le message part déjà rempli : sa boutique, sa version. Sans ça il devrait
+// expliquer qui il est avant de dire ce qu'il veut, et il n'écrira pas.
+function ecrireAMyboutiq(depuis){
+  var fr=!_enVitrine();
+  var bq='';try{bq=(DB&&DB.cfg&&DB.cfg.nom)||'';}catch(e){}
+  var v='';try{v=APP_BUILD||'';}catch(e){}
+  var m=(fr
+    ?('Bonjour MyBoutiQ 👋\n\n'+(bq?('Ma boutique : '+bq+'\n'):'')+(v?('Version '+v+'\n'):'')
+      +'\nCe qui me manque / mon idée :\n')
+    :('Hello MyBoutiQ 👋\n\n'+(bq?('My shop: '+bq+'\n'):'')+(v?('Version '+v+'\n'):'')
+      +'\nWhat I miss / my idea:\n'));
+  try{window.open('https://wa.me/'+WA_MYBOUTIQ+'?text='+encodeURIComponent(m),'_blank');}catch(e){}
+  try{showToast('💬 '+(fr?'Écris-moi, je lis tout.':'Write to me, I read everything.'));}catch(e){}
+}
+// La bande de la vitrine : ceux-là n'ont pas encore l'app, ils ne peuvent
+// rien tester — mais ils peuvent parler, et personne ne le leur demandait.
+function majBandeVitrine(){
+  var t=document.getElementById('vn-txt'),b=document.getElementById('vn-btn');
+  if(!t)return;
+  var q=_quoiDeNeuf(),en=_enVitrine();
+  t.innerHTML='<b>'+q.titre+' · </b>'+q.texte;
+  if(b)b.textContent=en?'💬 An idea? Write to me':'💬 Une idée ? Écris-moi';
+}
 function _annoncesVues(){
   try{return JSON.parse(localStorage.getItem('myboutiq_annonces_vues')||'[]');}catch(e){return [];}
 }
