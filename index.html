@@ -78,6 +78,40 @@
    le reste. `preventDefault()` garde la main : c'est NOUS qui choisirons
    le moment et les mots, pas la barre grise du navigateur.
    ══════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════
+   PEINDRE LA PORTE AVANT DE LIRE LE MILLION D'OCTETS
+
+   « L'empreinte, il faut absolument trouver une solution pour l'ultra
+    rapide. »
+
+   MESURÉ SUR SON TÉLÉPHONE : capteur demandé à 1,2 s, écran peint à
+   2,6 s. L'ordre était bon — le capteur part bien avant la peinture —
+   mais la peinture arrivait beaucoup trop tard, et sur Android la
+   feuille du doigt ne s'ouvre QU'UNE FOIS la page peinte.
+
+   POURQUOI : `#s-login` est dans le HTML à 9 % du fichier, donc reçu
+   très tôt. Mais il porte la classe `.scr` — `display:none` — et c'est
+   `_demarrerApp()` qui lui met `.on`... APRÈS avoir lu le bloc de
+   script de 1 017 Ko. L'écran d'entrée attendait donc un mégaoctet de
+   JavaScript pour devenir visible, alors qu'il était déjà là.
+
+   Ce bloc sait DÉJÀ ce qu'il faut savoir : il vient de lire le
+   stockage. Il pose donc une classe sur <html>, et le style montre le
+   bon écran immédiatement. `goScreen()` reprend la main dès qu'il
+   tourne, et retire la classe : il n'y a jamais deux règles qui
+   décident en même temps.
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+  try{
+    var h=document.documentElement;
+    var db=null;try{db=localStorage.getItem('myboutiq_v6');}catch(x){}
+    h.className+=(db?' porte-login':' porte-vitrine');
+    // La clé d'empreinte est déjà lue plus haut : si elle existe, le signe
+    // n'a aucune raison d'attendre le JavaScript pour se montrer.
+    var bio=null;try{bio=JSON.parse(localStorage.getItem('myboutiq_bio')||'null');}catch(x){}
+    if(db&&bio&&bio.on&&bio.id&&window.PublicKeyCredential)h.className+=' doigt-pret';
+  }catch(x){}
+})();
 window._pwaInvite=null;
 window.addEventListener('beforeinstallprompt',function(e){
   try{e.preventDefault();}catch(x){}
@@ -147,7 +181,14 @@ body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-w
 .assist-bottom-bar{max-width:430px}
 /* Le responsive est regroupé EN FIN de feuille de style (voir "RESPONSIVE"),
    sinon les règles des composants déclarées plus bas l'écrasent. */
-.scr{display:none;flex-direction:column;min-height:100vh}.scr.on{display:flex}
+.scr{display:none;flex-direction:column;min-height:100vh}
+/* ⭐ La porte se peint avant que le JavaScript soit lu — voir le bloc de
+   tête. Ces règles ne vivent que le temps du démarrage : goScreen() retire
+   la classe dès son premier passage. */
+html.porte-login #s-splash,html.porte-vitrine #s-splash{display:none}
+html.porte-login #s-login{display:flex}
+html.porte-vitrine #s-landing{display:flex}
+html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
 
 /* ── SPLASH ── */
 #s-splash{background:linear-gradient(165deg,#200E4E 0%,#341764 45%,#57216B 100%);align-items:center;justify-content:center;gap:12px;position:relative;overflow:hidden}
@@ -3858,7 +3899,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.93'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.94'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4894,6 +4935,12 @@ function ouvrirDepuisVitrine(mode){
 // NAVIGATION
 // ═══════════════════════════════════════════
 function goScreen(id){
+  // Le démarrage a peint un écran avant nous ; à partir d'ici c'est goScreen
+  // qui décide, et lui seul.
+  try{var _h=document.documentElement;
+    if(_h.className.indexOf('porte-')>=0)
+      _h.className=_h.className.replace(/\s*porte-(login|vitrine)/g,'');
+  }catch(e){}
   document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('on');});
   var el=document.getElementById(id);
   if(el)el.classList.add('on');
@@ -5126,6 +5173,10 @@ function _mesBoutiquesConnues(){
 // que de ne rien ouvrir. C'est la règle de bioLu, et elle tient.
 function _majSigneBio(id,forceOn){
   var el=document.getElementById(id);if(!el)return false;
+  try{var _h=document.documentElement;
+    if(_h.className.indexOf('doigt-pret')>=0)
+      _h.className=_h.className.replace(/\s*doigt-pret/g,'');
+  }catch(e){}
   var peut=!!window.PublicKeyCredential;
   var actif=false;try{actif=bioActif();}catch(e){}
   if(forceOn)actif=actif||!!forceOn;
