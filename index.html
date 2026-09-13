@@ -277,6 +277,14 @@ html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
   border:1px solid rgba(255,255,255,.22);border-radius:11px;padding:8px 12px;color:rgba(255,255,255,.86);
   font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;cursor:pointer;min-height:36px}
 .lg-retour:active{background:rgba(255,255,255,.20)}
+/* ⚠️ « À CHAQUE FOIS, UN PEU PARTOUT » — il en manquait un, et pas le
+   moindre : l'écran d'entrée est celui que voit CHAQUE JOUR quelqu'un qui
+   n'a pas encore posé l'icône sur son écran d'accueil. C'est exactement là
+   qu'il faut le lui proposer, et nulle part ailleurs ça ne le rattrape. */
+.lg-install{position:absolute;top:14px;right:14px;z-index:5;background:rgba(240,169,62,.20);
+  border:1px solid rgba(240,169,62,.48);border-radius:11px;padding:8px 12px;color:var(--A);
+  font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:900;cursor:pointer;min-height:36px}
+.lg-install:active{background:rgba(240,169,62,.32)}
 #s-login::before{content:'';position:absolute;width:340px;height:340px;background:radial-gradient(circle,rgba(245,166,35,.20),transparent 70%);top:-70px;right:-90px;border-radius:50%}
 .login-logo{margin-bottom:8px;line-height:0;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 8px 18px rgba(0,0,0,.28))}
 .login-brand{font-family:'Nunito',sans-serif;font-size:36px;font-weight:900;color:#fff;letter-spacing:-1px}
@@ -400,12 +408,30 @@ html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
   align-items:center;justify-content:center;font-weight:900}
 .pcard:active .pemoji{transform:scale(.88)}
 .pcard-img{width:52px;height:52px;object-fit:cover;border-radius:12px;margin:0 auto 6px;display:block;box-shadow:0 3px 6px rgba(0,0,0,.11)}
-.pcard.has-photo{padding:0;aspect-ratio:1/1.18;overflow:hidden;display:flex;align-items:flex-end}
+/* ⚠️ LE FOND SOMBRE N'EST PAS UNE DÉCORATION. Le nom et le prix d'une carte
+   à photo sont écrits en BLANC : tant que la photo n'est pas arrivée, ils
+   sont blancs sur le blanc de la carte. Sur une connexion camerounaise ça
+   dure deux secondes à chaque ouverture de la caisse, et sur une photo qui
+   ne vient jamais, ça dure toujours. La photo se pose par-dessus et le fond
+   ne se voit plus jamais. */
+.pcard.has-photo{padding:0;aspect-ratio:1/1.18;overflow:hidden;display:flex;align-items:flex-end;background:#2B2733}
 .pcard.has-photo .pcard-img{position:absolute;inset:0;width:100%;height:100%;border-radius:14.5px;margin:0;box-shadow:none;transition:transform .15s}
 .pcard.has-photo:active .pcard-img{transform:scale(1.06)}
-.pcard-overlay{position:relative;z-index:1;width:100%;padding:8px 7px 8px;background:linear-gradient(to top,rgba(0,0,0,.75) 8%,rgba(0,0,0,.4) 55%,transparent 100%);border-radius:0 0 14.5px 14.5px;text-align:left}
-.pnm-ov{font-size:10px;font-weight:800;color:#fff;line-height:1.2;text-shadow:0 1px 3px rgba(0,0,0,.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ppr-ov{font-size:12px;font-weight:900;color:#fff;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+/* ⚠️⚠️ DÉFAUT VU SUR SA CAPTURE, ET REPRODUIT AU BANC : quand la photo ne
+   charge pas, `onerror` retire bien `has-photo` et remet l'emoji — mais le
+   voile, lui, restait écrit en BLANC. Mesuré : `color: rgb(255,255,255)`
+   sur une carte `rgb(255,255,255)`. Le nom de l'article disparaissait
+   purement et simplement.
+   La tuile de variante (.vtile) faisait déjà les choses correctement : tout
+   ce qui suppose une photo est rangé SOUS `.has-photo`. Le voile de la
+   carte ne l'était pas. Il l'est maintenant, et sans photo il redevient un
+   nom noir et un prix bleu — exactement la carte sans photo d'à côté. */
+.pcard-overlay{position:relative;z-index:1;width:100%;padding:8px 7px 8px;text-align:center}
+.pcard.has-photo .pcard-overlay{background:linear-gradient(to top,rgba(0,0,0,.75) 8%,rgba(0,0,0,.4) 55%,transparent 100%);border-radius:0 0 14.5px 14.5px;text-align:left}
+.pnm-ov{font-size:10px;font-weight:800;color:var(--T);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ppr-ov{font-size:12px;font-weight:900;color:var(--B);margin-top:2px}
+.pcard.has-photo .pnm-ov{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.pcard.has-photo .ppr-ov{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 .photo-preview{width:100%;display:flex;align-items:center;gap:10px;background:var(--BG);border-radius:12px;padding:8px 10px;margin-bottom:9px}
 .photo-preview img{width:44px;height:44px;object-fit:cover;border-radius:9px}
 .photo-preview .pp-txt{flex:1;font-size:11px;font-weight:700;color:var(--M)}
@@ -717,7 +743,7 @@ html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
    d'article fait pareil (aspect-ratio uniquement sur .pcard.has-photo). Mis
    sur toutes les tuiles, un carreau sans photo devenait 131 px de haut là où
    la carte voisine en faisait 153 — mesuré aux quatre largeurs. */
-.vtile.has-photo{padding:0;justify-content:flex-end;align-items:flex-end;aspect-ratio:1/1.18}
+.vtile.has-photo{padding:0;justify-content:flex-end;align-items:flex-end;aspect-ratio:1/1.18;background:#2B2733}
 /* ── LA CONTENANCE, LUE D'UN COUP D'ŒIL ──────────────────────────────
    Quand plusieurs variantes partagent la même photo parce qu'elles sont
    le même produit en plusieurs tailles, c'est le NOMBRE qui les
@@ -1858,6 +1884,7 @@ body{max-width:min(100%,1200px)}
 <!-- LOGIN -->
 <div id="s-login" class="scr">
   <button class="lg-retour" id="lg-retour" onclick="goScreen('s-landing')" style="display:none">← MyBoutiQ</button>
+  <button class="lg-install" id="lg-install" onclick="installerApp()" style="display:none">📲 Installer</button>
   <div class="login-logo">
     <svg viewBox="0 0 120 120" width="94" height="94" role="img" aria-label="MyBoutiQ">
       <defs><linearGradient id="mbAwn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD489"/><stop offset="1" stop-color="#F09A16"/></linearGradient></defs>
@@ -4073,7 +4100,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.98'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.99'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5127,6 +5154,10 @@ function goScreen(id){
   // La vitrine peut aussi se rouvrir autrement qu'au démarrage (boutique
   // supprimée, retour arrière). Sa barre se branche ici, une seule fois.
   if(id==='s-landing'){try{majBlocAuteur();}catch(x){}try{_brancherNavSite();}catch(x){}}
+  // ⚠️ L'habitué ne passe JAMAIS par la vitrine : il tombe direct sur la
+  // porte, et c'est le seul endroit du démarrage qui n'appelait pas
+  // `majBoutonsInstaller()`. Son bouton d'installation n'existait donc pas.
+  if(id==='s-login'){try{majBoutonsInstaller();}catch(x){}}
   try{majFabAjout();}catch(x){}
   // ⚠️ Deux fois le même écran de suite gonflait la pile pour rien : le
   // retour du téléphone devait alors être touché deux fois pour bouger.
@@ -21001,6 +21032,10 @@ function majBoutonsInstaller(){
     var cb=document.getElementById('cai-install-b');
     if(cb)cb.textContent=fr?'Installer':'Install';
   }
+  // L'écran d'entrée : la porte que voit tous les jours celui qui n'a pas
+  // encore l'icône sur son écran d'accueil.
+  var lg=document.getElementById('lg-install');
+  if(lg){lg.style.display=montrer?'block':'none';lg.textContent=fr?'📲 Installer':'📲 Install';}
   var r=document.getElementById('row-install');
   if(r){
     r.style.display=_dejaInstallee()?'none':'';
