@@ -40,6 +40,34 @@ installation, aucun serveur. Tout vit dans le téléphone.
 - **Équipe & clients** — serveurs avec leur propre code (ils ne voient ni
   prix d'achat, ni marge, ni clôture), ardoises clients et relance WhatsApp.
 
+## Français et anglais
+
+L'application se parle entièrement dans les deux langues : vitrine,
+inscription, service, stock, rapports, clôture, messages d'erreur.
+Le choix se fait sur la vitrine, à l'inscription, et dans les Paramètres
+(le serveur y a droit aussi : c'est lui qui lit l'écran toute la soirée).
+
+La traduction n'est pas une table de clés mais un `L('français','english')`
+posé à l'endroit exact où le texte s'affiche — les deux versions se lisent
+côte à côte, et une phrase corrigée en français ne peut pas laisser
+derrière elle une phrase anglaise qui dit l'inverse. Les textes écrits en
+dur dans le HTML portent leurs deux versions sur eux (`data-fr` /
+`data-en`) ; une seule boucle les pose à chaque bascule.
+
+**Ce qui se traduit et ce qui ne se traduit pas.** L'application se
+traduit ; ce que le patron a écrit, non. Les noms de produits, de tables,
+de clients et les contenances sont **figés à la création**, dans la langue
+choisie ce jour-là. Les retraduire sous ses yeux parce qu'il a changé de
+langue reviendrait à réécrire son ardoise.
+
+**Les zones sont des codes, pas des mots.** `salle`, `terrasse`,
+`comptoir`, `emporter` — parce que la règle des vidanges dépend de la
+zone (une bouteille emportée ne laisse pas de vide). Écrite « Emporter »
+en français et « Takeaway » en anglais, la comparaison aurait été fausse
+pour un bar sur deux, et les consignes se seraient accumulées toutes
+seules. Une zone inventée par le patron (« VIP », « Jardin ») reste une
+chaîne libre, affichée telle qu'il l'a écrite.
+
 ## Décisions qui ont coûté cher, et qu'il ne faut pas défaire
 
 1. **On ne bloque jamais une vente pour un stock non saisi.** Un bar qui
@@ -58,6 +86,11 @@ installation, aucun serveur. Tout vit dans le téléphone.
 5. **Une tape ne redessine pas la carte.** Seuls le compteur de la tuile
    touchée et la barre du bas changent : un serveur tape douze fois de
    suite pour une tournée.
+6. **Un halo décoratif ne doit jamais manger les touches.** Le cercle doré
+   du coin haut-droit est un `::before`, et un pseudo-élément reçoit les
+   clics comme n'importe quel élément : le bouton « 🇬🇧 English » de la
+   vitrine tombait entièrement dedans et ne répondait pas, sans le moindre
+   message. `pointer-events:none` sur tous les halos.
 
 ## Données
 
