@@ -2099,6 +2099,15 @@ body{max-width:min(100%,1200px)}
     <!-- ⭐ « À CHAQUE FOIS UN PEU PARTOUT » — mais refermable. Celui qui
          travaille dans un onglet de navigateur perd l'app dès qu'il ferme
          l'onglet ; celui qui a dit non une fois n'a pas à le redire. -->
+    <!-- ⭐ L'ÉCHÉANCE SE VOIT VENIR. Sept jours avant, puis trois jours de
+         grâce après : dix jours pour envoyer un Mobile Money. Un abonnement
+         qui coupe sans prévenir, on ne le renouvelle pas — on s'en va. -->
+    <div id="cai-abo" style="display:none;margin:0 15px 10px;background:#FFF8EC;border:1.5px solid #F2DCB4;
+         border-radius:12px;padding:10px 12px;align-items:center;gap:10px">
+      <span style="font-size:18px;flex-shrink:0">🔑</span>
+      <div style="flex:1;min-width:0;font-size:11.5px;font-weight:700;color:#5C4B6E;line-height:1.4" id="cai-abo-t"></div>
+      <button onclick="ecrireAbonnement()" style="flex-shrink:0;background:var(--A);color:#2E1065;border:none;border-radius:9px;padding:10px 12px;font-size:11.5px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap" id="cai-abo-b">Renouveler</button>
+    </div>
     <div id="cai-install" style="display:none;margin:0 15px 10px;background:#E8F5E9;border:1.5px solid #66BB6A;
          border-radius:12px;padding:10px 12px;display:none;align-items:center;gap:10px">
       <span style="font-size:18px;flex-shrink:0">📲</span>
@@ -2272,6 +2281,7 @@ body{max-width:min(100%,1200px)}
       <div class="stcd">
         <div class="stit2" onclick="ouvrirChangerPin()"><div class="stico" style="background:#FFEBEE">🔑</div><div class="stii"><div class="stitl" id="st-chpin">Changer mon PIN</div><div class="stisub" id="st-chpin-s">Le code qui ouvre ta caisse</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="toggleBiometrie()"><div class="stico" style="background:#E3F2FD">👆</div><div class="stii"><div class="stitl" id="st-bio2">Empreinte / Face ID</div><div class="stisub" id="st-bio2-s">Entrer sans taper le PIN</div></div><button class="tog off" id="tog-bio2" onclick="event.stopPropagation();toggleBiometrie()"></button></div>
+        <div class="stit2" id="row-abo" style="display:none" onclick="ecrireAbonnement()"><div class="stico" style="background:#FFF3E0">🔑</div><div class="stii"><div class="stitl" id="st-abo">Mon abonnement</div><div class="stisub" id="st-abo-s"></div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="envoyerDiagnostic()"><div class="stico" style="background:#EDE7F6">🩺</div><div class="stii"><div class="stitl" id="st-diag">Envoyer mon diagnostic</div><div class="stisub" id="st-diag-s">Version, réseau, dernière erreur — tu relis avant d'envoyer</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirDiagBio()"><div class="stico" style="background:#E3F2FD">🩺</div><div class="stii"><div class="stitl" id="st-biodiag">L'empreinte ne marche pas ?</div><div class="stisub" id="st-biodiag-s">Voir où ça bloque, sur ce téléphone</div></div><span class="starr">›</span></div>
       </div>
@@ -3659,7 +3669,7 @@ body{max-width:min(100%,1200px)}
 <!-- BOUTIQUE SUSPENDUE — l'accès est en pause, RIEN n'est effacé -->
 <div id="ov-suspendu" style="display:none;position:fixed;inset:0;background:linear-gradient(165deg,#200E4E 0%,#341764 45%,#57216B 100%);z-index:100000;align-items:center;justify-content:center;padding:26px;text-align:center">
   <div style="max-width:360px">
-    <div style="font-size:46px;margin-bottom:10px">⏸️</div>
+    <div id="sus-emo" style="font-size:46px;margin-bottom:10px">⏸️</div>
     <div id="sus-tit" style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:10px">Boutique suspendue</div>
     <div id="sus-nom" style="font-size:15px;font-weight:800;color:var(--A);margin-bottom:2px"></div>
     <div id="sus-code" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.55);letter-spacing:2px;margin-bottom:18px"></div>
@@ -4203,7 +4213,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.01'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.02'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4685,8 +4695,8 @@ async function syncToSupa(){
         telephone:DB.cfg.tel||null,
         fonds_depart:Number(DB.fondsDepart||0),
         objectif:Number(DB.objectif||0),
-        plan:DB.cfg.plan||'gratuit',
-        // ⚠️⚠️ `actif:true` ÉTAIT ICI, DANS LE PAYLOAD DE CHAQUE ÉCRITURE.
+        // ⚠️⚠️ `actif:true` ET `plan` ÉTAIENT ICI, DANS LE PAYLOAD DE CHAQUE
+        // ÉCRITURE — donc réécrits par le téléphone à chaque vente.
         // Ce champ est le seul frein dont dispose l'exploitant : la
         // connexion le filtre déjà (`.eq('actif',true)`). Mais l'app le
         // remettait à `true` À CHAQUE SAUVEGARDE — donc une suspension
@@ -4791,7 +4801,7 @@ async function syncToSupa(){
         DB.cfg.code=genCode();
         continue;
       }
-      var ins=await supa.from('boutiques').insert(Object.assign({actif:true},payload));
+      var ins=await supa.from('boutiques').insert(Object.assign({actif:true,plan:'gratuit'},payload));
       if(!ins.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv4=document.getElementById('code-val');if(cv4)cv4.textContent=DB.cfg.code;return true;}
       if(String(ins.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
       throw ins.error;
@@ -20539,7 +20549,7 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
@@ -21272,32 +21282,152 @@ function retirerToutesPhotosEtrangeres(){
 //   3. On dit POURQUOI et COMMENT sortir. Un écran noir sans explication
 //      ferait juste désinstaller l'app.
 // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ « IL VIENT DE PAYER SON ABONNEMENT, JE VEUX L'AUTORISER »
+//
+//  Avec quelques dizaines de commerçants, l'encaissement se fait à la main
+//  par Mobile Money — c'est le conseil que je lui ai donné, et il tient :
+//  pas de société, pas de passerelle, pas de commission. Ce qui manquait
+//  n'était donc pas un paiement en ligne, c'était UNE DATE : jusqu'à quand
+//  celui-ci a payé, et que l'app la respecte toute seule.
+//
+//  ⚠️ RÈGLE QUI COMMANDE TOUT LE RESTE : `abonne_jusqu` À NULL = ACCÈS
+//  LIBRE. Les 49 boutiques d'aujourd'hui n'ont pas de date, donc RIEN ne
+//  change pour elles — et le site promet « gratuite pendant qu'on la
+//  construit ». Une boutique n'est concernée que le jour où l'exploitant
+//  lui pose une date, un par un. Je ne ferme la porte de personne par
+//  effet de bord.
+//
+//  ⚠️ ET ON NE CLAQUE PAS LA PORTE À MINUIT. Sept jours avant l'échéance
+//  un bandeau prévient ; trois jours APRÈS, on laisse encore entrer. Dix
+//  jours pour envoyer 500 F par Mobile Money, c'est le minimum décent —
+//  et ça évite dix appels au support le même matin.
+//
+//  ⚠️ La date est relue au serveur à chaque ouverture, et gardée à côté
+//  (`myboutiq_abo`, PAS dans la boutique synchronisée : elle appartient à
+//  l'exploitant, pas au commerçant). Sur un téléphone, tout stockage est
+//  modifiable par qui sait chercher : ce verrou décourage, il ne protège
+//  pas contre quelqu'un de déterminé. Ça se dit, ça ne se cache pas.
+// ══════════════════════════════════════════════════════════════════
+var ABO_PREVENIR=7, ABO_GRACE=3;
+function _aboLu(){
+  try{
+    var o=JSON.parse(localStorage.getItem('myboutiq_abo')||'null');
+    if(o&&DB&&DB.cfg&&normalizeShopCode(o.code||'')===normalizeShopCode(DB.cfg.code||''))return o;
+  }catch(e){}
+  return null;
+}
+function _aboEcrire(o){try{localStorage.setItem('myboutiq_abo',JSON.stringify(o));}catch(e){}}
+function _joursRestants(jour){
+  // ⚠️ ON COMPTE DES JOURS DE CALENDRIER, PAS DES HEURES. Avec une échéance
+  // à 23:59 et un arrondi vers le haut, « payé pour 40 jours » affichait
+  // « 41 jours restants » — faux d'un jour à chaque fois, et c'est le genre
+  // de détail qui fait écrire au support. Minuit à minuit, deux dates, un
+  // entier : payé jusqu'au 13, le 13 vaut 0 — il travaille toute la journée.
+  var d=new Date(String(jour)+'T00:00:00');
+  if(isNaN(d.getTime()))return null;
+  var a=new Date();a.setHours(0,0,0,0);
+  return Math.round((d.getTime()-a.getTime())/86400000);
+}
+function etatAbonnement(){
+  var o=_aboLu();
+  if(!o||!o.jusqu)return {libre:true};
+  var j=_joursRestants(o.jusqu);
+  if(j===null)return {libre:true};
+  return {libre:false,jusqu:o.jusqu,plan:o.plan||'',jours:j,
+          bloque:j<-ABO_GRACE, prevenir:j<=ABO_PREVENIR};
+}
+function _dateLisible(jour){
+  try{
+    var d=new Date(String(jour)+'T12:00:00');
+    return d.toLocaleDateString(lang==='en'?'en-GB':'fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  }catch(e){return String(jour);}
+}
+function majEtatAbonnement(){
+  var e=etatAbonnement(),fr=(lang!=='en');
+  // Le verrou dur (suspension) l'emporte : on ne se marche pas dessus.
+  var suspendu=false;
+  try{suspendu=document.getElementById('ov-suspendu').dataset.motif==='suspendue'
+              &&getComputedStyle(document.getElementById('ov-suspendu')).display!=='none';}catch(x){}
+  if(!suspendu)_verrouSuspension(!e.libre&&e.bloque,'abonnement');
+
+  var b=document.getElementById('cai-abo');
+  if(b){
+    var montrer=!e.libre&&e.prevenir&&!e.bloque;
+    b.style.display=montrer?'flex':'none';
+    if(montrer){
+      var t=document.getElementById('cai-abo-t');
+      if(t)t.textContent=(e.jours>=0)
+        ?(fr?('Ton abonnement se termine dans '+e.jours+' jour'+(e.jours>1?'s':'')+' — le '+_dateLisible(e.jusqu)+'.')
+             :('Your subscription ends in '+e.jours+' day'+(e.jours>1?'s':'')+' — on '+_dateLisible(e.jusqu)+'.'))
+        :(fr?('Ton abonnement a expiré le '+_dateLisible(e.jusqu)+'. Encore '+(ABO_GRACE+e.jours+1)+' jour'+((ABO_GRACE+e.jours+1)>1?'s':'')+' pour renouveler.')
+             :('Your subscription ended on '+_dateLisible(e.jusqu)+'. '+(ABO_GRACE+e.jours+1)+' day(s) left to renew.'));
+      var bb=document.getElementById('cai-abo-b');
+      if(bb)bb.textContent=fr?'Renouveler':'Renew';
+      b.style.background=(e.jours<0)?'#FFEBEE':'#FFF8EC';
+      b.style.borderColor=(e.jours<0)?'#EF9A9A':'#F2DCB4';
+    }
+  }
+  var r=document.getElementById('row-abo');
+  if(r){
+    r.style.display=e.libre?'none':'';
+    if(!e.libre){
+      var st=document.getElementById('st-abo-s');
+      if(st)st.textContent=(e.jours>=0)
+        ?(fr?('Payé jusqu’au '+_dateLisible(e.jusqu)+' · '+e.jours+' jour'+(e.jours>1?'s':'')+' restant'+(e.jours>1?'s':''))
+             :('Paid until '+_dateLisible(e.jusqu)+' · '+e.jours+' day(s) left'))
+        :(fr?('Expiré le '+_dateLisible(e.jusqu)):('Expired on '+_dateLisible(e.jusqu)));
+    }
+  }
+}
+// « J'ai payé » : le message part avec ce que l'exploitant doit retrouver —
+// la boutique, le code, et la place pour coller la référence Mobile Money.
+function ecrireAbonnement(){
+  var fr=(lang!=='en'),bq='',cd='';
+  try{bq=(DB&&DB.cfg&&DB.cfg.nom)||'';cd=(DB&&DB.cfg&&DB.cfg.code)||'';}catch(e){}
+  var m=(fr?'Bonjour MyBoutiQ 👋\n\nJe veux renouveler mon abonnement.\n':'Hello MyBoutiQ 👋\n\nI want to renew my subscription.\n')
+    +(bq?((fr?'Boutique : ':'Shop: ')+bq+'\n'):'')+(cd?('Code : '+cd+'\n'):'')
+    +(fr?'\nRéférence du paiement Mobile Money :\n':'\nMobile Money payment reference:\n');
+  try{window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(m),'_blank');}catch(e){}
+}
 async function verifierBoutiqueActive(){
   try{
     if(!supa||!DB||!DB.cfg||!DB.cfg.code)return;
     if(!navigator.onLine)return;
-    var r=await supa.from('boutiques').select('actif').eq('code',DB.cfg.code).limit(1);
+    var r=await supa.from('boutiques').select('actif,plan,abonne_jusqu').eq('code',DB.cfg.code).limit(1);
     // Pas de réponse claire = pas de verdict. On n'enferme jamais sur un doute.
     if(r.error||!r.data||!r.data.length||r.data[0].actif==null)return;
-    _verrouSuspension(r.data[0].actif===false);
+    var ligne=r.data[0];
+    _aboEcrire({code:DB.cfg.code,jusqu:ligne.abonne_jusqu||null,plan:ligne.plan||'',lu:Date.now()});
+    _verrouSuspension(ligne.actif===false,'suspendue');
+    try{majEtatAbonnement();}catch(e){}
   }catch(e){}
 }
-function _verrouSuspension(bloquee){
+function _verrouSuspension(bloquee,motif){
   var ov=document.getElementById('ov-suspendu');if(!ov)return;
-  if(!bloquee){ov.style.display='none';return;}
+  if(!bloquee){ov.style.display='none';ov.dataset.motif='';return;}
+  ov.dataset.motif=motif||'suspendue';
+  var abo=(motif==='abonnement');
   var fr=(lang!=='en');
   var n=document.getElementById('sus-nom');
   if(n)n.textContent=(DB&&DB.cfg&&DB.cfg.nom)||'';
   var c=document.getElementById('sus-code');
   if(c)c.textContent=(DB&&DB.cfg&&DB.cfg.code)||'';
+  var e0=document.getElementById('sus-emo');
+  if(e0)e0.textContent=abo?'🔑':'⏸️';
   var t=document.getElementById('sus-tit');
-  if(t)t.textContent=fr?'Boutique suspendue':'Shop suspended';
+  if(t)t.textContent=abo?(fr?'Abonnement à renouveler':'Subscription to renew')
+                        :(fr?'Boutique suspendue':'Shop suspended');
   var x=document.getElementById('sus-txt');
-  if(x)x.textContent=fr
-    ?'L’accès à cette boutique a été mis en pause. Rien n’est effacé : tes ventes, ton stock et tes clients sont intacts et reviendront tels quels. Écris-nous pour comprendre et rouvrir.'
-    :'Access to this shop has been paused. Nothing is deleted: your sales, stock and customers are intact and will come back as they were. Write to us to sort it out.';
+  if(x)x.textContent=abo
+    ?(fr?'Ton abonnement est arrivé à échéance. Rien n’est effacé : tes ventes, ton stock et tes clients t’attendent, et tout revient dès le renouvellement. Envoie le paiement, puis écris-nous la référence.'
+        :'Your subscription has run out. Nothing is deleted: your sales, stock and customers are waiting, and everything comes back as soon as you renew. Send the payment, then send us the reference.')
+    :(fr?'L’accès à cette boutique a été mis en pause. Rien n’est effacé : tes ventes, ton stock et tes clients sont intacts et reviendront tels quels. Écris-nous pour comprendre et rouvrir.'
+        :'Access to this shop has been paused. Nothing is deleted: your sales, stock and customers are intact and will come back as they were. Write to us to sort it out.');
   var b=document.getElementById('sus-btn');
-  if(b)b.textContent=fr?'💬 Écrire au support':'💬 Write to support';
+  if(b){b.textContent=abo?(fr?'💬 J’ai payé — envoyer la référence':'💬 I paid — send the reference')
+                         :(fr?'💬 Écrire au support':'💬 Write to support');
+        b.onclick=abo?ecrireAbonnement:ecrireSuspension;}
   ov.style.display='flex';
 }
 function ecrireSuspension(){
