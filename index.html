@@ -1500,6 +1500,27 @@ body{max-width:min(100%,1200px)}
   color:#fff;font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-top:13px;
   transition:transform .12s}
 .vt-wa:active{transform:scale(.97)}
+/* ── LA CARTE MYBAR ─────────────────────────────────────────────────
+   ⚠️ Elle porte les couleurs de MyBar, pas celles de MyBoutiQ, et c'est
+   volontaire : le visiteur doit voir qu'on lui montre une AUTRE maison,
+   pas une septième fonction. Peinte en violet comme le reste, elle se
+   serait lue « encore un bouton de MyBoutiQ » — et le patron de buvette
+   aurait continué à défiler.
+   ⚠️ La classe ne s'appelle pas `.vt-bar` : ce nom est déjà pris par la
+   barre du téléphone de démonstration, et `querySelector('.vt-bar i')`
+   serait tombé ici. */
+.vt-mybar{background:linear-gradient(165deg,#06231F 0%,#0E3A31 50%,#14524A 100%);border-radius:22px;
+  padding:26px 20px 24px;text-align:center;color:#fff;position:relative;overflow:hidden;
+  box-shadow:0 10px 30px rgba(6,35,31,.22)}
+.vt-mybar::before{content:'';position:absolute;width:240px;height:240px;pointer-events:none;
+  background:radial-gradient(circle,rgba(246,185,59,.18),transparent 70%);top:-70px;right:-70px;border-radius:50%}
+.vt-mybar em{font-size:44px;line-height:1;display:block;margin-bottom:8px;font-style:normal;position:relative}
+.vt-mybar b{display:block;font-size:19px;font-weight:900;margin-bottom:9px;position:relative;line-height:1.3}
+.vt-mybar i{display:block;font-style:normal;font-size:13.5px;font-weight:600;position:relative;
+  color:rgba(255,255,255,.76);line-height:1.65;margin-bottom:18px}
+.vt-mybar a{display:inline-block;background:#F6B93B;color:#06231F;border-radius:13px;padding:14px 24px;
+  font-size:15.5px;font-weight:900;text-decoration:none;position:relative}
+.vt-mybar a:active{transform:scale(.97)}
 .vt-pied{margin-top:34px;padding-top:18px;border-top:1px solid var(--BD);text-align:center;
   font-size:11.5px;font-weight:600;color:#aaa;line-height:1.85}
 .vt-pied a{color:#8d8d8d}
@@ -1613,6 +1634,7 @@ body{max-width:min(100%,1200px)}
     <div class="vt-liens" id="vt-liens">
       <button class="vt-l" id="nv-top"    onclick="allerSection('v-top')">Accueil</button>
       <button class="vt-l" id="nv-faire"  onclick="allerSection('v-faire')">Ce que ça fait</button>
+      <button class="vt-l" id="nv-bar"    onclick="allerSection('v-bar')">Pour les bars</button>
       <button class="vt-l" id="nv-avis"   onclick="allerSection('v-avis')">Les commerçants</button>
       <button class="vt-l" id="nv-qui"    onclick="allerSection('v-qui')">Qui l'a faite</button>
       <button class="vt-l" id="nv-prix"   onclick="allerSection('v-prix')">Le prix</button>
@@ -1696,6 +1718,19 @@ body{max-width:min(100%,1200px)}
       </div>
     </section>
 
+    <!-- ⭐ MYBAR. Un bar n'est pas une boutique : il ne compte pas des
+         articles mais des tables ouvertes, des casiers et des bouteilles
+         vides qui valent de l'argent au dépôt. Lui vendre MyBoutiQ, c'est
+         lui vendre le mauvais outil — d'où une porte, ici, vers le bon. -->
+    <section class="vt-sec" id="v-bar">
+      <div class="vt-mybar">
+        <em>🍻</em>
+        <b id="vb-t">Tu tiens un bar, une buvette&nbsp;?</b>
+        <i id="vb-d">Une boutique compte des articles. Un bar compte des tables ouvertes, des casiers, et des vidanges consignées. MyBar est faite pour ça — même maison, même simplicité, et elle marche aussi sans réseau.</i>
+        <a href="/bar" id="vb-b">Ouvrir MyBar →</a>
+      </div>
+    </section>
+
     <div class="vt-sec" id="v-avis"></div>
     <div class="vt-h"><i>🗣️</i><b id="vt-vt">Ce sont eux qui l'ont écrite</b></div>
     <div class="vt-sous" id="vt-vs">Chaque phrase ci-dessous vient d'un commerçant, sur le terrain. Chacune a changé l'application.</div>
@@ -1747,6 +1782,7 @@ body{max-width:min(100%,1200px)}
 
     <div class="vt-pied">
       <div id="vt-pied-l1">MyBoutiQ · Cameroun</div>
+      <div><a href="/bar" id="vt-pied-bar">🍻 MyBar — pour les bars et buvettes</a></div>
       <div><a href="./politique-confidentialite.html" id="vt-conf">Politique de confidentialité</a></div>
       <div id="vt-pied-v" style="color:#c4c4c4"></div>
     </div>
@@ -19658,7 +19694,7 @@ function _articlesDemo(){
 //  d'un écran de 640, c'est un dixième de la page mangé pour rien pendant
 //  qu'on lit le titre.
 // ══════════════════════════════════════════════════════════════════
-var _SECTIONS=[['v-top','nv-top'],['v-faire','nv-faire'],['v-avis','nv-avis'],
+var _SECTIONS=[['v-top','nv-top'],['v-faire','nv-faire'],['v-bar','nv-bar'],['v-avis','nv-avis'],
                ['v-qui','nv-qui'],['v-prix','nv-prix'],['v-ecrire','nv-ecrire']];
 // ⚠️ EN BAS DE PAGE, LES DEUX DERNIÈRES SECTIONS NE PEUVENT PLUS MONTER :
 // la page est finie, le défilement bute. On touchait « Le prix », la page
@@ -19787,8 +19823,12 @@ function _vitrineLangue(){
     'vt-conf':'Privacy policy',
     /* Le site, section par section. Une vitrine à moitié traduite est pire
        qu'une vitrine en français : elle a l'air cassée. */
-    'nv-top':'Home','nv-faire':'What it does','nv-avis':'Shopkeepers',
+    'nv-top':'Home','nv-faire':'What it does','nv-bar':'For bars','nv-avis':'Shopkeepers',
     'nv-qui':'Who made it','nv-prix':'The price','nv-ecrire':'Write','nv-cta':'Try it',
+    'vb-t':'Do you run a bar, a pub?',
+    'vb-d':'A shop counts items. A bar counts open tables, crates, and empty bottles that are worth money at the depot. MyBar is built for that — same house, same simplicity, and it works with no network either.',
+    'vb-b':'Open MyBar →',
+    'vt-pied-bar':'🍻 MyBar — for bars and pubs',
     'vf-t':'What it actually does',
     'vf-s':'Six things you already do by hand. Here they take one tap.',
     'vf1-t':'Sell','vf1-d':'Tap the item, the total goes up, you cash in. The receipt leaves on WhatsApp.',
