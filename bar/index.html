@@ -648,7 +648,17 @@ var BUILD='1.1';
    est ensuite recopiée dans la fiche du bar.
    ══════════════════════════════════════════════════════════════════ */
 var LANGKEY='mybar_lang';
-var lang=(function(){try{return localStorage.getItem(LANGKEY)==='en'?'en':'fr';}catch(e){return 'fr';}})();
+var lang=(function(){
+  /* ⚠️ Le site de MyBoutiQ bascule en anglais sur `navigator.language` ;
+     MyBar, non. Un visiteur anglophone lisait donc « For bars / Open
+     MyBar » en anglais, touchait le bouton, et atterrissait sur une
+     application en français. On garde le même réflexe : le choix déjà
+     posé sur CE téléphone l'emporte, et à défaut on suit la langue du
+     navigateur. */
+  try{var v=localStorage.getItem(LANGKEY);if(v==='en'||v==='fr')return v;}catch(e){}
+  try{if(/^en/i.test(navigator.language||(navigator.languages||[])[0]||''))return 'en';}catch(e){}
+  return 'fr';
+})();
 function L(fr,en){return lang==='en'?en:fr;}
 function setLang(x,silencieux){
   lang=(x==='en')?'en':'fr';
