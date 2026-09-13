@@ -1,4 +1,4 @@
-# MyBarQ — gestion de bar, buvette, snack et cave
+# MyBar — gestion de bar, buvette, snack et cave
 
 Le même métier que MyBoutiQ — un commerçant, un téléphone, pas de réseau —
 mais pour un bar. Et un bar ne se gère pas comme une boutique.
@@ -61,7 +61,7 @@ installation, aucun serveur. Tout vit dans le téléphone.
 
 ## Données
 
-Tout est dans `localStorage` (clé `mybarq_v1`) : rien ne part sur
+Tout est dans `localStorage` (clé `mybar_v1`) : rien ne part sur
 Internet. Sauvegarde complète en `.json` et export des ventes en `.csv`
 depuis les Paramètres. Vingt pays et monnaies ; les prix de la carte de
 départ sont transposés dans la monnaie locale à la création.

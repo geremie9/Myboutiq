@@ -1,8 +1,8 @@
-/* MyBarQ — service worker.
+/* MyBar — service worker.
    Même principe que celui de MyBoutiQ : la coquille est gardée une fois
    pour toutes, et l'app s'ouvre à 2 h du matin sans réseau. */
-const CACHE_NAME='mybarq-v1';
-const FONT_CACHE='mybarq-polices-v1';
+const CACHE_NAME='mybar-v1';
+const FONT_CACHE='mybar-polices-v1';
 const APP_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png','./icon-maskable-512.png'];
 
 self.addEventListener('install',function(e){
@@ -16,7 +16,7 @@ self.addEventListener('message',function(e){
 self.addEventListener('activate',function(e){
   e.waitUntil(caches.keys().then(function(keys){
     return Promise.all(keys.filter(function(k){
-      return k.indexOf('mybarq-')===0&&k!==CACHE_NAME&&k!==FONT_CACHE;
+      return k.indexOf('mybar-')===0&&k!==CACHE_NAME&&k!==FONT_CACHE;
     }).map(function(k){return caches.delete(k);}));
   }));
   self.clients.claim();
