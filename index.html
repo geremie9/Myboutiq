@@ -110,6 +110,21 @@
     // n'a aucune raison d'attendre le JavaScript pour se montrer.
     var bio=null;try{bio=JSON.parse(localStorage.getItem('myboutiq_bio')||'null');}catch(x){}
     if(db&&bio&&bio.on&&bio.id&&window.PublicKeyCredential)h.className+=' doigt-pret';
+    // ⚠️⚠️ LA PORTE PEINTE ÉTAIT LA MAUVAISE PORTE.
+    // Mesuré, processeur ralenti ×12 : l'écran se peint à 910 ms avec le
+    // formulaire « Téléphone patron + PIN + Connexion 👑 »… que
+    // majEntreeRapide() efface à 1 257 ms pour poser l'entrée rapide à la
+    // place. 350 ms d'un formulaire que l'habitué n'utilise JAMAIS, puis un
+    // saut. C'est la 21.94 qui l'avait introduit : avant elle, l'écran
+    // attendait le JavaScript et personne ne voyait ce clignotement.
+    // La même lecture de stockage que `entreeRapidePossible()` fait plus
+    // bas, en trois lignes : si l'entrée rapide est possible, on peint
+    // DIRECTEMENT celle-là. Et si le JavaScript n'est pas d'accord, goScreen
+    // retire la classe à son premier passage — personne ne reste coincé.
+    var en=null;try{en=JSON.parse(localStorage.getItem('myboutiq_entree')||'null');}catch(x){}
+    if(en&&((en.role==='vendeur'&&en.code&&en.nom)
+            ||(en.role==='patron'&&en.tel&&((en.boutiques&&en.boutiques.length)||en.code||db))))
+      h.className+=' porte-rapide';
   }catch(x){}
 })();
 window._pwaInvite=null;
@@ -189,6 +204,17 @@ html.porte-login #s-splash,html.porte-vitrine #s-splash{display:none}
 html.porte-login #s-login{display:flex}
 html.porte-vitrine #s-landing{display:flex}
 html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
+/* La porte rapide se peint entière — le signe du doigt et le champ du PIN
+   compris — au lieu du formulaire patron que l'habitué n'utilise jamais. */
+/* ⚠️ CES DEUX-LÀ ÉTAIENT CACHÉS PAR UN style="display:none" ÉCRIT DANS LA
+   BALISE. Un style en ligne bat n'importe quelle règle de feuille : la porte
+   rapide restait invisible jusqu'au JavaScript, et ma première correction
+   n'avait rien changé — mesuré, pas supposé. Le « caché par défaut » revient
+   donc ici, où une règle plus précise peut le contredire. */
+#entree-rapide,#er-pin-wrap{display:none}
+html.porte-rapide #login-tabs,html.porte-rapide #fp,html.porte-rapide #conn-connu,
+html.porte-rapide #er-retour-b{display:none}
+html.porte-rapide #entree-rapide,html.porte-rapide #er-pin-wrap{display:block}
 
 /* ── SPLASH ── */
 #s-splash{background:linear-gradient(165deg,#200E4E 0%,#341764 45%,#57216B 100%);align-items:center;justify-content:center;gap:12px;position:relative;overflow:hidden}
@@ -1955,16 +1981,21 @@ body{max-width:min(100%,1200px)}
       <button type="button" onclick="oublierEntree()" id="connu-chg" style="background:none;border:none;padding:6px 0 0;color:rgba(255,255,255,.75);font-size:11.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline"></button>
     </div>
     <!-- PORTE D'ENTRÉE RAPIDE : l'appareil se souvient de toi, tu ne donnes que ton PIN -->
-    <div id="entree-rapide" style="display:none;width:100%">
-      <div id="er-bonjour" style="font-size:15px;font-weight:800;color:#fff;margin-bottom:3px"></div>
-      <div id="er-sous" style="font-size:11.5px;font-weight:600;color:rgba(255,255,255,.6);margin-bottom:14px"></div>
+    <div id="entree-rapide" style="width:100%">
+      <!-- ⚠️ CES TEXTES NE SONT PAS DÉCORATIFS : ils sont ce que la porte
+           affiche AVANT que le JavaScript soit lu. Ce sont exactement les
+           mots que majEntreeRapide() écrit pour un patron — le cas de neuf
+           ouvertures sur dix. Un vendeur les voit corrigés un instant plus
+           tard : un mot qui change, jamais une ligne qui saute. -->
+      <div id="er-bonjour" style="font-size:15px;font-weight:800;color:#fff;margin-bottom:3px">Bonjour 👋</div>
+      <div id="er-sous" style="font-size:11.5px;font-weight:600;color:rgba(255,255,255,.6);margin-bottom:14px">Entre ton PIN pour ouvrir tes boutiques.</div>
       <div id="er-lst" style="max-height:36vh;overflow-y:auto;margin-bottom:14px"></div>
-      <div id="er-pin-wrap" style="display:none">
+      <div id="er-pin-wrap">
         <div id="er-cible" style="font-size:13px;font-weight:800;color:#fff;margin-bottom:9px;display:flex;align-items:center;gap:8px"></div>
         <button class="bio-sig" id="er-bio" onclick="toucherSigneBio('er-bio')" title="Empreinte" aria-label="Empreinte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>
-        <input class="fi" type="password" id="er-pin" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" style="text-align:center;letter-spacing:10px;font-size:22px;font-weight:900" onkeydown="if(event.key==='Enter')validerEntreeRapide()">
-        <button class="btn-login" style="margin-top:10px" onclick="validerEntreeRapide()"><span id="er-btn">Entrer</span></button>
-        <button class="btn-login" onclick="retourListeBoutiques()" style="margin-top:8px;background:transparent;color:rgba(255,255,255,.6);box-shadow:none">↩︎ <span id="er-retour">Choisir une autre boutique</span></button>
+        <input class="fi" type="password" id="er-pin" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" style="text-align:center;letter-spacing:10px;font-size:22px;font-weight:900" onkeydown="if(event.key==='Enter'&&window.validerEntreeRapide)validerEntreeRapide()">
+        <button class="btn-login" style="margin-top:10px" onclick="if(window.validerEntreeRapide)validerEntreeRapide()"><span id="er-btn">Ouvrir</span></button>
+        <button class="btn-login" id="er-retour-b" onclick="retourListeBoutiques()" style="margin-top:8px;background:transparent;color:rgba(255,255,255,.6);box-shadow:none">↩︎ <span id="er-retour">Choisir une autre boutique</span></button>
       </div>
       <div style="display:flex;gap:14px;justify-content:center;padding-top:6px">
         <button type="button" onclick="ouvrirResetPin()" id="er-oubli" style="background:none;border:none;padding:8px 0;color:rgba(255,255,255,.6);font-size:11.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline">PIN oublié ?</button>
@@ -2241,6 +2272,7 @@ body{max-width:min(100%,1200px)}
       <div class="stcd">
         <div class="stit2" onclick="ouvrirChangerPin()"><div class="stico" style="background:#FFEBEE">🔑</div><div class="stii"><div class="stitl" id="st-chpin">Changer mon PIN</div><div class="stisub" id="st-chpin-s">Le code qui ouvre ta caisse</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="toggleBiometrie()"><div class="stico" style="background:#E3F2FD">👆</div><div class="stii"><div class="stitl" id="st-bio2">Empreinte / Face ID</div><div class="stisub" id="st-bio2-s">Entrer sans taper le PIN</div></div><button class="tog off" id="tog-bio2" onclick="event.stopPropagation();toggleBiometrie()"></button></div>
+        <div class="stit2" onclick="envoyerDiagnostic()"><div class="stico" style="background:#EDE7F6">🩺</div><div class="stii"><div class="stitl" id="st-diag">Envoyer mon diagnostic</div><div class="stisub" id="st-diag-s">Version, réseau, dernière erreur — tu relis avant d'envoyer</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirDiagBio()"><div class="stico" style="background:#E3F2FD">🩺</div><div class="stii"><div class="stitl" id="st-biodiag">L'empreinte ne marche pas ?</div><div class="stisub" id="st-biodiag-s">Voir où ça bloque, sur ce téléphone</div></div><span class="starr">›</span></div>
       </div>
     </div>
@@ -3624,6 +3656,18 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- BOUTIQUE SUSPENDUE — l'accès est en pause, RIEN n'est effacé -->
+<div id="ov-suspendu" style="display:none;position:fixed;inset:0;background:linear-gradient(165deg,#200E4E 0%,#341764 45%,#57216B 100%);z-index:100000;align-items:center;justify-content:center;padding:26px;text-align:center">
+  <div style="max-width:360px">
+    <div style="font-size:46px;margin-bottom:10px">⏸️</div>
+    <div id="sus-tit" style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:10px">Boutique suspendue</div>
+    <div id="sus-nom" style="font-size:15px;font-weight:800;color:var(--A);margin-bottom:2px"></div>
+    <div id="sus-code" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.55);letter-spacing:2px;margin-bottom:18px"></div>
+    <div id="sus-txt" style="font-size:13.5px;font-weight:600;color:rgba(255,255,255,.80);line-height:1.65;margin-bottom:20px"></div>
+    <button id="sus-btn" onclick="ecrireSuspension()" style="width:100%;background:#25D366;border:none;border-radius:14px;padding:15px;color:#fff;font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;cursor:pointer">💬 Écrire au support</button>
+  </div>
+</div>
+
 <!-- PHOTOS VENUES D'UNE AUTRE BOUTIQUE -->
 <div class="ov" id="ov-photos-etr" onclick="closeOv(event,'ov-photos-etr')">
   <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
@@ -4159,7 +4203,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.00'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.01'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4642,7 +4686,13 @@ async function syncToSupa(){
         fonds_depart:Number(DB.fondsDepart||0),
         objectif:Number(DB.objectif||0),
         plan:DB.cfg.plan||'gratuit',
-        actif:true,
+        // ⚠️⚠️ `actif:true` ÉTAIT ICI, DANS LE PAYLOAD DE CHAQUE ÉCRITURE.
+        // Ce champ est le seul frein dont dispose l'exploitant : la
+        // connexion le filtre déjà (`.eq('actif',true)`). Mais l'app le
+        // remettait à `true` À CHAQUE SAUVEGARDE — donc une suspension
+        // tenait jusqu'à la vente suivante, quelques secondes. Le frein
+        // existait et ne freinait rien. Il n'est plus posé qu'à la
+        // CRÉATION de la boutique ; ensuite, seul l'exploitant y touche.
         owner_id:(user&&user.id)||DB.cfg.ownerId||null,
         data:DB,
         updated_at:new Date().toISOString()
@@ -4741,7 +4791,7 @@ async function syncToSupa(){
         DB.cfg.code=genCode();
         continue;
       }
-      var ins=await supa.from('boutiques').insert(payload);
+      var ins=await supa.from('boutiques').insert(Object.assign({actif:true},payload));
       if(!ins.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv4=document.getElementById('code-val');if(cv4)cv4.textContent=DB.cfg.code;return true;}
       if(String(ins.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
       throw ins.error;
@@ -5205,7 +5255,7 @@ function goScreen(id){
   // qui décide, et lui seul.
   try{var _h=document.documentElement;
     if(_h.className.indexOf('porte-')>=0)
-      _h.className=_h.className.replace(/\s*porte-(login|vitrine)/g,'');
+      _h.className=_h.className.replace(/\s*porte-(login|vitrine|rapide)/g,'');
   }catch(e){}
   document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('on');});
   var el=document.getElementById(id);
@@ -5482,7 +5532,7 @@ function entreeRapidePossible(){
 // avoir choisi la boutique n'avait aucun sens. Et une fois le compte ouvert,
 // on peut demander la liste au SERVEUR — une boutique créée sur un autre
 // téléphone apparaît donc tout de suite.
-var _erBoutiques=null;
+var _erBoutiques=null,_erPremierPassage=true;
 function majEntreeRapide(){
   var pan=document.getElementById('entree-rapide');
   var tabs=document.getElementById('login-tabs');
@@ -5532,7 +5582,12 @@ function majEntreeRapide(){
     try{requestAnimationFrame(function(){setTimeout(guetterEmpreinte,60);});}
     catch(x){setTimeout(guetterEmpreinte,120);}
   }
-  var p=document.getElementById('er-pin');p.value='';
+  var p=document.getElementById('er-pin');
+  // ⚠️ LA PORTE EST PEINTE AVANT QUE CE CODE TOURNE. Sur un téléphone lent
+  // il a eu le temps de commencer à taper : effacer le champ au premier
+  // passage, c'est lui reprendre son PIN des doigts.
+  if(!_erPremierPassage||!p.value)p.value='';
+  _erPremierPassage=false;
   // Le clavier doit être là tout de suite : il tape son PIN, il vend.
   try{p.focus();}catch(x){}
   setTimeout(function(){try{p.focus();}catch(x){}},60);
@@ -20484,7 +20539,7 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
@@ -21193,6 +21248,112 @@ function retirerToutesPhotosEtrangeres(){
   renderPhotosEtrangeres();
   majLignePhotosEtrangeres();
   showToast('🖼️ '+n+' '+(fr?'photos retirées':'photos removed'));
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ SUSPENDRE UNE BOUTIQUE — « comment je peux bloquer mes utilisateurs ? »
+//
+//  Le frein existait déjà : la colonne `actif` de la table `boutiques`, que
+//  la connexion filtre depuis toujours (`.eq('actif',true)`). Il ne freinait
+//  RIEN : l'app renvoyait `actif:true` dans le payload de chaque
+//  sauvegarde. Une suspension tenait jusqu'à la vente suivante — quelques
+//  secondes. C'est corrigé plus haut : `actif` n'est plus posé qu'à la
+//  création.
+//
+//  Ici, le deuxième morceau : l'app REGARDE. Une requête d'un seul champ à
+//  l'ouverture, et une porte fermée si la réponse est « non ».
+//
+//  ⚠️ TROIS RÈGLES QUE JE NE FRANCHIS PAS :
+//   1. Une suspension n'efface RIEN. Les ventes, le stock, les clients
+//      restent sur le téléphone et au serveur. Elle se lève en remettant
+//      `actif` à true, et la boutique rouvre entière.
+//   2. Pas de verdict sans réponse. Hors ligne, erreur réseau, requête
+//      refusée : on n'enferme personne sur un silence. Il faut un `false`
+//      explicite du serveur.
+//   3. On dit POURQUOI et COMMENT sortir. Un écran noir sans explication
+//      ferait juste désinstaller l'app.
+// ══════════════════════════════════════════════════════════════════
+async function verifierBoutiqueActive(){
+  try{
+    if(!supa||!DB||!DB.cfg||!DB.cfg.code)return;
+    if(!navigator.onLine)return;
+    var r=await supa.from('boutiques').select('actif').eq('code',DB.cfg.code).limit(1);
+    // Pas de réponse claire = pas de verdict. On n'enferme jamais sur un doute.
+    if(r.error||!r.data||!r.data.length||r.data[0].actif==null)return;
+    _verrouSuspension(r.data[0].actif===false);
+  }catch(e){}
+}
+function _verrouSuspension(bloquee){
+  var ov=document.getElementById('ov-suspendu');if(!ov)return;
+  if(!bloquee){ov.style.display='none';return;}
+  var fr=(lang!=='en');
+  var n=document.getElementById('sus-nom');
+  if(n)n.textContent=(DB&&DB.cfg&&DB.cfg.nom)||'';
+  var c=document.getElementById('sus-code');
+  if(c)c.textContent=(DB&&DB.cfg&&DB.cfg.code)||'';
+  var t=document.getElementById('sus-tit');
+  if(t)t.textContent=fr?'Boutique suspendue':'Shop suspended';
+  var x=document.getElementById('sus-txt');
+  if(x)x.textContent=fr
+    ?'L’accès à cette boutique a été mis en pause. Rien n’est effacé : tes ventes, ton stock et tes clients sont intacts et reviendront tels quels. Écris-nous pour comprendre et rouvrir.'
+    :'Access to this shop has been paused. Nothing is deleted: your sales, stock and customers are intact and will come back as they were. Write to us to sort it out.';
+  var b=document.getElementById('sus-btn');
+  if(b)b.textContent=fr?'💬 Écrire au support':'💬 Write to support';
+  ov.style.display='flex';
+}
+function ecrireSuspension(){
+  var fr=(lang!=='en');
+  var bq='',cd='';
+  try{bq=(DB&&DB.cfg&&DB.cfg.nom)||'';cd=(DB&&DB.cfg&&DB.cfg.code)||'';}catch(e){}
+  var m=(fr?'Bonjour MyBoutiQ 👋\n\nMa boutique est suspendue.\n':'Hello MyBoutiQ 👋\n\nMy shop is suspended.\n')
+    +(bq?('Boutique : '+bq+'\n'):'')+(cd?('Code : '+cd+'\n'):'')
+    +(fr?'\nQu’est-ce qui se passe ?\n':'\nWhat is going on?\n');
+  try{window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(m),'_blank');}catch(e){}
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ « … OU DÉBOGUER MES UTILISATEURS ? »
+//
+//  Aujourd'hui, quand quelque chose ne va pas chez quelqu'un, il écrit
+//  « ça marche pas » — et il faut trois allers-retours WhatsApp pour
+//  apprendre sa version, son code et ce qu'il faisait. Le diagnostic de
+//  l'empreinte existait déjà, mais il ne parlait que du doigt et il ne
+//  PARTAIT pas : il s'affichait sur son téléphone, à lui.
+//
+//  Ce bouton assemble ce que je ne peux pas deviner depuis un serveur —
+//  version, navigateur, état du réseau, dernière erreur — et le met dans
+//  un message que le commerçant ENVOIE. Rien ne part tout seul : c'est lui
+//  qui appuie, et il voit le texte avant de l'envoyer.
+//
+//  ⚠️ AUCUNE DONNÉE DE VENTE, aucun nom de client, aucun PIN. Des
+//  compteurs et des états, pas son commerce.
+// ══════════════════════════════════════════════════════════════════
+function _diagnosticTexte(){
+  var fr=(lang!=='en'),L=[];
+  var pousse=function(k,v){L.push(k+' : '+v);};
+  try{pousse('Version',APP_BUILD);}catch(e){}
+  try{pousse(fr?'Boutique':'Shop',((DB&&DB.cfg&&DB.cfg.nom)||'?')+' · '+((DB&&DB.cfg&&DB.cfg.code)||'?'));}catch(e){}
+  try{pousse(fr?'Rôle':'Role',role||'?');}catch(e){}
+  try{pousse(fr?'Articles / ventes':'Items / sales',
+    ((DB&&DB.articles&&DB.articles.length)||0)+' / '+((DB&&DB.ventes&&DB.ventes.length)||0));}catch(e){}
+  try{pousse(fr?'Réseau':'Network',navigator.onLine?(fr?'en ligne':'online'):(fr?'hors ligne':'offline'));}catch(e){}
+  try{pousse(fr?'Installée':'Installed',_dejaInstallee()?(fr?'oui':'yes'):(fr?'non (navigateur)':'no (browser)'));}catch(e){}
+  try{pousse(fr?'Écran':'Screen',window.innerWidth+'×'+window.innerHeight);}catch(e){}
+  try{pousse(fr?'Langue':'Language',(navigator.language||'?')+' / '+lang);}catch(e){}
+  try{var d=bioLu()||{};pousse(fr?'Empreinte':'Biometrics',
+    (d.on?(fr?'allumée':'on'):(fr?'éteinte':'off'))+(d.id?(fr?' · clé posée':' · key set'):''));}catch(e){}
+  try{var ch=JSON.parse(localStorage.getItem('myboutiq_bio_chrono')||'null');
+      if(ch&&ch.demande!=null)pousse(fr?'Dernière ouverture':'Last launch',
+        (fr?'capteur ':'sensor ')+ch.demande+' ms'+(ch.peinture!=null?(fr?', écran ':', painted ')+ch.peinture+' ms':''));}catch(e){}
+  try{var er=_bioLu();if(er&&er.nom)pousse(fr?'Dernière erreur':'Last error',er.quoi+' · '+er.nom+' · '+String(er.msg||'').slice(0,90));}catch(e){}
+  try{pousse('Navigateur',String(navigator.userAgent||'').slice(0,140));}catch(e){}
+  return L.join('\n');
+}
+function envoyerDiagnostic(){
+  var fr=(lang!=='en');
+  var m=(fr?'Bonjour MyBoutiQ 👋\n\nVoici mon diagnostic :\n\n':'Hello MyBoutiQ 👋\n\nHere is my diagnostic:\n\n')
+    +_diagnosticTexte()
+    +(fr?'\n\nCe qui ne va pas :\n':'\n\nWhat is wrong:\n');
+  try{window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(m),'_blank');}catch(e){}
+  try{showToast('🩺 '+(fr?'Relis le message avant d’envoyer':'Check the message before sending'));}catch(e){}
 }
 function majBoutonsInstaller(){
   var montrer=_peutInstaller(),fr=(lang!=='en');
