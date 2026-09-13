@@ -1796,7 +1796,11 @@ body{max-width:min(100%,1200px)}
           <li id="vp-l3">Tes données ne sont vendues à personne.</li>
           <li id="vp-l4">Tu peux emporter tout ce que tu as saisi, ou tout effacer, toi-même, depuis les Réglages.</li>
         </ul>
-        <div class="vt-prix-n" id="vp-note">MyBoutiQ est encore en construction. Si un prix arrive un jour, tu le sauras avant.</div>
+        <!-- ⚠️ « Si un prix arrive un jour, tu le sauras avant » était un
+             ENGAGEMENT PRIS À SA PLACE, sur une page qui porte son nom. Je
+             n'ai pas à promettre l'avenir commercial de quelqu'un d'autre.
+             Ce qui reste ne promet que ce que je tiens : cette page-ci. -->
+        <div class="vt-prix-n" id="vp-note">MyBoutiQ est encore en construction, et gratuite pendant ce temps. Ce qui viendra après n'est pas encore décidé — le jour où ça le sera, ce sera écrit ici.</div>
       </div>
     </section>
 
@@ -2382,6 +2386,13 @@ body{max-width:min(100%,1200px)}
              confort, c'est la règle RLS qui protège vraiment. -->
         <div class="stit2" id="row-annonce" style="display:none" onclick="ouvrirEcrireAnnonce()"><div class="stico" style="background:#E8EAF6">📣</div><div class="stii"><div class="stitl">Écrire une annonce</div><div class="stisub">Un message à tous les commerçants</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-photos-prop" style="display:none" onclick="ouvrirPhotosProposees()"><div class="stico" style="background:#E0F2F1">📷</div><div class="stii"><div class="stitl">Photos proposées</div><div class="stisub" id="pp-sub">Ce que les commerçants offrent à tous</div></div><span class="starr">›</span></div>
+        <!-- ⚠️ CETTE LIGNE N'APPARAÎT QUE S'IL Y A QUELQUE CHOSE À MONTRER.
+             Elle est le résultat d'un défaut réparé en 21.96 : deux boutiques
+             ouvertes sur le même téléphone se fusionnaient, et les photos de
+             l'une partaient chez l'autre. Le défaut est mort, mais les photos
+             déjà parties, elles, restent — et c'est au patron de la boutique,
+             pas à moi depuis un serveur, de dire ce qu'il en fait. -->
+        <div class="stit2" id="row-photos-etr" style="display:none" onclick="ouvrirPhotosEtrangeres()"><div class="stico" style="background:#FFF3E0">🖼️</div><div class="stii"><div class="stitl" id="st-petr">Photos venues d'ailleurs</div><div class="stisub" id="st-petr-s"></div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-install" onclick="installerApp()"><div class="stico" style="background:#E8F5E9">📲</div><div class="stii"><div class="stitl" id="st-install">Installer l'application</div><div class="stisub" id="st-install-s">Elle s'ouvre plein écran et démarre plus vite</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirArchivage()"><div class="stico" style="background:#E1F5FE">📦</div><div class="stii"><div class="stitl">Ranger les vieilles ventes</div><div class="stisub" id="st-archive-s">Elles sortent du détail, tes totaux ne bougent pas</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirSupprBoutique()"><div class="stico" style="background:#FFEBEE">⛔</div><div class="stii"><div class="stitl" id="st-sup" style="color:var(--R)">Supprimer ma boutique</div><div class="stisub" id="st-sup-s">Tout effacer de nos serveurs, définitivement</div></div><span class="starr">›</span></div>
@@ -3613,6 +3624,18 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- PHOTOS VENUES D'UNE AUTRE BOUTIQUE -->
+<div class="ov" id="ov-photos-etr" onclick="closeOv(event,'ov-photos-etr')">
+  <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🖼️ <span id="pe-tit">Photos venues d'ailleurs</span></div><button class="bcl" onclick="closeSheet('ov-photos-etr')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px;line-height:1.55" id="pe-aide"></div>
+      <div id="pe-lst"></div>
+      <button class="bpay" style="margin-top:12px;background:#FFEBEE;color:var(--R)" id="pe-tout" onclick="retirerToutesPhotosEtrangeres()"></button>
+    </div>
+  </div>
+</div>
+
 <!-- ÉCRIRE UNE ANNONCE (administrateurs MyBoutiQ seulement) -->
 <div class="ov" id="ov-annonce" onclick="closeOv(event,'ov-annonce')">
   <div class="bsht"><div class="shndl"></div>
@@ -4136,7 +4159,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.99'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.00'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -19878,7 +19901,7 @@ function _vitrineLangue(){
     'vp-l2':'No advertising in your till.',
     'vp-l3':'Your data is sold to nobody.',
     'vp-l4':'You can take everything you entered away, or erase all of it, yourself, from Settings.',
-    'vp-note':'MyBoutiQ is still being built. If a price ever comes, you will know before it does.',
+    'vp-note':'MyBoutiQ is still being built, and free while it is. What comes after is not decided yet — the day it is, it will be written here.',
     've-t':'Write to me',
     've-s':'A question, a fault, an idea, something the app does not cover yet. The message lands on WhatsApp, and I am the one who answers.',
     've-b':'💬 Write on WhatsApp',
@@ -20461,7 +20484,7 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
@@ -21053,6 +21076,123 @@ function ouvrirCommentInstaller(){
 function _fermerInstallCaisse(){
   try{localStorage.setItem('myboutiq_install_ferme','1');}catch(e){}
   var c=document.getElementById('cai-install');if(c)c.style.display='none';
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ LES PHOTOS VENUES D'UNE AUTRE BOUTIQUE
+//
+//  MESURÉ EN PRODUCTION, PAS SUPPOSÉ : 20 boutiques portent 292 photos qui
+//  ne sont pas les leurs. Toutes viennent de la MÊME boutique — la sienne,
+//  celle du numéro de support. Aucune photo d'un commerçant n'est jamais
+//  partie chez un autre commerçant : c'est un soulagement, et c'est la
+//  raison pour laquelle on ne se précipite pas.
+//
+//  ⚠️ ET SURTOUT : CES PHOTOS SERVENT. Sur les 292, 118 sont posées sur un
+//  article qui a un prix, du stock, ou qui a DÉJÀ ÉTÉ VENDU — jusqu'à 356
+//  unités dans une boutique. Un commerçant a mis un prix sur « Screenshot
+//  20260709 113553 » et le vend tous les jours : la photo est devenue la
+//  façon dont il RECONNAÎT son produit dans la caisse. Les effacer depuis
+//  un serveur, « pour faire propre », lui casserait sa caisse.
+//
+//  Donc : pas de ménage à sa place. Le défaut qui les a fait voyager est
+//  mort (21.96, `_memeBoutique`), rien de nouveau n'arrive. Ce qui manquait
+//  n'était pas un balai, c'était un INTERRUPTEUR : voir ce qui est arrivé
+//  par erreur, et décider soi-même, chez soi, photo par photo.
+// ══════════════════════════════════════════════════════════════════
+function _codePhoto(url){
+  var u=String(url||''),i=u.indexOf('/APP/products/');
+  if(i<0)return '';
+  var f='';try{f=decodeURIComponent(u.slice(i+14));}catch(e){f=u.slice(i+14);}
+  var m=f.match(/^([\d\s]+?)-\d{10,}/);
+  return m?m[1].replace(/\D/g,''):'';
+}
+function _photosEtrangeres(){
+  var out=[],mien='';
+  try{mien=normalizeShopCode((DB&&DB.cfg&&DB.cfg.code)||'');}catch(e){}
+  if(!mien||!DB||!DB.articles)return out;
+  DB.articles.forEach(function(a){
+    var c=_codePhoto(a.img);
+    if(c&&c!==mien)out.push({id:a.id,vid:null,nm:a.nm,url:a.img});
+    (a.vr||[]).forEach(function(v){
+      var cv=_codePhoto(v.img);
+      if(cv&&cv!==mien)out.push({id:a.id,vid:v.id,nm:a.nm+' — '+(v.nm||''),url:v.img});
+    });
+  });
+  return out;
+}
+function majLignePhotosEtrangeres(){
+  var r=document.getElementById('row-photos-etr');if(!r)return;
+  // Le vendeur ne décide pas des photos de la boutique : c'est le patron.
+  var n=(role==='patron')?_photosEtrangeres().length:0;
+  r.style.display=n?'':'none';
+  if(!n)return;
+  var fr=(lang!=='en');
+  var t=document.getElementById('st-petr');
+  if(t)t.textContent=fr?'Photos venues d’ailleurs':'Photos from elsewhere';
+  var sub=document.getElementById('st-petr-s');
+  if(sub)sub.textContent=fr
+    ?(n+' photo'+(n>1?'s':'')+' arrivée'+(n>1?'s':'')+' par erreur — à toi de voir')
+    :(n+' photo'+(n>1?'s':'')+' that arrived by mistake — your call');
+}
+function ouvrirPhotosEtrangeres(){
+  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  renderPhotosEtrangeres();
+  document.getElementById('ov-photos-etr').classList.add('show');
+}
+function renderPhotosEtrangeres(){
+  var c=document.getElementById('pe-lst');if(!c)return;
+  var l=_photosEtrangeres(),fr=(lang!=='en');
+  var aide=document.getElementById('pe-aide');
+  if(aide)aide.textContent=fr
+    ?'Un défaut, corrigé depuis, a copié ces photos depuis une autre boutique. Si l’image correspond quand même à ton produit, garde-la : elle t’aide à le reconnaître. Sinon retire-la — l’icône revient, et l’article ne bouge pas.'
+    :'A bug, since fixed, copied these photos from another shop. If the picture still matches your product, keep it — it helps you spot the item. Otherwise remove it: the icon comes back and the item itself does not change.';
+  var b=document.getElementById('pe-tout');
+  if(b){b.style.display=l.length?'':'none';
+        b.textContent=fr?('🗑️ Tout retirer ('+l.length+')'):('🗑️ Remove all ('+l.length+')');}
+  if(!l.length){c.innerHTML='<div class="dash-empty">'+(fr?'Plus aucune. Tout est à toi ici.':'None left. Everything here is yours.')+'</div>';return;}
+  c.innerHTML=l.map(function(x){
+    return '<div style="display:flex;align-items:center;gap:11px;background:var(--C);border:1px solid var(--BD);'
+      +'border-radius:14px;padding:9px 11px;margin-bottom:8px">'
+      +'<img src="'+x.url+'" loading="lazy" style="width:46px;height:46px;object-fit:cover;border-radius:11px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.2">'
+      +'<div style="flex:1;min-width:0;font-size:12.5px;font-weight:800;color:var(--T);overflow:hidden;text-overflow:ellipsis">'+x.nm+'</div>'
+      +'<button class="mini-btn" style="background:#FFEBEE;color:var(--R)" onclick="retirerPhotoEtrangere('+x.id+','+(x.vid===null?'null':x.vid)+')">'
+      +(fr?'Retirer':'Remove')+'</button></div>';
+  }).join('');
+}
+function _oterPhoto(id,vid){
+  var a=(DB.articles||[]).find(function(x){return x.id===id;});
+  if(!a)return false;
+  if(vid===null||vid===undefined){if(!a.img)return false;delete a.img;return true;}
+  var v=(a.vr||[]).find(function(x){return x.id===vid;});
+  if(!v||!v.img)return false;
+  delete v.img;return true;
+}
+function retirerPhotoEtrangere(id,vid){
+  if(role!=='patron')return;
+  var fr=(lang!=='en');
+  try{sauvegarderAvant(fr?'avant de retirer une photo venue d’ailleurs':'before removing a photo from elsewhere');}catch(e){}
+  if(!_oterPhoto(id,vid)){renderPhotosEtrangeres();return;}
+  save();
+  try{renderProd(DB.articles);}catch(e){}
+  try{renderStock(DB.articles);}catch(e){}
+  renderPhotosEtrangeres();
+  majLignePhotosEtrangeres();
+  showToast('🖼️ '+(fr?'Photo retirée — l’icône revient':'Photo removed — the icon is back'));
+}
+function retirerToutesPhotosEtrangeres(){
+  if(role!=='patron')return;
+  var l=_photosEtrangeres(),fr=(lang!=='en');
+  if(!l.length)return;
+  if(!confirm(fr?('Retirer '+l.length+' photo'+(l.length>1?'s':'')+' ? Les articles et leurs ventes ne bougent pas — seule l’image part, et l’icône revient.')
+               :('Remove '+l.length+' photo'+(l.length>1?'s':'')+'? The items and their sales do not change — only the picture goes, and the icon comes back.')))return;
+  try{sauvegarderAvant(fr?'avant de retirer les photos venues d’ailleurs':'before removing photos from elsewhere');}catch(e){}
+  var n=0;
+  l.forEach(function(x){if(_oterPhoto(x.id,x.vid))n++;});
+  save();
+  try{renderProd(DB.articles);}catch(e){}
+  try{renderStock(DB.articles);}catch(e){}
+  renderPhotosEtrangeres();
+  majLignePhotosEtrangeres();
+  showToast('🖼️ '+n+' '+(fr?'photos retirées':'photos removed'));
 }
 function majBoutonsInstaller(){
   var montrer=_peutInstaller(),fr=(lang!=='en');
