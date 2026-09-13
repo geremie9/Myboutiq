@@ -1,0 +1,2749 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   PEINDRE LA PORTE AVANT DE LIRE LE JAVASCRIPT
+
+   Même leçon que MyBoutiQ : l'écran d'entrée est dans le HTML très tôt,
+   mais il porte `.scr` (display:none) et c'est le JavaScript, lu bien
+   après, qui lui pose `.on`. Sur un téléphone de buvette à 22 h, avec
+   le réseau qui tousse, ça fait plusieurs secondes d'écran noir.
+
+   Ce bloc ne dépend de rien : il lit le stockage, pose une classe sur
+   <html>, et le style montre le bon écran immédiatement. goScreen()
+   reprend la main à son premier passage et retire la classe — jamais
+   deux règles qui décident en même temps.
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+  try{
+    var h=document.documentElement;
+    var db=null;try{db=localStorage.getItem('mybar_v1')||localStorage.getItem('mybarq_v1');}catch(x){}
+    h.className+=(db?' porte-login':' porte-vitrine');
+  }catch(x){}
+})();
+window._pwaInvite=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  try{e.preventDefault();}catch(x){}
+  window._pwaInvite=e;
+  try{if(typeof majBoutonsInstaller==='function')majBoutonsInstaller();}catch(x){}
+});
+</script>
+<title>MyBar — Gestion de bar et buvette pour l'Afrique</title>
+<meta name="description" content="MyBar : application de gestion de bar, buvette, snack et cave. Tables et additions, casiers, vidanges consignées, serveurs, clôture de service. Simple et hors-ligne, faite pour l'Afrique francophone.">
+<meta property="og:title" content="MyBar — Gestion de bar & buvette">
+<meta property="og:description" content="Tables, additions, casiers, vidanges, serveurs, clôture du soir. Simple et hors-ligne.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="icon-512.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0E2A26">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MyBar">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all';this.onload=null">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet"></noscript>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--P:#0E2A26;--P2:#14403A;--A:#F6B93B;--G:#00C853;--R:#FF3D00;--B:#1B7F6E;--PU:#6E5A82;--O:#FF6D00;--BG:#F1F3F2;--C:#FFF;--T:#132029;--M:#94A3A0;--BD:#E6E9E8}
+body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden;color:var(--T)}
+.scr{display:none;flex-direction:column;min-height:100vh}
+.scr.on{display:flex}
+html.porte-login #s-splash,html.porte-vitrine #s-splash{display:none}
+html.porte-login #s-login{display:flex}
+html.porte-vitrine #s-vitrine{display:flex}
+input,select,textarea,button{font-family:'Outfit',sans-serif}
+::-webkit-scrollbar{width:0;height:0}
+
+/* ── SPLASH ── */
+#s-splash{background:linear-gradient(165deg,#06231F 0%,#0E3A31 45%,#1B5E52 100%);align-items:center;justify-content:center;gap:10px}
+.splash-logo{font-size:70px;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.splash-title{font-family:'Nunito',sans-serif;font-size:40px;font-weight:900;color:#fff}
+.splash-title span{color:var(--A)}
+.splash-sub{color:rgba(255,255,255,.66);font-size:14px;font-weight:600}
+.splash-bar{width:200px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;margin-top:18px}
+.splash-fill{height:100%;background:var(--A);animation:load 1.05s ease forwards}
+@keyframes load{from{width:0}to{width:100%}}
+
+/* ── VITRINE ── */
+#s-vitrine{background:var(--BG);align-items:stretch;padding:0}
+.vit-hero{background:linear-gradient(165deg,#06231F 0%,#0E3A31 50%,#1B5E52 100%);padding:34px 22px 30px;color:#fff;position:relative;overflow:hidden}
+/* ⚠️⚠️ CE HALO MANGEAIT LES TOUCHES, ET C'ÉTAIT INVISIBLE À L'ŒIL.
+   Le cercle doré du coin haut-droit est purement décoratif — mais il est
+   posé PAR-DESSUS le contenu, et un pseudo-élément reçoit les clics comme
+   n'importe quel élément. Mesuré au banc : le bouton « 🇬🇧 English » de la
+   vitrine (x 201→297, y 34→67) tombe entièrement dans le cercle ; on
+   pouvait le toucher dix fois, rien ne se passait, alors que « Français »,
+   deux centimètres à gauche, répondait. Aucun message d'erreur, aucune
+   trace : juste un bouton mort.
+   `pointer-events:none` rend le halo transparent au doigt. La même ligne
+   manquait sur l'écran de connexion, où elle couvre le haut du
+   formulaire. */
+.vit-hero::before{content:'';position:absolute;width:300px;height:300px;background:radial-gradient(circle,rgba(246,185,59,.18),transparent 70%);top:-80px;right:-90px;border-radius:50%;pointer-events:none}
+.vit-brand{font-family:'Nunito',sans-serif;font-size:34px;font-weight:900;position:relative}
+.vit-brand span{color:var(--A)}
+.vit-tag{font-size:15px;font-weight:700;margin-top:10px;line-height:1.45;position:relative}
+.vit-sub{font-size:13px;font-weight:600;color:rgba(255,255,255,.66);margin-top:8px;line-height:1.5;position:relative}
+.vit-cta{display:block;width:100%;background:var(--A);color:#06231F;border:none;border-radius:13px;padding:15px;font-size:16px;font-weight:900;margin-top:20px;cursor:pointer;position:relative}
+.vit-cta2{display:block;width:100%;background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.22);border-radius:13px;padding:13px;font-size:14px;font-weight:800;margin-top:10px;cursor:pointer;position:relative}
+.vit-sec{padding:20px 18px 6px}
+.vit-h2{font-size:17px;font-weight:900;margin-bottom:12px}
+.vit-card{background:var(--C);border:1px solid var(--BD);border-radius:15px;padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
+.vit-ico{font-size:25px;flex-shrink:0}
+.vit-ct{font-size:13.5px;font-weight:800}
+.vit-cs{font-size:12px;font-weight:600;color:var(--M);line-height:1.5;margin-top:3px}
+.vit-foot{padding:18px;text-align:center;font-size:11px;color:var(--M);font-weight:600}
+
+/* ── ONBOARD ── */
+#s-onboard{background:var(--P);align-items:center;padding:26px 22px 40px;overflow-y:auto;position:relative}
+.ob-logo{font-size:50px;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.ob-brand{font-family:'Nunito',sans-serif;font-size:29px;font-weight:900;color:#fff;margin:2px 0 3px}
+.ob-brand span{color:var(--A)}
+.ob-tagline{color:rgba(255,255,255,.42);font-size:12.5px;font-weight:600;margin-bottom:20px;text-align:center}
+.langsw{display:flex;gap:6px;justify-content:center;margin-bottom:14px}
+.langp{border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:rgba(255,255,255,.72);border-radius:10px;padding:8px 15px;font-size:12.5px;font-weight:800;cursor:pointer}
+.langp.on{background:var(--A);border-color:var(--A);color:var(--P)}
+.ob-dots{display:flex;gap:6px;margin-bottom:20px}
+.ob-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .3s}
+.ob-dot.cur{background:var(--A);width:22px;border-radius:4px}
+.ob-dot.done{background:rgba(246,185,59,.5)}
+.ob-step{display:none;width:100%;flex-direction:column;align-items:center}
+.ob-step.on{display:flex}
+.ob-step-h{color:#fff;font-size:16.5px;font-weight:800;margin-bottom:14px;text-align:center;line-height:1.4}
+.pays-srch,.ob-inp,.reg-sel{width:100%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;color:#fff;font-size:15px;font-weight:700;outline:none;margin-bottom:11px}
+.ob-inp{text-align:center;font-size:16px}
+.pays-srch{font-size:14px;font-weight:600}
+.pays-srch:focus,.ob-inp:focus,.reg-sel:focus{border-color:var(--A)}
+.pays-srch::placeholder,.ob-inp::placeholder{color:rgba(255,255,255,.3)}
+.reg-sel option{background:var(--P);color:#fff}
+.pays-lst{width:100%;max-height:236px;overflow-y:auto;border-radius:12px;background:rgba(255,255,255,.04);margin-bottom:14px}
+.pays-it{display:flex;align-items:center;gap:11px;padding:11px 13px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer}
+.pays-it:last-child{border-bottom:none}
+.pays-it.on{background:rgba(246,185,59,.18)}
+.pays-flag{font-size:22px}
+.pays-nm{font-size:13px;font-weight:700;color:#fff}
+.pays-dev{font-size:11px;color:rgba(255,255,255,.45);font-weight:600}
+.sec-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;width:100%;margin-bottom:16px}
+.sec-btn{background:rgba(255,255,255,.07);border:2.5px solid rgba(255,255,255,.12);border-radius:15px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .2s}
+.sec-btn.on{border-color:var(--A);background:rgba(246,185,59,.14)}
+.sec-emoji{font-size:27px;display:block;margin-bottom:5px}
+.sec-nm{font-size:11.5px;font-weight:800;color:#fff;line-height:1.3}
+.ob-confirm{background:rgba(255,255,255,.05);border-radius:15px;padding:14px;width:100%;margin-bottom:16px}
+.ob-cr{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.ob-cr:last-child{border-bottom:none}
+.ob-cl{color:rgba(255,255,255,.45);font-size:12px;font-weight:700}
+.ob-cv{color:#fff;font-size:12px;font-weight:800;text-align:right}
+.btn-ob{width:100%;background:var(--A);color:var(--P);border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:800;cursor:pointer;margin-top:2px}
+.btn-ob:active{transform:scale(.97)}
+.btn-bk{background:rgba(255,255,255,.10);border:none;border-radius:10px;color:rgba(255,255,255,.85);font-size:14px;font-weight:800;cursor:pointer;margin-bottom:11px;align-self:flex-start;min-width:44px;min-height:44px;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:6px}
+.ob-notice{background:rgba(27,127,110,.22);border:1.5px solid rgba(27,127,110,.45);border-radius:12px;padding:11px 12px;width:100%;margin-bottom:13px;font-size:12px;color:rgba(255,255,255,.75);font-weight:600;line-height:1.5}
+
+/* ── LOGIN ── */
+#s-login{background:linear-gradient(165deg,#06231F 0%,#0E3A31 45%,#1B5E52 100%);align-items:center;justify-content:center;padding:38px 24px;position:relative;overflow:hidden}
+#s-login::before{content:'';position:absolute;width:330px;height:330px;background:radial-gradient(circle,rgba(246,185,59,.20),transparent 70%);top:-70px;right:-90px;border-radius:50%;pointer-events:none}
+.login-logo{font-size:58px;animation:float 3s ease-in-out infinite}
+.login-brand{font-family:'Nunito',sans-serif;font-size:35px;font-weight:900;color:#fff;letter-spacing:-1px}
+.login-brand span{color:var(--A)}
+.login-sub{color:rgba(255,255,255,.66);font-size:13.5px;margin-bottom:28px;font-weight:600}
+.login-tabs{display:flex;background:rgba(255,255,255,.07);border-radius:13px;padding:4px;width:100%;margin-bottom:18px;position:relative}
+.ltab{flex:1;padding:11px 9px;border:none;border-radius:9px;background:transparent;color:rgba(255,255,255,.7);font-size:14px;font-weight:700;cursor:pointer}
+.ltab.on{background:var(--A);color:var(--P)}
+.fg{margin-bottom:11px;width:100%;position:relative}
+.fl{display:block;color:rgba(255,255,255,.5);font-size:11px;font-weight:800;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.fi{width:100%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;color:#fff;font-size:16px;font-weight:600;outline:none}
+.fi:focus{border-color:var(--A)}
+.fi::placeholder{color:rgba(255,255,255,.2)}
+.btn-login{width:100%;background:var(--A);color:var(--P);border:none;border-radius:12px;padding:14px;font-size:17px;font-weight:800;cursor:pointer;margin-top:5px;position:relative}
+.btn-login:active{transform:scale(.97)}
+.login-hint{color:rgba(255,255,255,.3);font-size:11.5px;text-align:center;margin-top:14px;font-weight:600;position:relative;line-height:1.5}
+.lnk{color:var(--A);font-weight:800;cursor:pointer;text-decoration:underline}
+
+/* ── HEADER ── */
+.mhdr{background:var(--P);padding:12px 15px 10px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;flex-wrap:wrap;gap:8px}
+.mhdr>div:first-child{min-width:0;flex:1 1 auto}
+.hg{font-size:10px;color:rgba(255,255,255,.4);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.hn{font-size:17px;font-weight:800;color:#fff;display:flex;align-items:center;gap:5px;min-width:0}
+.hn>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rbdg{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:800;flex-shrink:0}
+.rb-p{background:var(--A);color:var(--P)}.rb-v{background:var(--B);color:#fff}.rb-g{background:var(--PU);color:#fff}
+.hrgt{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.hbtn{width:38px;height:38px;border-radius:9px;border:none;background:rgba(255,255,255,.09);color:#fff;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative}
+.hbtn:active{background:rgba(255,255,255,.2)}
+.hbtn.hback{width:auto;min-width:94px;padding:0 14px 0 11px;gap:6px;font-size:15px;font-weight:800;background:rgba(255,255,255,.16)}
+.hbl{font-size:13.5px;font-weight:800}
+.hbtn-badge{position:absolute;top:-4px;right:-4px;background:var(--R);color:#fff;border-radius:50%;min-width:17px;height:17px;padding:0 3px;font-size:9px;font-weight:900;display:none;align-items:center;justify-content:center}
+.hbtn-badge.show{display:flex}
+
+/* ── STATS ── */
+.stats-bar{background:var(--P);padding:0 15px 12px;display:flex;gap:7px}
+.sc{flex:1;background:rgba(255,255,255,.07);border-radius:12px;padding:8px 10px;border:1px solid rgba(255,255,255,.05);min-width:0}
+.sl{font-size:9px;color:rgba(255,255,255,.4);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.sv{font-size:15.5px;font-weight:800;color:#fff;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sv-a{color:var(--A)}.sv-g{color:#5CE08A}
+
+/* ── CONTENU ── */
+.mcont{flex:1;overflow-y:auto;padding-bottom:150px}
+.ssec{padding:12px 15px 6px}
+.sinp{width:100%;background:var(--C);border:2px solid var(--BD);border-radius:12px;padding:11px 14px;font-size:14px;font-weight:600;color:var(--T);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.sinp:focus{border-color:var(--B)}
+.sinp::placeholder{color:var(--M);font-weight:500}
+.tscr{display:flex;gap:7px;overflow-x:auto;padding:9px 0 2px}
+.tpil{display:flex;align-items:center;gap:4px;background:var(--C);border:2px solid var(--BD);border-radius:20px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;color:var(--T);box-shadow:0 2px 6px rgba(0,0,0,.04)}
+.tpil.on{background:var(--P);border-color:var(--P);color:var(--A)}
+.shdr{display:flex;align-items:center;justify-content:space-between;padding:12px 15px 6px;gap:8px}
+.stit{font-size:11px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.8px}
+.sact{font-size:11.5px;font-weight:800;color:var(--B);background:none;border:none;cursor:pointer}
+.vide{text-align:center;padding:34px 22px;color:var(--M)}
+.vide-e{font-size:44px;margin-bottom:10px}
+.vide-t{font-size:14.5px;font-weight:800;color:var(--T);margin-bottom:5px}
+.vide-s{font-size:12.5px;font-weight:600;line-height:1.55}
+.note[onclick]{cursor:pointer}
+.note{background:#FFF8E6;border:1.5px solid #F3CE72;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700;color:#8A6100;line-height:1.45;margin:0 15px 10px}
+.note.rouge{background:#FFEDE8;border-color:#FFB59B;color:#A33000}
+.note.vert{background:#E7F8EE;border-color:#8FDCAE;color:#136B36}
+.note.bleu{background:#E8F4F2;border-color:#8FC9BF;color:#0E5A4E}
+
+/* ── TABLES (SERVICE) ── */
+.tgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 15px}
+.tcard{background:var(--C);border:1.5px solid var(--BD);border-radius:16px;padding:13px 12px;cursor:pointer;position:relative;box-shadow:0 1px 3px rgba(16,24,40,.06);min-height:96px;display:flex;flex-direction:column;justify-content:space-between}
+.tcard:active{transform:scale(.97)}
+.tcard.occ{border-color:var(--A);background:#FFFBF0}
+.tcard.longue{border-color:var(--O);background:#FFF6EE}
+.tc-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.tc-nm{font-size:15px;font-weight:900;display:flex;align-items:center;gap:5px;min-width:0}
+.tc-nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-zone{font-size:9.5px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.4px}
+.tc-mt{font-size:18px;font-weight:900;color:var(--P);margin-top:6px}
+.tc-lb{font-size:11px;font-weight:700;color:var(--M);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-libre{font-size:12.5px;font-weight:800;color:var(--G)}
+.tc-dot{width:9px;height:9px;border-radius:50%;background:var(--BD);flex-shrink:0}
+.tc-dot.on{background:var(--A)}
+.tc-dot.long{background:var(--O)}
+.tc-srv{position:absolute;right:10px;bottom:10px;font-size:9.5px;font-weight:900;background:var(--BG);color:var(--B);border-radius:8px;padding:3px 7px;max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── LIGNES ── */
+.lst{padding:0 15px}
+.row{background:var(--C);border:1px solid var(--BD);border-radius:14px;padding:11px 12px;margin-bottom:9px;display:flex;align-items:center;gap:11px;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+.row-e{font-size:24px;width:40px;height:40px;border-radius:11px;background:var(--BG);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.row-b{flex:1;min-width:0}
+.row-t{font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-s{font-size:11.5px;font-weight:600;color:var(--M);margin-top:2px;line-height:1.4}
+.row-r{text-align:right;flex-shrink:0}
+.row-p{font-size:14px;font-weight:900;color:var(--P)}
+.row-x{font-size:11px;font-weight:700;color:var(--M);margin-top:2px}
+.qbox{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.qb{width:32px;height:32px;border-radius:9px;border:none;background:var(--BG);color:var(--T);font-size:17px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.qb.plus{background:var(--P);color:var(--A)}
+.qb.moins{background:#FFEDE8;color:var(--R)}
+.qn{font-size:15px;font-weight:900;min-width:20px;text-align:center}
+.badge{display:inline-block;font-size:9.5px;font-weight:900;padding:2px 7px;border-radius:20px;margin-left:5px;vertical-align:middle}
+.bg-off{background:#EDE7F6;color:#5E35B1}
+.bg-frais{background:#E3F2FD;color:#1565C0}
+.bg-chaud{background:#FFF3E0;color:#E65100}
+.bg-bas{background:#FFF3E0;color:#B45309}
+.bg-out{background:#FFEBEE;color:#C62828}
+.bg-ok{background:#E8F5E9;color:#2E7D32}
+.bg-dette{background:#FFEBEE;color:#C62828}
+
+/* ── GRILLE PRODUITS ── */
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px 9px;padding:0 15px}
+.pcard{background:var(--C);border-radius:16px;padding:13px 7px 11px;text-align:center;cursor:pointer;border:1px solid var(--BD);position:relative;box-shadow:0 1px 3px rgba(16,24,40,.06);user-select:none;min-width:0}
+.pcard:active{transform:scale(.92)}
+.pcard.sel{border-color:var(--G);background:#F0FFF8}
+.pcard.rupt{opacity:.5}
+.pmedia{width:54px;height:54px;margin:0 auto 7px;border-radius:14px;background:var(--BG);display:flex;align-items:center;justify-content:center;font-size:29px;position:relative}
+.pnm{font-size:10px;font-weight:700;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:24px}
+.ppr{font-size:12.5px;font-weight:900;color:var(--B);margin-top:2px}
+.qbdg{position:absolute;top:-8px;right:-6px;background:var(--G);color:#fff;border-radius:50%;min-width:23px;height:23px;padding:0 5px;font-size:11.5px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid var(--C)}
+.fbdg{position:absolute;top:7px;left:8px;font-size:12px;opacity:.85}
+.sbdg{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:900;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.sbdg.bas{background:#FFF3E0;color:#B45309;border:1px solid #F3CE72}
+.sbdg.out{background:#FFEBEE;color:#C62828;border:1px solid #FFB59B}
+
+/* ── BOUTONS ── */
+.bpr{width:100%;background:var(--P);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14.5px;font-weight:800;cursor:pointer;margin-bottom:9px}
+.bpr:active{transform:scale(.98)}
+.bse{width:100%;background:var(--C);color:var(--T);border:1.5px solid var(--BD);border-radius:12px;padding:12px;font-size:13.5px;font-weight:800;cursor:pointer;margin-bottom:9px}
+.bok{background:var(--G);color:#fff}
+.bdg2{background:#FFEBEE;color:var(--R);border-color:#FFCDD2}
+.brow{display:flex;gap:8px}
+.brow>button{flex:1}
+.fab{position:fixed;right:16px;bottom:152px;width:56px;height:56px;border-radius:50%;background:var(--A);color:var(--P);border:none;font-size:28px;font-weight:900;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:60;display:flex;align-items:center;justify-content:center}
+
+/* ── BARRE FLOTTANTE ── */
+.fbar{position:fixed;left:12px;right:12px;bottom:84px;max-width:406px;margin:0 auto;z-index:70}
+.fbar.hide{display:none}
+.cpill{width:100%;background:var(--P);border:none;border-radius:16px;padding:9px 10px 9px 14px;display:flex;align-items:center;justify-content:space-between;gap:9px;cursor:pointer;box-shadow:0 8px 26px rgba(0,0,0,.28);color:#fff}
+.cbub{background:var(--A);color:var(--P);border-radius:11px;min-width:34px;height:34px;padding:0 8px;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-right:10px}
+.csum{text-align:left;min-width:0}
+.csub{font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.4px}
+.ctot{font-size:16px;font-weight:900;color:#fff}
+.benc{background:var(--A);color:var(--P);border-radius:11px;padding:11px 14px;font-size:13.5px;font-weight:900;white-space:nowrap}
+
+/* ── NAV ── */
+.bnav{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:var(--C);border-top:1px solid var(--BD);display:flex;padding:7px 6px calc(7px + env(safe-area-inset-bottom));z-index:80;box-shadow:0 -3px 16px rgba(0,0,0,.06)}
+.ni{flex:1;border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px;cursor:pointer;color:var(--M);min-width:0}
+.ne{font-size:20px;filter:grayscale(1);opacity:.5}
+.nl{font-size:10px;font-weight:800}
+.ni.on .ne{filter:none;opacity:1}
+.ni.on .nl{color:var(--P)}
+
+/* ── MODAL ── */
+.ov{position:fixed;inset:0;background:rgba(8,24,21,.55);z-index:200;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
+.ov.on{display:flex}
+.ovb{background:var(--C);width:100%;max-width:430px;border-radius:22px 22px 0 0;max-height:92vh;display:flex;flex-direction:column;animation:up .24s cubic-bezier(.2,.9,.3,1)}
+@keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:translateY(0);opacity:1}}
+.ovh{padding:16px 17px 11px;border-bottom:1px solid var(--BD);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0}
+.ovt{font-size:16.5px;font-weight:900;min-width:0}
+.ovs{font-size:11.5px;font-weight:600;color:var(--M);margin-top:2px}
+.bcl{width:36px;height:36px;border-radius:11px;border:none;background:var(--BG);font-size:16px;font-weight:900;color:var(--T);cursor:pointer;flex-shrink:0}
+.ovc{padding:15px 17px 22px;overflow-y:auto}
+.fld{margin-bottom:11px}
+.lbl{display:block;font-size:11px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.inp{width:100%;background:var(--BG);border:2px solid var(--BD);border-radius:12px;padding:12px 14px;font-size:15.5px;font-weight:700;color:var(--T);outline:none}
+.inp:focus{border-color:var(--B)}
+.inp::placeholder{color:var(--M);font-weight:500}
+select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394A3A0'><path d='M7 10l5 5 5-5z'/></svg>");background-repeat:no-repeat;background-position:right 10px center}
+.f2{display:flex;gap:9px}
+.f2>*{flex:1;min-width:0}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px}
+.chip{border:2px solid var(--BD);background:var(--BG);border-radius:11px;padding:10px 13px;font-size:12.5px;font-weight:800;cursor:pointer;color:var(--T)}
+.chip.on{border-color:var(--A);background:#FFF8E6;color:#8A6100}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--BD);font-size:13px}
+.kv:last-child{border-bottom:none}
+.kv-l{font-weight:700;color:var(--M);min-width:0}
+.kv-v{font-weight:900;text-align:right;white-space:nowrap}
+.kv.big .kv-v{font-size:17px;color:var(--P)}
+.toast{position:fixed;bottom:150px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--P);color:#fff;padding:12px 18px;border-radius:13px;font-size:13px;font-weight:700;z-index:400;opacity:0;pointer-events:none;transition:all .25s;max-width:92vw;text-align:center;line-height:1.45;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── CARTES RAPPORT ── */
+.rcard{background:var(--C);border:1px solid var(--BD);border-radius:16px;padding:14px;margin-bottom:11px;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+.rct{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:var(--M);margin-bottom:10px}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.rtile{background:var(--BG);border-radius:13px;padding:11px}
+.rtl{font-size:10px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.4px}
+.rtv{font-size:18px;font-weight:900;margin-top:3px}
+.rtv.g{color:#1B7A3A}.rtv.r{color:var(--R)}.rtv.a{color:#B45309}
+.bar-l{margin-bottom:9px}
+.bar-h{display:flex;justify-content:space-between;font-size:12px;font-weight:800;margin-bottom:4px;gap:9px}
+.bar-h span:last-child{white-space:nowrap;color:var(--B)}
+.bar-t{height:7px;background:var(--BG);border-radius:4px;overflow:hidden}
+.bar-f{height:100%;background:linear-gradient(90deg,var(--B),var(--A));border-radius:4px}
+.tog{width:48px;height:28px;border-radius:16px;position:relative;cursor:pointer;flex-shrink:0;transition:background .2s}
+.tog.on{background:var(--G)}.tog.off{background:#D3D9D7}
+.tog::after{content:'';position:absolute;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.tog.on::after{left:23px}.tog.off::after{left:3px}
+.strow{display:flex;align-items:center;gap:12px;background:var(--C);border:1px solid var(--BD);border-radius:14px;padding:13px;margin-bottom:9px}
+.strow .row-b{flex:1}
+.sthdr{background:var(--P);padding:15px 15px 16px}
+@media(max-width:359px){.pgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:431px){body{box-shadow:0 0 40px rgba(0,0,0,.07)}}
+</style>
+</head>
+<body>
+
+<!-- ══════════ SPLASH ══════════ -->
+<div id="s-splash" class="scr on">
+  <div class="splash-logo">🍻</div>
+  <div class="splash-title">My<span>Bar</span></div>
+  <div class="splash-sub" data-fr="Ma buvette dans la poche" data-en="My bar in my pocket">Ma buvette dans la poche</div>
+  <div class="splash-bar"><div class="splash-fill"></div></div>
+</div>
+
+<!-- ══════════ VITRINE ══════════ -->
+<!-- La vitrine est entièrement peinte par `rendreVitrine()` : c'est le
+     seul écran fait de longues phrases, et vingt `data-fr`/`data-en`
+     imbriqués dans des cartes auraient été illisibles à relire. -->
+<div id="s-vitrine" class="scr">
+  <div class="mcont" style="padding-bottom:24px" id="vit-body"></div>
+</div>
+
+<!-- ══════════ ONBOARD ══════════ -->
+<div id="s-onboard" class="scr">
+  <div class="ob-logo">🍻</div>
+  <div class="ob-brand">My<span>Bar</span></div>
+  <div class="ob-langsw" id="ob-langsw"></div>
+  <div class="ob-tagline" data-fr="Ouvrons ton bar en 4 étapes" data-en="Let's open your bar in 4 steps">Ouvrons ton bar en 4 étapes</div>
+  <div class="ob-dots"><div class="ob-dot cur" id="od1"></div><div class="ob-dot" id="od2"></div><div class="ob-dot" id="od3"></div><div class="ob-dot" id="od4"></div></div>
+
+  <div class="ob-step on" id="obs1">
+    <button class="btn-bk" onclick="goScreen('s-vitrine')">← <span data-fr="Retour" data-en="Back">Retour</span></button>
+    <div class="ob-step-h" data-fr="Dans quel pays est ton établissement ?" data-en="Which country is your place in?">Dans quel pays est ton établissement ?</div>
+    <input class="pays-srch" id="ob-pays-srch" oninput="filtrerPays(this.value)" placeholder="🔍 Chercher un pays..." data-fr="🔍 Chercher un pays..." data-en="🔍 Search a country..." data-ph>
+    <div class="pays-lst" id="ob-pays-lst"></div>
+    <button class="btn-ob" onclick="obNext(1)" data-fr="Continuer →" data-en="Continue →">Continuer →</button>
+  </div>
+
+  <div class="ob-step" id="obs2">
+    <button class="btn-bk" onclick="obPrev(2)">← <span data-fr="Retour" data-en="Back">Retour</span></button>
+    <div class="ob-step-h" data-fr="Quel type d'établissement tiens-tu ?" data-en="What kind of place do you run?">Quel type d'établissement tiens-tu ?</div>
+    <div class="sec-grid" id="ob-type-grid"></div>
+    <div class="ob-notice" data-fr="Le type choisit la carte de départ (bières, sucreries, grillades…) et le vocabulaire. Tu pourras tout modifier ensuite." data-en="The type sets your starting menu (beers, soft drinks, grills…). You can change everything afterwards.">Le type choisit la carte de départ…</div>
+    <button class="btn-ob" onclick="obNext(2)" data-fr="Continuer →" data-en="Continue →">Continuer →</button>
+  </div>
+
+  <div class="ob-step" id="obs3">
+    <button class="btn-bk" onclick="obPrev(3)">← <span data-fr="Retour" data-en="Back">Retour</span></button>
+    <div class="ob-step-h" data-fr="Le nom de l'établissement et ton numéro" data-en="Your bar's name and your phone number">Le nom de l'établissement</div>
+    <input class="ob-inp" id="ob-nom" placeholder="Nom du bar" data-fr="Nom du bar" data-en="Bar name" data-ph maxlength="40" autocomplete="off">
+    <input class="ob-inp" id="ob-tel" placeholder="Téléphone du patron" data-fr="Téléphone du patron" data-en="Owner's phone" data-ph inputmode="tel" maxlength="20" autocomplete="off">
+    <select class="reg-sel" id="ob-tables">
+      <option value="8" data-fr="8 tables" data-en="8 tables">8 tables</option>
+      <option value="12" selected data-fr="12 tables" data-en="12 tables">12 tables</option>
+      <option value="16" data-fr="16 tables" data-en="16 tables">16 tables</option>
+      <option value="20" data-fr="20 tables" data-en="20 tables">20 tables</option>
+      <option value="30" data-fr="30 tables" data-en="30 tables">30 tables</option>
+    </select>
+    <div class="ob-notice" data-fr="Les tables sont créées automatiquement (Salle, Terrasse, Comptoir). Tu peux les renommer, en ajouter ou en retirer dans les Paramètres." data-en="Tables are created for you (Indoor, Terrace, Counter). You can rename, add or remove them in Settings.">Les tables sont créées automatiquement.</div>
+    <button class="btn-ob" onclick="obNext(3)" data-fr="Continuer →" data-en="Continue →">Continuer →</button>
+  </div>
+
+  <div class="ob-step" id="obs4">
+    <button class="btn-bk" onclick="obPrev(4)">← <span data-fr="Retour" data-en="Back">Retour</span></button>
+    <div class="ob-step-h" data-fr="Ton code patron (4 chiffres)" data-en="Your owner code (4 digits)">Ton code patron</div>
+    <input class="ob-inp" id="ob-pin" placeholder="• • • •" inputmode="numeric" maxlength="4" type="password" autocomplete="off">
+    <input class="ob-inp" id="ob-pin2" placeholder="Retape le code" data-fr="Retape le code" data-en="Type the code again" data-ph inputmode="numeric" maxlength="4" type="password" autocomplete="off">
+    <div class="ob-confirm" id="ob-recap"></div>
+    <div class="ob-notice" data-fr="⚠️ Ce code ouvre la caisse, les rapports et les prix. Ne le donne pas aux serveurs : ils auront leur propre code." data-en="⚠️ This code opens the till, the reports and the prices. Don't give it to your servers — they get their own.">⚠️ Ce code ouvre la caisse.</div>
+    <button class="btn-ob" onclick="creerEtablissement()" id="ob-go" data-fr="🍻 Ouvrir mon bar" data-en="🍻 Open my bar">🍻 Ouvrir mon bar</button>
+  </div>
+</div>
+
+<!-- ══════════ LOGIN ══════════ -->
+<div id="s-login" class="scr">
+  <div class="login-logo">🍻</div>
+  <div class="login-brand">My<span>Bar</span></div>
+  <div class="login-sub" id="login-sub" data-fr="Ma buvette dans la poche" data-en="My bar in my pocket">Ma buvette dans la poche</div>
+  <div style="width:100%;position:relative">
+    <div class="login-tabs">
+      <button class="ltab on" id="lt-patron" onclick="switchLogin('patron')" data-fr="👑 Patron" data-en="👑 Owner">👑 Patron</button>
+      <button class="ltab" id="lt-serveur" onclick="switchLogin('serveur')" data-fr="🧑‍🍳 Serveur" data-en="🧑‍🍳 Server">🧑‍🍳 Serveur</button>
+    </div>
+    <div id="lg-patron">
+      <div class="fg"><label class="fl" data-fr="Code patron" data-en="Owner code">Code patron</label><input class="fi" id="p-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+      <button class="btn-login" onclick="loginPatron()" data-fr="Connexion 👑" data-en="Sign in 👑">Connexion 👑</button>
+    </div>
+    <div id="lg-serveur" style="display:none">
+      <div class="fg"><label class="fl" data-fr="Ton nom" data-en="Your name">Ton nom</label><select class="fi" id="v-nm"></select></div>
+      <div class="fg"><label class="fl" data-fr="Ton code" data-en="Your code">Ton code</label><input class="fi" id="v-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+      <button class="btn-login" onclick="loginServeur()" data-fr="Connexion 🧑‍🍳" data-en="Sign in 🧑‍🍳">Connexion 🧑‍🍳</button>
+    </div>
+    <div class="login-hint" id="login-hint"></div>
+  </div>
+</div>
+
+<!-- ══════════ SERVICE ══════════ -->
+<div id="s-service" class="scr">
+  <div class="mhdr">
+    <div><div class="hg" id="hdr-bonjour">Service</div><div class="hn"><span id="u-nm">Patron</span><span class="rbdg rb-p" id="u-role">Patron</span></div></div>
+    <div class="hrgt">
+      <button class="hbtn" id="btn-happy" onclick="toggleHappy()" title="Happy hour" data-title-en="Happy hour">🕕</button>
+      <button class="hbtn" id="btn-dep" onclick="ouvrirDepense()" title="Dépense" data-title-en="Expense">💸</button>
+      <button class="hbtn" onclick="ouvrirAlertes()" title="Alertes" data-title-en="Alerts"><span>🔔</span><div class="hbtn-badge" id="alert-badge">0</div></button>
+      <button class="hbtn" onclick="goSt()" title="Paramètres" data-title-en="Settings">⚙️</button>
+      <button class="hbtn" onclick="logout()" title="Quitter" data-title-en="Sign out">🚪</button>
+    </div>
+  </div>
+  <div class="stats-bar">
+    <div class="sc"><div class="sl" data-fr="Recette du soir" data-en="Tonight's takings">Recette du soir</div><div class="sv sv-a" id="sv-ca">0</div></div>
+    <div class="sc"><div class="sl" data-fr="En cours" data-en="Still open">En cours</div><div class="sv" id="sv-ouv">0</div></div>
+    <div class="sc" id="sc-ben"><div class="sl" data-fr="Net du soir" data-en="Tonight's net">Net du soir</div><div class="sv sv-g" id="sv-ben">0</div></div>
+  </div>
+  <div class="mcont">
+    <div id="svc-alertes"></div>
+    <div class="ssec"><div class="tscr" id="svc-zones" style="padding-top:0"></div></div>
+    <div class="shdr"><span class="stit" id="svc-tit">Tables</span><button class="sact" onclick="ouvrirNouvelleTable()" data-fr="+ Table" data-en="+ Table">+ Table</button></div>
+    <div class="tgrid" id="svc-grid"></div>
+    <div style="height:16px"></div>
+  </div>
+  <div class="bnav">
+    <button class="ni on" onclick="navTo('service',this)"><span class="ne">🍻</span><span class="nl" data-fr="Service" data-en="Service">Service</span></button>
+    <button class="ni" onclick="navTo('stock',this)"><span class="ne">📦</span><span class="nl" data-fr="Stock" data-en="Stock">Stock</span></button>
+    <button class="ni" onclick="navTo('rapports',this)"><span class="ne">📈</span><span class="nl" data-fr="Rapports" data-en="Reports">Rapports</span></button>
+    <button class="ni" onclick="navTo('equipe',this)"><span class="ne">👥</span><span class="nl" data-fr="Équipe" data-en="Team">Équipe</span></button>
+  </div>
+</div>
+
+<!-- ══════════ ADDITION (une table) ══════════ -->
+<div id="s-addition" class="scr">
+  <div class="mhdr">
+    <div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0">
+      <button class="hbtn hback" onclick="retourService()">←<span class="hbl" data-fr="Tables" data-en="Tables">Tables</span></button>
+      <div style="min-width:0"><div class="hg" id="add-zone">Salle</div><div class="hn"><span id="add-nm">Table 1</span></div></div>
+    </div>
+    <div class="hrgt">
+      <button class="hbtn" onclick="ouvrirOutilsTable()" title="Options de la table" data-title-en="Table options">⋯</button>
+    </div>
+  </div>
+  <div class="stats-bar">
+    <div class="sc"><div class="sl" data-fr="Ouverte depuis" data-en="Open for">Ouverte depuis</div><div class="sv" id="add-duree">—</div></div>
+    <div class="sc"><div class="sl" data-fr="Articles" data-en="Items">Articles</div><div class="sv" id="add-nb">0</div></div>
+    <div class="sc"><div class="sl" data-fr="Serveur" data-en="Server">Serveur</div><div class="sv" id="add-srv">—</div></div>
+  </div>
+  <div class="mcont" style="padding-bottom:170px">
+    <div id="add-note"></div>
+    <div class="shdr"><span class="stit" data-fr="Ce qui a été servi" data-en="What has been served">Ce qui a été servi</span><button class="sact" onclick="ouvrirMenu()" data-fr="+ Ajouter" data-en="+ Add">+ Ajouter</button></div>
+    <div class="lst" id="add-lignes"></div>
+    <div style="height:12px"></div>
+  </div>
+  <button class="fab" onclick="ouvrirMenu()" aria-label="Ajouter">+</button>
+  <div class="fbar" id="add-bar">
+    <button class="cpill" onclick="ouvrirPaiement()">
+      <div style="display:flex;align-items:center;min-width:0"><div class="cbub" id="add-cbub">0</div><div class="csum"><div class="csub" data-fr="Total table" data-en="Table total">Total table</div><div class="ctot" id="add-ctot">0</div></div></div>
+      <div class="benc" data-fr="💵 Encaisser" data-en="💵 Cash in">💵 Encaisser</div>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════ MENU (carte) ══════════ -->
+<div id="s-menu" class="scr">
+  <div class="mhdr">
+    <div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0">
+      <button class="hbtn hback" onclick="fermerMenu()">←<span class="hbl" data-fr="Addition" data-en="Bill">Addition</span></button>
+      <div style="min-width:0"><div class="hg" data-fr="La carte" data-en="The menu">La carte</div><div class="hn"><span id="menu-tit">Table 1</span></div></div>
+    </div>
+    <div class="hrgt"><button class="hbtn" id="btn-add-prod" onclick="ouvrirProduit(null)" title="Nouveau produit" data-title-en="New product">➕</button></div>
+  </div>
+  <div class="mcont" style="padding-bottom:170px">
+    <div class="ssec">
+      <input class="sinp" id="menu-src" oninput="chercherMenu(this.value)" placeholder="🔍 Bière, sucrerie, brochette..." data-fr="🔍 Bière, sucrerie, brochette..." data-en="🔍 Beer, soda, brochette..." data-ph>
+      <div class="tscr" id="menu-fams"></div>
+    </div>
+    <div id="menu-happy"></div>
+    <div class="pgrid" id="menu-grid"></div>
+    <div style="height:16px"></div>
+  </div>
+  <div class="fbar" id="menu-bar">
+    <button class="cpill" onclick="fermerMenu()">
+      <div style="display:flex;align-items:center;min-width:0"><div class="cbub" id="menu-cbub">0</div><div class="csum"><div class="csub" data-fr="Total table" data-en="Table total">Total table</div><div class="ctot" id="menu-ctot">0</div></div></div>
+      <div class="benc" data-fr="✓ Terminé" data-en="✓ Done">✓ Terminé</div>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════ STOCK ══════════ -->
+<div id="s-stock" class="scr">
+  <div class="mhdr">
+    <div><div class="hg" data-fr="Cave & frigo" data-en="Cellar & fridge">Cave &amp; frigo</div><div class="hn"><span data-fr="📦 Stock" data-en="📦 Stock">📦 Stock</span></div></div>
+    <div class="hrgt">
+      <button class="hbtn" onclick="ouvrirAppro()" title="Approvisionnement" data-title-en="Stock purchase">🚚</button>
+      <button class="hbtn" onclick="ouvrirVidanges()" title="Vidanges" data-title-en="Empties">♻️</button>
+      <button class="hbtn" onclick="ouvrirProduit(null)" title="Nouveau produit" data-title-en="New product">➕</button>
+      <button class="hbtn" onclick="goSt()">⚙️</button>
+    </div>
+  </div>
+  <div class="mcont" style="padding-bottom:96px">
+    <div class="ssec">
+      <input class="sinp" id="stk-src" oninput="chercherStock(this.value)" placeholder="🔍 Chercher un produit..." data-fr="🔍 Chercher un produit..." data-en="🔍 Search a product..." data-ph>
+      <div class="tscr" id="stk-filtres"></div>
+    </div>
+    <div id="stk-resume"></div>
+    <div class="lst" id="stk-lst"></div>
+    <div style="height:16px"></div>
+  </div>
+  <div class="bnav">
+    <button class="ni" onclick="navTo('service',this)"><span class="ne">🍻</span><span class="nl" data-fr="Service" data-en="Service">Service</span></button>
+    <button class="ni on" onclick="navTo('stock',this)"><span class="ne">📦</span><span class="nl" data-fr="Stock" data-en="Stock">Stock</span></button>
+    <button class="ni" onclick="navTo('rapports',this)"><span class="ne">📈</span><span class="nl" data-fr="Rapports" data-en="Reports">Rapports</span></button>
+    <button class="ni" onclick="navTo('equipe',this)"><span class="ne">👥</span><span class="nl" data-fr="Équipe" data-en="Team">Équipe</span></button>
+  </div>
+</div>
+
+<!-- ══════════ RAPPORTS ══════════ -->
+<div id="s-rapports" class="scr">
+  <div class="mhdr">
+    <div><div class="hg" data-fr="Analyse" data-en="Analysis">Analyse</div><div class="hn"><span data-fr="📈 Rapports" data-en="📈 Reports">📈 Rapports</span></div></div>
+    <div class="hrgt">
+      <button class="hbtn" onclick="ouvrirCloture()" title="Clôture du service" data-title-en="Close the service">🌙</button>
+      <button class="hbtn" onclick="exporterCSV()" title="Exporter" data-title-en="Export">📥</button>
+      <button class="hbtn" onclick="goSt()">⚙️</button>
+    </div>
+  </div>
+  <div class="mcont" style="padding-bottom:96px">
+    <div class="ssec"><div class="tscr" id="rpt-periodes" style="padding-top:0"></div></div>
+    <div style="padding:8px 15px 0" id="rpt-cont"></div>
+  </div>
+  <div class="bnav">
+    <button class="ni" onclick="navTo('service',this)"><span class="ne">🍻</span><span class="nl" data-fr="Service" data-en="Service">Service</span></button>
+    <button class="ni" onclick="navTo('stock',this)"><span class="ne">📦</span><span class="nl" data-fr="Stock" data-en="Stock">Stock</span></button>
+    <button class="ni on" onclick="navTo('rapports',this)"><span class="ne">📈</span><span class="nl" data-fr="Rapports" data-en="Reports">Rapports</span></button>
+    <button class="ni" onclick="navTo('equipe',this)"><span class="ne">👥</span><span class="nl" data-fr="Équipe" data-en="Team">Équipe</span></button>
+  </div>
+</div>
+
+<!-- ══════════ ÉQUIPE & CLIENTS ══════════ -->
+<div id="s-equipe" class="scr">
+  <div class="mhdr">
+    <div><div class="hg" data-fr="Gestion" data-en="Management">Gestion</div><div class="hn"><span data-fr="👥 Équipe" data-en="👥 Team">👥 Équipe</span></div></div>
+    <div class="hrgt"><button class="hbtn" id="eq-add" onclick="ouvrirAjoutEquipe()">➕</button><button class="hbtn" onclick="goSt()">⚙️</button></div>
+  </div>
+  <div class="mcont" style="padding-bottom:96px">
+    <div class="ssec"><div class="tscr" id="eq-onglets" style="padding-top:0"></div></div>
+    <div style="padding:6px 0 0" id="eq-cont"></div>
+  </div>
+  <div class="bnav">
+    <button class="ni" onclick="navTo('service',this)"><span class="ne">🍻</span><span class="nl" data-fr="Service" data-en="Service">Service</span></button>
+    <button class="ni" onclick="navTo('stock',this)"><span class="ne">📦</span><span class="nl" data-fr="Stock" data-en="Stock">Stock</span></button>
+    <button class="ni" onclick="navTo('rapports',this)"><span class="ne">📈</span><span class="nl" data-fr="Rapports" data-en="Reports">Rapports</span></button>
+    <button class="ni on" onclick="navTo('equipe',this)"><span class="ne">👥</span><span class="nl" data-fr="Équipe" data-en="Team">Équipe</span></button>
+  </div>
+</div>
+
+<!-- ══════════ PARAMÈTRES ══════════ -->
+<div id="s-settings" class="scr">
+  <div class="sthdr">
+    <div style="display:flex;align-items:center;gap:9px">
+      <button class="hbtn hback" onclick="goBack()">←<span class="hbl" data-fr="Retour" data-en="Back">Retour</span></button>
+      <div style="min-width:0">
+        <div style="color:#fff;font-size:19px;font-weight:900" data-fr="Paramètres" data-en="Settings">Paramètres</div>
+        <div style="color:rgba(255,255,255,.45);font-size:12px;font-weight:600" id="st-nom">Mon bar</div>
+        <div id="st-build" style="color:rgba(255,255,255,.7);font-size:12px;font-weight:800;margin-top:2px"></div>
+      </div>
+    </div>
+  </div>
+  <div class="mcont" style="padding-bottom:40px"><div style="padding:14px 15px" id="st-cont"></div></div>
+</div>
+
+<div class="ov" id="ov" onclick="if(event.target===this)fermerModal()"><div class="ovb" id="ovb"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   MyBar — gestion de bar, buvette, snack et cave.
+
+   Même architecture que MyBoutiQ : un seul fichier, pas de serveur,
+   tout dans localStorage, l'app marche entièrement hors-ligne. Ce qui
+   change, c'est le métier — et il change beaucoup :
+
+   • une vente de boutique se termine à la caisse ; une vente de bar
+     reste OUVERTE pendant deux heures sur une table, et se paye à la
+     fin. L'objet central n'est donc pas le panier mais l'ADDITION.
+   • un article de boutique a un stock ; une bière en a DEUX — celui du
+     dépôt et celui du frigo — et le client ne veut que le second.
+   • une bouteille vendue laisse une bouteille vide qui VAUT DE L'ARGENT
+     chez le dépositaire. Le stock de vidanges est une caisse, pas un
+     déchet.
+   • on achète en casiers, on vend à la bouteille.
+   ══════════════════════════════════════════════════════════════════ */
+var BUILD='1.1';
+
+/* ══════════════════════════════════════════════════════════════════
+   LA LANGUE
+
+   `L('français','english')` plutôt qu'une table de clés : le texte
+   français et sa traduction se lisent CÔTE À CÔTE, à l'endroit exact
+   où ils s'affichent. Une table de clés à quatre cents entrées se
+   désynchronise au premier message ajouté — on corrige une phrase en
+   français et personne ne voit que l'anglaise dit encore l'inverse.
+
+   La langue est choisie AVANT qu'un bar existe (la vitrine, puis
+   l'inscription), elle vit donc dans sa propre clé de stockage ; elle
+   est ensuite recopiée dans la fiche du bar.
+   ══════════════════════════════════════════════════════════════════ */
+var LANGKEY='mybar_lang';
+var lang=(function(){
+  /* ⚠️ Le site de MyBoutiQ bascule en anglais sur `navigator.language` ;
+     MyBar, non. Un visiteur anglophone lisait donc « For bars / Open
+     MyBar » en anglais, touchait le bouton, et atterrissait sur une
+     application en français. On garde le même réflexe : le choix déjà
+     posé sur CE téléphone l'emporte, et à défaut on suit la langue du
+     navigateur. */
+  try{var v=localStorage.getItem(LANGKEY);if(v==='en'||v==='fr')return v;}catch(e){}
+  try{if(/^en/i.test(navigator.language||(navigator.languages||[])[0]||''))return 'en';}catch(e){}
+  return 'fr';
+})();
+function L(fr,en){return lang==='en'?en:fr;}
+function setLang(x,silencieux){
+  lang=(x==='en')?'en':'fr';
+  try{localStorage.setItem(LANGKEY,lang);}catch(e){}
+  if(DB&&DB.cfg){DB.cfg.lang=lang;save();}
+  try{document.documentElement.setAttribute('lang',lang);}catch(e){}
+  appliquerLangue();
+  var on=document.querySelector('.scr.on');
+  if(on&&typeof rendreEcran==='function')rendreEcran(on.id);
+  if(on&&on.id==='s-onboard'){rendrePays(($('ob-pays-srch')||{}).value||'');rendreTypes();majRecap();}
+  if(!silencieux)toast(L('🇫🇷 Français','🇬🇧 English'));
+}
+var DBKEY='mybar_v1';
+var DBKEY_ANCIEN='mybarq_v1';   // avant le renommage — relu une seule fois
+
+/* ── Pays, devises et échelle de prix ─────────────────────────────
+   Les prix de la carte de départ sont écrits en francs CFA (le bar de
+   référence). `k` les transpose ailleurs : 1 000 F de bière deviennent
+   4 500 FC à Kinshasa, pas 1 000. Sans ça, le premier écran d'un
+   nouveau patron affiche des prix absurdes, et il repart. */
+var PAYS=[
+ {c:'CM',nm:'Cameroun',ne:'Cameroon',f:'🇨🇲',d:'XAF',s:'F',k:1},
+ {c:'CI',nm:"Côte d'Ivoire",ne:'Ivory Coast',f:'🇨🇮',d:'XOF',s:'F',k:1},
+ {c:'SN',nm:'Sénégal',ne:'Senegal',f:'🇸🇳',d:'XOF',s:'F',k:1},
+ {c:'GA',nm:'Gabon',ne:'Gabon',f:'🇬🇦',d:'XAF',s:'F',k:1},
+ {c:'CG',nm:'Congo-Brazzaville',ne:'Congo-Brazzaville',f:'🇨🇬',d:'XAF',s:'F',k:1},
+ {c:'CD',nm:'RD Congo',ne:'DR Congo',f:'🇨🇩',d:'CDF',s:'FC',k:4.5},
+ {c:'BJ',nm:'Bénin',ne:'Benin',f:'🇧🇯',d:'XOF',s:'F',k:1},
+ {c:'BF',nm:'Burkina Faso',ne:'Burkina Faso',f:'🇧🇫',d:'XOF',s:'F',k:1},
+ {c:'ML',nm:'Mali',ne:'Mali',f:'🇲🇱',d:'XOF',s:'F',k:1},
+ {c:'TG',nm:'Togo',ne:'Togo',f:'🇹🇬',d:'XOF',s:'F',k:1},
+ {c:'NE',nm:'Niger',ne:'Niger',f:'🇳🇪',d:'XOF',s:'F',k:1},
+ {c:'TD',nm:'Tchad',ne:'Chad',f:'🇹🇩',d:'XAF',s:'F',k:1},
+ {c:'CF',nm:'Centrafrique',ne:'Central African Rep.',f:'🇨🇫',d:'XAF',s:'F',k:1},
+ {c:'GN',nm:'Guinée',ne:'Guinea',f:'🇬🇳',d:'GNF',s:'GNF',k:15},
+ {c:'MG',nm:'Madagascar',ne:'Madagascar',f:'🇲🇬',d:'MGA',s:'Ar',k:7.5},
+ {c:'MA',nm:'Maroc',ne:'Morocco',f:'🇲🇦',d:'MAD',s:'DH',k:0.016},
+ {c:'DZ',nm:'Algérie',ne:'Algeria',f:'🇩🇿',d:'DZD',s:'DA',k:0.22},
+ {c:'TN',nm:'Tunisie',ne:'Tunisia',f:'🇹🇳',d:'TND',s:'DT',k:0.005},
+ {c:'HT',nm:'Haïti',ne:'Haiti',f:'🇭🇹',d:'HTG',s:'G',k:0.22},
+ {c:'FR',nm:'France',ne:'France',f:'🇫🇷',d:'EUR',s:'€',k:0.0016},
+ {c:'GH',nm:'Ghana',ne:'Ghana',f:'🇬🇭',d:'GHS',s:'GH₵',k:0.025},
+ {c:'NG',nm:'Nigéria',ne:'Nigeria',f:'🇳🇬',d:'NGN',s:'₦',k:2.6},
+ {c:'KE',nm:'Kenya',ne:'Kenya',f:'🇰🇪',d:'KES',s:'KSh',k:0.21},
+ {c:'ZA',nm:'Afrique du Sud',ne:'South Africa',f:'🇿🇦',d:'ZAR',s:'R',k:0.031}
+];
+function paysNm(p){return L(p.nm,p.ne);}
+
+var TYPES=[
+ {c:'bar',nm:'Bar / Buvette',ne:'Bar / Pub',e:'🍻',fams:['biere','sucr','eau','energ','vin','cuis','div']},
+ {c:'snack',nm:'Snack-bar',ne:'Snack bar',e:'🍢',fams:['biere','sucr','eau','energ','cuis','cock','div']},
+ {c:'cave',nm:'Cave à boissons',ne:'Drinks shop',e:'🏪',fams:['biere','sucr','eau','energ','vin','div']},
+ {c:'resto',nm:'Restaurant-bar',ne:'Restaurant & bar',e:'🍽️',fams:['biere','sucr','eau','vin','cock','cuis','div']},
+ {c:'nuit',nm:'Boîte / Lounge',ne:'Club / Lounge',e:'🎶',fams:['biere','energ','vin','cock','eau','div']},
+ {c:'terrasse',nm:'Terrasse / Kiosque',ne:'Terrace / Kiosk',e:'⛱️',fams:['biere','sucr','eau','energ','cuis','div']}
+];
+function typeNm(t){return L(t.nm,t.ne);}
+
+var FAMS=[
+ {c:'biere',nm:'Bières',ne:'Beers',e:'🍺'},
+ {c:'sucr',nm:'Sucreries',ne:'Soft drinks',e:'🥤'},
+ {c:'eau',nm:'Eaux',ne:'Water',e:'💧'},
+ {c:'energ',nm:'Énergisants',ne:'Energy drinks',e:'⚡'},
+ {c:'vin',nm:'Vins & Spiritueux',ne:'Wines & Spirits',e:'🍷'},
+ {c:'cock',nm:'Cocktails',ne:'Cocktails',e:'🍹'},
+ {c:'cuis',nm:'Cuisine',ne:'Kitchen',e:'🍢'},
+ {c:'div',nm:'Divers',ne:'Other',e:'🧊'}
+];
+function famNm(c){for(var i=0;i<FAMS.length;i++)if(FAMS[i].c===c)return L(FAMS[i].nm,FAMS[i].ne);return L('Divers','Other');}
+function famE(c){for(var i=0;i<FAMS.length;i++)if(FAMS[i].c===c)return FAMS[i].e;return '🧊';}
+
+/* ── Les zones de la salle ────────────────────────────────────────
+   ⚠️ La zone est stockée sur la table sous forme de CODE, jamais sous
+   son nom affiché. La règle des vidanges dépend d'elle (une bouteille
+   emportée ne laisse pas de vidange) : écrite « Emporter » en français
+   et « Takeaway » en anglais, la comparaison aurait été fausse pour un
+   bar sur deux, et les consignes se seraient accumulées toutes seules.
+   Une zone inventée par le patron (« VIP », « Jardin ») reste une
+   chaîne libre, affichée telle qu'il l'a écrite. */
+var ZONES=[
+ {c:'salle',nm:'Salle',ne:'Indoor'},
+ {c:'terrasse',nm:'Terrasse',ne:'Terrace'},
+ {c:'comptoir',nm:'Comptoir',ne:'Counter'},
+ {c:'emporter',nm:'À emporter',ne:'Takeaway'}
+];
+function zoneNm(z){for(var i=0;i<ZONES.length;i++)if(ZONES[i].c===z)return L(ZONES[i].nm,ZONES[i].ne);return z;}
+
+/* ── La carte de départ ────────────────────────────────────────────
+   Prix en F CFA : pa = prix d'achat (à la bouteille), pv = prix de
+   vente sur place, cs = consigne de la bouteille vide, pc = bouteilles
+   par casier. `sv:0` = produit sans suivi de stock (cuisine préparée,
+   cocktails) : on ne compte pas un poisson braisé comme un casier.
+   ⚠️ Le nom du produit est FIGÉ à la création, dans la langue choisie
+   ce jour-là : une fois que le patron l'a sur sa carte, il lui
+   appartient — le retraduire sous ses yeux parce qu'il a changé de
+   langue reviendrait à réécrire son ardoise. */
+var CARTE=[
+ {f:'biere',n:'33 Export 65cl',e2:'33 Export 65cl',e:'🍺',c:'65 cl',pc:12,pa:650,pv:1000,cs:100},
+ {f:'biere',n:'33 Export 33cl',e2:'33 Export 33cl',e:'🍺',c:'33 cl',pc:24,pa:400,pv:700,cs:75},
+ {f:'biere',n:'Castel Beer 65cl',e2:'Castel Beer 65cl',e:'🍺',c:'65 cl',pc:12,pa:650,pv:1000,cs:100},
+ {f:'biere',n:'Beaufort Lager 65cl',e2:'Beaufort Lager 65cl',e:'🍺',c:'65 cl',pc:12,pa:650,pv:1000,cs:100},
+ {f:'biere',n:'Mützig 65cl',e2:'Mützig 65cl',e:'🍺',c:'65 cl',pc:12,pa:700,pv:1100,cs:100},
+ {f:'biere',n:'Doppel Munich 65cl',e2:'Doppel Munich 65cl',e:'🍺',c:'65 cl',pc:12,pa:700,pv:1100,cs:100},
+ {f:'biere',n:'Guinness Smooth 33cl',e2:'Guinness Smooth 33cl',e:'🖤',c:'33 cl',pc:24,pa:600,pv:1000,cs:75},
+ {f:'biere',n:'Booster 65cl',e2:'Booster 65cl',e:'🍺',c:'65 cl',pc:12,pa:700,pv:1100,cs:100},
+ {f:'biere',n:'Heineken 33cl',e2:'Heineken 33cl',e:'🍺',c:'33 cl',pc:24,pa:700,pv:1200,cs:75},
+ {f:'biere',n:'Isenbeck 65cl',e2:'Isenbeck 65cl',e:'🍺',c:'65 cl',pc:12,pa:600,pv:1000,cs:100},
+ {f:'biere',n:'Kadji Beer 65cl',e2:'Kadji Beer 65cl',e:'🍺',c:'65 cl',pc:12,pa:600,pv:1000,cs:100},
+ {f:'biere',n:'Amstel 33cl',e2:'Amstel 33cl',e:'🍺',c:'33 cl',pc:24,pa:600,pv:1000,cs:75},
+ {f:'sucr',n:'Coca-Cola 50cl',e2:'Coca-Cola 50cl',e:'🥤',c:'50 cl',pc:24,pa:350,pv:600,cs:75},
+ {f:'sucr',n:'Fanta Orange 50cl',e2:'Fanta Orange 50cl',e:'🍊',c:'50 cl',pc:24,pa:350,pv:600,cs:75},
+ {f:'sucr',n:'Sprite 50cl',e2:'Sprite 50cl',e:'🥤',c:'50 cl',pc:24,pa:350,pv:600,cs:75},
+ {f:'sucr',n:'Djino Cocktail 50cl',e2:'Djino Cocktail 50cl',e:'🍹',c:'50 cl',pc:24,pa:350,pv:600,cs:75},
+ {f:'sucr',n:'Top Ananas 50cl',e2:'Top Pineapple 50cl',e:'🍍',c:'50 cl',pc:24,pa:350,pv:600,cs:75},
+ {f:'sucr',n:'Top Grenadine 50cl',e2:'Top Grenadine 50cl',e:'🍒',c:'50 cl',pc:24,pa:350,pv:600,cs:75},
+ {f:'sucr',n:'Malta Guinness 33cl',e2:'Malta Guinness 33cl',e:'🍯',c:'33 cl',pc:24,pa:450,pv:800,cs:75},
+ {f:'sucr',n:'Vimto 50cl',e2:'Vimto 50cl',e:'🍇',c:'50 cl',pc:24,pa:400,pv:700,cs:75},
+ {f:'eau',n:'Eau minérale 1,5 L',e2:'Mineral water 1.5 L',e:'💧',c:'1,5 L',pc:6,pa:400,pv:700,cs:0},
+ {f:'eau',n:'Eau minérale 50cl',e2:'Mineral water 50cl',e:'💧',c:'50 cl',pc:12,pa:200,pv:400,cs:0},
+ {f:'eau',n:'Eau gazeuse 1 L',e2:'Sparkling water 1 L',e:'🫧',c:'1 L',pc:6,pa:600,pv:1000,cs:0},
+ {f:'energ',n:'XXL Energy 50cl',e2:'XXL Energy 50cl',e:'⚡',c:'50 cl',pc:24,pa:600,pv:1000,cs:0},
+ {f:'energ',n:'Power Horse 25cl',e2:'Power Horse 25cl',e:'🐎',c:'25 cl',pc:24,pa:700,pv:1200,cs:0},
+ {f:'energ',n:'Red Bull 25cl',e2:'Red Bull 25cl',e:'🐂',c:'25 cl',pc:24,pa:900,pv:1500,cs:0},
+ {f:'vin',n:'Whisky sachet',e2:'Whisky sachet',e:'🥃',c:'sachet',pc:50,pa:125,pv:200,cs:0},
+ {f:'vin',n:'Vodka sachet',e2:'Vodka sachet',e:'🥃',c:'sachet',pc:50,pa:125,pv:200,cs:0},
+ {f:'vin',n:'Vin rouge (bouteille)',e2:'Red wine (bottle)',e:'🍷',c:'75 cl',pc:6,pa:2500,pv:4500,cs:0},
+ {f:'vin',n:'Sangria (bouteille)',e2:'Sangria (bottle)',e:'🍷',c:'1 L',pc:6,pa:2200,pv:4000,cs:0},
+ {f:'vin',n:'Whisky J&B (bouteille)',e2:'Whisky J&B (bottle)',e:'🥃',c:'70 cl',pc:6,pa:12000,pv:22000,cs:0},
+ {f:'vin',n:'Whisky — le verre',e2:'Whisky — by the glass',e:'🥃',c:'verre',pc:0,pa:800,pv:1500,cs:0,sv:0},
+ {f:'vin',n:'Champagne (bouteille)',e2:'Champagne (bottle)',e:'🍾',c:'75 cl',pc:6,pa:22000,pv:40000,cs:0},
+ {f:'cock',n:'Cocktail maison',e2:'House cocktail',e:'🍹',c:'verre',pc:0,pa:800,pv:2000,cs:0,sv:0},
+ {f:'cock',n:'Jus naturel',e2:'Fresh juice',e:'🧃',c:'verre',pc:0,pa:400,pv:1000,cs:0,sv:0},
+ {f:'cuis',n:'Brochette de bœuf',e2:'Beef brochette',e:'🍢',c:'pièce',pc:0,pa:200,pv:500,cs:0,sv:0},
+ {f:'cuis',n:'Poisson braisé',e2:'Grilled fish',e:'🐟',c:'pièce',pc:0,pa:1500,pv:3000,cs:0,sv:0},
+ {f:'cuis',n:'Poulet braisé (1/4)',e2:'Grilled chicken (1/4)',e:'🍗',c:'part',pc:0,pa:900,pv:2000,cs:0,sv:0},
+ {f:'cuis',n:'Soya',e2:'Soya (grilled skewers)',e:'🥩',c:'part',pc:0,pa:250,pv:500,cs:0,sv:0},
+ {f:'cuis',n:'Plantain frit',e2:'Fried plantain',e:'🍌',c:'part',pc:0,pa:200,pv:500,cs:0,sv:0},
+ {f:'cuis',n:'Arachides',e2:'Peanuts',e:'🥜',c:'part',pc:0,pa:100,pv:300,cs:0,sv:0},
+ {f:'div',n:'Glaçons (seau)',e2:'Ice (bucket)',e:'🧊',c:'seau',pc:0,pa:100,pv:300,cs:0,sv:0},
+ {f:'div',n:'Cigarette (unité)',e2:'Cigarette (single)',e:'🚬',c:'pièce',pc:0,pa:75,pv:150,cs:0,sv:0},
+ {f:'div',n:'Mouchoirs',e2:'Tissues',e:'🧻',c:'paquet',pc:0,pa:150,pv:300,cs:0,sv:0}
+];
+/* Les contenances aussi sont figées à la création : « seau », « part »,
+   « verre » sont écrits sur la fiche produit, pas recalculés. */
+var CONT_EN={'sachet':'sachet','verre':'glass','pièce':'each','part':'portion','seau':'bucket','paquet':'pack'};
+function contCree(c){return lang==='en'?(CONT_EN[c]||c.replace(',','.')):c;}
+
+var DEP_CATS=[
+ {c:'glace',nm:'Glace',ne:'Ice',e:'🧊'},{c:'carburant',nm:'Carburant / groupe',ne:'Fuel / generator',e:'⛽'},
+ {c:'gaz',nm:'Gaz / charbon',ne:'Gas / charcoal',e:'🔥'},{c:'transport',nm:'Transport',ne:'Transport',e:'🛵'},
+ {c:'salaire',nm:'Salaire / avance',ne:'Wages / advance',e:'💰'},{c:'musique',nm:'Musique / DJ',ne:'Music / DJ',e:'🎶'},
+ {c:'entretien',nm:'Entretien',ne:'Cleaning',e:'🧹'},{c:'taxe',nm:'Taxe / patente',ne:'Tax / licence',e:'🏛️'},
+ {c:'autre',nm:'Autre',ne:'Other',e:'📌'},
+ /* Ces trois-là ne s'affichent pas dans le choix (elles sont posées par
+    l'app), mais les rapports doivent savoir les nommer. */
+ {c:'appro',nm:'Approvisionnement',ne:'Stock purchase',e:'🚚',auto:1},
+ {c:'casse',nm:'Casse / perte',ne:'Breakage / loss',e:'💥',auto:1},
+ {c:'ecart',nm:'Écart d\'inventaire',ne:'Stock-count gap',e:'📋',auto:1}
+];
+function depNm(c){for(var i=0;i<DEP_CATS.length;i++)if(DEP_CATS[i].c===c)return L(DEP_CATS[i].nm,DEP_CATS[i].ne);return c;}
+function depE(c){for(var i=0;i<DEP_CATS.length;i++)if(DEP_CATS[i].c===c)return DEP_CATS[i].e;return '📌';}
+
+var MODES=[
+ {c:'espece',nm:'Espèces',ne:'Cash',e:'💵'},{c:'mm',nm:'Mobile Money',ne:'Mobile Money',e:'📱'},
+ {c:'carte',nm:'Carte',ne:'Card',e:'💳'},{c:'ardoise',nm:'Ardoise (crédit)',ne:'Tab (credit)',e:'📒'}
+];
+
+function modeNm(c){for(var i=0;i<MODES.length;i++)if(MODES[i].c===c)return MODES[i].e+' '+L(MODES[i].nm,MODES[i].ne);return c;}
+
+/* ── État ─────────────────────────────────────────────────────────── */
+var DB=null,moi=null,hist=[],tableCourante=null;
+var vueZone='*',vueFam='*',vueStk='tout',vuePeriode='soir',vueEq='equipe';
+var qMenu='',qStock='';
+var obPays=PAYS[0],obType=TYPES[0],obEtape=1;
+
+/* ── Poser la langue sur l'écran ──────────────────────────────────
+   Tout ce qui est écrit en dur dans le HTML porte son français ET son
+   anglais sur lui-même (`data-fr` / `data-en`). Une seule boucle les
+   pose, et elle repasse à chaque bascule : il n'y a donc aucun endroit
+   où un libellé peut rester dans l'autre langue parce qu'on a oublié
+   de l'ajouter à une liste. */
+function appliquerLangue(){
+  try{document.documentElement.setAttribute('lang',lang);}catch(e){}
+  try{
+    document.title=L("MyBar — Gestion de bar et buvette pour l'Afrique",'MyBar — Bar & pub management for Africa');
+    var md=document.querySelector('meta[name="description"]');
+    if(md)md.setAttribute('content',L(
+      "MyBar : application de gestion de bar, buvette, snack et cave. Tables et additions, casiers, vidanges consignées, serveurs, clôture de service. Simple et hors-ligne, faite pour l'Afrique francophone.",
+      'MyBar: bar, pub, snack bar and drinks shop management. Tables and bills, crates, deposit empties, servers, nightly closing. Simple and offline, built for Africa.'));
+  }catch(e){}
+  var l=document.querySelectorAll('[data-fr]');
+  for(var i=0;i<l.length;i++){
+    var el=l[i];
+    var v=(lang==='en')?(el.getAttribute('data-en')||el.getAttribute('data-fr')):el.getAttribute('data-fr');
+    if(el.hasAttribute('data-ph'))el.placeholder=v;else el.textContent=v;
+  }
+  // Les info-bulles des boutons d'en-tête : le français d'origine est
+  // recopié une fois, sinon la première bascule l'écrase pour de bon.
+  var tt=document.querySelectorAll('[data-title-en]');
+  for(var j=0;j<tt.length;j++){
+    var e2=tt[j];
+    if(!e2.hasAttribute('data-title-fr'))e2.setAttribute('data-title-fr',e2.getAttribute('title')||'');
+    e2.setAttribute('title',(lang==='en')?e2.getAttribute('data-title-en'):e2.getAttribute('data-title-fr'));
+  }
+  var lh=$('login-hint');
+  if(lh)lh.innerHTML=L('Code oublié ? Le patron peut le remettre dans les Paramètres.','Forgot your code? The owner can reset it in Settings.')+
+    '<br><span class="lnk" onclick="allerInscription()">'+L('Ouvrir un autre bar','Open another bar')+'</span>';
+  var sw=$('ob-langsw');
+  if(sw)sw.innerHTML=boutonsLangue();
+  rendreVitrine();
+}
+function boutonsLangue(){
+  return '<div class="langsw">'+
+    '<button class="langp'+(lang==='fr'?' on':'')+'" onclick="setLang(\'fr\')">🇫🇷 Français</button>'+
+    '<button class="langp'+(lang==='en'?' on':'')+'" onclick="setLang(\'en\')">🇬🇧 English</button></div>';
+}
+function rendreVitrine(){
+  var v=$('vit-body');if(!v)return;
+  var cartes=[
+    ['🧾',L("L'addition de la table 4",'The bill on table 4'),
+         L("Quatre tournées, deux clients partis, une bouteille offerte. La table garde son compte ouvert jusqu'au paiement, et personne ne discute le total.",
+           'Four rounds, two guests gone, one bottle on the house. The table keeps its tab open until it pays, and nobody argues about the total.')],
+    ['🧊',L("« Il n'y a plus de fraîche »",'"There is no cold one left"'),
+         L("Le stock du dépôt et le stock du frigo ne sont pas le même stock. MyBar compte les deux, et prévient avant que le frigo soit vide.",
+           'The store room and the fridge are not the same stock. MyBar counts both, and warns you before the fridge runs dry.')],
+    ['♻️',L('Les vidanges consignées','Empties and their deposit'),
+         L("Chaque bouteille vide vaut de l'argent chez le dépositaire. L'app les compte au fil du service et te dit combien tu dois récupérer.",
+           'Every empty bottle is money at the depot. The app counts them as you serve, and tells you how much you have to claim back.')],
+    ['📦',L('Casiers et bouteilles','Crates and bottles'),
+         L("On achète en casiers, on vend à la bouteille. Un casier entamé se décompte tout seul.",
+           'You buy by the crate and sell by the bottle. An opened crate counts itself down.')],
+    ['👥',L('Qui a servi quoi','Who served what'),
+         L("Chaque serveur a son code. À la clôture, chacun rend ce qu'il a encaissé — et l'écart se voit.",
+           'Each server has their own code. At closing, each hands back what they took — and the gap shows.')],
+    ['🌙',L('La clôture du soir','Closing the night'),
+         L("Recette, dépenses, ardoises, espèces comptées, vidanges à rendre. Une page, à la fermeture.",
+           'Takings, expenses, tabs, cash counted, empties to return. One page, at closing time.')]
+  ];
+  v.innerHTML=
+   '<div class="vit-hero">'+boutonsLangue()+
+     '<div class="vit-brand">🍻 My<span>Bar</span></div>'+
+     '<div class="vit-tag">'+L("Le bar tient sur des additions ouvertes, des casiers et des vidanges. Pas sur un cahier.",
+        "A bar runs on open tabs, crates and empties. Not on a notebook.")+'</div>'+
+     '<div class="vit-sub">'+L("Tables et ardoises, casiers et bouteilles, consignes à rendre, serveurs, clôture du soir. Ça marche sans réseau — parce qu'à 22 h, le réseau, on ne l'a pas.",
+        "Tables and tabs, crates and bottles, deposits to claim back, servers, nightly closing. It works with no network — because at 10 pm, there is no network.")+'</div>'+
+     '<button class="vit-cta" onclick="allerInscription()">'+L('🆕 Ouvrir mon bar','🆕 Open my bar')+'</button>'+
+     '<button class="vit-cta2" onclick="goScreen(\'s-login\')">'+L("J'ai déjà un compte",'I already have an account')+'</button>'+
+     '<button class="vit-cta2" id="vit-install" style="display:'+(window._pwaInvite?'':'none')+'" onclick="installerApp()">'+
+        L("📲 Installer l'application",'📲 Install the app')+'</button>'+
+     '<button class="vit-cta2" onclick="chargerDemo()">'+L("👀 Voir une soirée d'exemple",'👀 See a sample night')+'</button>'+
+   '</div>'+
+   '<div class="vit-sec"><div class="vit-h2">'+L("Ce qu'un bar perd sans ça",'What a bar loses without this')+'</div>'+
+     cartes.map(function(c){
+       return '<div class="vit-card"><div class="vit-ico">'+c[0]+'</div><div>'+
+         '<div class="vit-ct">'+esc(c[1])+'</div><div class="vit-cs">'+esc(c[2])+'</div></div></div>';
+     }).join('')+'</div>'+
+   '<div class="vit-foot">'+L('MyBar — bars, buvettes, snacks, caves et terrasses.','MyBar — bars, pubs, snack bars, drinks shops and terraces.')+'<br>'+
+     L('Fonctionne hors-ligne. Vos données restent sur votre téléphone.','Works offline. Your data stays on your phone.')+'</div>';
+}
+
+/* ── Utilitaires ──────────────────────────────────────────────────── */
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];});}
+function fmt(n){var s=(DB&&DB.cfg&&DB.cfg.s)||'F';var v=Math.round((+n||0)*100)/100;
+  var dec=(DB&&DB.cfg&&DB.cfg.k<0.05)?2:0;
+  return s+' '+v.toLocaleString(lang==='en'?'en-US':'fr-FR',{minimumFractionDigits:dec,maximumFractionDigits:dec});}
+function num(v){var n=parseFloat(String(v==null?'':v).replace(',','.'));return isNaN(n)?0:n;}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2900);}
+function uid(){DB.nextId=(DB.nextId||100)+1;return DB.nextId;}
+function now(){return Date.now();}
+function jour(ts){var d=new Date(ts||now());return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function heure(ts){var d=new Date(ts||now());
+  return String(d.getHours()).padStart(2,'0')+L('h',':')+String(d.getMinutes()).padStart(2,'0');}
+function duree(ms){var m=Math.floor(ms/60000);
+  if(m<1)return L("à l'instant",'just now');
+  if(m<60)return m+' min';
+  var h=Math.floor(m/60);return h+L(' h ','h ')+String(m%60).padStart(2,'0');}
+/* Un service de bar déborde après minuit : la recette de 1 h du matin
+   appartient au soir de la veille. Sans ce décalage, le patron voit sa
+   soirée coupée en deux à minuit pile, et ne comprend pas ses chiffres. */
+function jourService(ts){var d=new Date(ts||now());if(d.getHours()<6)d.setDate(d.getDate()-1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function arrondi(v,k){if(k>=1)return Math.max(50,Math.round(v*k/50)*50);
+  if(k>=0.1)return Math.max(5,Math.round(v*k/5)*5);
+  return Math.max(0.5,Math.round(v*k*2)/2);}
+
+/* ── Stockage ─────────────────────────────────────────────────────── */
+function loadDB(){
+  try{
+    var d=localStorage.getItem(DBKEY);
+    /* ⚠️ Le produit s'est appelé MyBarQ le temps d'une version. Changer la
+       clé sans aller chercher l'ancienne, c'est effacer le service d'un
+       patron qui a déjà saisi son stock : il rouvre l'app et son bar est
+       vide, sans un mot d'explication. On la relit donc une fois, et on
+       la recopie sous le nouveau nom. */
+    if(!d){
+      var vieux=localStorage.getItem(DBKEY_ANCIEN);
+      if(vieux){localStorage.setItem(DBKEY,vieux);localStorage.removeItem(DBKEY_ANCIEN);d=vieux;}
+    }
+    return d?migrer(JSON.parse(d)):null;
+  }catch(e){return null;}
+}
+function save(){try{localStorage.setItem(DBKEY,JSON.stringify(DB));}catch(e){
+  toast(L("⚠️ Mémoire du téléphone pleine — libère de la place, sinon la soirée ne sera pas enregistrée.","⚠️ Phone storage full — free some space, or tonight will not be saved."));}}
+function migrer(d){
+  if(!d)return d;
+  d.produits=d.produits||[];d.tables=d.tables||[];d.ventes=d.ventes||[];
+  d.depenses=d.depenses||[];d.equipe=d.equipe||[];d.clients=d.clients||[];
+  d.appros=d.appros||[];d.clotures=d.clotures||[];d.reglements=d.reglements||[];d.cfg=d.cfg||{};
+  if(d.cfg.happy==null)d.cfg.happy={on:false,debut:'17:00',fin:'19:00',remise:15};
+  if(d.cfg.fondCaisse==null)d.cfg.fondCaisse=0;
+  /* Les zones étaient stockées sous leur nom français ; elles le sont
+     désormais sous un code, pour que la règle des vidanges tienne dans
+     les deux langues. */
+  var ZMAP={'Salle':'salle','Terrasse':'terrasse','Comptoir':'comptoir','Emporter':'emporter','À emporter':'emporter'};
+  d.tables.forEach(function(t){if(ZMAP[t.zone])t.zone=ZMAP[t.zone];});
+  d.produits.forEach(function(p){
+    if(p.frais==null)p.frais=0;if(p.vides==null)p.vides=0;
+    if(p.casiers==null)p.casiers=0;if(p.bouteilles==null)p.bouteilles=0;
+    if(p.suivi==null)p.suivi=p.parCasier>0?1:0;
+  });
+  return d;
+}
+
+/* ── Écrans ───────────────────────────────────────────────────────── */
+function goScreen(id){
+  try{var h=document.documentElement;
+    if(h.className.indexOf('porte-')>=0)h.className=h.className.replace(/\s*porte-(login|vitrine)/g,'');}catch(e){}
+  var l=document.querySelectorAll('.scr');
+  for(var i=0;i<l.length;i++)l[i].classList.remove('on');
+  var el=$(id);if(el)el.classList.add('on');
+  if(id!=='s-splash'&&hist[hist.length-1]!==id)hist.push(id);
+  try{window.scrollTo(0,0);}catch(e){}
+}
+function goBack(){
+  hist.pop();
+  var p=hist.pop()||(DB?'s-service':'s-vitrine');
+  goScreen(p);rendreEcran(p);
+}
+function goSt(){goScreen('s-settings');rendreSettings();}
+var ONGLETS=['service','stock','rapports','equipe'];
+function navTo(tab,btn){
+  goScreen('s-'+tab);
+  /* ⚠️ Une alerte qui renvoie vers le stock appelle navTo SANS bouton :
+     l'écran changeait, mais la barre du bas continuait d'éclairer
+     « Service ». On repose donc la surbrillance depuis le nom de
+     l'onglet, et le bouton touché n'est plus qu'un raccourci. */
+  var i=ONGLETS.indexOf(tab);
+  if(i>=0){
+    var nav=document.querySelector('#s-'+tab+' .bnav');
+    if(nav)for(var j=0;j<nav.children.length;j++)nav.children[j].classList.toggle('on',j===i);
+  }else if(btn){
+    var p=btn.parentNode.children;for(var k=0;k<p.length;k++)p[k].classList.remove('on');btn.classList.add('on');
+  }
+  rendreEcran('s-'+tab);
+}
+function rendreEcran(id){
+  if(id==='s-service')rendreService();
+  else if(id==='s-stock')rendreStock();
+  else if(id==='s-rapports')rendreRapports();
+  else if(id==='s-equipe')rendreEquipe();
+  else if(id==='s-settings')rendreSettings();
+  else if(id==='s-addition')rendreAddition();
+  else if(id==='s-menu')rendreMenu();
+}
+function modal(html){$('ovb').innerHTML=html;$('ov').classList.add('on');}
+function fermerModal(){$('ov').classList.remove('on');$('ovb').innerHTML='';}
+function mhead(titre,sous){
+  return '<div class="ovh"><div style="min-width:0"><div class="ovt">'+titre+'</div>'+
+    (sous?'<div class="ovs">'+sous+'</div>':'')+'</div>'+
+    '<button class="bcl" onclick="fermerModal()" aria-label="Fermer">✕</button></div>';
+}
+</script>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   OUVERTURE DU BAR — inscription, connexion, démarrage
+   ══════════════════════════════════════════════════════════════════ */
+function allerInscription(){
+  obEtape=1;obPays=PAYS[0];obType=TYPES[0];
+  rendrePays('');rendreTypes();majDots();
+  ['obs1','obs2','obs3','obs4'].forEach(function(s,i){$(s).classList.toggle('on',i===0);});
+  goScreen('s-onboard');
+}
+function rendrePays(q){
+  q=(q||'').toLowerCase();
+  var h='';
+  PAYS.forEach(function(p,i){
+    if(q&&paysNm(p).toLowerCase().indexOf(q)<0&&p.d.toLowerCase().indexOf(q)<0)return;
+    h+='<div class="pays-it'+(p.c===obPays.c?' on':'')+'" onclick="choisirPays('+i+')">'+
+       '<span class="pays-flag">'+p.f+'</span><div style="flex:1;min-width:0">'+
+       '<div class="pays-nm">'+esc(paysNm(p))+'</div><div class="pays-dev">'+p.d+' · '+p.s+'</div></div>'+
+       (p.c===obPays.c?'<span style="color:#F6B93B;font-weight:900">✓</span>':'')+'</div>';
+  });
+  $('ob-pays-lst').innerHTML=h||'<div style="padding:18px;text-align:center;color:rgba(255,255,255,.4);font-size:12.5px;font-weight:700">'+L('Aucun pays trouvé','No country found')+'</div>';
+}
+function filtrerPays(q){rendrePays(q);}
+function choisirPays(i){obPays=PAYS[i];rendrePays($('ob-pays-srch').value);}
+function rendreTypes(){
+  var h='';
+  TYPES.forEach(function(t,i){
+    h+='<div class="sec-btn'+(t.c===obType.c?' on':'')+'" onclick="choisirType('+i+')">'+
+       '<span class="sec-emoji">'+t.e+'</span><span class="sec-nm">'+esc(typeNm(t))+'</span></div>';
+  });
+  $('ob-type-grid').innerHTML=h;
+}
+function choisirType(i){obType=TYPES[i];rendreTypes();}
+function majDots(){
+  for(var i=1;i<=4;i++){
+    var d=$('od'+i);if(!d)continue;
+    d.className='ob-dot'+(i===obEtape?' cur':(i<obEtape?' done':''));
+  }
+}
+function obAller(n){
+  obEtape=n;majDots();
+  ['obs1','obs2','obs3','obs4'].forEach(function(s,i){$(s).classList.toggle('on',i+1===n);});
+  if(n===4)majRecap();
+  try{window.scrollTo(0,0);}catch(e){}
+}
+function obPrev(n){obAller(Math.max(1,n-1));}
+function obNext(n){
+  if(n===3){
+    var nm=$('ob-nom').value.trim(),tel=$('ob-tel').value.trim();
+    if(nm.length<2){toast(L('🍻 Donne un nom à ton bar.','🍻 Give your bar a name.'));return;}
+    if(tel.replace(/\D/g,'').length<6){toast(L('📞 Un numéro de téléphone valable, pour te retrouver.','📞 A working phone number, so we can reach you.'));return;}
+  }
+  obAller(Math.min(4,n+1));
+}
+function majRecap(){
+  var nbt=parseInt($('ob-tables').value,10)||12;
+  $('ob-recap').innerHTML=
+    '<div class="ob-cr"><span class="ob-cl">'+L('Établissement','Place')+'</span><span class="ob-cv">'+esc($('ob-nom').value.trim()||'—')+'</span></div>'+
+    '<div class="ob-cr"><span class="ob-cl">'+L('Type','Type')+'</span><span class="ob-cv">'+obType.e+' '+esc(typeNm(obType))+'</span></div>'+
+    '<div class="ob-cr"><span class="ob-cl">'+L('Pays','Country')+'</span><span class="ob-cv">'+obPays.f+' '+esc(paysNm(obPays))+'</span></div>'+
+    '<div class="ob-cr"><span class="ob-cl">'+L('Monnaie','Currency')+'</span><span class="ob-cv">'+obPays.d+' ('+obPays.s+')</span></div>'+
+    '<div class="ob-cr"><span class="ob-cl">Tables</span><span class="ob-cv">'+nbt+L(' + comptoir',' + counter')+'</span></div>'+
+    '<div class="ob-cr"><span class="ob-cl">'+L('Carte de départ','Starting menu')+'</span><span class="ob-cv">'+carteDuType(obType).length+L(' produits',' products')+'</span></div>';
+}
+function carteDuType(ty){
+  return CARTE.filter(function(p){return ty.fams.indexOf(p.f)>=0;});
+}
+function creerTables(n){
+  var t=[],i,id=1;
+  var ns=Math.max(1,Math.round(n*0.6)),nt=Math.max(0,n-ns);
+  var nT=L('Table','Table'),nTe=L('Terrasse','Terrace'),nC=L('Comptoir','Counter'),nE=L('À emporter','Takeaway');
+  for(i=1;i<=ns;i++)t.push({id:id++,nm:nT+' '+i,zone:'salle',ouv:null,srv:null,lignes:[],note:''});
+  for(i=1;i<=nt;i++)t.push({id:id++,nm:nTe+' '+i,zone:'terrasse',ouv:null,srv:null,lignes:[],note:''});
+  t.push({id:id++,nm:nC+' 1',zone:'comptoir',ouv:null,srv:null,lignes:[],note:''});
+  t.push({id:id++,nm:nC+' 2',zone:'comptoir',ouv:null,srv:null,lignes:[],note:''});
+  t.push({id:id++,nm:nE,zone:'emporter',ouv:null,srv:null,lignes:[],note:''});
+  return t;
+}
+function genCode(){var n=String(Math.floor(Math.random()*900000+100000));return 'BAR-'+n;}
+function creerEtablissement(){
+  var nm=$('ob-nom').value.trim(),tel=$('ob-tel').value.trim();
+  var pin=$('ob-pin').value.trim(),pin2=$('ob-pin2').value.trim();
+  if(!/^\d{4}$/.test(pin)){toast(L('🔐 Le code patron fait exactement 4 chiffres.','🔐 The owner code is exactly 4 digits.'));return;}
+  if(pin!==pin2){toast(L('🔐 Les deux codes ne sont pas les mêmes.','🔐 The two codes do not match.'));return;}
+  var nbt=parseInt($('ob-tables').value,10)||12;
+  var k=obPays.k,id=200;
+  var produits=carteDuType(obType).map(function(p){
+    return {id:id++,nm:L(p.n,p.e2),fam:p.f,e:p.e,cont:contCree(p.c),parCasier:p.pc||0,
+      pa:arrondi(p.pa,k),pv:arrondi(p.pv,k),pvH:0,
+      consigne:p.cs?arrondi(p.cs,k):0,
+      casiers:0,bouteilles:0,frais:0,vides:0,seuil:p.pc?12:0,
+      suivi:(p.sv===0?0:(p.pc>0?1:0)),actif:1,vendu:0};
+  });
+  DB={
+    cfg:{nom:nm,tel:tel,pin:pin,lang:lang,pays:obPays.c,s:obPays.s,d:obPays.d,k:k,
+         type:obType.c,code:genCode(),plan:'gratuit',cree:now(),
+         happy:{on:false,debut:'17:00',fin:'19:00',remise:15},
+         fondCaisse:0,veille:false,pourboire:1,build:BUILD},
+    produits:produits,
+    tables:creerTables(nbt),
+    equipe:[{id:1,nm:nm.split(' ')[0]||L('Patron','Owner'),role:'patron',pin:pin,actif:1,e:'👑'}],
+    clients:[],ventes:[],depenses:[],appros:[],clotures:[],reglements:[],
+    nextId:1000
+  };
+  save();
+  moi=DB.equipe[0];
+  toast('🍻 '+nm+L(' est ouvert. Bon service !',' is open. Have a good service!'));
+  goScreen('s-service');rendreService();
+}
+
+/* ── Connexion ────────────────────────────────────────────────────── */
+function switchLogin(q){
+  $('lt-patron').classList.toggle('on',q==='patron');
+  $('lt-serveur').classList.toggle('on',q==='serveur');
+  $('lg-patron').style.display=q==='patron'?'':'none';
+  $('lg-serveur').style.display=q==='serveur'?'':'none';
+  if(q==='serveur')remplirServeurs();
+}
+function remplirServeurs(){
+  var s=$('v-nm');if(!s||!DB)return;
+  var l=DB.equipe.filter(function(m){return m.actif&&m.role!=='patron';});
+  if(!l.length){s.innerHTML='<option value="">'+L('— aucun serveur enregistré —','— no server registered —')+'</option>';return;}
+  s.innerHTML=l.map(function(m){return '<option value="'+m.id+'">'+esc(m.nm)+'</option>';}).join('');
+}
+function loginPatron(){
+  if(!DB){toast(L('Aucun bar sur ce téléphone.','No bar on this phone.'));return;}
+  var p=$('p-pin').value.trim();
+  if(p!==DB.cfg.pin){toast(L('🔐 Code patron incorrect.','🔐 Wrong owner code.'));return;}
+  moi=DB.equipe.filter(function(m){return m.role==='patron';})[0]||DB.equipe[0];
+  $('p-pin').value='';
+  goScreen('s-service');rendreService();
+}
+function loginServeur(){
+  if(!DB)return;
+  var id=parseInt($('v-nm').value,10),p=$('v-pin').value.trim();
+  var m=DB.equipe.filter(function(x){return x.id===id;})[0];
+  if(!m){toast(L('Choisis ton nom dans la liste.','Pick your name from the list.'));return;}
+  if(String(m.pin||'')!==p){toast(L('🔐 Code incorrect. Demande au patron.','🔐 Wrong code. Ask the owner.'));return;}
+  moi=m;$('v-pin').value='';
+  goScreen('s-service');rendreService();
+}
+function logout(){
+  moi=null;tableCourante=null;hist=[];
+  $('p-pin').value='';
+  goScreen('s-login');
+  remplirServeurs();
+}
+function estPatron(){return moi&&(moi.role==='patron'||moi.role==='gerant');}
+
+/* ── Démarrage ────────────────────────────────────────────────────── */
+function demarrer(){
+  DB=loadDB();
+  /* Le bar a une langue à lui : celle dans laquelle son patron l'a
+     ouvert. Elle l'emporte sur le dernier réglage de ce téléphone —
+     sinon un serveur qui a mis l'app en anglais pour lui-même repeint
+     toute la salle de son collègue. */
+  if(DB&&DB.cfg&&DB.cfg.lang&&DB.cfg.lang!==lang)setLang(DB.cfg.lang,true);
+  appliquerLangue();
+  if(DB){goScreen('s-login');remplirServeurs();switchLogin('patron');}
+  else goScreen('s-vitrine');
+  majBoutonsInstaller();
+  if('serviceWorker' in navigator){try{navigator.serviceWorker.register('sw.js');}catch(e){}}
+}
+function majBoutonsInstaller(){
+  var b=$('vit-install');if(b)b.style.display=window._pwaInvite?'':'none';
+}
+/* La vitrine est peinte par le JavaScript : au tout premier affichage,
+   c'est ce démarrage-ci qui la déclenche. */
+function installerApp(){
+  if(!window._pwaInvite){toast(L("📲 Menu du navigateur → « Installer l'application » / « Ajouter à l'écran d'accueil ».","📲 Browser menu → \"Install app\" / \"Add to Home screen\"."));return;}
+  window._pwaInvite.prompt();
+  window._pwaInvite.userChoice.then(function(){window._pwaInvite=null;majBoutonsInstaller();});
+}
+window.addEventListener('load',function(){setTimeout(demarrer,900);});
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter')return;
+  var a=document.activeElement;if(!a)return;
+  if(a.id==='p-pin')loginPatron();
+  else if(a.id==='v-pin')loginServeur();
+});
+</script>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   LE SERVICE — les tables, et ce qu'elles doivent
+
+   L'écran d'accueil d'un bar n'est pas une caisse : c'est un PLAN DE
+   SALLE. Le patron qui entre à 21 h veut savoir en une seconde quelles
+   tables sont occupées, laquelle traîne depuis trois heures, et combien
+   d'argent est encore assis dehors avant d'être encaissé.
+   ══════════════════════════════════════════════════════════════════ */
+function prod(id){for(var i=0;i<DB.produits.length;i++)if(DB.produits[i].id===id)return DB.produits[i];return null;}
+function table(id){for(var i=0;i<DB.tables.length;i++)if(DB.tables[i].id===id)return DB.tables[i];return null;}
+function membre(id){for(var i=0;i<DB.equipe.length;i++)if(DB.equipe[i].id===id)return DB.equipe[i];return null;}
+function client(id){for(var i=0;i<DB.clients.length;i++)if(DB.clients[i].id===id)return DB.clients[i];return null;}
+
+function happyActif(){
+  var h=DB&&DB.cfg&&DB.cfg.happy;if(!h||!h.on)return false;
+  var d=new Date(),mn=d.getHours()*60+d.getMinutes();
+  function p(s){var a=String(s||'0:0').split(':');return (+a[0])*60+(+a[1]||0);}
+  var a=p(h.debut),b=p(h.fin);
+  return a<=b?(mn>=a&&mn<b):(mn>=a||mn<b);   // une plage peut passer minuit
+}
+function toggleHappy(){
+  if(!estPatron()){toast(L("🔒 Seul le patron ouvre le happy hour.","🔒 Only the owner opens happy hour."));return;}
+  DB.cfg.happy.on=!DB.cfg.happy.on;save();
+  toast(DB.cfg.happy.on?(L('🕕 Happy hour activé — ','🕕 Happy hour on — ')+DB.cfg.happy.debut+L(' à ',' to ')+DB.cfg.happy.fin+', −'+DB.cfg.happy.remise+'%')
+                       :L('🕕 Happy hour désactivé.','🕕 Happy hour off.'));
+  rendreService();
+}
+/* Le prix qui sort dépend de l'heure. `pvH` (prix happy propre au
+   produit) l'emporte sur la remise générale : une bière peut avoir son
+   prix du soir, une bouteille de whisky non. */
+function prixVente(p){
+  if(!happyActif())return p.pv;
+  if(p.pvH>0)return p.pvH;
+  var r=(DB.cfg.happy.remise||0)/100;
+  var v=p.pv*(1-r);
+  /* Arrondir au franc près est juste en zone CFA et FAUX en euros : à
+     1,60 €, une remise de 15 % donnait 1 € affiché. On garde donc les
+     centimes là où la monnaie en a. */
+  return (DB.cfg.k<0.05)?Math.round(v*100)/100:Math.round(v);
+}
+function stockTotal(p){if(!p.suivi)return null;return (p.casiers||0)*(p.parCasier||0)+(p.bouteilles||0)+(p.frais||0);}
+/* ══════════════════════════════════════════════════════════════════
+   ⚠️⚠️ CE BLOC REFUSAIT DE SERVIR, ET C'ÉTAIT LE PIRE DÉFAUT DE L'APP.
+
+   Un bar qui vient d'installer MyBar a un stock à ZÉRO : personne n'a
+   encore saisi ses casiers. La première version renvoyait `false` et
+   affichait « plus rien en stock » — autrement dit, l'application
+   n'acceptait AUCUNE vente le soir de son installation, alors que la
+   salle était pleine. Mesuré au banc sur un bar neuf : 34 produits
+   sur 42 injouables.
+
+   C'est la leçon déjà payée dans MyBoutiQ (« 256 articles ne pouvaient
+   pas être vendus »). On ne bloque JAMAIS une vente pour un chiffre de
+   stock que le patron n'a pas encore eu le temps de saisir : la
+   bouteille part quand même, le compte passe en découvert, et c'est
+   l'app qui le dit — pas le client qui repart.
+
+   Retour : 1 = servi sur stock connu, -1 = servi a decouvert.
+   ══════════════════════════════════════════════════════════════════ */
+function servirUne(p){
+  if(!p.suivi)return 1;
+  if(p.frais>0){p.frais--;return 1;}
+  if(p.bouteilles>0){p.bouteilles--;return 1;}
+  if(p.casiers>0){p.casiers--;p.bouteilles+=Math.max(0,(p.parCasier||1)-1);return 1;}
+  p.bouteilles=(p.bouteilles||0)-1;
+  return -1;
+}
+/* Prevenir une fois par produit et par session, pas a chaque bouteille :
+   un serveur qui voit le meme avertissement douze fois ne le lit plus. */
+var _ditDecouvert={};
+function signalerDecouvert(p){
+  if(_ditDecouvert[p.id])return;
+  _ditDecouvert[p.id]=1;
+  toast('⚠️ '+p.nm+L(" : stock non renseigné. La vente passe, mais fais l'approvisionnement (🚚 Stock).",
+    ': stock not entered yet. The sale goes through — but do your stock purchase (🚚 Stock).'));
+}
+function reprendreUne(p){if(!p.suivi)return;p.frais=(p.frais||0)+1;}
+
+function totalTable(t){
+  var s=0;(t.lignes||[]).forEach(function(l){if(!l.offert)s+=l.pu*l.q;});
+  return Math.max(0,s-(t.remise||0));
+}
+function coutTable(t){var s=0;(t.lignes||[]).forEach(function(l){s+=(l.pa||0)*l.q;});return s;}
+function nbArticles(t){var s=0;(t.lignes||[]).forEach(function(l){s+=l.q;});return s;}
+function tablesOuvertes(){return DB.tables.filter(function(t){return t.lignes&&t.lignes.length;});}
+function ventesDuSoir(){var j=jourService();return DB.ventes.filter(function(v){return v.jour===j;});}
+function depensesDuSoir(){var j=jourService();return DB.depenses.filter(function(d){return jourService(d.ts)===j;});}
+/* ⚠️⚠️ LE BÉNÉFICE ÉTAIT FAUX, ET TOUJOURS EN MOINS.
+   Un bon d'approvisionnement de 16 800 F était enregistré en dépense du
+   soir ; mais les bouteilles achetées ne sont pas consommées ce soir-là
+   — elles entrent en STOCK. Le calcul retirait donc à la fois le coût
+   des boissons RÉELLEMENT bues (`v.cout`) et le prix de tout le casier
+   acheté : au banc, une soirée à 1 000 F de recette affichait
+   « −16 450 F de bénéfice », et le patron concluait qu'il travaillait à
+   perte le jour où il remplit sa cave.
+   L'approvisionnement reste une SORTIE DE CAISSE — la clôture le déduit,
+   parce que l'argent est bien parti — mais il ne touche pas au bénéfice.
+   Les pertes (casse, écart d'inventaire), elles, en font partie : la
+   bouteille est payée ET perdue. */
+function depExploitation(l){return l.filter(function(d){return d.cat!=='appro';});}
+function reglementsDuSoir(){var j=jourService();return (DB.reglements||[]).filter(function(r){return jourService(r.ts)===j;});}
+
+function alertes(){
+  var a=[];
+  var froid=DB.produits.filter(function(p){return p.actif&&p.suivi&&(p.frais||0)===0&&stockTotal(p)>0;});
+  if(froid.length)a.push({e:'🧊',cls:'',txt:froid.length+L(' produit'+(froid.length>1?'s':'')+' sans rien au frais — ',' product'+(froid.length>1?'s':'')+' with nothing cold — ')+
+      froid.slice(0,3).map(function(p){return p.nm;}).join(', ')+(froid.length>3?'…':''),go:"navTo('stock')"});
+  var bas=DB.produits.filter(function(p){return p.actif&&p.suivi&&stockTotal(p)<=(p.seuil||0);});
+  if(bas.length)a.push({e:'📦',cls:'rouge',txt:bas.length+L(' produit'+(bas.length>1?'s':'')+' à recommander au dépôt.',' product'+(bas.length>1?'s':'')+' to reorder at the depot.'),go:"navTo('stock')"});
+  var v=DB.produits.reduce(function(s,p){return s+(p.vides||0);},0);
+  if(v>=24)a.push({e:'♻️',cls:'vert',txt:v+L(' vidanges consignées à rendre — ',' empties to return — ')+fmt(valeurVidanges())+L(' immobilisés.',' tied up.'),go:'ouvrirVidanges()'});
+  var det=DB.clients.reduce(function(s,c){return s+(c.ardoise||0);},0);
+  if(det>0)a.push({e:'📒',cls:'',txt:fmt(det)+L(" d'ardoises non réglées.",' of unpaid tabs.'),go:"navTo('equipe');vueEq='clients';rendreEquipe()"});
+  var lg=tablesOuvertes().filter(function(t){return t.ouv&&(now()-t.ouv)>3*3600000;});
+  if(lg.length)a.push({e:'⏰',cls:'',txt:lg.length+L(' table'+(lg.length>1?'s':'')+' ouverte'+(lg.length>1?'s':'')+' depuis plus de 3 h.',' table'+(lg.length>1?'s':'')+' open for more than 3 hours.'),go:''});
+  return a;
+}
+function valeurVidanges(){return DB.produits.reduce(function(s,p){return s+(p.vides||0)*(p.consigne||0);},0);}
+
+function rendreService(){
+  if(!DB||!moi)return;
+  $('u-nm').textContent=moi.nm;
+  var rb=$('u-role');
+  rb.textContent=moi.role==='patron'?L('Patron','Owner'):(moi.role==='gerant'?L('Gérant','Manager'):L('Serveur','Server'));
+  rb.className='rbdg '+(moi.role==='patron'?'rb-p':(moi.role==='gerant'?'rb-g':'rb-v'));
+  $('hdr-bonjour').textContent=(DB.cfg.nom||'Service')+(happyActif()?' · 🕕 HAPPY HOUR':'');
+  $('btn-happy').style.opacity=happyActif()?'1':'.5';
+  $('btn-dep').style.display=estPatron()?'':'none';
+
+  var vs=ventesDuSoir();
+  var ca=vs.reduce(function(s,v){return s+v.total;},0);
+  var marge=vs.reduce(function(s,v){return s+(v.total-(v.cout||0));},0)
+            -depExploitation(depensesDuSoir()).reduce(function(s,d){return s+d.montant;},0);
+  var ouv=tablesOuvertes().reduce(function(s,t){return s+totalTable(t);},0);
+  $('sv-ca').textContent=fmt(ca);
+  $('sv-ouv').textContent=fmt(ouv);
+  $('sc-ben').style.display=estPatron()?'':'none';
+  $('sv-ben').textContent=fmt(marge);
+
+  var al=alertes();
+  var b=$('alert-badge');b.textContent=al.length;b.classList.toggle('show',al.length>0);
+  $('svc-alertes').innerHTML=al.slice(0,2).map(function(x){
+    return '<div class="note '+x.cls+'"'+(x.go?' onclick="'+x.go+'"':'')+'>'+x.e+' '+esc(x.txt)+'</div>';
+  }).join('');
+
+  var zones=['*'];
+  DB.tables.forEach(function(t){if(zones.indexOf(t.zone)<0)zones.push(t.zone);});
+  $('svc-zones').innerHTML=zones.map(function(z){
+    var n=z==='*'?tablesOuvertes().length:DB.tables.filter(function(t){return t.zone===z&&t.lignes.length;}).length;
+    return '<button class="tpil'+(vueZone===z?' on':'')+'" onclick="filtreZone(\''+z+'\')">'+
+      (z==='*'?L('Toutes','All'):esc(zoneNm(z)))+(n?' · '+n:'')+'</button>';
+  }).join('');
+
+  var lst=DB.tables.filter(function(t){return vueZone==='*'||t.zone===vueZone;});
+  $('svc-tit').textContent=lst.length+' table'+(lst.length>1?'s':'')+(vueZone==='*'?'':' · '+zoneNm(vueZone));
+  $('svc-grid').innerHTML=lst.map(function(t){
+    var occ=t.lignes&&t.lignes.length,tot=totalTable(t);
+    var lng=occ&&t.ouv&&(now()-t.ouv)>3*3600000;
+    var srv=t.srv?membre(t.srv):null;
+    return '<div class="tcard'+(occ?(lng?' longue':' occ'):'')+'" onclick="ouvrirTable('+t.id+')">'+
+      '<div><div class="tc-top"><div class="tc-nm"><span>'+esc(t.nm)+'</span></div>'+
+        '<div class="tc-dot'+(occ?(lng?' long':' on'):'')+'"></div></div>'+
+      '<div class="tc-zone">'+esc(zoneNm(t.zone))+'</div></div>'+
+      (occ?'<div><div class="tc-mt">'+fmt(tot)+'</div><div class="tc-lb">'+nbArticles(t)+L(' art. · ',' items · ')+(t.ouv?duree(now()-t.ouv):'—')+'</div></div>'
+          :'<div class="tc-libre">'+L('Libre — toucher pour ouvrir','Free — tap to open')+'</div>')+
+      (srv?'<div class="tc-srv">'+esc(srv.nm)+'</div>':'')+'</div>';
+  }).join('')||'<div class="vide"><div class="vide-e">🪑</div><div class="vide-t">'+L('Aucune table ici','No table here')+'</div></div>';
+}
+function filtreZone(z){vueZone=z;rendreService();}
+function ouvrirAlertes(){
+  var al=alertes();
+  modal(mhead(L('🔔 Ce qui demande ton attention','🔔 What needs you'),
+      al.length?al.length+L(' point'+(al.length>1?'s':''),' item'+(al.length>1?'s':'')):L('Tout est en ordre','All clear'))+
+    '<div class="ovc">'+(al.length?al.map(function(x){
+      return '<div class="note '+x.cls+'" style="margin:0 0 9px"'+(x.go?' onclick="fermerModal();'+x.go+'"':'')+'>'+x.e+' '+esc(x.txt)+'</div>';
+    }).join(''):'<div class="vide"><div class="vide-e">✅</div><div class="vide-t">'+L('Rien à signaler','Nothing to report')+'</div><div class="vide-s">'+L('Le frigo est garni, le stock tient, personne ne doit rien.','The fridge is stocked, the cellar holds, nobody owes you.')+'</div></div>')+'</div>');
+}
+function ouvrirNouvelleTable(){
+  if(!estPatron()){toast(L('🔒 Seul le patron ajoute des tables.','🔒 Only the owner adds tables.'));return;}
+  var zones=[];DB.tables.forEach(function(t){if(zones.indexOf(t.zone)<0)zones.push(t.zone);});
+  if(zones.indexOf('salle')<0)zones.push('salle');
+  modal(mhead(L('➕ Nouvelle table','➕ New table'),L('Elle apparaîtra tout de suite dans le plan','It shows up in the floor plan right away'))+
+   '<div class="ovc">'+
+   '<div class="fld"><label class="lbl">'+L('Nom','Name')+'</label><input class="inp" id="nt-nm" placeholder="'+L('Table 13, VIP 2, Terrasse 5...','Table 13, VIP 2, Terrace 5...')+'"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Zone','Area')+'</label><select class="inp" id="nt-zone">'+
+     zones.map(function(z){return '<option value="'+esc(z)+'">'+esc(zoneNm(z))+'</option>';}).join('')+
+     '<option value="__new">'+L('+ Nouvelle zone…','+ New area…')+'</option></select></div>'+
+   '<div class="fld" id="nt-new" style="display:none"><label class="lbl">'+L('Nom de la zone','Area name')+'</label>'+
+   '<input class="inp" id="nt-newz" placeholder="'+L('VIP, Jardin, Étage...','VIP, Garden, Upstairs...')+'"></div>'+
+   '<button class="bpr" onclick="creerTable()">'+L('Créer la table','Create the table')+'</button></div>');
+  $('nt-zone').onchange=function(){$('nt-new').style.display=this.value==='__new'?'':'none';};
+}
+function creerTable(){
+  var nm=$('nt-nm').value.trim(),z=$('nt-zone').value;
+  if(z==='__new')z=$('nt-newz').value.trim()||'salle';
+  if(nm.length<1){toast(L('Donne un nom à la table.','Give the table a name.'));return;}
+  DB.tables.push({id:uid(),nm:nm,zone:z,ouv:null,srv:null,lignes:[],note:''});
+  save();fermerModal();rendreService();toast('🪑 '+nm+L(' ajoutée.',' added.'));
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   L'ADDITION — le compte d'UNE table, ouvert tant qu'on n'a pas payé
+   ══════════════════════════════════════════════════════════════════ */
+function ouvrirTable(id){
+  tableCourante=id;
+  var t=table(id);
+  if(t&&!t.ouv&&!(t.lignes&&t.lignes.length)){t.ouv=now();t.srv=moi.id;save();}
+  goScreen('s-addition');rendreAddition();
+}
+function retourService(){
+  var t=table(tableCourante);
+  /* On ouvre la table dès qu'on la touche (pour que l'heure d'arrivée
+     soit juste). Si on repart sans rien servir, elle doit redevenir
+     libre — sinon le plan de salle affiche « occupée depuis 2 h » pour
+     une table où personne ne s'est jamais assis. */
+  if(t&&!(t.lignes&&t.lignes.length)){t.ouv=null;t.srv=null;save();}
+  tableCourante=null;goScreen('s-service');rendreService();
+}
+function rendreAddition(){
+  var t=table(tableCourante);if(!t){retourService();return;}
+  $('add-nm').textContent=t.nm;
+  $('add-zone').textContent=zoneNm(t.zone)+(happyActif()?' · 🕕 happy hour':'');
+  $('add-duree').textContent=t.ouv?duree(now()-t.ouv):'—';
+  $('add-nb').textContent=nbArticles(t);
+  var s=t.srv?membre(t.srv):null;
+  $('add-srv').textContent=s?s.nm:'—';
+  $('add-note').innerHTML=t.note?'<div class="note bleu">📝 '+esc(t.note)+'</div>':'';
+
+  var h=(t.lignes||[]).map(function(l,i){
+    var off=l.offert?' <span class="badge bg-off">'+L('OFFERT','ON THE HOUSE')+'</span>':'';
+    return '<div class="row">'+
+      '<div class="row-e">'+(l.e||'🥤')+'</div>'+
+      '<div class="row-b" onclick="ouvrirLigne('+i+')">'+
+        '<div class="row-t">'+esc(l.nm)+off+'</div>'+
+        '<div class="row-s">'+fmt(l.pu)+' × '+l.q+(l.note?' · '+esc(l.note):'')+'</div></div>'+
+      '<div class="qbox"><button class="qb moins" onclick="event.stopPropagation();ligneMoins('+i+')">−</button>'+
+        '<span class="qn">'+l.q+'</span>'+
+        '<button class="qb plus" onclick="event.stopPropagation();lignePlus('+i+')">+</button></div>'+
+      '<div class="row-r"><div class="row-p">'+(l.offert?'—':fmt(l.pu*l.q))+'</div></div></div>';
+  }).join('');
+  if(t.remise)h+='<div class="row"><div class="row-e">🏷️</div><div class="row-b"><div class="row-t">'+L('Remise accordée','Discount given')+'</div>'+
+    '<div class="row-s">'+L('Touche ⋯ pour la modifier','Tap ⋯ to change it')+'</div></div><div class="row-r"><div class="row-p" style="color:var(--R)">−'+fmt(t.remise)+'</div></div></div>';
+  $('add-lignes').innerHTML=h||'<div class="vide"><div class="vide-e">🍺</div><div class="vide-t">'+L('Table vide','Empty table')+'</div>'+
+    '<div class="vide-s">'+L('Touche « + Ajouter » pour poser la première tournée.','Tap "+ Add" to put down the first round.')+'</div></div>';
+
+  var tot=totalTable(t);
+  $('add-ctot').textContent=fmt(tot);
+  $('add-cbub').textContent=nbArticles(t);
+  $('add-bar').classList.toggle('hide',!(t.lignes&&t.lignes.length));
+}
+function ouvrirMenu(){goScreen('s-menu');qMenu='';var s=$('menu-src');if(s)s.value='';rendreMenu();}
+function fermerMenu(){goScreen('s-addition');rendreAddition();}
+function chercherMenu(q){qMenu=(q||'').toLowerCase();rendreMenu();}
+function filtreFam(f){vueFam=f;rendreMenu();}
+function rendreMenu(){
+  var t=table(tableCourante);if(!t){retourService();return;}
+  $('menu-tit').textContent=t.nm;
+  $('btn-add-prod').style.display=estPatron()?'':'none';
+  var fams=['*'].concat(FAMS.filter(function(f){
+    return DB.produits.some(function(p){return p.actif&&p.fam===f.c;});
+  }).map(function(f){return f.c;}));
+  $('menu-fams').innerHTML=fams.map(function(f){
+    return '<button class="tpil'+(vueFam===f?' on':'')+'" onclick="filtreFam(\''+f+'\')">'+
+      (f==='*'?L('⭐ Tout','⭐ All'):famE(f)+' '+famNm(f))+'</button>';
+  }).join('');
+  $('menu-happy').innerHTML=happyActif()
+    ?'<div class="note vert" style="margin-bottom:10px">'+L('🕕 Happy hour en cours — les prix affichés sont déjà réduits de ','🕕 Happy hour is on — the prices shown are already cut by ')+(DB.cfg.happy.remise||0)+' %.</div>':'';
+
+  var cptr={};(t.lignes||[]).forEach(function(l){cptr[l.pid]=(cptr[l.pid]||0)+l.q;});
+  var lst=DB.produits.filter(function(p){
+    if(!p.actif)return false;
+    if(vueFam!=='*'&&p.fam!==vueFam)return false;
+    if(qMenu&&p.nm.toLowerCase().indexOf(qMenu)<0&&famNm(p.fam).toLowerCase().indexOf(qMenu)<0)return false;
+    return true;
+  });
+  $('menu-grid').innerHTML=lst.map(function(p){
+    var st=stockTotal(p),q=cptr[p.id]||0;
+    var sb='';
+    if(p.suivi){
+      if(st<0)sb='<div class="sbdg out">'+L('à saisir','not counted')+'</div>';
+      else if(st===0)sb='<div class="sbdg out">'+L('épuisé','sold out')+'</div>';
+      else if((p.frais||0)===0)sb='<div class="sbdg bas">'+L('pas au frais','not cold')+'</div>';
+      else if(st<=(p.seuil||0))sb='<div class="sbdg bas">'+L('reste ','only ')+st+'</div>';
+    }
+    /* La tuile grisée disait « ne touche pas » ; elle reste vendable.
+       On ne l'estompe donc plus — le badge suffit à dire l'état. */
+    var px=prixVente(p);
+    return '<div class="pcard'+(q?' sel':'')+'" id="pc-'+p.id+'" onclick="ajouterLigne('+p.id+')">'+
+      (q?'<div class="qbdg">'+q+'</div>':'')+
+      ((p.suivi&&p.frais>0)?'<div class="fbdg" title="au frais">🧊</div>':'')+
+      '<div class="pmedia">'+(p.e||'🥤')+'</div>'+
+      '<div class="pnm">'+esc(p.nm)+'</div>'+
+      '<div class="ppr">'+fmt(px)+(px!==p.pv?' <span style="font-size:9px;color:var(--M);text-decoration:line-through">'+fmt(p.pv)+'</span>':'')+'</div>'+
+      sb+'</div>';
+  }).join('')||'<div class="vide" style="grid-column:1/-1"><div class="vide-e">🔍</div><div class="vide-t">'+L('Rien sous ce nom','Nothing under that name')+'</div>'+
+    '<div class="vide-s">'+L('Change de famille, ou ajoute le produit à la carte.','Try another family, or add the product to the menu.')+'</div></div>';
+  $('menu-ctot').textContent=fmt(totalTable(t));
+  $('menu-cbub').textContent=nbArticles(t);
+  $('menu-bar').classList.toggle('hide',!(t.lignes&&t.lignes.length));
+}
+/* ⚠️ `ajouterLigne` rappelait `rendreMenu()` : 42 tuiles reconstruites,
+   images et badges compris, à CHAQUE bouteille tapée. Un serveur qui
+   monte une tournée de douze tape douze fois de suite — et chaque tape
+   jetait puis reconstruisait la grille sous son doigt (la tuile qu'il
+   visait n'existait déjà plus quand le clic suivant arrivait, ce que le
+   banc a reproduit : « Element is not attached to the DOM »).
+   On ne repeint donc que ce qui a changé : le compteur de LA tuile
+   touchée, et la barre du bas. */
+function majTuile(pid){
+  var t=table(tableCourante);if(!t)return;
+  var q=0;(t.lignes||[]).forEach(function(l){if(l.pid===pid)q+=l.q;});
+  var el=$('pc-'+pid);
+  if(el){
+    el.classList.toggle('sel',q>0);
+    var b=el.querySelector('.qbdg');
+    if(q>0){
+      if(b)b.textContent=q;
+      else{b=document.createElement('div');b.className='qbdg';b.textContent=q;el.insertBefore(b,el.firstChild);}
+    }else if(b)b.parentNode.removeChild(b);
+    var p=prod(pid);
+    if(p&&p.suivi){
+      var f=el.querySelector('.fbdg');
+      if((p.frais||0)>0&&!f){f=document.createElement('div');f.className='fbdg';f.textContent='🧊';el.insertBefore(f,el.firstChild);}
+      else if((p.frais||0)===0&&f)f.parentNode.removeChild(f);
+    }
+  }
+  $('menu-ctot').textContent=fmt(totalTable(t));
+  $('menu-cbub').textContent=nbArticles(t);
+  $('menu-bar').classList.toggle('hide',!(t.lignes&&t.lignes.length));
+}
+function ajouterLigne(pid){
+  var t=table(tableCourante),p=prod(pid);if(!t||!p)return;
+  if(servirUne(p)<0)signalerDecouvert(p);
+  if(!t.ouv)t.ouv=now();
+  if(!t.srv)t.srv=moi.id;
+  var px=prixVente(p),ex=null;
+  (t.lignes||[]).forEach(function(l){if(l.pid===pid&&l.pu===px&&!l.offert&&!l.note)ex=l;});
+  if(ex)ex.q++;
+  else (t.lignes=t.lignes||[]).push({pid:pid,nm:p.nm,e:p.e,q:1,pu:px,pa:p.pa||0,consigne:p.consigne||0,offert:0,note:''});
+  p.vendu=(p.vendu||0)+1;
+  save();majTuile(pid);
+  if(p.suivi&&(p.frais||0)===0&&stockTotal(p)>0)toast('🧊 '+p.nm+L(' : plus rien au frais. Recharge le frigo depuis le dépôt.',': nothing cold left. Refill the fridge from the store room.'));
+}
+function lignePlus(i){
+  var t=table(tableCourante);if(!t)return;
+  var l=t.lignes[i],p=prod(l.pid);
+  if(p&&servirUne(p)<0)signalerDecouvert(p);
+  l.q++;if(p)p.vendu=(p.vendu||0)+1;
+  save();rendreAddition();
+}
+function ligneMoins(i){
+  var t=table(tableCourante);if(!t)return;
+  var l=t.lignes[i],p=prod(l.pid);
+  l.q--;if(p){reprendreUne(p);p.vendu=Math.max(0,(p.vendu||0)-1);}
+  if(l.q<=0)t.lignes.splice(i,1);
+  if(!t.lignes.length){t.remise=0;}
+  save();rendreAddition();
+}
+function ouvrirLigne(i){
+  var t=table(tableCourante);if(!t)return;var l=t.lignes[i];if(!l)return;
+  modal(mhead(esc(l.nm),fmt(l.pu)+' × '+l.q+' = '+fmt(l.pu*l.q))+
+   '<div class="ovc">'+
+   '<div class="f2"><div class="fld"><label class="lbl">'+L('Quantité','Quantity')+'</label><input class="inp" id="lg-q" inputmode="numeric" value="'+l.q+'"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Prix unitaire','Unit price')+'</label><input class="inp" id="lg-pu" inputmode="decimal" value="'+l.pu+'"'+(estPatron()?'':' disabled')+'></div></div>'+
+   '<div class="fld"><label class="lbl">'+L('Note (à la cuisine, au bar)','Note (kitchen, bar)')+'</label>'+
+   '<input class="inp" id="lg-note" placeholder="'+L('bien fraîche, sans piment, verre à part...','extra cold, no chilli, glass on the side...')+'" value="'+esc(l.note||'')+'"></div>'+
+   '<button class="bse '+(l.offert?'bok':'')+'" onclick="ligneOffrir('+i+')">'+
+     (l.offert?L('✓ Ligne offerte — la faire payer','✓ On the house — charge it again')
+              :L('🎁 Offrir cette ligne (tournée du patron)','🎁 On the house (owner\'s round)'))+'</button>'+
+   '<div class="brow"><button class="bse bdg2" onclick="ligneSupp('+i+')">'+L('🗑️ Retirer','🗑️ Remove')+'</button>'+
+   '<button class="bpr" style="margin:0" onclick="ligneSauver('+i+')">'+L('Enregistrer','Save')+'</button></div></div>');
+}
+function ligneSauver(i){
+  var t=table(tableCourante),l=t.lignes[i],p=prod(l.pid);
+  var q=Math.max(1,Math.round(num($('lg-q').value)));
+  var pu=estPatron()?Math.max(0,num($('lg-pu').value)):l.pu;
+  var d=q-l.q;
+  if(p&&p.suivi&&d>0){for(var n=0;n<d;n++)if(servirUne(p)<0)signalerDecouvert(p);}
+  if(p&&p.suivi&&d<0){for(var m=0;m<-d;m++)reprendreUne(p);}
+  if(p)p.vendu=Math.max(0,(p.vendu||0)+(q-l.q));
+  l.q=q;l.pu=pu;l.note=$('lg-note').value.trim();
+  save();fermerModal();rendreAddition();
+}
+function ligneOffrir(i){
+  var t=table(tableCourante);t.lignes[i].offert=t.lignes[i].offert?0:1;
+  save();fermerModal();rendreAddition();
+  toast(t.lignes[i].offert?L('🎁 Ligne offerte — elle reste au stock, pas à la recette.','🎁 On the house — it still leaves the stock, but not the takings.')
+                          :L('Ligne remise au compte.','Line charged again.'));
+}
+function ligneSupp(i){
+  var t=table(tableCourante),l=t.lignes[i],p=prod(l.pid);
+  if(p)for(var n=0;n<l.q;n++){reprendreUne(p);p.vendu=Math.max(0,(p.vendu||0)-1);}
+  t.lignes.splice(i,1);
+  if(!t.lignes.length)t.remise=0;
+  save();fermerModal();rendreAddition();
+}
+</script>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   OUTILS DE TABLE — ce qui arrive vraiment dans une salle
+
+   Les clients changent de table, deux groupes se rejoignent, le patron
+   offre une tournée, un serveur prend la relève à 23 h. Une caisse de
+   boutique n'a besoin de rien de tout ça ; un bar, si.
+   ══════════════════════════════════════════════════════════════════ */
+function ouvrirOutilsTable(){
+  var t=table(tableCourante);if(!t)return;
+  var srvs=DB.equipe.filter(function(m){return m.actif;});
+  var autres=DB.tables.filter(function(x){return x.id!==t.id;});
+  modal(mhead('⋯ '+esc(t.nm),esc(zoneNm(t.zone))+' · '+nbArticles(t)+' '+L('article(s)','item(s)')+' · '+fmt(totalTable(t)))+
+   '<div class="ovc">'+
+   '<div class="fld"><label class="lbl">'+L('Serveur en charge','Server in charge')+'</label><select class="inp" id="ot-srv">'+
+     '<option value="">'+L('— personne —','— nobody —')+'</option>'+
+     srvs.map(function(m){return '<option value="'+m.id+'"'+(t.srv===m.id?' selected':'')+'>'+esc(m.nm)+'</option>';}).join('')+
+   '</select></div>'+
+   '<div class="fld"><label class="lbl">'+L('Note de table','Table note')+'</label><input class="inp" id="ot-note" placeholder="'+
+     L('anniversaire, client fidèle, bouteille au frais...','birthday, regular, bottle chilling...')+'" value="'+esc(t.note||'')+'"></div>'+
+   (estPatron()?'<div class="fld"><label class="lbl">'+L("Remise sur l'addition",'Discount on the bill')+'</label><input class="inp" id="ot-rem" inputmode="decimal" value="'+(t.remise||0)+'"></div>':'')+
+   '<button class="bpr" onclick="outilsSauver()">'+L('Enregistrer','Save')+'</button>'+
+   (t.lignes.length?'<button class="bse" onclick="ouvrirTransfert()">'+L('↔️ Transférer vers une autre table','↔️ Move to another table')+'</button>'+
+     '<button class="bse" onclick="ouvrirFusion()">'+L('🔗 Fusionner avec une autre table','🔗 Merge with another table')+'</button>'+
+     '<button class="bse" onclick="partagerAddition()">'+L("📱 Envoyer l'addition (WhatsApp)",'📱 Send the bill (WhatsApp)')+'</button>'+
+     '<button class="bse" onclick="ouvrirDivision()">'+L("➗ Diviser l'addition",'➗ Split the bill')+'</button>':'')+
+   (estPatron()&&t.lignes.length?'<button class="bse bdg2" onclick="annulerTable()">'+L('🗑️ Vider la table sans encaisser','🗑️ Clear the table without charging')+'</button>':'')+
+   (autres.length?'':'')+
+   '</div>');
+}
+function outilsSauver(){
+  var t=table(tableCourante);
+  var s=$('ot-srv').value;t.srv=s?parseInt(s,10):null;
+  t.note=$('ot-note').value.trim();
+  var r=$('ot-rem');if(r)t.remise=Math.max(0,num(r.value));
+  save();fermerModal();rendreAddition();
+}
+function ouvrirTransfert(){
+  var t=table(tableCourante);
+  var libres=DB.tables.filter(function(x){return x.id!==t.id;});
+  modal(mhead(L('↔️ Transférer ','↔️ Move ')+esc(t.nm),L("L'addition entière change de table",'The whole bill moves to another table'))+
+   '<div class="ovc">'+
+   '<div class="fld"><label class="lbl">'+L('Vers','To')+'</label><select class="inp" id="tr-dst">'+
+     libres.map(function(x){return '<option value="'+x.id+'">'+esc(x.nm)+' — '+esc(zoneNm(x.zone))+(x.lignes.length?L(' (occupée, ',' (busy, ')+fmt(totalTable(x))+')':L(' (libre)',' (free)'))+'</option>';}).join('')+
+   '</select></div>'+
+   '<div class="note bleu">'+L("Si la table d'arrivée est déjà occupée, les deux additions seront fusionnées.",'If the target table is already busy, the two bills are merged.')+'</div>'+
+   '<button class="bpr" onclick="faireTransfert()">'+L('Transférer','Move')+'</button></div>');
+}
+function faireTransfert(){
+  var t=table(tableCourante),d=table(parseInt($('tr-dst').value,10));
+  if(!d)return;
+  fusionnerDans(t,d);
+  save();fermerModal();
+  tableCourante=d.id;rendreAddition();
+  toast(L('↔️ Addition transférée sur ','↔️ Bill moved to ')+d.nm+'.');
+}
+function ouvrirFusion(){
+  var t=table(tableCourante);
+  var occ=DB.tables.filter(function(x){return x.id!==t.id&&x.lignes.length;});
+  if(!occ.length){toast(L('Aucune autre table occupée à fusionner.','No other busy table to merge.'));return;}
+  modal(mhead(L('🔗 Fusionner sur ','🔗 Merge into ')+esc(t.nm),L("Les deux comptes n'en feront plus qu'un",'The two tabs become one'))+
+   '<div class="ovc">'+
+   '<div class="fld"><label class="lbl">'+L("Ramener ici l'addition de",'Bring the bill from')+'</label><select class="inp" id="fu-src">'+
+     occ.map(function(x){return '<option value="'+x.id+'">'+esc(x.nm)+' — '+fmt(totalTable(x))+'</option>';}).join('')+
+   '</select></div>'+
+   '<button class="bpr" onclick="faireFusion()">'+L('Fusionner','Merge')+'</button></div>');
+}
+function faireFusion(){
+  var t=table(tableCourante),s=table(parseInt($('fu-src').value,10));
+  if(!s)return;
+  fusionnerDans(s,t);
+  save();fermerModal();rendreAddition();
+  toast('🔗 '+s.nm+L(' a rejoint ',' joined ')+t.nm+'.');
+}
+/* Fusionner, c'est additionner les lignes IDENTIQUES (même produit, même
+   prix) et empiler les autres — sinon l'addition finale affiche deux fois
+   « 33 Export » et le client compte à voix haute devant tout le monde. */
+function fusionnerDans(src,dst){
+  if(!dst.ouv)dst.ouv=src.ouv||now();
+  if(!dst.srv)dst.srv=src.srv;
+  (src.lignes||[]).forEach(function(l){
+    var ex=null;
+    (dst.lignes=dst.lignes||[]).forEach(function(d){
+      if(d.pid===l.pid&&d.pu===l.pu&&!!d.offert===!!l.offert&&(d.note||'')===(l.note||''))ex=d;});
+    if(ex)ex.q+=l.q;else dst.lignes.push(l);
+  });
+  dst.remise=(dst.remise||0)+(src.remise||0);
+  if(src.note)dst.note=(dst.note?dst.note+' · ':'')+src.note;
+  src.lignes=[];src.remise=0;src.ouv=null;src.srv=null;src.note='';
+}
+function ouvrirDivision(){
+  var t=table(tableCourante),tot=totalTable(t);
+  var h='';
+  for(var n=2;n<=8;n++)h+='<div class="kv"><span class="kv-l">'+L('En '+n+' parts',n+' ways')+'</span><span class="kv-v">'+fmt(Math.ceil(tot/n))+L(' chacun',' each')+'</span></div>';
+  modal(mhead(L("➗ Diviser l'addition",'➗ Split the bill'),fmt(tot)+L(' à partager',' to share'))+
+    '<div class="ovc">'+h+'<div class="note" style="margin:12px 0 0">'+
+    L("Le partage est indicatif : tu encaisses le total en une fois. Pour deux paiements séparés, transfère une partie sur une autre table avant d'encaisser.",
+      'The split is only a guide: you still cash the total in one go. For two separate payments, move part of the bill to another table first.')+'</div></div>');
+}
+function texteAddition(t){
+  var l=(t.lignes||[]).map(function(x){
+    return '• '+x.nm+' ×'+x.q+(x.offert?L(' (offert)',' (on the house)'):' — '+fmt(x.pu*x.q));}).join('\n');
+  return (DB.cfg.nom||'Bar')+'\n'+t.nm+' — '+heure()+'\n\n'+l+
+    (t.remise?L('\nRemise : −','\nDiscount: −')+fmt(t.remise):'')+
+    '\n────────────\nTOTAL : '+fmt(totalTable(t))+L('\n\nMerci et à bientôt 🍻','\n\nThank you, see you soon 🍻');
+}
+function partagerAddition(){
+  var t=table(tableCourante),txt=texteAddition(t);
+  if(navigator.share){navigator.share({text:txt}).catch(function(){});return;}
+  try{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}catch(e){toast(L('Partage indisponible sur ce téléphone.','Sharing is not available on this phone.'));}
+}
+function annulerTable(){
+  var t=table(tableCourante);
+  if(!confirm(L('Vider ','Clear ')+t.nm+L(' sans encaisser ? Les bouteilles retournent au stock.',' without charging? The bottles go back to stock.')))return;
+  (t.lignes||[]).forEach(function(l){
+    var p=prod(l.pid);if(!p)return;
+    for(var n=0;n<l.q;n++){reprendreUne(p);p.vendu=Math.max(0,(p.vendu||0)-1);}
+  });
+  t.lignes=[];t.remise=0;t.ouv=null;t.srv=null;t.note='';
+  save();fermerModal();retourService();
+  toast(L('🗑️ Table vidée, stock remis.','🗑️ Table cleared, stock put back.'));
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   L'ENCAISSEMENT
+   ══════════════════════════════════════════════════════════════════ */
+var payMode='espece',payClient=null;
+function ouvrirPaiement(){
+  var t=table(tableCourante);if(!t||!t.lignes.length){toast(L('Rien à encaisser sur cette table.','Nothing to cash in on this table.'));return;}
+  payMode='espece';payClient=null;
+  var tot=totalTable(t);
+  modal(mhead(L('💵 Encaisser ','💵 Cash in ')+esc(t.nm),nbArticles(t)+L(' article(s)',' item(s)'))+
+   '<div class="ovc">'+
+   '<div class="kv big"><span class="kv-l">'+L('À payer','To pay')+'</span><span class="kv-v" id="pay-tot">'+fmt(tot)+'</span></div>'+
+   '<div class="fld" style="margin-top:12px"><label class="lbl">'+L('Mode de paiement','Payment method')+'</label><div class="chips" id="pay-modes">'+
+     MODES.map(function(m){return '<div class="chip'+(m.c==='espece'?' on':'')+'" onclick="choisirMode(\''+m.c+'\')">'+m.e+' '+L(m.nm,m.ne)+'</div>';}).join('')+
+   '</div></div>'+
+   '<div id="pay-zone"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Pourboire laissé (facultatif)','Tip left (optional)')+'</label><input class="inp" id="pay-tip" inputmode="decimal" placeholder="0" oninput="majMonnaie()"></div>'+
+   '<button class="bpr bok" onclick="confirmerPaiement()" id="pay-ok">'+L('✅ Encaisser ','✅ Cash in ')+fmt(tot)+'</button>'+
+   '</div>');
+  choisirMode('espece');
+}
+function choisirMode(m){
+  payMode=m;
+  var ch=$('pay-modes').children;
+  for(var i=0;i<ch.length;i++)ch[i].classList.toggle('on',MODES[i].c===m);
+  var t=table(tableCourante),tot=totalTable(t);
+  var z=$('pay-zone');
+  if(m==='espece'){
+    z.innerHTML='<div class="fld"><label class="lbl">'+L('Montant reçu','Amount received')+'</label><input class="inp" id="pay-recu" inputmode="decimal" placeholder="'+Math.round(tot)+'" oninput="majMonnaie()"></div>'+
+      '<div class="chips" style="margin-bottom:10px" id="pay-billets"></div>'+
+      '<div class="kv"><span class="kv-l">'+L('Monnaie à rendre','Change to give')+'</span><span class="kv-v" id="pay-monnaie">—</span></div>';
+    var pas=DB.cfg.k>=1?[500,1000,2000,5000,10000]:[1,2,5,10,20];
+    var sugg=[Math.ceil(tot)];
+    pas.forEach(function(b){var v=Math.ceil(tot/b)*b;if(sugg.indexOf(v)<0&&v>=tot)sugg.push(v);});
+    $('pay-billets').innerHTML=sugg.slice(0,5).map(function(v){
+      return '<div class="chip" onclick="posBillet('+v+')">'+fmt(v)+'</div>';}).join('');
+  }else if(m==='ardoise'){
+    z.innerHTML='<div class="fld"><label class="lbl">'+L("Sur l'ardoise de",'On the tab of')+'</label><select class="inp" id="pay-cli">'+
+      '<option value="">'+L('— choisir un client —','— pick a customer —')+'</option>'+
+      DB.clients.map(function(c){return '<option value="'+c.id+'">'+esc(c.nm)+(c.ardoise?L(' (doit ',' (owes ')+fmt(c.ardoise)+')':'')+'</option>';}).join('')+
+      '<option value="__new">'+L('+ Nouveau client…','+ New customer…')+'</option></select></div>'+
+      '<div class="fld" id="pay-newc" style="display:none"><label class="lbl">'+L('Nom du client','Customer name')+'</label>'+
+      '<input class="inp" id="pay-newnm" placeholder="'+L('Nom / surnom','Name / nickname')+'"><div style="height:8px"></div>'+
+      '<input class="inp" id="pay-newtel" placeholder="'+L('Téléphone (facultatif)','Phone (optional)')+'" inputmode="tel"></div>'+
+      '<div class="note">'+L("📒 L'ardoise entre dans la recette du soir comme créance, pas comme espèces. La clôture le distingue.",
+        '📒 A tab counts in tonight\'s takings as money owed, not as cash. Closing keeps the two apart.')+'</div>';
+    $('pay-cli').onchange=function(){$('pay-newc').style.display=this.value==='__new'?'':'none';};
+  }else{
+    z.innerHTML='<div class="note bleu">'+L('Le montant exact est encaissé par ','The exact amount is taken by ')+modeNm(m)+L('. Pense à vérifier la confirmation avant de valider.','. Check the confirmation before you validate.')+'</div>';
+  }
+  majMonnaie();
+}
+function posBillet(v){$('pay-recu').value=v;majMonnaie();}
+function majMonnaie(){
+  var t=table(tableCourante);if(!t)return;
+  var tot=totalTable(t),tip=num(($('pay-tip')||{}).value);
+  var el=$('pay-tot');if(el)el.textContent=fmt(tot+tip);
+  var ok=$('pay-ok');if(ok)ok.textContent=L('✅ Encaisser ','✅ Cash in ')+fmt(tot+tip);
+  var r=$('pay-recu'),mm=$('pay-monnaie');
+  if(r&&mm){
+    var recu=num(r.value);
+    if(!recu){mm.textContent='—';mm.style.color='';}
+    else if(recu<tot+tip){mm.textContent=L('manque ','short by ')+fmt(tot+tip-recu);mm.style.color='var(--R)';}
+    else{mm.textContent=fmt(recu-(tot+tip));mm.style.color='#1B7A3A';}
+  }
+}
+function confirmerPaiement(){
+  var t=table(tableCourante);if(!t||!t.lignes.length)return;
+  var tot=totalTable(t),tip=num(($('pay-tip')||{}).value);
+  var cli=null;
+  if(payMode==='ardoise'){
+    var v=$('pay-cli').value;
+    if(v==='__new'){
+      var nm=$('pay-newnm').value.trim();
+      if(nm.length<2){toast(L("📒 Le nom du client, sinon l'ardoise ne sert à rien.",'📒 The customer name — a tab without one is useless.'));return;}
+      cli={id:uid(),nm:nm,tel:$('pay-newtel').value.trim(),ardoise:0,total:0,visites:0,derniere:0};
+      DB.clients.push(cli);
+    }else if(v){cli=client(parseInt(v,10));}
+    if(!cli){toast(L("📒 Choisis le client qui prend l'ardoise.",'📒 Pick the customer taking the tab.'));return;}
+  }
+  if(payMode==='espece'){
+    var recu=num(($('pay-recu')||{}).value);
+    if(recu&&recu<tot+tip){toast(L('💵 Le montant reçu est inférieur au total.','💵 The amount received is less than the total.'));return;}
+  }
+  /* Les vidanges : chaque bouteille consignée bue SUR PLACE laisse une
+     vide qui vaut de l'argent au dépôt. Emportée, elle part avec le
+     client — et c'est exactement pour ça que la zone « À emporter »
+     existe séparément. */
+  var vides=0;
+  t.lignes.forEach(function(l){
+    var p=prod(l.pid);if(!p)return;
+    if((p.consigne||0)>0&&t.zone!=='emporter'){p.vides=(p.vides||0)+l.q;vides+=l.q;}
+  });
+  var vente={
+    id:uid(),ts:now(),jour:jourService(),tableId:t.id,tableNm:t.nm,zone:zoneNm(t.zone),
+    srv:t.srv,srvNm:(t.srv&&membre(t.srv)?membre(t.srv).nm:'—'),
+    lignes:t.lignes.map(function(l){return {pid:l.pid,nm:l.nm,e:l.e,q:l.q,pu:l.pu,pa:l.pa,offert:l.offert};}),
+    remise:t.remise||0,total:tot,cout:coutTable(t),pourboire:tip,
+    mode:payMode,client:cli?cli.id:null,clientNm:cli?cli.nm:'',vides:vides,
+    ouvert:t.ouv,duree:t.ouv?now()-t.ouv:0
+  };
+  DB.ventes.push(vente);
+  if(cli){cli.ardoise=(cli.ardoise||0)+tot;cli.total=(cli.total||0)+tot;cli.visites=(cli.visites||0)+1;cli.derniere=now();}
+  if(t.srv){var m=membre(t.srv);if(m){m.ca=(m.ca||0)+tot;m.tips=(m.tips||0)+tip;}}
+  var recu2=num(($('pay-recu')||{}).value),rendu=(payMode==='espece'&&recu2>=tot+tip)?recu2-(tot+tip):0;
+  var nmT=t.nm;
+  t.lignes=[];t.remise=0;t.ouv=null;t.srv=null;t.note='';
+  save();fermerModal();
+  ticket(vente,rendu,nmT);
+}
+function ticket(v,rendu,nmT){
+  modal(mhead('✅ '+fmt(v.total)+L(' encaissés',' taken in'),esc(nmT)+' · '+heure(v.ts)+' · '+modeNm(v.mode))+
+   '<div class="ovc">'+
+   (rendu>0?'<div class="note vert" style="margin:0 0 12px;font-size:15px">'+L('💵 Monnaie à rendre : ','💵 Change to give: ')+'<b>'+fmt(rendu)+'</b></div>':'')+
+   (v.pourboire?'<div class="kv"><span class="kv-l">'+L('Pourboire','Tip')+'</span><span class="kv-v">'+fmt(v.pourboire)+'</span></div>':'')+
+   (v.mode==='ardoise'?'<div class="note" style="margin:0 0 12px">'+L("📒 Porté sur l'ardoise de ",'📒 Put on the tab of ')+esc(v.clientNm)+'.</div>':'')+
+   (v.vides?'<div class="kv"><span class="kv-l">'+L('Vidanges récupérées','Empties collected')+'</span><span class="kv-v">+'+v.vides+'</span></div>':'')+
+   '<div class="kv"><span class="kv-l">'+L('Servi par','Served by')+'</span><span class="kv-v">'+esc(v.srvNm)+'</span></div>'+
+   '<div class="kv"><span class="kv-l">'+L('Table occupée','Table occupied')+'</span><span class="kv-v">'+(v.duree?duree(v.duree):'—')+'</span></div>'+
+   '<div style="height:12px"></div>'+
+   '<button class="bpr" onclick="fermerModal();retourService()">'+L('Retour aux tables','Back to the tables')+'</button>'+
+   '<button class="bse" onclick="partagerVente('+v.id+')">'+L('📱 Envoyer le reçu','📱 Send the receipt')+'</button>'+
+   '</div>');
+}
+function partagerVente(id){
+  var v=null;DB.ventes.forEach(function(x){if(x.id===id)v=x;});if(!v)return;
+  var txt=(DB.cfg.nom||'Bar')+L('\nReçu — ','\nReceipt — ')+v.tableNm+' · '+heure(v.ts)+'\n\n'+
+    v.lignes.map(function(l){return '• '+l.nm+' ×'+l.q+(l.offert?L(' (offert)',' (on the house)'):' — '+fmt(l.pu*l.q));}).join('\n')+
+    (v.remise?L('\nRemise : −','\nDiscount: −')+fmt(v.remise):'')+'\n────────────\nTOTAL : '+fmt(v.total)+
+    L('\nPayé : ','\nPaid by: ')+modeNm(v.mode)+L('\n\nMerci 🍻','\n\nThank you 🍻');
+  if(navigator.share){navigator.share({text:txt}).catch(function(){});return;}
+  try{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}catch(e){}
+}
+
+/* ── Dépenses du soir ─────────────────────────────────────────────── */
+function ouvrirDepense(){
+  modal(mhead(L('💸 Dépense du soir','💸 Expense tonight'),L('Glace, carburant, transport… tout ce qui sort de la caisse','Ice, fuel, transport… anything that leaves the till'))+
+   '<div class="ovc">'+
+   '<div class="fld"><label class="lbl">'+L('Type','Type')+'</label><div class="chips" id="dep-cats">'+
+     DEP_CATS.filter(function(c){return !c.auto;}).map(function(c,i){return '<div class="chip'+(i===0?' on':'')+'" data-c="'+c.c+'" onclick="choisirDep(this)">'+c.e+' '+L(c.nm,c.ne)+'</div>';}).join('')+
+   '</div></div>'+
+   '<div class="fld"><label class="lbl">'+L('Montant','Amount')+'</label><input class="inp" id="dep-mt" inputmode="decimal" placeholder="0"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Détail','Detail')+'</label><input class="inp" id="dep-lb" placeholder="'+
+     L('2 sacs de glace, 5 L essence...','2 bags of ice, 5 L petrol...')+'"></div>'+
+   '<button class="bpr" onclick="validerDepense()">'+L('Enregistrer la dépense','Save the expense')+'</button></div>');
+}
+var depCat='glace';
+function choisirDep(el){
+  depCat=el.getAttribute('data-c');
+  var ch=el.parentNode.children;for(var i=0;i<ch.length;i++)ch[i].classList.remove('on');
+  el.classList.add('on');
+}
+function validerDepense(){
+  var mt=num($('dep-mt').value);
+  if(mt<=0){toast(L('Le montant de la dépense ?','How much was the expense?'));return;}
+  DB.depenses.push({id:uid(),ts:now(),cat:depCat,lbl:$('dep-lb').value.trim(),montant:mt,par:moi?moi.id:null});
+  save();fermerModal();rendreService();
+  toast('💸 '+fmt(mt)+L(' enregistrés en dépense.',' recorded as an expense.'));
+}
+</script>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   LE STOCK D'UN BAR — trois endroits, pas un
+
+   Une boutique a UN stock. Un bar en a trois, et le client ne veut que
+   le troisième :
+       • le dépôt, en CASIERS fermés
+       • le dépôt, en bouteilles d'un casier entamé
+       • le FRIGO, les seules bouteilles servables tout de suite
+   Plus une quatrième pile qui n'est pas du stock mais de l'argent : les
+   VIDANGES consignées, qui se reprennent au dépôt.
+   ══════════════════════════════════════════════════════════════════ */
+var STK_FILTRES=[
+ {c:'tout',nm:'Tout',ne:'All'},{c:'frais',nm:'🧊 Rien au frais',ne:'🧊 Nothing cold'},{c:'bas',nm:'⚠️ À recommander',ne:'⚠️ To reorder'},
+ {c:'out',nm:'⛔ Épuisés',ne:'⛔ Sold out'},{c:'vid',nm:'♻️ Vidanges',ne:'♻️ Empties'},{c:'top',nm:'🔥 Qui tournent',ne:'🔥 Movers'}
+];
+function chercherStock(q){qStock=(q||'').toLowerCase();rendreStock();}
+function filtreStock(f){vueStk=f;rendreStock();}
+function detailStock(p){
+  if(!p.suivi)return L('Sans suivi de stock','No stock tracking');
+  var m=[];
+  if(p.casiers)m.push(p.casiers+L(' casier'+(p.casiers>1?'s':''),' crate'+(p.casiers>1?'s':''))+' ('+(p.casiers*p.parCasier)+')');
+  if(p.bouteilles)m.push(p.bouteilles+L(" à l'unité",' loose'));
+  m.push((p.frais||0)+L(' au frais',' cold'));
+  return m.join(' · ');
+}
+function rendreStock(){
+  if(!DB)return;
+  var vStock=0,vVente=0,vCons=0,nbBas=0;
+  DB.produits.forEach(function(p){
+    if(!p.actif||!p.suivi)return;
+    var st=stockTotal(p);
+    vStock+=st*(p.pa||0);vVente+=st*(p.pv||0);vCons+=(p.vides||0)*(p.consigne||0);
+    if(st<=(p.seuil||0))nbBas++;
+  });
+  $('stk-filtres').innerHTML=STK_FILTRES.map(function(f){
+    return '<button class="tpil'+(vueStk===f.c?' on':'')+'" onclick="filtreStock(\''+f.c+'\')">'+L(f.nm,f.ne)+'</button>';
+  }).join('');
+  var vierge=DB.produits.every(function(p){return !p.suivi||stockTotal(p)<=0;});
+  $('stk-resume').innerHTML=
+    (vierge?'<div class="note" onclick="ouvrirAppro()">'+L(
+      "📦 Ton stock n'est pas encore saisi. Les ventes passeront quand même — mais tant que le premier bon d'approvisionnement n'est pas fait, l'app ne peut ni prévenir d'une rupture, ni calculer ta marge juste. Touche ici pour le faire.",
+      '📦 Your stock has not been entered yet. Sales will still go through — but until the first stock purchase is recorded, the app can neither warn you of a shortage nor work out your true margin. Tap here to do it.')+'</div>':'')+
+    '<div style="padding:4px 15px 8px"><div class="rgrid">'+
+    '<div class="rtile"><div class="rtl">'+L('Valeur du stock','Stock value')+'</div><div class="rtv">'+fmt(vStock)+'</div></div>'+
+    '<div class="rtile"><div class="rtl">'+L('Vaut à la vente','Worth at sale')+'</div><div class="rtv g">'+fmt(vVente)+'</div></div>'+
+    '<div class="rtile"><div class="rtl">'+L('Consignes en attente','Deposits pending')+'</div><div class="rtv a">'+fmt(vCons)+'</div></div>'+
+    '<div class="rtile"><div class="rtl">'+L('À recommander','To reorder')+'</div><div class="rtv'+(nbBas?' r':'')+'">'+nbBas+'</div></div>'+
+    '</div></div>';
+
+  var lst=DB.produits.filter(function(p){
+    if(!p.actif)return false;
+    if(qStock&&p.nm.toLowerCase().indexOf(qStock)<0&&famNm(p.fam).toLowerCase().indexOf(qStock)<0)return false;
+    var st=stockTotal(p);
+    if(vueStk==='frais')return p.suivi&&(p.frais||0)===0&&st>0;
+    if(vueStk==='bas')return p.suivi&&st<=(p.seuil||0)&&st>0;
+    if(vueStk==='out')return p.suivi&&st<=0;   // le découvert en fait partie
+    if(vueStk==='vid')return (p.vides||0)>0;
+    if(vueStk==='top')return (p.vendu||0)>0;
+    return true;
+  });
+  if(vueStk==='top')lst.sort(function(a,b){return (b.vendu||0)-(a.vendu||0);});
+  $('stk-lst').innerHTML=lst.map(function(p){
+    var st=stockTotal(p),bdg='';
+    if(p.suivi){
+      if(st<0)bdg='<span class="badge bg-out">'+L('découvert ','overdrawn ')+st+'</span>';
+      else if(st===0)bdg='<span class="badge bg-out">'+L('épuisé','sold out')+'</span>';
+      else if(st<=(p.seuil||0))bdg='<span class="badge bg-bas">'+L('à recommander','reorder')+'</span>';
+      if((p.frais||0)===0&&st>0)bdg+='<span class="badge bg-chaud">'+L('rien au frais','nothing cold')+'</span>';
+      else if((p.frais||0)>0)bdg+='<span class="badge bg-frais">'+p.frais+' 🧊</span>';
+    }
+    return '<div class="row" onclick="ficheProduit('+p.id+')">'+
+      '<div class="row-e">'+(p.e||'🥤')+'</div>'+
+      '<div class="row-b"><div class="row-t">'+esc(p.nm)+bdg+'</div>'+
+      '<div class="row-s">'+esc(detailStock(p))+((p.vides||0)?' · ♻️ '+p.vides+L(' vides',' empties'):'')+'</div></div>'+
+      '<div class="row-r"><div class="row-p">'+fmt(p.pv)+'</div>'+
+      '<div class="row-x">'+(p.suivi?st+L(' dispo',' left'):esc(p.cont||''))+'</div></div></div>';
+  }).join('')||'<div class="vide"><div class="vide-e">📦</div><div class="vide-t">'+L('Rien dans ce filtre','Nothing in this filter')+'</div>'+
+    '<div class="vide-s">'+L('Change de filtre, ou fais un approvisionnement (🚚 en haut).','Try another filter, or record a stock purchase (🚚 at the top).')+'</div></div>';
+}
+function ficheProduit(id){
+  var p=prod(id);if(!p)return;
+  var st=stockTotal(p);
+  modal(mhead((p.e||'🥤')+' '+esc(p.nm),esc(p.cont||'')+' · '+famNm(p.fam))+
+   '<div class="ovc">'+
+   '<div class="kv"><span class="kv-l">'+L('Prix de vente','Sale price')+'</span><span class="kv-v">'+fmt(p.pv)+(prixVente(p)!==p.pv?' · happy '+fmt(prixVente(p)):'')+'</span></div>'+
+   (estPatron()?'<div class="kv"><span class="kv-l">'+L("Prix d'achat",'Cost price')+'</span><span class="kv-v">'+fmt(p.pa)+'</span></div>'+
+    '<div class="kv"><span class="kv-l">'+L('Marge par unité','Margin per unit')+'</span><span class="kv-v" style="color:#1B7A3A">'+fmt(p.pv-p.pa)+'</span></div>':'')+
+   (p.suivi?'<div class="kv"><span class="kv-l">'+L('Au dépôt','In the store room')+'</span><span class="kv-v">'+(p.casiers||0)+L(' casier(s) + ',' crate(s) + ')+(p.bouteilles||0)+'</span></div>'+
+     '<div class="kv"><span class="kv-l">'+L('Au frais 🧊','Cold 🧊')+'</span><span class="kv-v">'+(p.frais||0)+'</span></div>'+
+     '<div class="kv"><span class="kv-l">'+L('Total disponible','Total available')+'</span><span class="kv-v">'+st+'</span></div>'+
+     ((p.consigne||0)?'<div class="kv"><span class="kv-l">'+L('Vidanges gardées','Empties held')+'</span><span class="kv-v">'+(p.vides||0)+' · '+fmt((p.vides||0)*p.consigne)+'</span></div>':'')
+     :'<div class="kv"><span class="kv-l">'+L('Stock','Stock')+'</span><span class="kv-v">'+L('non suivi','not tracked')+'</span></div>')+
+   '<div class="kv"><span class="kv-l">'+L('Vendu (cumul)','Sold (total)')+'</span><span class="kv-v">'+(p.vendu||0)+'</span></div>'+
+   '<div style="height:14px"></div>'+
+   (p.suivi?'<button class="bpr" onclick="ouvrirFrais('+p.id+')">'+L('🧊 Mettre au frais','🧊 Put in the fridge')+'</button>':'')+
+   (estPatron()?(p.suivi?'<button class="bse" onclick="ouvrirApproRapide('+p.id+')">'+L('🚚 Réapprovisionner','🚚 Restock')+'</button>'+
+      '<button class="bse" onclick="ouvrirInventaire('+p.id+')">'+L('📋 Corriger le stock (inventaire)','📋 Correct the stock (count)')+'</button>'+
+      '<button class="bse bdg2" onclick="ouvrirCasse('+p.id+')">'+L('💥 Casse / perte','💥 Breakage / loss')+'</button>':'')+
+    '<button class="bse" onclick="ouvrirProduit('+p.id+')">'+L('✏️ Modifier le produit','✏️ Edit the product')+'</button>':'')+
+   '</div>');
+}
+function ouvrirFrais(id){
+  var p=prod(id),dep=(p.casiers||0)*(p.parCasier||0)+(p.bouteilles||0);
+  modal(mhead(L('🧊 Mettre au frais','🧊 Put in the fridge'),esc(p.nm)+' — '+dep+L(' au dépôt, ',' in the store room, ')+(p.frais||0)+L(' déjà au frais',' already cold'))+
+   '<div class="ovc">'+
+   '<div class="fld"><label class="lbl">'+L('Combien de bouteilles au frigo ?','How many bottles into the fridge?')+'</label><input class="inp" id="fr-q" inputmode="numeric" value="'+Math.min(dep,p.parCasier||12)+'"></div>'+
+   '<div class="chips">'+[6,12,24].map(function(n){return '<div class="chip" onclick="document.getElementById(\'fr-q\').value='+n+'">'+n+'</div>';}).join('')+
+     '<div class="chip" onclick="document.getElementById(\'fr-q\').value='+dep+'">'+L('Tout (','All (')+dep+')</div></div>'+
+   '<div class="note bleu">'+L("Le frigo n'est pas un stock de plus : ces bouteilles quittent le dépôt. C'est ce qui permet de dire « il n'y a plus de fraîche » avant que le client le découvre.",
+     'The fridge is not extra stock: these bottles leave the store room. That is what lets the app say "no cold ones left" before the customer finds out.')+'</div>'+
+   '<button class="bpr" onclick="validerFrais('+id+')">'+L('Transférer au frigo','Move to the fridge')+'</button></div>');
+}
+function validerFrais(id){
+  var p=prod(id),q=Math.max(0,Math.round(num($('fr-q').value)));
+  var dep=(p.casiers||0)*(p.parCasier||0)+(p.bouteilles||0);
+  if(q>dep){toast(L('Il n\'y a que ','There are only ')+dep+L(' au dépôt.',' in the store room.'));return;}
+  var reste=q;
+  var pris=Math.min(p.bouteilles||0,reste);p.bouteilles-=pris;reste-=pris;
+  while(reste>0&&p.casiers>0){p.casiers--;p.bouteilles+=(p.parCasier||1);
+    var pr=Math.min(p.bouteilles,reste);p.bouteilles-=pr;reste-=pr;}
+  p.frais=(p.frais||0)+q;
+  save();fermerModal();rendreStock();
+  toast('🧊 '+q+' × '+p.nm+L(' au frais.',' chilling.'));
+}
+function ouvrirCasse(id){
+  var p=prod(id);
+  modal(mhead(L('💥 Casse ou perte','💥 Breakage or loss'),esc(p.nm))+
+   '<div class="ovc">'+
+   '<div class="fld"><label class="lbl">'+L('Combien de bouteilles perdues ?','How many bottles lost?')+'</label><input class="inp" id="cs-q" inputmode="numeric" value="1"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Raison','Reason')+'</label><select class="inp" id="cs-r">'+
+     '<option>'+L('Cassée au service','Broken during service')+'</option><option>'+L('Cassée au transport','Broken in transport')+'</option>'+
+     '<option>'+L('Périmée / éventée','Expired / flat')+'</option>'+
+     '<option>'+L('Disparue (non justifiée)','Missing (unexplained)')+'</option><option>'+L('Consommation personnel','Staff drink')+'</option></select></div>'+
+   '<button class="bpr bdg2" style="color:var(--R)" onclick="validerCasse('+id+')">'+L('Enregistrer la perte','Record the loss')+'</button></div>');
+}
+function validerCasse(id){
+  var p=prod(id),q=Math.max(1,Math.round(num($('cs-q').value)));
+  var n=q;
+  var t=Math.min(p.frais||0,n);p.frais-=t;n-=t;
+  t=Math.min(p.bouteilles||0,n);p.bouteilles-=t;n-=t;
+  while(n>0&&p.casiers>0){p.casiers--;p.bouteilles+=(p.parCasier||1);
+    var u=Math.min(p.bouteilles,n);p.bouteilles-=u;n-=u;}
+  DB.depenses.push({id:uid(),ts:now(),cat:'casse',lbl:q+' × '+p.nm+' — '+$('cs-r').value,montant:q*(p.pa||0),par:moi?moi.id:null});
+  save();fermerModal();rendreStock();
+  toast('💥 '+q+' × '+p.nm+L(' retirés — ',' removed — ')+fmt(q*(p.pa||0))+L(' de perte.',' lost.'));
+}
+function ouvrirInventaire(id){
+  var p=prod(id);
+  modal(mhead(L('📋 Inventaire','📋 Stock count'),esc(p.nm)+L(" — compte ce qu'il y a VRAIMENT",' — count what is REALLY there'))+
+   '<div class="ovc">'+
+   '<div class="f2"><div class="fld"><label class="lbl">'+L('Casiers pleins','Full crates')+'</label><input class="inp" id="iv-c" inputmode="numeric" value="'+(p.casiers||0)+'"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Bouteilles seules','Loose bottles')+'</label><input class="inp" id="iv-b" inputmode="numeric" value="'+(p.bouteilles||0)+'"></div></div>'+
+   '<div class="f2"><div class="fld"><label class="lbl">'+L('Au frais 🧊','Cold 🧊')+'</label><input class="inp" id="iv-f" inputmode="numeric" value="'+(p.frais||0)+'"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Vidanges ♻️','Empties ♻️')+'</label><input class="inp" id="iv-v" inputmode="numeric" value="'+(p.vides||0)+'"></div></div>'+
+   '<div class="note">'+L("L'écart entre le compté et le théorique n'est pas corrigé en silence : il est enregistré en perte si tu comptes moins.",
+     'The gap between counted and expected is not fixed in silence: if you count less, it is recorded as a loss.')+'</div>'+
+   '<button class="bpr" onclick="validerInventaire('+id+')">'+L("Enregistrer l'inventaire",'Save the count')+'</button></div>');
+}
+function validerInventaire(id){
+  var p=prod(id),av=stockTotal(p);
+  p.casiers=Math.max(0,Math.round(num($('iv-c').value)));
+  p.bouteilles=Math.max(0,Math.round(num($('iv-b').value)));
+  p.frais=Math.max(0,Math.round(num($('iv-f').value)));
+  p.vides=Math.max(0,Math.round(num($('iv-v').value)));
+  var ap=stockTotal(p),d=ap-av;
+  if(d<0)DB.depenses.push({id:uid(),ts:now(),cat:'ecart',lbl:L('Inventaire ','Count ')+p.nm+' : '+d+L(' unité(s)',' unit(s)'),montant:(-d)*(p.pa||0),par:moi?moi.id:null});
+  save();fermerModal();rendreStock();
+  toast(d===0?L('📋 Inventaire conforme.','📋 Stock count matches.')
+        :(d<0?L('📋 Écart de ','📋 Gap of ')+d+L(' enregistré en perte.',' recorded as a loss.')
+             :'📋 '+d+L(' unité(s) en plus.',' extra unit(s).')));
+}
+
+/* ── Le bon d'approvisionnement ───────────────────────────────────── */
+var bonAppro=[];
+function ouvrirAppro(){
+  if(!estPatron()){toast(L('🔒 Réservé au patron.','🔒 Owner only.'));return;}
+  if(!DB.produits.some(function(p){return p.actif&&p.suivi;})){
+    toast(L("📦 Aucun produit à stock suivi — ajoute d'abord une boisson à la carte.",'📦 No stock-tracked product — add a drink to the menu first.'));return;}
+  bonAppro=[];rendreAppro();
+}
+function ouvrirApproRapide(id){bonAppro=[];rendreAppro(id);}
+function rendreAppro(presel){
+  var sv=DB.produits.filter(function(p){return p.actif&&p.suivi;});
+  var totC=bonAppro.reduce(function(s,l){return s+l.casiers*l.puCasier+l.bouteilles*l.puBt;},0);
+  var totV=bonAppro.reduce(function(s,l){return s+l.rendues*l.consigne;},0);
+  modal(mhead(L("🚚 Bon d'approvisionnement",'🚚 Stock purchase note'),L('Ce que tu ramènes du dépôt, et les vidanges que tu y laisses','What you bring back from the depot, and the empties you leave there'))+
+   '<div class="ovc">'+
+   '<div class="fld"><label class="lbl">'+L('Produit','Product')+'</label><select class="inp" id="ap-p">'+
+     sv.map(function(p){return '<option value="'+p.id+'"'+(presel===p.id?' selected':'')+'>'+esc(p.nm)+' — '+stockTotal(p)+L(' en stock',' in stock')+'</option>';}).join('')+
+   '</select></div>'+
+   '<div class="f2"><div class="fld"><label class="lbl">'+L('Casiers','Crates')+'</label><input class="inp" id="ap-c" inputmode="numeric" value="1"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Prix du casier','Crate price')+'</label><input class="inp" id="ap-pc" inputmode="decimal" placeholder="0"></div></div>'+
+   '<div class="f2"><div class="fld"><label class="lbl">'+L('Bouteilles seules','Loose bottles')+'</label><input class="inp" id="ap-b" inputmode="numeric" value="0"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Vidanges rendues','Empties returned')+'</label><input class="inp" id="ap-v" inputmode="numeric" value="0"></div></div>'+
+   '<button class="bse" onclick="ajouterAuBon()">'+L('+ Ajouter au bon','+ Add to the note')+'</button>'+
+   (bonAppro.length?'<div style="height:6px"></div>'+bonAppro.map(function(l,i){
+      return '<div class="row" style="margin-bottom:7px"><div class="row-e">📦</div><div class="row-b">'+
+        '<div class="row-t">'+esc(l.nm)+'</div><div class="row-s">'+l.casiers+L(' casier(s)',' crate(s)')+(l.bouteilles?' + '+l.bouteilles+L(' bt',' btl'):'')+
+        (l.rendues?' · ♻️ '+l.rendues+L(' rendues',' returned'):'')+'</div></div>'+
+        '<div class="row-r"><div class="row-p">'+fmt(l.casiers*l.puCasier+l.bouteilles*l.puBt)+'</div>'+
+        '<div class="row-x" onclick="retirerDuBon('+i+')" style="color:var(--R);font-weight:800">'+L('retirer','remove')+'</div></div></div>';
+    }).join('')+
+    '<div class="kv"><span class="kv-l">'+L('Marchandise','Goods')+'</span><span class="kv-v">'+fmt(totC)+'</span></div>'+
+    '<div class="kv"><span class="kv-l">'+L('Consignes récupérées','Deposits claimed back')+'</span><span class="kv-v" style="color:#1B7A3A">−'+fmt(totV)+'</span></div>'+
+    '<div class="kv big"><span class="kv-l">'+L('À payer au dépôt','To pay at the depot')+'</span><span class="kv-v">'+fmt(Math.max(0,totC-totV))+'</span></div>'+
+    '<div style="height:10px"></div><button class="bpr bok" onclick="validerBon()">'+L('✅ Valider le bon','✅ Confirm the note')+'</button>'
+   :'<div class="note" style="margin-top:8px">'+L("Ajoute au moins une ligne. Le prix du casier met à jour le prix d'achat du produit — c'est lui qui donne la vraie marge.",
+      'Add at least one line. The crate price updates the product cost — and that is what gives you a true margin.')+'</div>')+
+   '</div>');
+  var s=$('ap-p');
+  if(s)s.onchange=function(){var p=prod(parseInt(this.value,10));
+    if(p)$('ap-pc').value=Math.round((p.pa||0)*(p.parCasier||1));};
+  if(s&&s.value){var p0=prod(parseInt(s.value,10));if(p0)$('ap-pc').value=Math.round((p0.pa||0)*(p0.parCasier||1));}
+}
+function ajouterAuBon(){
+  var p=prod(parseInt($('ap-p').value,10));if(!p)return;
+  var c=Math.max(0,Math.round(num($('ap-c').value))),b=Math.max(0,Math.round(num($('ap-b').value)));
+  var pc=num($('ap-pc').value),v=Math.max(0,Math.round(num($('ap-v').value)));
+  if(c<=0&&b<=0&&v<=0){toast(L('Rien à ajouter sur cette ligne.','Nothing to add on this line.'));return;}
+  if(v>(p.vides||0)){toast(L("♻️ Tu n'as que ",'♻️ You only have ')+(p.vides||0)+L(' vidanges de ',' empties of ')+p.nm+'.');return;}
+  bonAppro.push({pid:p.id,nm:p.nm,casiers:c,bouteilles:b,puCasier:pc,
+    puBt:p.parCasier?Math.round(pc/p.parCasier):pc,rendues:v,consigne:p.consigne||0});
+  rendreAppro();
+}
+function retirerDuBon(i){bonAppro.splice(i,1);rendreAppro();}
+function validerBon(){
+  if(!bonAppro.length)return;
+  var totC=0,totV=0,nb=0;
+  bonAppro.forEach(function(l){
+    var p=prod(l.pid);if(!p)return;
+    p.casiers=(p.casiers||0)+l.casiers;
+    p.bouteilles=(p.bouteilles||0)+l.bouteilles;
+    p.vides=Math.max(0,(p.vides||0)-l.rendues);
+    if(l.puCasier>0&&p.parCasier>0)p.pa=Math.round(l.puCasier/p.parCasier);
+    totC+=l.casiers*l.puCasier+l.bouteilles*l.puBt;
+    totV+=l.rendues*l.consigne;
+    nb+=l.casiers*(p.parCasier||0)+l.bouteilles;
+  });
+  DB.appros.push({id:uid(),ts:now(),type:'achat',lignes:bonAppro.slice(),
+    montant:totC,consignes:totV,net:Math.max(0,totC-totV),par:moi?moi.id:null});
+  DB.depenses.push({id:uid(),ts:now(),cat:'appro',lbl:L('Approvisionnement dépôt (','Depot purchase (')+bonAppro.length+L(' ligne(s))',' line(s))'),
+    montant:Math.max(0,totC-totV),par:moi?moi.id:null});
+  bonAppro=[];save();fermerModal();rendreStock();
+  toast('🚚 '+nb+L(' bouteilles entrées — ',' bottles in — ')+fmt(totC-totV)+L(' payés au dépôt.',' paid at the depot.'));
+}
+
+/* ── Les vidanges ─────────────────────────────────────────────────── */
+function ouvrirVidanges(){
+  var l=DB.produits.filter(function(p){return (p.vides||0)>0;});
+  var tot=valeurVidanges(),nb=l.reduce(function(s,p){return s+p.vides;},0);
+  modal(mhead(L('♻️ Vidanges consignées','♻️ Empties on deposit'),nb+L(' bouteille(s) · ',' bottle(s) · ')+fmt(tot)+L(' à récupérer',' to claim back'))+
+   '<div class="ovc">'+
+   (l.length?l.map(function(p){
+     return '<div class="row"><div class="row-e">'+(p.e||'🍺')+'</div><div class="row-b">'+
+       '<div class="row-t">'+esc(p.nm)+'</div><div class="row-s">'+p.vides+L(' vides × ',' empties × ')+fmt(p.consigne)+
+       ' · '+(p.parCasier?Math.floor(p.vides/p.parCasier)+L(' casier(s) plein(s)',' full crate(s)'):'')+'</div></div>'+
+       '<div class="row-r"><div class="row-p">'+fmt(p.vides*p.consigne)+'</div></div></div>';
+   }).join('')+
+   '<div class="note vert" style="margin:10px 0">'+L('Au dépôt, ces vides valent ','At the depot these empties are worth ')+fmt(tot)+
+     L(" en déduction de ta prochaine commande. Rends-les avant qu'elles se cassent dans la cour.",
+       ' off your next order. Return them before they get broken in the yard.')+'</div>'+
+   '<button class="bpr bok" onclick="rendreToutesVidanges()">'+L("✅ J'ai tout rendu au dépôt",'✅ I returned them all')+'</button>'+
+   '<div class="note">'+L("Tu peux aussi les déduire ligne par ligne dans le bon d'approvisionnement (🚚).",'You can also deduct them line by line on the stock purchase note (🚚).')+'</div>'
+   :'<div class="vide"><div class="vide-e">♻️</div><div class="vide-t">'+L('Aucune vidange en attente','No empties waiting')+'</div>'+
+    '<div class="vide-s">'+L("Les bouteilles consignées bues sur place s'accumulent ici automatiquement au fil du service.",
+      'Deposit bottles drunk on the premises pile up here on their own as you serve.')+'</div></div>')+
+   '</div>');
+}
+function rendreToutesVidanges(){
+  var tot=valeurVidanges(),nb=0;
+  DB.produits.forEach(function(p){nb+=(p.vides||0);p.vides=0;});
+  DB.appros.push({id:uid(),ts:now(),type:'retour',lignes:[],montant:0,consignes:tot,net:-tot,par:moi?moi.id:null});
+  save();fermerModal();rendreStock();
+  toast('♻️ '+nb+L(' vidanges rendues — ',' empties returned — ')+fmt(tot)+L(' de consigne récupérés.',' of deposit claimed back.'));
+}
+
+/* ── Créer / modifier un produit ──────────────────────────────────── */
+function ouvrirProduit(id){
+  if(!estPatron()){toast(L('🔒 Seul le patron modifie la carte.','🔒 Only the owner edits the menu.'));return;}
+  var p=id?prod(id):null;
+  modal(mhead(p?'✏️ '+esc(p.nm):L('➕ Nouveau produit','➕ New product'),
+      p?L('Modifier la fiche','Edit the product'):L('Il apparaîtra tout de suite sur la carte','It goes on the menu right away'))+
+   '<div class="ovc">'+
+   '<div class="fld"><label class="lbl">'+L('Nom','Name')+'</label><input class="inp" id="pr-nm" value="'+esc(p?p.nm:'')+'" placeholder="33 Export 65cl"></div>'+
+   '<div class="f2"><div class="fld"><label class="lbl">'+L('Famille','Family')+'</label><select class="inp" id="pr-fam">'+
+     FAMS.map(function(f){return '<option value="'+f.c+'"'+(p&&p.fam===f.c?' selected':'')+'>'+f.e+' '+L(f.nm,f.ne)+'</option>';}).join('')+
+   '</select></div><div class="fld"><label class="lbl">Emoji</label><input class="inp" id="pr-e" maxlength="4" value="'+esc(p?p.e:'🍺')+'"></div></div>'+
+   '<div class="f2"><div class="fld"><label class="lbl">'+L('Contenance','Size')+'</label><input class="inp" id="pr-cont" value="'+esc(p?p.cont:'')+'" placeholder="65 cl"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Par casier','Per crate')+'</label><input class="inp" id="pr-pc" inputmode="numeric" value="'+(p?p.parCasier:12)+'"></div></div>'+
+   '<div class="f2"><div class="fld"><label class="lbl">'+L("Prix d'achat",'Cost price')+'</label><input class="inp" id="pr-pa" inputmode="decimal" value="'+(p?p.pa:'')+'"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Prix de vente','Sale price')+'</label><input class="inp" id="pr-pv" inputmode="decimal" value="'+(p?p.pv:'')+'"></div></div>'+
+   '<div class="f2"><div class="fld"><label class="lbl">'+L('Prix happy hour','Happy hour price')+'</label><input class="inp" id="pr-pvh" inputmode="decimal" value="'+(p&&p.pvH?p.pvH:'')+'" placeholder="auto"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Consigne bouteille','Bottle deposit')+'</label><input class="inp" id="pr-cs" inputmode="decimal" value="'+(p?p.consigne:0)+'"></div></div>'+
+   '<div class="f2"><div class="fld"><label class="lbl">'+L('Alerte sous','Warn below')+'</label><input class="inp" id="pr-seuil" inputmode="numeric" value="'+(p?p.seuil:12)+'"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Suivre le stock','Track stock')+'</label><select class="inp" id="pr-suivi">'+
+     '<option value="1"'+(!p||p.suivi?' selected':'')+'>'+L('Oui (bouteilles)','Yes (bottles)')+'</option>'+
+     '<option value="0"'+(p&&!p.suivi?' selected':'')+'>'+L('Non (préparé)','No (made to order)')+'</option></select></div></div>'+
+   '<button class="bpr" onclick="sauverProduit('+(id||'null')+')">'+L('Enregistrer','Save')+'</button>'+
+   (p?'<button class="bse bdg2" onclick="retirerProduit('+id+')">'+L('🚫 Retirer de la carte','🚫 Remove from the menu')+'</button>':'')+
+   '</div>');
+}
+function sauverProduit(id){
+  var nm=$('pr-nm').value.trim();
+  if(nm.length<2){toast(L('Le nom du produit ?','What is the product called?'));return;}
+  var p=id?prod(id):{id:uid(),casiers:0,bouteilles:0,frais:0,vides:0,vendu:0,actif:1};
+  p.nm=nm;p.fam=$('pr-fam').value;p.e=$('pr-e').value.trim()||'🥤';
+  p.cont=$('pr-cont').value.trim();p.parCasier=Math.max(0,Math.round(num($('pr-pc').value)));
+  p.pa=num($('pr-pa').value);p.pv=num($('pr-pv').value);p.pvH=num($('pr-pvh').value);
+  p.consigne=num($('pr-cs').value);p.seuil=Math.max(0,Math.round(num($('pr-seuil').value)));
+  p.suivi=parseInt($('pr-suivi').value,10);
+  if(!id)DB.produits.push(p);
+  save();fermerModal();
+  if($('s-menu').classList.contains('on'))rendreMenu();else rendreStock();
+  toast('✅ '+nm+L(' enregistré.',' saved.'));
+}
+function retirerProduit(id){
+  var p=prod(id);
+  if(!confirm(L('Retirer ','Remove ')+p.nm+L(" de la carte ? L'historique des ventes est conservé.",' from the menu? Past sales are kept.')))return;
+  p.actif=0;save();fermerModal();rendreStock();
+  toast('🚫 '+p.nm+L(' retiré de la carte.',' removed from the menu.'));
+}
+</script>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   RAPPORTS & CLÔTURE DU SERVICE
+
+   Le chiffre qu'un patron de bar cherche à 2 h du matin n'est pas « le
+   chiffre d'affaires du mois » : c'est « est-ce que la caisse contient
+   ce qu'elle devrait contenir ». La clôture répond à ça, et elle est
+   le seul écran de cette application qui compte de l'argent physique.
+   ══════════════════════════════════════════════════════════════════ */
+var PERIODES=[{c:'soir',nm:'Ce soir',ne:'Tonight'},{c:'hier',nm:'Hier',ne:'Yesterday'},{c:'7j',nm:'7 soirs',ne:'7 nights'},
+ {c:'30j',nm:'30 jours',ne:'30 days'},{c:'tout',nm:'Tout',ne:'All time'}];
+function bornes(p){
+  var j=jourService(),d=new Date();
+  if(p==='soir')return function(ts){return jourService(ts)===j;};
+  if(p==='hier'){var jy=jourService(now()-86400000);return function(ts){return jourService(ts)===jy;};}
+  if(p==='7j'){var l7=now()-7*86400000;return function(ts){return ts>=l7;};}
+  if(p==='30j'){var l30=now()-30*86400000;return function(ts){return ts>=l30;};}
+  return function(){return true;};
+}
+function rendreRapports(){
+  if(!DB)return;
+  $('rpt-periodes').innerHTML=PERIODES.map(function(p){
+    return '<button class="tpil'+(vuePeriode===p.c?' on':'')+'" onclick="vuePeriode=\''+p.c+'\';rendreRapports()">'+L(p.nm,p.ne)+'</button>';
+  }).join('');
+  var f=bornes(vuePeriode);
+  var vs=DB.ventes.filter(function(v){return f(v.ts);});
+  var dp=DB.depenses.filter(function(d){return f(d.ts);});
+  if(!vs.length&&!dp.length){
+    $('rpt-cont').innerHTML='<div class="vide"><div class="vide-e">📈</div><div class="vide-t">'+L('Rien sur cette période','Nothing in this period')+'</div>'+
+      '<div class="vide-s">'+L('Les rapports se remplissent tout seuls dès la première addition encaissée.','Reports fill themselves in from the first bill you cash.')+'</div></div>';
+    return;
+  }
+  var ca=vs.reduce(function(s,v){return s+v.total;},0);
+  var cout=vs.reduce(function(s,v){return s+(v.cout||0);},0);
+  var tips=vs.reduce(function(s,v){return s+(v.pourboire||0);},0);
+  var dep=depExploitation(dp).reduce(function(s,d){return s+d.montant;},0);
+  var achats=dp.filter(function(d){return d.cat==='appro';}).reduce(function(s,d){return s+d.montant;},0);
+  var net=ca-cout-dep;
+  var moy=vs.length?ca/vs.length:0;
+  var arts=vs.reduce(function(s,v){return s+v.lignes.reduce(function(a,l){return a+l.q;},0);},0);
+
+  var parMode={};vs.forEach(function(v){parMode[v.mode]=(parMode[v.mode]||0)+v.total;});
+  var parProd={};vs.forEach(function(v){v.lignes.forEach(function(l){
+    if(!parProd[l.pid])parProd[l.pid]={nm:l.nm,e:l.e,q:0,ca:0};
+    parProd[l.pid].q+=l.q;if(!l.offert)parProd[l.pid].ca+=l.pu*l.q;});});
+  var tops=Object.keys(parProd).map(function(k){return parProd[k];}).sort(function(a,b){return b.q-a.q;});
+  var parSrv={};vs.forEach(function(v){var k=v.srvNm||'—';
+    if(!parSrv[k])parSrv[k]={nm:k,ca:0,n:0,tips:0};
+    parSrv[k].ca+=v.total;parSrv[k].n++;parSrv[k].tips+=(v.pourboire||0);});
+  var srvs=Object.keys(parSrv).map(function(k){return parSrv[k];}).sort(function(a,b){return b.ca-a.ca;});
+  var parH={};vs.forEach(function(v){var h=new Date(v.ts).getHours();parH[h]=(parH[h]||0)+v.total;});
+  var heures=Object.keys(parH).map(function(h){return {h:+h,ca:parH[h]};}).sort(function(a,b){return a.h-b.h;});
+  var maxH=heures.reduce(function(m,x){return Math.max(m,x.ca);},0);
+  var parDep={};dp.forEach(function(d){parDep[d.cat]=(parDep[d.cat]||0)+d.montant;});
+  var regs=(DB.reglements||[]).filter(function(r){return f(r.ts);}).reduce(function(s,r){return s+r.montant;},0);
+
+  var h='';
+  h+='<div class="rcard"><div class="rct">'+L("L'essentiel",'The essentials')+'</div><div class="rgrid">'+
+     '<div class="rtile"><div class="rtl">'+L('Recette','Takings')+'</div><div class="rtv">'+fmt(ca)+'</div></div>'+
+     (estPatron()?'<div class="rtile"><div class="rtl">'+L('Bénéfice net','Net profit')+'</div><div class="rtv '+(net>=0?'g':'r')+'">'+fmt(net)+'</div></div>':'')+
+     '<div class="rtile"><div class="rtl">'+L('Additions','Bills')+'</div><div class="rtv">'+vs.length+'</div></div>'+
+     '<div class="rtile"><div class="rtl">'+L('Addition moyenne','Average bill')+'</div><div class="rtv">'+fmt(moy)+'</div></div>'+
+     '<div class="rtile"><div class="rtl">'+L('Articles servis','Items served')+'</div><div class="rtv">'+arts+'</div></div>'+
+     '<div class="rtile"><div class="rtl">'+L('Pourboires','Tips')+'</div><div class="rtv a">'+fmt(tips)+'</div></div>'+
+     (regs?'<div class="rtile"><div class="rtl">'+L('Ardoises remboursées','Tabs repaid')+'</div><div class="rtv g">'+fmt(regs)+'</div></div>':'')+
+     '</div></div>';
+  if(estPatron())h+='<div class="rcard"><div class="rct">'+L("D'où vient le bénéfice",'Where the profit comes from')+'</div>'+
+     '<div class="kv"><span class="kv-l">'+L('Recette encaissée','Takings')+'</span><span class="kv-v">'+fmt(ca)+'</span></div>'+
+     '<div class="kv"><span class="kv-l">'+L('Coût des boissons vendues','Cost of drinks sold')+'</span><span class="kv-v" style="color:var(--R)">−'+fmt(cout)+'</span></div>'+
+     '<div class="kv"><span class="kv-l">'+L('Dépenses (glace, casse, transport…)','Expenses (ice, breakage, transport…)')+'</span><span class="kv-v" style="color:var(--R)">−'+fmt(dep)+'</span></div>'+
+     '<div class="kv big"><span class="kv-l">'+L('Reste','Left')+'</span><span class="kv-v" style="color:'+(net>=0?'#1B7A3A':'var(--R)')+'">'+fmt(net)+'</span></div>'+
+     (achats?'<div class="note bleu" style="margin:12px 0 0">🚚 '+fmt(achats)+L(
+        " ont été payés au dépôt sur la période. Ce n'est pas une perte : c'est du stock qui attend d'être vendu, et il ne compte donc pas dans le bénéfice ci-dessus. La caisse, elle, l'a bien senti passer — regarde la clôture.",
+        ' was paid at the depot over this period. That is not a loss: it is stock waiting to be sold, so it does not count against the profit above. The till felt it, though — see the closing.')+'</div>':'')+
+     '</div>';
+  h+='<div class="rcard"><div class="rct">'+L('Comment les clients ont payé','How customers paid')+'</div>'+
+     MODES.filter(function(m){return parMode[m.c];}).map(function(m){
+       var v=parMode[m.c],pc=ca?Math.round(v/ca*100):0;
+       return '<div class="bar-l"><div class="bar-h"><span>'+m.e+' '+L(m.nm,m.ne)+'</span><span>'+fmt(v)+' · '+pc+'%</span></div>'+
+         '<div class="bar-t"><div class="bar-f" style="width:'+pc+'%"></div></div></div>';
+     }).join('')+'</div>';
+  h+='<div class="rcard"><div class="rct">'+L('🔥 Ce qui part le plus','🔥 What moves fastest')+'</div>'+
+     tops.slice(0,8).map(function(p){
+       var mx=tops[0].q||1;
+       return '<div class="bar-l"><div class="bar-h"><span>'+(p.e||'🥤')+' '+esc(p.nm)+'</span><span>'+p.q+' · '+fmt(p.ca)+'</span></div>'+
+         '<div class="bar-t"><div class="bar-f" style="width:'+Math.round(p.q/mx*100)+'%"></div></div></div>';
+     }).join('')+'</div>';
+  if(srvs.length)h+='<div class="rcard"><div class="rct">'+L('👥 Par serveur','👥 By server')+'</div>'+
+     srvs.map(function(s){
+       var mx=srvs[0].ca||1;
+       return '<div class="bar-l"><div class="bar-h"><span>'+esc(s.nm)+'</span><span>'+fmt(s.ca)+' · '+s.n+L(' add.',' bills')+(s.tips?' · 🎁 '+fmt(s.tips):'')+'</span></div>'+
+         '<div class="bar-t"><div class="bar-f" style="width:'+Math.round(s.ca/mx*100)+'%"></div></div></div>';
+     }).join('')+'</div>';
+  if(heures.length)h+='<div class="rcard"><div class="rct">'+L('⏰ Les heures qui rapportent','⏰ The hours that pay')+'</div>'+
+     heures.map(function(x){
+       return '<div class="bar-l"><div class="bar-h"><span>'+String(x.h).padStart(2,'0')+L(' h',':00')+'</span><span>'+fmt(x.ca)+'</span></div>'+
+         '<div class="bar-t"><div class="bar-f" style="width:'+Math.round(x.ca/(maxH||1)*100)+'%"></div></div></div>';
+     }).join('')+'</div>';
+  if(estPatron()&&Object.keys(parDep).length)h+='<div class="rcard"><div class="rct">'+L("💸 Où part l'argent",'💸 Where the money goes')+'</div>'+
+     Object.keys(parDep).map(function(k){
+       return '<div class="kv"><span class="kv-l">'+depE(k)+' '+esc(depNm(k))+'</span><span class="kv-v">'+fmt(parDep[k])+'</span></div>';
+     }).join('')+'</div>';
+  var cls=DB.clotures.slice(-5).reverse();
+  if(cls.length)h+='<div class="rcard"><div class="rct">'+L('🌙 Dernières clôtures','🌙 Latest closings')+'</div>'+
+     cls.map(function(c){
+       return '<div class="kv"><span class="kv-l">'+c.jour+'</span><span class="kv-v">'+fmt(c.ca)+
+         (c.ecart?' <span style="color:'+(c.ecart<0?'var(--R)':'#1B7A3A')+'">('+(c.ecart>0?'+':'')+fmt(c.ecart)+')</span>':'')+'</span></div>';
+     }).join('')+'</div>';
+  $('rpt-cont').innerHTML=h;
+}
+
+/* ── La clôture ───────────────────────────────────────────────────── */
+function ouvrirCloture(){
+  if(!estPatron()){toast(L('🔒 La clôture est réservée au patron.','🔒 Closing the service is for the owner only.'));return;}
+  var vs=ventesDuSoir(),dp=depensesDuSoir();
+  var ca=vs.reduce(function(s,v){return s+v.total;},0);
+  var esp=vs.filter(function(v){return v.mode==='espece';}).reduce(function(s,v){return s+v.total;},0);
+  var mm=vs.filter(function(v){return v.mode==='mm'||v.mode==='carte';}).reduce(function(s,v){return s+v.total;},0);
+  var ard=vs.filter(function(v){return v.mode==='ardoise';}).reduce(function(s,v){return s+v.total;},0);
+  var tips=vs.reduce(function(s,v){return s+(v.pourboire||0);},0);
+  var dep=dp.reduce(function(s,d){return s+d.montant;},0);
+  var reg=reglementsDuSoir().reduce(function(s,r){return s+r.montant;},0);
+  var attendu=(DB.cfg.fondCaisse||0)+esp+reg+tips-dep;
+  var ouvertes=tablesOuvertes();
+  var vid=DB.produits.reduce(function(s,p){return s+(p.vides||0);},0);
+  modal(mhead(L('🌙 Clôture du service','🌙 Closing the service'),jourService()+' · '+vs.length+L(' addition(s)',' bill(s)'))+
+   '<div class="ovc">'+
+   (ouvertes.length?'<div class="note rouge" style="margin:0 0 12px">⚠️ '+ouvertes.length+L(' table(s) encore ouverte(s) pour ',' table(s) still open for ')+
+      fmt(ouvertes.reduce(function(s,t){return s+totalTable(t);},0))+L('. Encaisse-les avant de clôturer, sinon elles basculeront sur demain.',
+      '. Cash them in before closing, or they roll over to tomorrow.')+'</div>':'')+
+   '<div class="kv"><span class="kv-l">'+L('Recette totale','Total takings')+'</span><span class="kv-v">'+fmt(ca)+'</span></div>'+
+   '<div class="kv"><span class="kv-l">💵 '+L('Espèces','Cash')+'</span><span class="kv-v">'+fmt(esp)+'</span></div>'+
+   '<div class="kv"><span class="kv-l">📱 '+L('Mobile Money / carte','Mobile Money / card')+'</span><span class="kv-v">'+fmt(mm)+'</span></div>'+
+   '<div class="kv"><span class="kv-l">📒 '+L('Ardoises (non encaissées)','Tabs (not cashed)')+'</span><span class="kv-v">'+fmt(ard)+'</span></div>'+
+   (reg?'<div class="kv"><span class="kv-l">💵 '+L('Ardoises remboursées','Tabs repaid')+'</span><span class="kv-v" style="color:#1B7A3A">+'+fmt(reg)+'</span></div>':'')+
+   '<div class="kv"><span class="kv-l">🎁 '+L('Pourboires','Tips')+'</span><span class="kv-v">'+fmt(tips)+'</span></div>'+
+   '<div class="kv"><span class="kv-l">💸 '+L('Dépenses du soir',"Tonight's expenses")+'</span><span class="kv-v" style="color:var(--R)">−'+fmt(dep)+'</span></div>'+
+   '<div class="kv"><span class="kv-l">🏦 '+L('Fond de caisse du matin','Opening float')+'</span><span class="kv-v">'+fmt(DB.cfg.fondCaisse||0)+'</span></div>'+
+   '<div class="kv big"><span class="kv-l">'+L('Espèces attendues en caisse','Cash expected in the till')+'</span><span class="kv-v">'+fmt(attendu)+'</span></div>'+
+   '<div class="fld" style="margin-top:14px"><label class="lbl">'+L('Espèces réellement comptées','Cash actually counted')+'</label>'+
+   '<input class="inp" id="cl-compte" inputmode="decimal" placeholder="'+Math.round(attendu)+'" oninput="majEcart('+attendu+')"></div>'+
+   '<div class="kv"><span class="kv-l">'+L('Écart de caisse','Till difference')+'</span><span class="kv-v" id="cl-ecart">—</span></div>'+
+   '<div class="fld" style="margin-top:10px"><label class="lbl">'+L('Fond de caisse laissé pour demain','Float left for tomorrow')+'</label>'+
+   '<input class="inp" id="cl-fond" inputmode="decimal" value="'+(DB.cfg.fondCaisse||0)+'"></div>'+
+   (vid?'<div class="note vert">♻️ '+vid+L(' vidanges en réserve — ',' empties in reserve — ')+fmt(valeurVidanges())+L(' à récupérer au dépôt.',' to claim back at the depot.')+'</div>':'')+
+   '<button class="bpr bok" onclick="validerCloture('+attendu+')">'+L('🌙 Clôturer le service','🌙 Close the service')+'</button>'+
+   '<button class="bse" onclick="partagerCloture('+attendu+')">'+L('📱 Envoyer le récap','📱 Send the summary')+'</button>'+
+   '</div>');
+}
+function majEcart(att){
+  var c=num($('cl-compte').value),e=$('cl-ecart');
+  if(!$('cl-compte').value){e.textContent='—';e.style.color='';return;}
+  var d=c-att;
+  e.textContent=(d>0?'+':'')+fmt(d)+(d<0?L(' (manquant)',' (short)'):(d>0?L(' (excédent)',' (over)'):L(' (juste)',' (exact)')));
+  e.style.color=d<0?'var(--R)':(d>0?'#B45309':'#1B7A3A');
+}
+function validerCloture(att){
+  var vs=ventesDuSoir(),dp=depensesDuSoir();
+  var compte=$('cl-compte').value?num($('cl-compte').value):att;
+  var ca=vs.reduce(function(s,v){return s+v.total;},0);
+  DB.clotures.push({id:uid(),ts:now(),jour:jourService(),ca:ca,
+    cout:vs.reduce(function(s,v){return s+(v.cout||0);},0),
+    depenses:dp.reduce(function(s,d){return s+d.montant;},0),
+    especes:vs.filter(function(v){return v.mode==='espece';}).reduce(function(s,v){return s+v.total;},0),
+    ardoises:vs.filter(function(v){return v.mode==='ardoise';}).reduce(function(s,v){return s+v.total;},0),
+    pourboires:vs.reduce(function(s,v){return s+(v.pourboire||0);},0),
+    reglements:reglementsDuSoir().reduce(function(s,r){return s+r.montant;},0),
+    attendu:att,compte:compte,ecart:compte-att,
+    vidanges:DB.produits.reduce(function(s,p){return s+(p.vides||0);},0),
+    additions:vs.length,par:moi?moi.id:null});
+  DB.cfg.fondCaisse=num($('cl-fond').value);
+  DB.equipe.forEach(function(m){m.ca=0;m.tips=0;});
+  save();fermerModal();rendreRapports();
+  var d=compte-att;
+  toast(d===0?L('🌙 Service clôturé, caisse juste.','🌙 Service closed, till balances.')
+        :(d<0?L('🌙 Service clôturé — manque ','🌙 Service closed — ')+fmt(-d)+L(' en caisse.',' missing from the till.')
+             :L('🌙 Service clôturé — ','🌙 Service closed — ')+fmt(d)+L(' en trop.',' over.')));
+}
+function texteCloture(att){
+  var vs=ventesDuSoir(),dp=depensesDuSoir();
+  var ca=vs.reduce(function(s,v){return s+v.total;},0);
+  return (DB.cfg.nom||'Bar')+L(' — clôture ',' — closing ')+jourService()+'\n\n'+
+    L('Recette : ','Takings: ')+fmt(ca)+'\n'+
+    L('Espèces : ','Cash: ')+fmt(vs.filter(function(v){return v.mode==='espece';}).reduce(function(s,v){return s+v.total;},0))+'\n'+
+    'Mobile Money: '+fmt(vs.filter(function(v){return v.mode==='mm';}).reduce(function(s,v){return s+v.total;},0))+'\n'+
+    L('Ardoises : ','Tabs: ')+fmt(vs.filter(function(v){return v.mode==='ardoise';}).reduce(function(s,v){return s+v.total;},0))+'\n'+
+    L('Dépenses : ','Expenses: ')+fmt(dp.reduce(function(s,d){return s+d.montant;},0))+'\n'+
+    L('Additions : ','Bills: ')+vs.length+'\n'+
+    L('Espèces attendues : ','Cash expected: ')+fmt(att)+'\n'+
+    L('Vidanges à rendre : ','Empties to return: ')+DB.produits.reduce(function(s,p){return s+(p.vides||0);},0);
+}
+function partagerCloture(att){
+  var txt=texteCloture(att);
+  if(navigator.share){navigator.share({text:txt}).catch(function(){});return;}
+  try{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}catch(e){}
+}
+function exporterCSV(){
+  if(!DB.ventes.length){toast(L('Aucune vente à exporter.','No sales to export.'));return;}
+  var l=[L('Date;Heure;Table;Zone;Serveur;Produit;Quantite;PrixUnitaire;Total;Mode;Client',
+           'Date;Time;Table;Area;Server;Product;Quantity;UnitPrice;Total;Method;Customer')];
+  DB.ventes.forEach(function(v){
+    v.lignes.forEach(function(x){
+      l.push([jour(v.ts),heure(v.ts),v.tableNm,v.zone,v.srvNm,x.nm,x.q,x.pu,(x.offert?0:x.pu*x.q),v.mode,v.clientNm||''].join(';'));
+    });
+  });
+  var blob=new Blob(['﻿'+l.join('\n')],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='mybar-ventes-'+jour()+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  toast(L('📥 Export généré — ','📥 Export ready — ')+DB.ventes.length+L(' additions.',' bills.'));
+}
+</script>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   ÉQUIPE & CLIENTS
+
+   Dans un bar, le serveur n'est pas un « vendeur » anonyme : il est
+   responsable de ses tables et de ce qu'il rend en fin de service. Et
+   le client fidèle a une ardoise — le fameux « tu notes ».
+   ══════════════════════════════════════════════════════════════════ */
+function rendreEquipe(){
+  if(!DB)return;
+  $('eq-onglets').innerHTML=
+    '<button class="tpil'+(vueEq==='equipe'?' on':'')+'" onclick="vueEq=\'equipe\';rendreEquipe()">'+L('👥 Équipe','👥 Team')+' ('+DB.equipe.filter(function(m){return m.actif;}).length+')</button>'+
+    '<button class="tpil'+(vueEq==='clients'?' on':'')+'" onclick="vueEq=\'clients\';rendreEquipe()">'+L('📒 Clients','📒 Customers')+' ('+DB.clients.length+')</button>';
+  $('eq-add').style.display=estPatron()?'':'none';
+  if(vueEq==='equipe')rendreListeEquipe();else rendreListeClients();
+}
+function rendreListeEquipe(){
+  var l=DB.equipe.filter(function(m){return m.actif;});
+  var vs=ventesDuSoir();
+  $('eq-cont').innerHTML='<div class="lst">'+l.map(function(m){
+    var mv=vs.filter(function(v){return v.srv===m.id;});
+    var ca=mv.reduce(function(s,v){return s+v.total;},0);
+    var tips=mv.reduce(function(s,v){return s+(v.pourboire||0);},0);
+    var tb=DB.tables.filter(function(t){return t.srv===m.id&&t.lignes.length;});
+    return '<div class="row" onclick="ficheMembre('+m.id+')">'+
+      '<div class="row-e">'+(m.e||'🧑‍🍳')+'</div>'+
+      '<div class="row-b"><div class="row-t">'+esc(m.nm)+
+        '<span class="badge '+(m.role==='patron'?'bg-ok':(m.role==='gerant'?'bg-off':'bg-frais'))+'">'+
+        (m.role==='patron'?L('patron','owner'):(m.role==='gerant'?L('gérant','manager'):L('serveur','server')))+'</span></div>'+
+      '<div class="row-s">'+(tb.length?tb.length+L(' table(s) en cours · ',' table(s) open · '):'')+mv.length+L(' addition(s) ce soir',' bill(s) tonight')+
+        (tips?' · 🎁 '+fmt(tips):'')+'</div></div>'+
+      '<div class="row-r"><div class="row-p">'+fmt(ca)+'</div><div class="row-x">'+L('ce soir','tonight')+'</div></div></div>';
+  }).join('')+'</div>'+
+  (estPatron()?'':'<div class="note" style="margin-top:10px">'+L("Seul le patron ajoute ou modifie un membre de l'équipe.",'Only the owner adds or edits a team member.')+'</div>');
+}
+function ficheMembre(id){
+  var m=membre(id);if(!m)return;
+  if(!estPatron()&&m.id!==moi.id){toast(L('🔒 Réservé au patron.','🔒 Owner only.'));return;}
+  var vs=DB.ventes.filter(function(v){return v.srv===m.id;});
+  var ca=vs.reduce(function(s,v){return s+v.total;},0);
+  modal(mhead((m.e||'🧑‍🍳')+' '+esc(m.nm),m.role==='patron'?L('Patron','Owner'):(m.role==='gerant'?L('Gérant','Manager'):L('Serveur','Server')))+
+   '<div class="ovc">'+
+   '<div class="kv"><span class="kv-l">'+L('Additions encaissées (total)','Bills cashed (all time)')+'</span><span class="kv-v">'+vs.length+'</span></div>'+
+   '<div class="kv"><span class="kv-l">'+L('Chiffre apporté','Takings brought in')+'</span><span class="kv-v">'+fmt(ca)+'</span></div>'+
+   '<div class="kv"><span class="kv-l">'+L('Pourboires','Tips')+'</span><span class="kv-v">'+fmt(vs.reduce(function(s,v){return s+(v.pourboire||0);},0))+'</span></div>'+
+   (estPatron()?'<div style="height:12px"></div>'+
+     '<div class="fld"><label class="lbl">'+L('Nom','Name')+'</label><input class="inp" id="mb-nm" value="'+esc(m.nm)+'"></div>'+
+     '<div class="f2"><div class="fld"><label class="lbl">'+L('Rôle','Role')+'</label><select class="inp" id="mb-role"'+(m.role==='patron'?' disabled':'')+'>'+
+       '<option value="serveur"'+(m.role==='serveur'?' selected':'')+'>'+L('Serveur','Server')+'</option>'+
+       '<option value="gerant"'+(m.role==='gerant'?' selected':'')+'>'+L('Gérant','Manager')+'</option>'+
+       (m.role==='patron'?'<option value="patron" selected>'+L('Patron','Owner')+'</option>':'')+
+     '</select></div>'+
+     '<div class="fld"><label class="lbl">'+L('Code (4 chiffres)','Code (4 digits)')+'</label><input class="inp" id="mb-pin" inputmode="numeric" maxlength="4" value="'+esc(m.pin||'')+'"></div></div>'+
+     '<button class="bpr" onclick="sauverMembre('+id+')">'+L('Enregistrer','Save')+'</button>'+
+     (m.role!=='patron'?'<button class="bse bdg2" onclick="retirerMembre('+id+')">'+L("🚫 Retirer de l'équipe",'🚫 Remove from the team')+'</button>':'')
+    :'')+
+   '</div>');
+}
+function ouvrirAjoutEquipe(){
+  if(!estPatron()){toast(L('🔒 Réservé au patron.','🔒 Owner only.'));return;}
+  modal(mhead(L('➕ Nouveau membre','➕ New team member'),L('Il aura son propre code pour ouvrir le service','They get their own code to open the service'))+
+   '<div class="ovc">'+
+   '<div class="fld"><label class="lbl">'+L('Nom','Name')+'</label><input class="inp" id="mb-nm" placeholder="'+L('Prénom ou surnom','First name or nickname')+'"></div>'+
+   '<div class="f2"><div class="fld"><label class="lbl">'+L('Rôle','Role')+'</label><select class="inp" id="mb-role">'+
+     '<option value="serveur">'+L('Serveur','Server')+'</option><option value="gerant">'+L('Gérant (voit les rapports)','Manager (sees the reports)')+'</option></select></div>'+
+   '<div class="fld"><label class="lbl">'+L('Code','Code')+'</label><input class="inp" id="mb-pin" inputmode="numeric" maxlength="4" placeholder="'+L('4 chiffres','4 digits')+'"></div></div>'+
+   '<div class="note">'+L("Le serveur ne voit ni les prix d'achat, ni la marge, ni la clôture. Il ouvre des tables, sert, et encaisse.",
+     'A server sees neither cost prices, nor margins, nor the closing. They open tables, serve, and take payment.')+'</div>'+
+   '<button class="bpr" onclick="sauverMembre(null)">'+L('Ajouter','Add')+'</button></div>');
+}
+function sauverMembre(id){
+  var nm=$('mb-nm').value.trim(),pin=$('mb-pin').value.trim(),role=$('mb-role').value;
+  if(nm.length<2){toast(L('Le nom du membre ?','What is their name?'));return;}
+  if(!/^\d{4}$/.test(pin)){toast(L("🔐 Un code de 4 chiffres, qu'il pourra retenir.",'🔐 A 4-digit code they can remember.'));return;}
+  var m=id?membre(id):{id:uid(),actif:1,e:'🧑‍🍳',ca:0,tips:0};
+  m.nm=nm;m.pin=pin;if(m.role!=='patron')m.role=role;
+  if(!id)DB.equipe.push(m);
+  if(m.role==='patron')DB.cfg.pin=pin;
+  save();fermerModal();rendreEquipe();remplirServeurs();
+  toast('✅ '+nm+L(' enregistré.',' saved.'));
+}
+function retirerMembre(id){
+  var m=membre(id);
+  if(!confirm(L('Retirer ','Remove ')+m.nm+L(" de l'équipe ?",' from the team?')))return;
+  m.actif=0;DB.tables.forEach(function(t){if(t.srv===id)t.srv=null;});
+  save();fermerModal();rendreEquipe();remplirServeurs();
+}
+function rendreListeClients(){
+  var l=DB.clients.slice().sort(function(a,b){return (b.ardoise||0)-(a.ardoise||0);});
+  var det=l.reduce(function(s,c){return s+(c.ardoise||0);},0);
+  $('eq-cont').innerHTML=
+    (det?'<div class="note rouge">📒 '+fmt(det)+L(" d'ardoises en circulation. Une ardoise oubliée est une perte, pas une vente.",' of tabs outstanding. A forgotten tab is a loss, not a sale.')+'</div>':'')+
+    '<div class="lst">'+(l.length?l.map(function(c){
+      return '<div class="row" onclick="ficheClient('+c.id+')">'+
+        '<div class="row-e">'+((c.ardoise||0)>0?'📒':'🙂')+'</div>'+
+        '<div class="row-b"><div class="row-t">'+esc(c.nm)+((c.ardoise||0)>0?'<span class="badge bg-dette">'+L('doit','owes')+'</span>':'')+'</div>'+
+        '<div class="row-s">'+(c.visites||0)+L(' passage(s) · ',' visit(s) · ')+fmt(c.total||0)+L(' dépensés',' spent')+
+          (c.derniere?L(' · vu ',' · seen ')+jour(c.derniere):'')+'</div></div>'+
+        '<div class="row-r"><div class="row-p" style="color:'+((c.ardoise||0)>0?'var(--R)':'var(--P)')+'">'+fmt(c.ardoise||0)+'</div>'+
+        '<div class="row-x">'+L('ardoise','tab')+'</div></div></div>';
+    }).join('')
+    :'<div class="vide"><div class="vide-e">📒</div><div class="vide-t">'+L('Aucun client enregistré','No customer yet')+'</div>'+
+     '<div class="vide-s">'+L("Un client apparaît ici dès qu'une addition est mise sur son ardoise.",'A customer shows up here as soon as a bill goes on their tab.')+'</div></div>')+'</div>';
+}
+function ficheClient(id){
+  var c=client(id);if(!c)return;
+  var vs=DB.ventes.filter(function(v){return v.client===c.id;}).slice(-8).reverse();
+  modal(mhead('📒 '+esc(c.nm),(c.tel?esc(c.tel)+' · ':'')+(c.visites||0)+L(' passage(s)',' visit(s)'))+
+   '<div class="ovc">'+
+   '<div class="kv big"><span class="kv-l">'+L('Ardoise en cours','Current tab')+'</span><span class="kv-v" style="color:'+((c.ardoise||0)>0?'var(--R)':'#1B7A3A')+'">'+fmt(c.ardoise||0)+'</span></div>'+
+   '<div class="kv"><span class="kv-l">'+L('Total dépensé chez toi','Total spent with you')+'</span><span class="kv-v">'+fmt(c.total||0)+'</span></div>'+
+   ((c.ardoise||0)>0?'<div class="fld" style="margin-top:12px"><label class="lbl">'+L('Il rembourse combien ?','How much are they paying back?')+'</label>'+
+     '<input class="inp" id="cl-pay" inputmode="decimal" placeholder="'+Math.round(c.ardoise)+'"></div>'+
+     '<button class="bpr bok" onclick="reglerArdoise('+id+')">'+L('💵 Encaisser le remboursement','💵 Take the repayment')+'</button>':'')+
+   (c.tel?'<button class="bse" onclick="rappelClient('+id+')">'+L('📱 Lui rappeler par WhatsApp','📱 Remind them on WhatsApp')+'</button>':'')+
+   (vs.length?'<div class="rct" style="margin:14px 0 8px">'+L('Ses dernières additions','Their latest bills')+'</div>'+
+     vs.map(function(v){return '<div class="kv"><span class="kv-l">'+jour(v.ts)+' · '+esc(v.tableNm)+'</span><span class="kv-v">'+fmt(v.total)+'</span></div>';}).join('')
+   :'')+
+   '<div style="height:10px"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Nom','Name')+'</label><input class="inp" id="cl-nm" value="'+esc(c.nm)+'"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Téléphone','Phone')+'</label><input class="inp" id="cl-tel" inputmode="tel" value="'+esc(c.tel||'')+'"></div>'+
+   '<button class="bse" onclick="sauverClient('+id+')">'+L('Enregistrer','Save')+'</button>'+
+   '</div>');
+}
+function sauverClient(id){
+  var c=client(id);c.nm=$('cl-nm').value.trim()||c.nm;c.tel=$('cl-tel').value.trim();
+  save();fermerModal();rendreEquipe();toast(L('✅ Fiche client enregistrée.','✅ Customer saved.'));
+}
+function reglerArdoise(id){
+  var c=client(id),v=num($('cl-pay').value)||c.ardoise;
+  if(v<=0)return;
+  if(v>c.ardoise)v=c.ardoise;
+  c.ardoise-=v;
+  /* ⚠️ Un remboursement N'EST PAS une vente : la boisson a déjà été
+     comptée le soir où elle a été bue. L'enregistrer comme vente à
+     0 F le faisait apparaître dans « ce qui part le plus », et
+     l'enregistrer comme vente normale doublait la recette. C'est un
+     MOUVEMENT DE CAISSE, et il n'a que deux effets : l'ardoise baisse,
+     et il y a plus d'espèces dans le tiroir qu'il n'y a eu de ventes —
+     ce que la clôture doit savoir, sinon elle crie à l'excédent. */
+  DB.reglements.push({id:uid(),ts:now(),jour:jourService(),client:c.id,nm:c.nm,
+    montant:v,par:moi?moi.id:null});
+  save();fermerModal();rendreEquipe();
+  toast('💵 '+fmt(v)+L(' encaissés',' taken in')+(c.ardoise>0?L(' — reste ',' — ')+fmt(c.ardoise)+L('',' left'):L(' — ardoise soldée.',' — tab cleared.')));
+}
+function rappelClient(id){
+  var c=client(id);
+  var txt=L('Bonjour ','Hello ')+c.nm+L(", c'est ",', this is ')+(DB.cfg.nom||L('le bar','the bar'))+
+    L('. Ton ardoise est de ','. Your tab is ')+fmt(c.ardoise||0)+
+    L('. Tu peux passer régler quand tu veux. Merci 🍻','. Come by and settle it whenever you can. Thank you 🍻');
+  try{window.open('https://wa.me/'+String(c.tel||'').replace(/\D/g,'')+'?text='+encodeURIComponent(txt),'_blank');}catch(e){}
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PARAMÈTRES
+   ══════════════════════════════════════════════════════════════════ */
+function rendreSettings(){
+  if(!DB)return;
+  $('st-nom').textContent=DB.cfg.nom||L('Mon bar','My bar');
+  $('st-build').textContent='Version '+BUILD+L(' · code ',' · code ')+(DB.cfg.code||'—');
+  var h=DB.cfg.happy||{};
+  var c='';
+  c+='<div class="rcard"><div class="rct">'+L("🍻 L'établissement",'🍻 The place')+'</div>'+
+     '<div class="fld"><label class="lbl">'+L('Nom','Name')+'</label><input class="inp" id="se-nom" value="'+esc(DB.cfg.nom||'')+'"'+(estPatron()?'':' disabled')+'></div>'+
+     '<div class="fld"><label class="lbl">'+L('Téléphone','Phone')+'</label><input class="inp" id="se-tel" value="'+esc(DB.cfg.tel||'')+'"'+(estPatron()?'':' disabled')+'></div>'+
+     '<div class="kv"><span class="kv-l">'+L('Monnaie','Currency')+'</span><span class="kv-v">'+DB.cfg.d+' ('+DB.cfg.s+')</span></div>'+
+     '<div class="kv"><span class="kv-l">'+L('Type','Type')+'</span><span class="kv-v">'+esc(typeNm(TYPES.filter(function(t){return t.c===DB.cfg.type;})[0]||{nm:'Bar',ne:'Bar'}))+'</span></div>'+
+     (estPatron()?'<div style="height:10px"></div><button class="bse" onclick="sauverEtab()">'+L('Enregistrer','Save')+'</button>':'')+
+     '</div>';
+  /* La langue se change ici comme à l'inscription — et le serveur y a
+     droit aussi : c'est LUI qui lit l'écran toute la soirée. */
+  c+='<div class="rcard"><div class="rct">'+L('🌍 Langue','🌍 Language')+'</div>'+
+     '<div class="chips">'+
+     '<div class="chip'+(lang==='fr'?' on':'')+'" onclick="setLang(\'fr\')">🇫🇷 Français</div>'+
+     '<div class="chip'+(lang==='en'?' on':'')+'" onclick="setLang(\'en\')">🇬🇧 English</div></div>'+
+     '<div class="note" style="margin-top:10px">'+L(
+       "Les noms déjà écrits — produits, tables, clients — ne changent pas : ils t'appartiennent. Seule l'application se traduit.",
+       'Names already written — products, tables, customers — do not change: they are yours. Only the app itself is translated.')+'</div></div>';
+  if(estPatron()){
+    c+='<div class="rcard"><div class="rct">🕕 Happy hour</div>'+
+     '<div class="strow" style="margin:0 0 10px"><div class="row-b"><div class="row-t">'+L('Activer le happy hour','Turn happy hour on')+'</div>'+
+       '<div class="row-s">'+L('Les prix baissent tout seuls pendant la plage choisie.','Prices drop on their own during the chosen window.')+'</div></div>'+
+       '<div class="tog '+(h.on?'on':'off')+'" onclick="toggleHappy();rendreSettings()"></div></div>'+
+     '<div class="f2"><div class="fld"><label class="lbl">'+L('De','From')+'</label><input class="inp" id="se-hd" value="'+esc(h.debut||'17:00')+'" placeholder="17:00"></div>'+
+     '<div class="fld"><label class="lbl">'+L('À','To')+'</label><input class="inp" id="se-hf" value="'+esc(h.fin||'19:00')+'" placeholder="19:00"></div></div>'+
+     '<div class="fld"><label class="lbl">'+L('Remise (%)','Discount (%)')+'</label><input class="inp" id="se-hr" inputmode="numeric" value="'+(h.remise||0)+'"></div>'+
+     '<button class="bse" onclick="sauverHappy()">'+L('Enregistrer la plage','Save the window')+'</button></div>';
+    c+='<div class="rcard"><div class="rct">'+L('🏦 Caisse','🏦 Till')+'</div>'+
+     '<div class="fld"><label class="lbl">'+L('Fond de caisse','Float')+'</label><input class="inp" id="se-fond" inputmode="decimal" value="'+(DB.cfg.fondCaisse||0)+'"></div>'+
+     '<div class="note">'+L("Le fond de caisse est l'argent laissé pour rendre la monnaie. La clôture le déduit avant de calculer l'écart.",
+       'The float is the money left in the till to give change. Closing deducts it before working out the difference.')+'</div>'+
+     '<button class="bse" onclick="sauverFond()">'+L('Enregistrer','Save')+'</button></div>';
+    c+='<div class="rcard"><div class="rct">'+L('🪑 Les tables (','🪑 Tables (')+DB.tables.length+')</div>'+
+     DB.tables.map(function(t){
+       return '<div class="kv"><span class="kv-l">'+esc(t.nm)+' — '+esc(zoneNm(t.zone))+(t.lignes.length?L(' · occupée',' · busy'):'')+'</span>'+
+         '<span class="kv-v"><span class="lnk" style="color:var(--R)" onclick="supprimerTable('+t.id+')">'+L('retirer','remove')+'</span></span></div>';
+     }).join('')+
+     '<div style="height:10px"></div><button class="bse" onclick="ouvrirNouvelleTable()">'+L('+ Ajouter une table','+ Add a table')+'</button></div>';
+    c+='<div class="rcard"><div class="rct">'+L('🔐 Sécurité','🔐 Security')+'</div>'+
+     '<div class="f2"><div class="fld"><label class="lbl">'+L('Nouveau code patron','New owner code')+'</label><input class="inp" id="se-pin" inputmode="numeric" maxlength="4" placeholder="••••"></div>'+
+     '<div class="fld"><label class="lbl">'+L('Confirmer','Confirm')+'</label><input class="inp" id="se-pin2" inputmode="numeric" maxlength="4" placeholder="••••"></div></div>'+
+     '<button class="bse" onclick="changerPin()">'+L('Changer le code','Change the code')+'</button></div>';
+  }
+  c+='<div class="rcard"><div class="rct">'+L('📦 Données','📦 Data')+'</div>'+
+     '<div class="kv"><span class="kv-l">'+L('Produits sur la carte','Products on the menu')+'</span><span class="kv-v">'+DB.produits.filter(function(p){return p.actif;}).length+'</span></div>'+
+     '<div class="kv"><span class="kv-l">'+L('Additions enregistrées','Bills recorded')+'</span><span class="kv-v">'+DB.ventes.length+'</span></div>'+
+     '<div class="kv"><span class="kv-l">'+L('Clôtures','Closings')+'</span><span class="kv-v">'+DB.clotures.length+'</span></div>'+
+     '<div style="height:10px"></div>'+
+     '<button class="bse" onclick="exporterCSV()">'+L('📥 Exporter les ventes (Excel)','📥 Export sales (Excel)')+'</button>'+
+     '<button class="bse" onclick="sauvegarder()">'+L('💾 Sauvegarde complète (fichier)','💾 Full backup (file)')+'</button>'+
+     (estPatron()?'<button class="bse bdg2" onclick="toutEffacer()">'+L('🗑️ Effacer et recommencer','🗑️ Erase and start over')+'</button>':'')+
+     '</div>';
+  c+='<div class="rcard"><div class="rct">'+L('📲 Application','📲 App')+'</div>'+
+     '<button class="bse" onclick="installerApp()">'+L("Installer sur l'écran d'accueil",'Install on the home screen')+'</button>'+
+     '<button class="bse" onclick="logout()">'+L('🚪 Fermer la session','🚪 Sign out')+'</button>'+
+     '<div class="note bleu" style="margin-top:8px">'+L('MyBar fonctionne hors-ligne. Tout est enregistré sur ce téléphone : pense à faire une sauvegarde de temps en temps.',
+       'MyBar works offline. Everything is stored on this phone — take a backup now and then.')+'</div></div>';
+  $('st-cont').innerHTML=c;
+}
+function sauverEtab(){
+  DB.cfg.nom=$('se-nom').value.trim()||DB.cfg.nom;
+  DB.cfg.tel=$('se-tel').value.trim();
+  save();rendreSettings();toast(L('✅ Enregistré.','✅ Saved.'));
+}
+function sauverHappy(){
+  DB.cfg.happy.debut=$('se-hd').value.trim()||'17:00';
+  DB.cfg.happy.fin=$('se-hf').value.trim()||'19:00';
+  DB.cfg.happy.remise=Math.max(0,Math.min(90,Math.round(num($('se-hr').value))));
+  save();rendreSettings();toast('🕕 Happy hour: '+DB.cfg.happy.debut+' → '+DB.cfg.happy.fin+', −'+DB.cfg.happy.remise+'%.');
+}
+function sauverFond(){DB.cfg.fondCaisse=num($('se-fond').value);save();toast(L('🏦 Fond de caisse enregistré.','🏦 Float saved.'));}
+function supprimerTable(id){
+  var t=table(id);
+  if(t.lignes.length){toast(L("Cette table a une addition en cours — encaisse-la d'abord.",'This table has an open bill — cash it in first.'));return;}
+  if(!confirm(L('Retirer ','Remove ')+t.nm+' ?'))return;
+  DB.tables=DB.tables.filter(function(x){return x.id!==id;});
+  save();rendreSettings();
+}
+function changerPin(){
+  var a=$('se-pin').value.trim(),b=$('se-pin2').value.trim();
+  if(!/^\d{4}$/.test(a)){toast(L('🔐 Quatre chiffres.','🔐 Four digits.'));return;}
+  if(a!==b){toast(L('🔐 Les deux codes diffèrent.','🔐 The two codes differ.'));return;}
+  DB.cfg.pin=a;
+  var p=DB.equipe.filter(function(m){return m.role==='patron';})[0];if(p)p.pin=a;
+  save();rendreSettings();toast(L('🔐 Code patron changé.','🔐 Owner code changed.'));
+}
+function sauvegarder(){
+  var blob=new Blob([JSON.stringify(DB)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='mybar-sauvegarde-'+jour()+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  toast(L('💾 Sauvegarde téléchargée. Garde-la ailleurs que sur ce téléphone.','💾 Backup downloaded. Keep it somewhere other than this phone.'));
+}
+function toutEffacer(){
+  if(!confirm(L("Effacer TOUT : carte, tables, ventes, clients ? C'est définitif.",'Erase EVERYTHING: menu, tables, sales, customers? This cannot be undone.')))return;
+  if(!confirm(L('Vraiment ? Fais une sauvegarde avant si tu hésites.','Really? Take a backup first if you are unsure.')))return;
+  try{localStorage.removeItem(DBKEY);localStorage.removeItem(DBKEY_ANCIEN);}catch(e){}
+  DB=null;moi=null;hist=[];goScreen('s-vitrine');
+  toast(L('🗑️ Tout a été effacé.','🗑️ Everything has been erased.'));
+}
+
+/* ── Une soirée d'exemple ─────────────────────────────────────────── */
+function chargerDemo(){
+  var p=PAYS[0],k=1,id=200;
+  var ty=TYPES[0];
+  var produits=carteDuType(ty).map(function(x){
+    return {id:id++,nm:L(x.n,x.e2),fam:x.f,e:x.e,cont:contCree(x.c),parCasier:x.pc||0,pa:x.pa,pv:x.pv,pvH:0,
+      consigne:x.cs||0,casiers:x.pc?Math.floor(Math.random()*6)+1:0,bouteilles:0,
+      frais:x.pc?Math.floor(Math.random()*18):0,vides:0,seuil:x.pc?12:0,
+      suivi:(x.sv===0?0:(x.pc>0?1:0)),actif:1,vendu:0};
+  });
+  DB={cfg:{nom:L('Buvette Le Carrefour','The Crossroads Bar'),tel:'690000000',pin:'1234',lang:lang,pays:p.c,s:p.s,d:p.d,k:k,
+      type:ty.c,code:genCode(),plan:'gratuit',cree:now(),
+      happy:{on:false,debut:'17:00',fin:'19:00',remise:15},fondCaisse:20000,veille:false,build:BUILD},
+    produits:produits,tables:creerTables(12),
+    equipe:[{id:1,nm:L('Patron','Owner'),role:'patron',pin:'1234',actif:1,e:'👑'},
+            {id:2,nm:'Aïcha',role:'serveur',pin:'1111',actif:1,e:'🧑‍🍳'},
+            {id:3,nm:'Bernard',role:'serveur',pin:'2222',actif:1,e:'🧑‍🍳'}],
+    clients:[{id:10,nm:L('Tonton Jules','Uncle Jules'),tel:'699112233',ardoise:7500,total:86000,visites:23,derniere:now()-86400000}],
+    ventes:[],depenses:[],appros:[],clotures:[],reglements:[],nextId:1000};
+  // Une vraie soirée : 14 additions étalées de 17 h à 1 h du matin.
+  var bieres=produits.filter(function(x){return x.fam==='biere';});
+  var autres=produits.filter(function(x){return x.fam!=='biere'&&x.pv<3000;});
+  for(var n=0;n<14;n++){
+    var t=DB.tables[n%10],srv=DB.equipe[1+(n%2)];
+    var ts=now()-((14-n)*40*60000);
+    var lignes=[],cout=0,tot=0;
+    var nl=1+Math.floor(Math.random()*3);
+    for(var i=0;i<nl;i++){
+      var src=(Math.random()<0.65?bieres:autres);
+      var pr=src[Math.floor(Math.random()*src.length)];
+      var q=1+Math.floor(Math.random()*4);
+      lignes.push({pid:pr.id,nm:pr.nm,e:pr.e,q:q,pu:pr.pv,pa:pr.pa,offert:0});
+      tot+=pr.pv*q;cout+=pr.pa*q;pr.vendu+=q;
+      if(pr.consigne)pr.vides+=q;
+    }
+    var mode=n%7===0?'mm':(n%11===0?'ardoise':'espece');
+    DB.ventes.push({id:2000+n,ts:ts,jour:jourService(ts),tableId:t.id,tableNm:t.nm,zone:t.zone,
+      srv:srv.id,srvNm:srv.nm,lignes:lignes,remise:0,total:tot,cout:cout,
+      pourboire:(n%4===0?500:0),mode:mode,client:mode==='ardoise'?10:null,
+      clientNm:mode==='ardoise'?L('Tonton Jules','Uncle Jules'):'',vides:0,ouvert:ts-45*60000,duree:45*60000});
+  }
+  // Deux tables encore occupées, comme à 23 h.
+  [[2,bieres[0],4],[5,bieres[1],2]].forEach(function(x){
+    var t=DB.tables[x[0]],pr=x[1];
+    t.ouv=now()-70*60000;t.srv=2;
+    t.lignes=[{pid:pr.id,nm:pr.nm,e:pr.e,q:x[2],pu:pr.pv,pa:pr.pa,consigne:pr.consigne,offert:0,note:''}];
+  });
+  DB.depenses.push({id:3001,ts:now()-5*3600000,cat:'glace',lbl:'3 sacs de glace',montant:1500,par:1});
+  DB.depenses.push({id:3002,ts:now()-4*3600000,cat:'carburant',lbl:'Groupe électrogène — 5 L',montant:4500,par:1});
+  save();
+  moi=DB.equipe[0];
+  goScreen('s-service');rendreService();
+  toast(L("👀 Soirée d'exemple chargée. Code patron : 1234",'👀 Sample night loaded. Owner code: 1234'));
+}
+</script>
+</body>
+</html>
