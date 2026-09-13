@@ -268,6 +268,15 @@ html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
 
 /* ── LOGIN ── */
 #s-login{background:linear-gradient(165deg,#200E4E 0%,#341764 45%,#57216B 100%);align-items:center;justify-content:center;padding:40px 24px;position:relative;overflow:hidden}
+/* ⚠️ ON ENTRE DANS L'APP, ON N'EN SORT PLUS. Depuis la vitrine, « Créer ma
+   boutique » menait à cet écran sans aucun retour visible : sur un
+   téléphone le bouton du système ramenait bien en arrière, sur un PC il n'y
+   avait rien du tout. On ne demande pas à quelqu'un de s'engager sur un
+   écran d'où il ne peut pas revenir lire ce qu'il n'a pas fini de lire. */
+.lg-retour{position:absolute;top:14px;left:14px;z-index:5;background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.22);border-radius:11px;padding:8px 12px;color:rgba(255,255,255,.86);
+  font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;cursor:pointer;min-height:36px}
+.lg-retour:active{background:rgba(255,255,255,.20)}
 #s-login::before{content:'';position:absolute;width:340px;height:340px;background:radial-gradient(circle,rgba(245,166,35,.20),transparent 70%);top:-70px;right:-90px;border-radius:50%}
 .login-logo{margin-bottom:8px;line-height:0;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 8px 18px rgba(0,0,0,.28))}
 .login-brand{font-family:'Nunito',sans-serif;font-size:36px;font-weight:900;color:#fff;letter-spacing:-1px}
@@ -580,13 +589,21 @@ html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
    au-dessus du champ : on pose le doigt, ou on tape — dans cet ordre, qui
    est celui qu'il a demandé. Il bat doucement tant que le capteur écoute :
    c'est ce battement qui dit « vas-y », pas un mot. */
-.vt-act.install{background:rgba(255,255,255,.13);color:#fff;border:1.5px solid rgba(255,255,255,.30)}
-.vt-neuf{margin:18px auto 0;max-width:420px;background:rgba(255,255,255,.09);
-  border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:13px 15px;text-align:left}
-.vt-neuf-t{font-size:12px;font-weight:600;color:rgba(255,255,255,.82);line-height:1.5}
-.vt-neuf-t b{color:#F5A623;font-weight:900}
-.vt-neuf-b{margin-top:10px;width:100%;background:rgba(255,255,255,.13);color:#fff;border:none;
-  border-radius:11px;padding:11px;font-size:12px;font-weight:800;cursor:pointer;
+/* ⚠️⚠️ BLANC SUR BLANC — DEUX FOIS. Le bouton d'installation et la bande
+   d'annonce ont été écrits pour le fond VIOLET du héros… et posés dans
+   `.vt-corps`, qui est gris clair. Résultat : du texte blanc à 82 %
+   d'opacité sur #F0F2F5. Ils étaient là, ils étaient corrects, et ILS NE SE
+   VOYAIENT PAS — « quand j'essaie je ne vois rien » ne venait donc pas que
+   de la logique d'affichage que j'avais corrigée. Vu sur une capture de la
+   page entière, jamais sur un test qui ne mesurait que `display`. */
+.vt-act.install{background:#fff;color:var(--P);border:1.5px solid var(--BD);
+  box-shadow:0 2px 9px rgba(0,0,0,.05);font-size:14.5px}
+.vt-neuf{margin:18px auto 0;max-width:420px;background:#FFF8EC;
+  border:1px solid #F2DCB4;border-radius:14px;padding:13px 15px;text-align:left}
+.vt-neuf-t{font-size:12px;font-weight:600;color:#5C4B6E;line-height:1.5}
+.vt-neuf-t b{color:#B87411;font-weight:900}
+.vt-neuf-b{margin-top:10px;width:100%;background:var(--A);color:#2E1065;border:none;
+  border-radius:11px;padding:11px;font-size:12.5px;font-weight:900;cursor:pointer;
   font-family:'Outfit',sans-serif;-webkit-tap-highlight-color:transparent}
 .vt-neuf-b:active{transform:scale(.985)}
 .bio-sig{display:none;margin:4px auto 12px;width:64px;height:64px;border-radius:50%;
@@ -1362,7 +1379,7 @@ body{max-width:min(100%,1200px)}
    recalculer la page — et s'arrêtent si l'appareil demande moins de
    mouvement.
    ══════════════════════════════════════════════════════════════════ */
-.vt-hero{width:100%;background:linear-gradient(150deg,#241257 0%,#3B1E73 55%,#57216B 100%);
+.vt-hero{width:100%;background:#2E1065 linear-gradient(150deg,#241257 0%,#3B1E73 55%,#57216B 100%);
   padding:38px 22px 30px;text-align:center;border-radius:0 0 30px 30px;position:relative;overflow:hidden}
 .vt-hero::after{content:'';position:absolute;width:300px;height:300px;border-radius:50%;
   background:radial-gradient(circle,rgba(240,169,62,.22),transparent 70%);top:-110px;right:-110px}
@@ -1417,11 +1434,90 @@ body{max-width:min(100%,1200px)}
 .vt-p b{display:block;font-family:'Nunito',sans-serif;font-size:19px;font-weight:900;color:var(--P);line-height:1}
 .vt-p i{font-style:normal;display:block;font-size:10px;font-weight:700;color:var(--M);margin-top:4px;line-height:1.3}
 .vt-tit{font-size:15.5px;font-weight:900;color:var(--T);margin:0 0 4px}
-.vt-sous{font-size:12.5px;font-weight:600;color:var(--M);margin:0 0 14px;line-height:1.5}
+/* ⚠️ var(--M) (#9E9E9E) sur le gris du fond, c'est un rapport de 2,4 : du
+   gris sur du gris. Passable pour une légende de trois mots, pas pour un
+   paragraphe qu'on demande à quelqu'un de lire. */
+.vt-sous{font-size:12.5px;font-weight:600;color:#67666F;margin:0 0 14px;line-height:1.5}
 .vt-voix{background:#fff;border-radius:16px;padding:14px 15px;margin-bottom:9px;box-shadow:0 2px 9px rgba(0,0,0,.05);
   border-left:3px solid var(--A)}
 .vt-voix q{display:block;font-size:13px;font-weight:700;color:var(--T);line-height:1.5;quotes:'« ' ' »'}
 .vt-voix cite{display:block;font-style:normal;font-size:11px;font-weight:700;color:var(--G);margin-top:7px}
+/* ══════════════════════════════════════════════════════════════════
+   LE SITE — ⚠️ « avant de tomber sur l'App, on navigue sur quelque chose ».
+   La vitrine était UN écran : trois boutons, trois chiffres, trois voix,
+   et le vide. Un visiteur qui n'est pas prêt à donner son numéro n'avait
+   rien à faire d'autre que partir. Elle devient une page qu'on parcourt,
+   avec une barre qui sait où on en est. L'application, elle, ne s'ouvre
+   toujours que si on appuie — jamais toute seule.
+   ══════════════════════════════════════════════════════════════════ */
+.vt-nav{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;gap:7px;
+  height:52px;padding:0 10px;background:rgba(34,31,43,.97);margin:0 auto;
+  max-width:min(100%,1200px);  /* la même largeur que le corps de la page */
+  transform:translateY(-100%);transition:transform .2s ease;box-shadow:0 2px 14px rgba(0,0,0,.18)}
+.vt-nav.on{transform:none}
+.vt-nav-m{font-family:'Nunito',sans-serif;font-size:15.5px;font-weight:900;color:#fff;white-space:nowrap;display:none}
+.vt-nav-m span{color:var(--A)}
+/* Les liens défilent à l'horizontale : cinq sections ne tiennent pas dans
+   la largeur d'un téléphone, et une barre qui déborde ne se lit plus. */
+.vt-liens{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+.vt-liens::-webkit-scrollbar{display:none}
+.vt-l{flex:0 0 auto;background:rgba(255,255,255,.10);border:none;border-radius:11px;padding:8px 11px;
+  color:rgba(255,255,255,.78);font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;
+  cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+.vt-l.ici{background:rgba(240,169,62,.22);color:var(--A)}
+.vt-nav-cta{flex:0 0 auto;background:var(--A);border:none;border-radius:11px;padding:9px 13px;
+  color:#2E1065;font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:900;cursor:pointer;white-space:nowrap}
+.vt-sec{scroll-margin-top:62px}
+.vt-h{display:flex;align-items:baseline;gap:8px;margin:32px 0 2px}
+.vt-h i{font-style:normal;font-size:18px;line-height:1}
+.vt-h b{font-family:'Nunito',sans-serif;font-size:18px;font-weight:900;color:var(--T);line-height:1.2}
+/* ── CE QUE ÇA FAIT ── */
+.vt-fg{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
+.vt-f{background:#fff;border-radius:16px;padding:14px 12px;box-shadow:0 2px 9px rgba(0,0,0,.05)}
+.vt-f em{font-style:normal;font-size:21px;display:block;line-height:1}
+.vt-f b{display:block;font-size:13px;font-weight:900;color:var(--T);margin:8px 0 3px;line-height:1.25}
+.vt-f i{font-style:normal;display:block;font-size:11.5px;font-weight:600;color:var(--M);line-height:1.45}
+/* ── QUI EST DERRIÈRE ── */
+.vt-qui{background:#fff;border-radius:18px;padding:17px 16px;box-shadow:0 2px 9px rgba(0,0,0,.05);margin-top:13px}
+.vt-qui-h{display:flex;align-items:center;gap:12px;margin-bottom:13px}
+.vt-vis{width:58px;height:58px;border-radius:50%;flex:0 0 auto;background:#3B1E73 linear-gradient(150deg,#3B1E73,#57216B);
+  background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;
+  font-size:25px;color:#fff;font-weight:900;font-family:'Nunito',sans-serif}
+.vt-qui-n{font-family:'Nunito',sans-serif;font-size:16.5px;font-weight:900;color:var(--T);line-height:1.2}
+.vt-qui-r{font-size:11.5px;font-weight:700;color:var(--M);margin-top:3px;line-height:1.35}
+.vt-qui p{font-size:13px;font-weight:600;color:#444;line-height:1.62;margin-bottom:9px}
+.vt-qui p:last-child{margin-bottom:0}
+/* ── COMBIEN ÇA COÛTE ── */
+.vt-prix{background:#2E1065 linear-gradient(150deg,#241257,#57216B);border-radius:18px;padding:20px 17px;margin-top:13px}
+.vt-prix b{display:block;font-family:'Nunito',sans-serif;font-size:36px;font-weight:900;color:var(--A);line-height:1;text-align:center}
+.vt-prix .vt-prix-s{font-size:12.5px;font-weight:700;color:rgba(255,255,255,.80);margin-top:7px;text-align:center;line-height:1.45}
+.vt-prix ul{list-style:none;margin:15px 0 0;padding:0}
+.vt-prix li{font-size:12.5px;font-weight:600;color:rgba(255,255,255,.84);padding:5px 0 5px 21px;position:relative;line-height:1.5}
+.vt-prix li::before{content:'✓';position:absolute;left:0;top:5px;color:var(--G);font-weight:900}
+.vt-prix .vt-prix-n{font-size:11.5px;font-weight:600;color:rgba(255,255,255,.72);margin-top:13px;line-height:1.5}
+/* ── ÉCRIS-MOI ── */
+.vt-wa{display:block;width:100%;background:#25D366;border:none;border-radius:14px;padding:15px;
+  color:#fff;font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-top:13px;
+  transition:transform .12s}
+.vt-wa:active{transform:scale(.97)}
+.vt-pied{margin-top:34px;padding-top:18px;border-top:1px solid var(--BD);text-align:center;
+  font-size:11.5px;font-weight:600;color:#aaa;line-height:1.85}
+.vt-pied a{color:#8d8d8d}
+/* ── SUR UN ÉCRAN LARGE ── ⚠️ le `max-width:430px` du haut de la feuille est
+   déjà écrasé en fin de fichier par `body{max-width:min(100%,1200px)}` : la
+   page n'a jamais été bloquée à 430 px sur un PC, j'avais lu la mauvaise
+   règle. Il ne reste donc ici que ce qui manque vraiment — le titre, la
+   colonne de lecture et les trois colonnes de fonctions. */
+@media (min-width:760px){
+  .vt-nav{padding:0 26px}
+  .vt-nav-m{display:block;margin-right:6px}
+  .vt-liens{justify-content:center}
+  .vt-hero{padding:52px 22px 44px;border-radius:0 0 40px 40px}
+  .vt-t{font-size:38px}
+  .vt-s{font-size:16px}
+  .vt-corps{max-width:760px;margin:0 auto;padding:30px 24px 40px}
+  .vt-fg{grid-template-columns:1fr 1fr 1fr}
+}
 @media (prefers-reduced-motion:reduce){
   .vt-c,.vt-tot span,.vt-pay,.vt-ok,.vt-doigt{animation:none!important}
   .vt-tot span{transform:translateY(-51px)}.vt-ok{opacity:0}
@@ -1509,7 +1605,23 @@ body{max-width:min(100%,1200px)}
 
 <!-- VITRINE / PAGE DE PRESENTATION -->
 <div id="s-landing" class="scr" style="background:#F0F2F5;align-items:flex-start;padding:0">
-  <div class="vt-hero">
+  <!-- ⭐ LA BARRE DU SITE. Elle ne descend qu'une fois le héros passé : en
+       haut de la page elle ne servirait à rien et mangerait un dixième de
+       l'écran. « Essayer » remonte aux portes ; rien ici n'ouvre l'app. -->
+  <nav class="vt-nav" id="vt-nav" aria-label="Sections">
+    <div class="vt-nav-m" onclick="allerSection('v-top')">My<span>BoutiQ</span></div>
+    <div class="vt-liens" id="vt-liens">
+      <button class="vt-l" id="nv-top"    onclick="allerSection('v-top')">Accueil</button>
+      <button class="vt-l" id="nv-faire"  onclick="allerSection('v-faire')">Ce que ça fait</button>
+      <button class="vt-l" id="nv-avis"   onclick="allerSection('v-avis')">Les commerçants</button>
+      <button class="vt-l" id="nv-qui"    onclick="allerSection('v-qui')">Qui l'a faite</button>
+      <button class="vt-l" id="nv-prix"   onclick="allerSection('v-prix')">Le prix</button>
+      <button class="vt-l" id="nv-ecrire" onclick="allerSection('v-ecrire')">Écrire</button>
+    </div>
+    <button class="vt-nav-cta" id="nv-cta" onclick="allerSection('v-portes')">Essayer</button>
+  </nav>
+
+  <div class="vt-hero" id="v-top">
     <svg viewBox="0 0 120 120" width="60" height="60" role="img" aria-label="MyBoutiQ" style="filter:drop-shadow(0 8px 16px rgba(0,0,0,.3));position:relative">
       <defs><linearGradient id="vtA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD489"/><stop offset="1" stop-color="#F09A16"/></linearGradient></defs>
       <rect x="22" y="50" width="76" height="56" rx="9" fill="#FFF8EC"/>
@@ -1545,6 +1657,7 @@ body{max-width:min(100%,1200px)}
     <!-- ⚠️ LE GESTE LE PLUS LÉGER EN PREMIER. La boutique d'exemple existait
          dans l'app et n'était proposée NULLE PART ici : la seule porte
          demandait un numéro, un PIN et un pays avant d'avoir rien vu. -->
+    <div id="v-portes" class="vt-sec"></div>
     <button class="vt-act essai" onclick="entrerDemo()" id="vt-b1">👀 Voir une boutique qui tourne</button>
     <div class="vt-note" id="vt-note">Sans compte, sans numéro. Tu regardes, tu ressors.</div>
     <button class="vt-act creer" onclick="ouvrirDepuisVitrine('new')" id="vt-b2">Créer ma boutique — c'est gratuit</button>
@@ -1568,14 +1681,74 @@ body{max-width:min(100%,1200px)}
       <div class="vt-p"><b>0</b><i id="vt-p3">barre de réseau nécessaire</i></div>
     </div>
 
-    <div class="vt-tit" id="vt-vt">Ce sont eux qui l'ont écrite</div>
+    <!-- ⚠️ AUCUNE FONCTION INVENTÉE ICI : chacune des six existe et se
+         touche dans la boutique d'exemple, à un bouton d'ici. -->
+    <section class="vt-sec" id="v-faire">
+      <div class="vt-h"><i>🧰</i><b id="vf-t">Ce que ça fait, concrètement</b></div>
+      <div class="vt-sous" id="vf-s">Six choses que tu fais déjà à la main. Elles prennent une tape.</div>
+      <div class="vt-fg">
+        <div class="vt-f"><em>🧾</em><b id="vf1-t">Vendre</b><i id="vf1-d">Tu touches l'article, le total monte, tu encaisses. Le ticket part sur WhatsApp.</i></div>
+        <div class="vt-f"><em>📦</em><b id="vf2-t">Gros et détail</b><i id="vf2-d">Pièce, paquet, carton, sac : un seul article porte tous ses prix.</i></div>
+        <div class="vt-f"><em>📉</em><b id="vf3-t">Le stock se tient seul</b><i id="vf3-d">Il baisse à chaque vente et te dit ce qu'il faut aller racheter.</i></div>
+        <div class="vt-f"><em>👥</em><b id="vf4-t">Tes vendeurs</b><i id="vf4-d">Chacun sa caisse, chacun son code. Tu vois qui a vendu quoi.</i></div>
+        <div class="vt-f"><em>📓</em><b id="vf5-t">Le carnet de crédit</b><i id="vf5-d">Qui te doit combien, depuis quand. La relance part d'un doigt.</i></div>
+        <div class="vt-f"><em>📶</em><b id="vf6-t">Sans réseau</b><i id="vf6-d">Tout marche hors connexion. Ça se range tout seul quand le réseau revient.</i></div>
+      </div>
+    </section>
+
+    <div class="vt-sec" id="v-avis"></div>
+    <div class="vt-h"><i>🗣️</i><b id="vt-vt">Ce sont eux qui l'ont écrite</b></div>
     <div class="vt-sous" id="vt-vs">Chaque phrase ci-dessous vient d'un commerçant, sur le terrain. Chacune a changé l'application.</div>
     <div class="vt-voix"><q id="vt-q1">Un client vient acheter les jus en palettes, un carton d'huile. Comment on va le facturer, étant donné qu'on vend en détail ?</q><cite id="vt-c1">→ la vente en gros, à son prix, en une tape</cite></div>
     <div class="vt-voix"><q id="vt-q2">Si un article se mesure en kg, un sac de 50 c'est 50 kg, pas 50 pièces.</q><cite id="vt-c2">→ l'app écrit le mot, plus jamais un nombre nu</cite></div>
     <div class="vt-voix"><q id="vt-q3">Le retour est un peu complexe dans l'app, un petit bouton en haut qu'on trouve à peine.</q><cite id="vt-c3">→ le bouton du téléphone ramène en arrière</cite></div>
 
-    <div style="text-align:center;margin-top:24px;font-size:11.5px;color:#aaa">
-      <a href="./politique-confidentialite.html" style="color:#aaa" id="vt-conf">Politique de confidentialité</a>
+    <!-- ══════════════════════════════════════════════════════════════
+         QUI EST DERRIÈRE — ⚠️ RIEN N'EST INVENTÉ DANS CE BLOC.
+         Tant que `AUTEUR.nom` est vide, la page ne dit que ce que je sais
+         et qui est vrai : une personne, au Cameroun, qui répond elle-même.
+         Le nom, le rôle et le visage n'apparaissent que le jour où c'est
+         LUI qui les écrit dans AUTEUR — publier l'identité de quelqu'un
+         n'est pas une décision de développeur.
+         ══════════════════════════════════════════════════════════════ -->
+    <section class="vt-sec" id="v-qui">
+      <div class="vt-h"><i>🙋</i><b id="vq-t">Qui l'a faite</b></div>
+      <div class="vt-qui">
+        <div class="vt-qui-h" id="vq-tete" style="display:none">
+          <div class="vt-vis" id="vq-vis"></div>
+          <div><div class="vt-qui-n" id="vq-nom"></div><div class="vt-qui-r" id="vq-role"></div></div>
+        </div>
+        <p id="vq-p1">Derrière MyBoutiQ, il n'y a pas une société. Il y a une personne, au Cameroun, qui écrit l'application et qui répond elle-même à ceux qui écrivent.</p>
+        <p id="vq-p2">Rien n'est décidé dans un bureau. Les trois phrases au-dessus viennent de commerçants, et chacune a changé le code dans la semaine qui a suivi.</p>
+        <p id="vq-p3">Si quelque chose te manque ou te gêne, dis-le : c'est comme ça que l'application avance.</p>
+      </div>
+    </section>
+
+    <section class="vt-sec" id="v-prix">
+      <div class="vt-h"><i>💰</i><b id="vp-t">Combien ça coûte</b></div>
+      <div class="vt-prix">
+        <b id="vp-n">0 F</b>
+        <div class="vt-prix-s" id="vp-s">Aujourd'hui, et pour tous ceux qui essaient pendant qu'on la construit.</div>
+        <ul>
+          <li id="vp-l1">Pas de carte bancaire, pas d'abonnement, rien à payer pour commencer.</li>
+          <li id="vp-l2">Aucune publicité dans ta caisse.</li>
+          <li id="vp-l3">Tes données ne sont vendues à personne.</li>
+          <li id="vp-l4">Tu peux emporter tout ce que tu as saisi, ou tout effacer, toi-même, depuis les Réglages.</li>
+        </ul>
+        <div class="vt-prix-n" id="vp-note">MyBoutiQ est encore en construction. Si un prix arrive un jour, tu le sauras avant.</div>
+      </div>
+    </section>
+
+    <section class="vt-sec" id="v-ecrire">
+      <div class="vt-h"><i>✍️</i><b id="ve-t">Écris-moi</b></div>
+      <div class="vt-sous" id="ve-s">Une question, un défaut, une idée, un besoin que l'app ne couvre pas encore. Le message arrive sur WhatsApp, et c'est moi qui réponds.</div>
+      <button class="vt-wa" id="ve-b" onclick="ecrireAMyboutiq('site')">💬 Écrire sur WhatsApp</button>
+    </section>
+
+    <div class="vt-pied">
+      <div id="vt-pied-l1">MyBoutiQ · Cameroun</div>
+      <div><a href="./politique-confidentialite.html" id="vt-conf">Politique de confidentialité</a></div>
+      <div id="vt-pied-v" style="color:#c4c4c4"></div>
     </div>
   </div>
 </div>
@@ -1684,6 +1857,7 @@ body{max-width:min(100%,1200px)}
 </div>
 <!-- LOGIN -->
 <div id="s-login" class="scr">
+  <button class="lg-retour" id="lg-retour" onclick="goScreen('s-landing')" style="display:none">← MyBoutiQ</button>
   <div class="login-logo">
     <svg viewBox="0 0 120 120" width="94" height="94" role="img" aria-label="MyBoutiQ">
       <defs><linearGradient id="mbAwn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD489"/><stop offset="1" stop-color="#F09A16"/></linearGradient></defs>
@@ -3899,7 +4073,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.96'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.97'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4916,6 +5090,7 @@ function _demarrerApp(){
       try{_vitrineLangue();}catch(e){}
       try{majBandeVitrine();}catch(e){}
       try{majBoutonsInstaller();}catch(e){}
+      try{majBlocAuteur();}catch(e){}
       goScreen('s-landing');
     }
 }
@@ -4929,6 +5104,11 @@ function ouvrirInvitationVendeur(){
 function ouvrirDepuisVitrine(mode){
   setModeEntree(mode);
   goScreen('s-login');
+  // Le retour n'apparaît QUE si on vient du site : quelqu'un qui a déjà sa
+  // boutique n'a pas de vitrine derrière lui, et un bouton qui l'y envoie
+  // ne lui apprendrait rien.
+  var r=document.getElementById('lg-retour');
+  if(r)r.style.display='block';
 }
 
 // ═══════════════════════════════════════════
@@ -4944,6 +5124,9 @@ function goScreen(id){
   document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('on');});
   var el=document.getElementById(id);
   if(el)el.classList.add('on');
+  // La vitrine peut aussi se rouvrir autrement qu'au démarrage (boutique
+  // supprimée, retour arrière). Sa barre se branche ici, une seule fois.
+  if(id==='s-landing'){try{majBlocAuteur();}catch(x){}try{_brancherNavSite();}catch(x){}}
   try{majFabAjout();}catch(x){}
   // ⚠️ Deux fois le même écran de suite gonflait la pile pour rien : le
   // retour du téléphone devait alors être touché deux fois pour bouger.
@@ -19439,6 +19622,127 @@ function _articlesDemo(){
 //  français. On lit la langue de son téléphone : c'est la seule qu'on
 //  connaisse avant qu'il ait choisi quoi que ce soit.
 // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ LE SITE — « avant de tomber sur l'App, on navigue sur quelque chose »
+//
+//  Ce qu'il y avait : UN écran. Un héros, trois boutons, trois chiffres,
+//  trois citations, et la fin. Le visiteur qui n'était pas prêt à toucher
+//  « Créer ma boutique » n'avait rien d'autre à faire que fermer l'onglet.
+//  Aucune page ne disait ce que l'app fait, ce qu'elle coûte, ni QUI
+//  l'écrit — et c'est précisément ce qu'on cherche avant de confier son
+//  chiffre d'affaires à un logiciel inconnu.
+//
+//  Ce qu'il y a maintenant : cinq sections qu'on parcourt, et une barre
+//  qui suit. L'application ne s'ouvre toujours QUE sur un bouton — la
+//  barre elle-même ne fait que remonter aux portes.
+//
+//  ⚠️ La barre ne descend qu'une fois le héros passé. 52 px fixes en haut
+//  d'un écran de 640, c'est un dixième de la page mangé pour rien pendant
+//  qu'on lit le titre.
+// ══════════════════════════════════════════════════════════════════
+var _SECTIONS=[['v-top','nv-top'],['v-faire','nv-faire'],['v-avis','nv-avis'],
+               ['v-qui','nv-qui'],['v-prix','nv-prix'],['v-ecrire','nv-ecrire']];
+// ⚠️ EN BAS DE PAGE, LES DEUX DERNIÈRES SECTIONS NE PEUVENT PLUS MONTER :
+// la page est finie, le défilement bute. On touchait « Le prix », la page
+// bougeait bien, et c'est « Écris-moi » qui s'allumait. Pendant le temps du
+// glissement, c'est le GESTE qui décide de la puce allumée, pas la position
+// — c'est la seule chose que le visiteur, lui, a demandée.
+var _navVoulu=null,_navVouluT=0;
+function allerSection(id){
+  var e=document.getElementById(id);if(!e)return;
+  for(var i=0;i<_SECTIONS.length;i++)if(_SECTIONS[i][0]===id){_navVoulu=_SECTIONS[i][1];_navVouluT=Date.now();}
+  try{e.scrollIntoView({behavior:'smooth',block:'start'});}
+  catch(x){try{window.scrollTo(0,Math.max(0,e.getBoundingClientRect().top+(window.pageYOffset||0)-62));}catch(y){}}
+  try{_majNavSite();}catch(y){}
+}
+// La section courante s'allume, et la puce correspondante se ramène dans la
+// vue : sur un téléphone la barre déborde, et une puce active hors écran
+// n'apprend rien à personne.
+function _majNavSite(){
+  var nav=document.getElementById('vt-nav');if(!nav)return;
+  var hero=document.getElementById('v-top');
+  var y=0;try{y=window.pageYOffset||document.documentElement.scrollTop||0;}catch(e){}
+  var seuil=hero?Math.max(120,hero.offsetHeight-70):240;
+  nav.classList.toggle('on',y>seuil);
+  var actif=null;
+  for(var i=0;i<_SECTIONS.length;i++){
+    var s=document.getElementById(_SECTIONS[i][0]);if(!s)continue;
+    if(s.getBoundingClientRect().top<=96)actif=_SECTIONS[i][1];
+  }
+  // ⚠️ ARRIVÉ EN BAS, PLUS RIEN NE MONTE. Les deux dernières sections ne
+  // peuvent plus atteindre le haut de l'écran : la puce restait allumée sur
+  // « Qui l'a faite » pendant qu'on lisait « Écris-moi ». Touché le bas,
+  // c'est la dernière section qu'on lit, et c'est elle qu'on allume.
+  try{
+    var h=document.documentElement.scrollHeight,vu=window.innerHeight||0;
+    if(y+vu>=h-6)actif=_SECTIONS[_SECTIONS.length-1][1];
+  }catch(e){}
+  if(_navVoulu&&Date.now()-_navVouluT<1400)actif=_navVoulu; else _navVoulu=null;
+  for(var j=0;j<_SECTIONS.length;j++){
+    var b=document.getElementById(_SECTIONS[j][1]);if(!b)continue;
+    var ici=(_SECTIONS[j][1]===actif);
+    if(ici!==b.classList.contains('ici')){
+      b.classList.toggle('ici',ici);
+      if(ici&&b.scrollIntoView)try{b.scrollIntoView({block:'nearest',inline:'nearest'});}catch(e){}
+    }
+  }
+}
+var _navBranchee=false,_navEnCours=false;
+function _brancherNavSite(){
+  if(_navBranchee)return; _navBranchee=true;
+  var v=document.getElementById('vt-pied-v');
+  if(v)try{v.textContent='Version '+APP_BUILD;}catch(e){}
+  // Un écouteur de défilement qui recalcule à chaque pixel fait ramer un
+  // téléphone à 40 F. Une frame suffit largement pour une barre.
+  window.addEventListener('scroll',function(){
+    if(_navEnCours)return; _navEnCours=true;
+    requestAnimationFrame(function(){_navEnCours=false;_majNavSite();});
+  },{passive:true});
+  _majNavSite();
+}
+// ══════════════════════════════════════════════════════════════════
+//  QUI L'A FAITE — ⚠️ JE N'INVENTE AUCUNE IDENTITÉ.
+//
+//  « Ajuster le site avec mes informations personnelles pour plus de
+//   crédibilité. » Publier le nom, le visage ou la ville de quelqu'un
+//   n'est pas une décision de développeur : tant que ces lignes sont
+//   vides, la page ne dit que ce qui est vrai et déjà public — une
+//   personne, au Cameroun, qui répond elle-même sur WhatsApp.
+//
+//  Remplis-les et le bloc se complète tout seul : le visage apparaît, le
+//  nom et le rôle aussi, et ton mot remplace le premier paragraphe. Si tu
+//  n'as pas de photo, laisse `photo` vide : ce sont tes initiales qui
+//  s'affichent dans le rond, ce qui vaut mieux qu'un vide.
+// ══════════════════════════════════════════════════════════════════
+var AUTEUR={
+  nom:'',     // ex. 'Jérémie N.' — le nom exact que tu veux qu'on lise
+  role:'',    // ex. 'Commerçant à Douala, et auteur de MyBoutiQ'
+  photo:'',   // ex. './moi.jpg' — un fichier posé à côté d'index.html
+  mot:''      // 2 ou 3 phrases, à la première personne
+};
+function _initiales(nm){
+  var l=String(nm||'').trim().split(/\s+/),o='';
+  for(var i=0;i<l.length&&o.length<2;i++)if(l[i])o+=l[i].charAt(0).toUpperCase();
+  return o||'🙂';
+}
+function majBlocAuteur(){
+  var tete=document.getElementById('vq-tete');if(!tete)return;
+  var nm=String(AUTEUR.nom||'').trim();
+  if(!nm){tete.style.display='none';return;}
+  tete.style.display='flex';
+  var n=document.getElementById('vq-nom');if(n)n.textContent=nm;
+  var r=document.getElementById('vq-role');
+  if(r){r.textContent=String(AUTEUR.role||'').trim();r.style.display=r.textContent?'block':'none';}
+  var v=document.getElementById('vq-vis');
+  if(v){
+    var ph=String(AUTEUR.photo||'').trim();
+    if(ph){v.style.backgroundImage='url("'+ph.replace(/"/g,'%22')+'")';v.textContent='';}
+    else v.textContent=_initiales(nm);
+  }
+  var mot=String(AUTEUR.mot||'').trim();
+  var p1=document.getElementById('vq-p1');
+  if(mot&&p1)p1.textContent=mot;
+}
 function _vitrineLangue(){
   var en=false;
   try{en=/^en/i.test(navigator.language||(navigator.languages||[])[0]||'');}catch(e){}
@@ -19462,7 +19766,34 @@ function _vitrineLangue(){
     'vt-c2':'→ the app writes the word, never a bare number',
     'vt-q3':'Going back is awkward — a tiny button up there you can barely find.',
     'vt-c3':'→ the phone back button takes you back',
-    'vt-conf':'Privacy policy'
+    'vt-conf':'Privacy policy',
+    /* Le site, section par section. Une vitrine à moitié traduite est pire
+       qu'une vitrine en français : elle a l'air cassée. */
+    'nv-top':'Home','nv-faire':'What it does','nv-avis':'Shopkeepers',
+    'nv-qui':'Who made it','nv-prix':'The price','nv-ecrire':'Write','nv-cta':'Try it',
+    'vf-t':'What it actually does',
+    'vf-s':'Six things you already do by hand. Here they take one tap.',
+    'vf1-t':'Sell','vf1-d':'Tap the item, the total goes up, you cash in. The receipt leaves on WhatsApp.',
+    'vf2-t':'Bulk and retail','vf2-d':'Piece, pack, box, bag: one item carries every one of its prices.',
+    'vf3-t':'Stock keeps itself','vf3-d':'It drops with every sale and tells you what to go and buy again.',
+    'vf4-t':'Your sellers','vf4-d':'Each one their own till, their own code. You see who sold what.',
+    'vf5-t':'The credit book','vf5-d':'Who owes you how much, since when. The reminder leaves with one finger.',
+    'vf6-t':'No network','vf6-d':'Everything works offline. It files itself away when the network comes back.',
+    'vq-t':'Who made it',
+    'vq-p1':'There is no company behind MyBoutiQ. There is one person, in Cameroon, who writes the app and answers you personally.',
+    'vq-p2':'Nothing is decided in an office. The three lines above come from shopkeepers, and each one changed the code within the week.',
+    'vq-p3':'If something is missing or in your way, say so — that is how this app moves forward.',
+    'vp-t':'What it costs',
+    'vp-s':'Today, and for everyone trying it while we build it.',
+    'vp-l1':'No bank card, no subscription, nothing to pay to start.',
+    'vp-l2':'No advertising in your till.',
+    'vp-l3':'Your data is sold to nobody.',
+    'vp-l4':'You can take everything you entered away, or erase all of it, yourself, from Settings.',
+    'vp-note':'MyBoutiQ is still being built. If a price ever comes, you will know before it does.',
+    've-t':'Write to me',
+    've-s':'A question, a fault, an idea, something the app does not cover yet. The message lands on WhatsApp, and I am the one who answers.',
+    've-b':'💬 Write on WhatsApp',
+    'vt-pied-l1':'MyBoutiQ · Cameroon'
   };
   Object.keys(T).forEach(function(k){
     var e=document.getElementById(k);if(!e)return;
