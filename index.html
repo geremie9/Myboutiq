@@ -4073,7 +4073,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.97'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='21.98'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -14276,8 +14276,26 @@ function importerPhotosMasse(ev){
   step();
 }
 function retirerPhotoReelle(){selImg=null;document.getElementById('photo-real-preview').style.display='none';majIdentitePastille();}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️ UNE LISTE DE PRÉFIXES NE COUVRE PAS LES TÉLÉPHONES.
+//
+//  Le garde-fou existait déjà — c'est pour ça que « Screenshot 20260709
+//  113553 » vu sur une capture venait d'AVANT lui, pas d'un défaut vivant.
+//  Mais il ne connaissait que huit préfixes, et il en manque autant que de
+//  marques de téléphones :
+//     PXL_20260709_113553.jpg   (Pixel)        1000012345.jpg  (Samsung)
+//     20260709_113553.jpg       (Xiaomi, Oppo) FB_IMG_1234.jpg (Facebook)
+//  Ces quatre-là passaient, et l'article s'appelait « Pxl 20260709 113553 ».
+//
+//  La règle qui tient sans liste : UN NOM DE PRODUIT CONTIENT UN MOT. Pas
+//  un mot de trois lettres dans la date — un mot. S'il n'y en a aucun, ce
+//  n'est pas un nom, quel que soit le téléphone qui l'a écrit.
+// ══════════════════════════════════════════════════════════════════
 function nomFichierGenerique(name){
-  return /^(img|image|photo|pic|dsc|screenshot|capture|whatsapp)[-_ ]?\d{3,}/i.test(String(name||'').trim());
+  var b=String(name||'').replace(/\.[^.]+$/,'').replace(/[_\-.]+/g,' ').replace(/\s+/g,' ').trim();
+  if(!b)return true;
+  if(/^(img|image|photo|pic|dsc|dscn|screenshot|screen shot|capture|whatsapp|wa|pxl|fb img|received|snapchat|signal|telegram|camera|insta|resized|download|untitled|sans titre)[-_ ]?\d{3,}/i.test(b))return true;
+  return !/[a-zà-öø-ÿ]{3,}/i.test(b);
 }
 var _grpGroups=[],_grpDragSrc=null,_grpDragEl=null,_grpDragging=false;
 function ouvrirGroupementImport(ids){
