@@ -4284,7 +4284,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.07'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.08'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -21176,11 +21176,25 @@ async function installerApp(){
     showToast('✅ '+(fr?'Elle est déjà installée sur ce téléphone':'Already installed on this phone'));
     majBoutonsInstaller();return;
   }
+  // ⚠️ L'INVITATION ARRIVE PARFOIS APRÈS LE GESTE. Chrome l'envoie quand il
+  // veut — souvent une à deux secondes après l'ouverture, le temps du service
+  // worker. Abandonner à la première lecture, c'est montrer le mode d'emploi
+  // à quelqu'un qui aurait eu la vraie installation une seconde plus tard.
+  // On l'attend donc, un peu, et on le lui dit pour qu'il ne croie pas que
+  // rien ne se passe.
+  if(!window._pwaInvite&&!_estIOS()){
+    showToast('⏳ '+(fr?'Préparation de l’installation…':'Preparing the install…'));
+    await _attendreInvitationPWA(3000);
+  }
   if(window._pwaInvite){
     try{
-      var e=window._pwaInvite;window._pwaInvite=null;
+      var e=window._pwaInvite;
       e.prompt();
       var r=await e.userChoice;
+      // ⚠️ On ne le jette qu'APRÈS la réponse : si `prompt()` avait levé une
+      // erreur, on perdait l'invitation pour rien et le bouton retombait sur
+      // le mode d'emploi jusqu'à la prochaine ouverture.
+      window._pwaInvite=null;
       if(r&&r.outcome==='accepted'){
         // On arrête de la proposer dans la caisse, mais on ne prétend pas
         // « déjà installée » pour toujours : voir _dejaInstallee.
@@ -21198,9 +21212,33 @@ async function installerApp(){
   if(_estIOS()){ouvrirCommentInstaller();return;}
   ouvrirCommentInstaller();
 }
+// Attend l'invitation du navigateur, au plus `ms` millisecondes.
+function _attendreInvitationPWA(ms){
+  return new Promise(function(res){
+    if(window._pwaInvite)return res(window._pwaInvite);
+    var fini=false;
+    var t=setTimeout(function(){
+      if(fini)return;fini=true;
+      try{window.removeEventListener('beforeinstallprompt',h);}catch(x){}
+      res(null);
+    },ms);
+    function h(){
+      if(fini)return;fini=true;clearTimeout(t);
+      try{window.removeEventListener('beforeinstallprompt',h);}catch(x){}
+      // L'écouteur du haut de page a déjà rangé l'événement : on le relit.
+      setTimeout(function(){res(window._pwaInvite||null);},0);
+    }
+    try{window.addEventListener('beforeinstallprompt',h);}catch(x){res(null);}
+  });
+}
 function ouvrirCommentInstaller(){
   var fr=(lang!=='en'),ios=_estIOS();
-  document.getElementById('ins-tit').textContent=fr?'📲 Garder MyBoutiQ sur ton écran':'📲 Keep MyBoutiQ on your screen';
+  // ⚠️ NE PAS FAIRE PASSER UN MODE D'EMPLOI POUR UNE INSTALLATION. Si on est
+  // ici, c'est que le navigateur n'a PAS donné son invitation — il faut le
+  // dire, sinon le bouton ment.
+  document.getElementById('ins-tit').textContent=ios
+    ?(fr?'📲 Sur iPhone, c’est en deux gestes':'📲 On iPhone, two taps')
+    :(fr?'📲 Ton navigateur ne propose pas l’installation directe ici':'📲 Your browser will not install it directly here');
   document.getElementById('ins-pas').innerHTML=ios
     ?(fr?'<b>1.</b> Touche <b>Partager</b> en bas de Safari (le carré avec la flèche ↑)<br><br><b>2.</b> Descends et touche <b>« Sur l\'écran d\'accueil »</b><br><br><b>3.</b> Touche <b>Ajouter</b>'
         :'<b>1.</b> Tap <b>Share</b> at the bottom of Safari<br><br><b>2.</b> Scroll and tap <b>“Add to Home Screen”</b><br><br><b>3.</b> Tap <b>Add</b>')
@@ -22265,7 +22303,17 @@ function montrerBandeauMaj(worker){
   if(btn)btn.onclick=function(){btn.textContent=(lang==='fr'?'Chargement…':'Loading…');btn.disabled=true;if(worker){worker.postMessage({type:'SKIP_WAITING'});}else{location.reload();}};
 }
 if('serviceWorker' in navigator){
-  window.addEventListener('load',function(){
+  // ⚠️⚠️ « QUE LE BOUTON INSTALLE VRAIMENT, PAS QU'IL EXPLIQUE. »
+  // Chrome ne donne SON invitation d'installation qu'une fois l'application
+  // déclarée installable — et pour ça il lui faut un service worker
+  // enregistré. Or celui-ci attendait `load`, c'est-à-dire la DERNIÈRE image
+  // de la page. Sur un téléphone lent et un réseau lent, ça fait plusieurs
+  // secondes après que l'écran soit utilisable : le commerçant touche
+  // « Installer » AVANT que Chrome ait eu le droit de proposer quoi que ce
+  // soit, et il tombe sur le mode d'emploi.
+  // `DOMContentLoaded` suffit : le HTML est entièrement reçu, et on ne
+  // dispute plus la bande passante au premier affichage.
+  document.addEventListener('DOMContentLoaded',function(){
     navigator.serviceWorker.register('sw.js').then(function(reg){
       if(reg.waiting&&navigator.serviceWorker.controller)montrerBandeauMaj(reg.waiting);
       reg.addEventListener('updatefound',function(){
