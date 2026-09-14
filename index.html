@@ -4257,7 +4257,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.03'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.04'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -21590,13 +21590,37 @@ function _monNom(){
   if(role==='patron')return (lang==='fr'?'Patron':'Owner');
   try{return nomVendeur||'?';}catch(e){return '?';}
 }
-function _mesVentesDuJour(){
-  var jour=isoJour(new Date()),moi=txtNorm(_monNom());
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️ JUSQU'OÙ REMONTER ? Le réglage qui coûte le moins, des deux côtés.
+//
+//  DEUX JOURS, ET PAS PLUS. Les erreurs se voient à deux moments : tout de
+//  suite, et au comptage du soir — souvent relu le lendemain matin. Au-delà,
+//  une vente « dont on se rend compte » trois jours après n'est plus une
+//  erreur qu'on corrige, c'est une version qu'on discute, et le patron n'a
+//  plus les moyens de vérifier.
+//
+//  ⚠️ ET HIER NE S'AFFICHE PAS TOUT SEUL. La liste du vendeur est un outil
+//  de travail : ce qu'il vient de faire doit être en HAUT, pas poussé vers
+//  le bas par les trente ventes de la veille. Hier tient sur UNE ligne
+//  repliée, qui n'apparaît que s'il y a quelque chose dedans.
+// ══════════════════════════════════════════════════════════════════
+var ERR_JOURS=2;
+function _mesVentesRecentes(){
+  var moi=txtNorm(_monNom()),jours=[];
+  for(var i=0;i<ERR_JOURS;i++){var d=new Date();d.setDate(d.getDate()-i);jours.push(isoJour(d));}
   return (DB.ventes||[]).filter(function(v){
-    if(isoJour(getSaleDateObj(v))!==jour)return false;
+    if(jours.indexOf(isoJour(getSaleDateObj(v)))<0)return false;
     if(role==='patron')return true;
     return txtNorm(v.vendeur||'Patron')===moi;
   }).sort(function(a,b){return getSaleDateObj(b)-getSaleDateObj(a);});
+}
+function _mesVentesDuJour(){
+  var jour=isoJour(new Date());
+  return _mesVentesRecentes().filter(function(v){return isoJour(getSaleDateObj(v))===jour;});
+}
+function _mesVentesDHier(){
+  var jour=isoJour(new Date());
+  return _mesVentesRecentes().filter(function(v){return isoJour(getSaleDateObj(v))!==jour;});
 }
 function _erreurDe(vid){
   return (DB.erreurs||[]).find(function(x){return x.vid===vid;})||null;
@@ -21605,9 +21629,32 @@ function ouvrirMesVentes(){
   renderMesVentes();
   document.getElementById('ov-mesventes').classList.add('show');
 }
+var _hierOuvert=false;
+function _ligneVenteMienne(v){
+  var fr=(lang!=='en'),er=_erreurDe(v.id),etat='';
+  if(v.annulee)etat='<span style="font-size:10.5px;font-weight:900;color:var(--M)">'+(fr?'ANNULÉE':'CANCELLED')+'</span>';
+  else if(er&&er.etat==='attente')etat='<span style="font-size:10.5px;font-weight:900;color:var(--O)">⏳ '+(fr?'signalée — en attente':'reported — pending')+'</span>';
+  else if(er&&er.etat==='gardee')etat='<span style="font-size:10.5px;font-weight:900;color:var(--B)">'+(fr?'gardée par le patron':'kept by the owner')+'</span>';
+  var bouton='';
+  if(!v.annulee){
+    if(hasPerm('annuler'))
+      bouton='<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ '+(fr?'Annuler':'Cancel')+'</button>';
+    // ⚠️ UNE VENTE NE SE SIGNALE QU'UNE FOIS. Sans ce `!er`, un vendeur à qui
+    // le patron a répondu « je garde » pouvait resignaler la même vente
+    // indéfiniment jusqu'à ce que l'autre cède par lassitude. La décision du
+    // patron est une décision, pas une étape.
+    else if(!er)
+      bouton='<button class="mini-btn" style="background:#FFF3E0;color:var(--O)" onclick="ouvrirSignalErreur(\''+v.id+'\')">⚠️ '+(fr?'Je me suis trompé':'I made a mistake')+'</button>';
+  }
+  return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+getSaleHeure(v)+' · '+fmt(v.total||0)+'</div>'
+    +'<div class="hist-s">'+saleLinesLabel(v)+'</div>'+(etat?('<div style="margin-top:3px">'+etat+'</div>'):'')
+    +(er&&er.mot?('<div style="font-size:11px;color:var(--M);font-weight:600;margin-top:2px">« '+er.mot+' »</div>'):'')
+    +'</div></div><div class="hist-actions"><span></span>'+bouton+'</div></div>';
+}
+function basculerHier(){_hierOuvert=!_hierOuvert;renderMesVentes();}
 function renderMesVentes(){
   var c=document.getElementById('mv-lst');if(!c)return;
-  var fr=(lang!=='en'),l=_mesVentesDuJour();
+  var fr=(lang!=='en'),l=_mesVentesDuJour(),h=_mesVentesDHier();
   var t=document.getElementById('mv-tit');
   if(t)t.textContent=(role==='patron')?(fr?'Les ventes du jour':'Today’s sales'):(fr?'Mes ventes du jour':'My sales today');
   var a=document.getElementById('mv-aide');
@@ -21616,24 +21663,18 @@ function renderMesVentes(){
         :'You can cancel a sale yourself: the stock comes straight back.')
     :(fr?'Tu ne peux pas annuler toi-même — mais tu peux le signaler. Le patron le voit sur son téléphone et tranche. Pas besoin de l’appeler.'
         :'You cannot cancel it yourself — but you can report it. The owner sees it on their phone and decides. No need to call.');
-  if(!l.length){c.innerHTML='<div class="dash-empty">'+(fr?'Aucune vente aujourd’hui.':'No sale today.')+'</div>';return;}
-  c.innerHTML=l.map(function(v){
-    var er=_erreurDe(v.id),etat='';
-    if(v.annulee)etat='<span style="font-size:10.5px;font-weight:900;color:var(--M)">'+(fr?'ANNULÉE':'CANCELLED')+'</span>';
-    else if(er&&er.etat==='attente')etat='<span style="font-size:10.5px;font-weight:900;color:var(--O)">⏳ '+(fr?'signalée — en attente':'reported — pending')+'</span>';
-    else if(er&&er.etat==='gardee')etat='<span style="font-size:10.5px;font-weight:900;color:var(--B)">'+(fr?'gardée par le patron':'kept by the owner')+'</span>';
-    var bouton='';
-    if(!v.annulee){
-      if(hasPerm('annuler'))
-        bouton='<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ '+(fr?'Annuler':'Cancel')+'</button>';
-      else if(!er||er.etat!=='attente')
-        bouton='<button class="mini-btn" style="background:#FFF3E0;color:var(--O)" onclick="ouvrirSignalErreur(\''+v.id+'\')">⚠️ '+(fr?'Je me suis trompé':'I made a mistake')+'</button>';
-    }
-    return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+getSaleHeure(v)+' · '+fmt(v.total||0)+'</div>'
-      +'<div class="hist-s">'+saleLinesLabel(v)+'</div>'+(etat?('<div style="margin-top:3px">'+etat+'</div>'):'')
-      +(er&&er.mot?('<div style="font-size:11px;color:var(--M);font-weight:600;margin-top:2px">« '+er.mot+' »</div>'):'')
-      +'</div></div><div class="hist-actions"><span></span>'+bouton+'</div></div>';
-  }).join('');
+  var html=l.length?l.map(_ligneVenteMienne).join('')
+                   :'<div class="dash-empty">'+(fr?'Aucune vente aujourd’hui.':'No sale today.')+'</div>';
+  // ⚠️ HIER TIENT SUR UNE LIGNE, ET SEULEMENT S'IL Y A QUELQUE CHOSE DEDANS.
+  // La liste est un outil de travail : ce qu'il vient de faire reste en haut.
+  if(h.length){
+    html+='<button onclick="basculerHier()" style="width:100%;background:none;border:none;border-top:1px solid var(--BD);'
+      +'margin-top:10px;padding:13px 2px 4px;font-family:\'Outfit\',sans-serif;font-size:12.5px;font-weight:800;'
+      +'color:var(--M);cursor:pointer;text-align:left;min-height:44px">'
+      +(_hierOuvert?'▾ ':'▸ ')+(fr?'Hier':'Yesterday')+' — '+h.length+' '+(fr?('vente'+(h.length>1?'s':'')):('sale'+(h.length>1?'s':'')))+'</button>';
+    if(_hierOuvert)html+=h.map(_ligneVenteMienne).join('');
+  }
+  c.innerHTML=html;
 }
 var _errVente=null,_errMotif=null;
 function ouvrirSignalErreur(vid){
