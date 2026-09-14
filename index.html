@@ -1576,6 +1576,11 @@ body{max-width:min(100%,1200px)}
 .vt-pied{margin-top:34px;padding-top:18px;border-top:1px solid var(--BD);text-align:center;
   font-size:11.5px;font-weight:600;color:#aaa;line-height:1.85}
 .vt-pied a{color:#8d8d8d}
+/* Les motifs d'erreur : de vraies cibles pour un doigt, pas une liste. */
+.se-m{width:100%;text-align:left;background:var(--C);border:1.5px solid var(--BD);border-radius:13px;
+  padding:13px 14px;font-family:'Outfit',sans-serif;font-size:13.5px;font-weight:800;color:var(--T);
+  cursor:pointer;min-height:48px}
+.se-m.on{border-color:var(--O);background:#FFF3E0;color:#8A4B00}
 /* ── SUR UN ÉCRAN LARGE ── ⚠️ le `max-width:430px` du haut de la feuille est
    déjà écrasé en fin de fichier par `body{max-width:min(100%,1200px)}` : la
    page n'a jamais été bloquée à 430 px sur un PC, j'avais lu la mauvaise
@@ -2041,6 +2046,9 @@ body{max-width:min(100%,1200px)}
       <button class="hbtn" id="btn-dep" onclick="ouvrirDep()" style="display:none" title="Dépenses">💸</button>
       <button class="hbtn" id="btn-verrou" onclick="toggleVerrouVente()" title="Modifications bloquées pendant la vente" style="display:none">🔒</button>
       <button class="hbtn" id="btn-veille" onclick="toggleVeille()" title="Garder l'écran allumé" style="opacity:.55">🌙</button>
+      <!-- ⭐ Le vendeur n'avait AUCUNE liste de ses propres ventes : pour dire
+           « je me suis trompé sur celle de 11 h », il fallait appeler. -->
+      <button class="hbtn" id="btn-mesventes" onclick="ouvrirMesVentes()" title="Mes ventes du jour">📋</button>
       <button class="hbtn" onclick="showNotifs()" title="Notifications"><span>🔔</span><div class="hbtn-badge" id="notif-badge">0</div></button>
       <button class="hbtn bst" id="btn-st" onclick="goSt()" title="Paramètres">⚙️</button>
       <button class="hbtn" onclick="logout()">🚪</button>
@@ -2281,6 +2289,7 @@ body{max-width:min(100%,1200px)}
       <div class="stcd">
         <div class="stit2" onclick="ouvrirChangerPin()"><div class="stico" style="background:#FFEBEE">🔑</div><div class="stii"><div class="stitl" id="st-chpin">Changer mon PIN</div><div class="stisub" id="st-chpin-s">Le code qui ouvre ta caisse</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="toggleBiometrie()"><div class="stico" style="background:#E3F2FD">👆</div><div class="stii"><div class="stitl" id="st-bio2">Empreinte / Face ID</div><div class="stisub" id="st-bio2-s">Entrer sans taper le PIN</div></div><button class="tog off" id="tog-bio2" onclick="event.stopPropagation();toggleBiometrie()"></button></div>
+        <div class="stit2" id="row-erreurs" style="display:none" onclick="ouvrirErreurs()"><div class="stico" style="background:#FFF3E0">⚠️</div><div class="stii"><div class="stitl" id="st-err">Erreurs signalées</div><div class="stisub" id="st-err-s"></div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-abo" style="display:none" onclick="ecrireAbonnement()"><div class="stico" style="background:#FFF3E0">🔑</div><div class="stii"><div class="stitl" id="st-abo">Mon abonnement</div><div class="stisub" id="st-abo-s"></div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="envoyerDiagnostic()"><div class="stico" style="background:#EDE7F6">🩺</div><div class="stii"><div class="stitl" id="st-diag">Envoyer mon diagnostic</div><div class="stisub" id="st-diag-s">Version, réseau, dernière erreur — tu relis avant d'envoyer</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirDiagBio()"><div class="stico" style="background:#E3F2FD">🩺</div><div class="stii"><div class="stitl" id="st-biodiag">L'empreinte ne marche pas ?</div><div class="stisub" id="st-biodiag-s">Voir où ça bloque, sur ce téléphone</div></div><span class="starr">›</span></div>
@@ -3666,6 +3675,41 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- MES VENTES DU JOUR — la liste que le vendeur n'avait pas -->
+<div class="ov" id="ov-mesventes" onclick="closeOv(event,'ov-mesventes')">
+  <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">📋 <span id="mv-tit">Mes ventes du jour</span></div><button class="bcl" onclick="closeSheet('ov-mesventes')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px;line-height:1.55" id="mv-aide"></div>
+      <div id="mv-lst"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SIGNALER UNE ERREUR — un motif, un mot, et ça part chez le patron -->
+<div class="ov" id="ov-signal" onclick="closeOv(event,'ov-signal')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">⚠️ <span id="se-tit">Qu'est-ce qui s'est passé ?</span></div><button class="bcl" onclick="closeSheet('ov-signal')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div id="se-vente" style="font-size:12.5px;font-weight:800;color:var(--T);background:var(--BG);border-radius:12px;padding:10px 12px;margin-bottom:13px;line-height:1.5"></div>
+      <div id="se-lst" style="display:flex;flex-direction:column;gap:7px;margin-bottom:12px"></div>
+      <input class="pi" id="se-mot" type="text" maxlength="160" style="margin-bottom:12px">
+      <button class="bpay" onclick="envoyerSignalErreur()" id="se-env">Envoyer au patron</button>
+    </div>
+  </div>
+</div>
+
+<!-- ERREURS SIGNALÉES — le patron tranche -->
+<div class="ov" id="ov-erreurs" onclick="closeOv(event,'ov-erreurs')">
+  <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">⚠️ <span>Erreurs signalées</span></div><button class="bcl" onclick="closeSheet('ov-erreurs')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px;line-height:1.55" id="er-aide"></div>
+      <div id="er-lst2"></div>
+    </div>
+  </div>
+</div>
+
 <!-- BOUTIQUE SUSPENDUE — l'accès est en pause, RIEN n'est effacé -->
 <div id="ov-suspendu" style="display:none;position:fixed;inset:0;background:linear-gradient(165deg,#200E4E 0%,#341764 45%,#57216B 100%);z-index:100000;align-items:center;justify-content:center;padding:26px;text-align:center">
   <div style="max-width:360px">
@@ -4213,7 +4257,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.02'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.03'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -12286,7 +12330,7 @@ function encaisser(){
   planifierFermetureSucces(sc);
 }
 function annulerVente(ventId){
-  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Patron only'));return;}
+  if(!hasPerm('annuler')){showToast('⛔ '+(lang==='fr'?'Ton patron ne t’a pas donné ce droit — signale-lui l’erreur':'Your owner has not granted this — report the mistake instead'));return;}
   var v=DB.ventes.find(function(x){return x.id===ventId;});
   if(!v||v.annulee)return;
   ventAnnulEnCours=ventId;
@@ -17101,7 +17145,7 @@ function renderRpt(){
     '<div class="rcd"><div class="rctit">🕐 '+(lang==='fr'?'Dernières ventes':'Recent sales')+'</div>'+
     (vr.map(function(v){
       if(v.annulee)return '<div class="rrow"><span class="rlbl" style="text-decoration:line-through;color:var(--M)">⏰ '+v.h+' — '+(lang==='fr'?'ANNULÉE':'CANCELLED')+'</span><span class="rval" style="color:var(--M);text-decoration:line-through">'+fmt(v.total)+'</span></div>';
-      var btn=role==='patron'?'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">↩️ '+(lang==='fr'?'Annuler':'Cancel')+'</button>':'';
+      var btn=hasPerm('annuler')?'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">↩️ '+(lang==='fr'?'Annuler':'Cancel')+'</button>':'';
       return '<div class="rrow" style="align-items:center"><span class="rlbl">⏰ '+v.h+'</span><span style="display:flex;align-items:center"><span class="rval g">'+fmt(v.total)+'</span>'+btn+'</span></div>';
     }).join('')||'<div class="empty" style="padding:11px"><div class="empty-t">'+t('aucuneVente')+'</div></div>')+
     '</div>';
@@ -17195,7 +17239,10 @@ var PERM_LIST=[
   {k:'clients',e:'👥',fr:'Gérer les clients & crédits',en:'Manage clients & credit'},
   {k:'rapports',e:'📊',fr:'Voir les rapports complets',en:'View full reports'},
   {k:'depenses',e:'💸',fr:'Enregistrer des dépenses',en:'Record expenses'},
-  {k:'remises',e:'🏷️',fr:'Appliquer des remises',en:'Apply discounts'}
+  {k:'remises',e:'🏷️',fr:'Appliquer des remises',en:'Apply discounts'},
+  // ⚠️ NOUVELLE, ET ÉTEINTE PAR DÉFAUT (`defautPerms` n'allume que 'vente') :
+  // aucun vendeur ne gagne le droit d'annuler dans le dos de son patron.
+  {k:'annuler',e:'↩️',fr:'Annuler une vente',en:'Cancel a sale'}
 ];
 function defautPerms(){var o={};PERM_LIST.forEach(function(p){o[p.k]=p.k==='vente';});return o;}
 var permVendeurIdx=null;
@@ -19427,6 +19474,19 @@ function mergeDB(base,other){
   var aById={};
   (base.appros||[]).concat(other.appros||[]).forEach(function(a){if(a&&a.id!=null&&!aById[a.id])aById[a.id]=a;});
   base.appros=Object.keys(aById).map(function(k){return aById[k];}).filter(function(a){var e=_epochEvt(a);return e==null||e>=archUp;});
+  // ⚠️ LES SIGNALEMENTS VOYAGENT, ET UNE DÉCISION L'EMPORTE SUR UNE ATTENTE.
+  // C'est tout l'intérêt du mécanisme : le vendeur écrit sur SON téléphone,
+  // le patron tranche sur le SIEN. Sans cette fusion, le signalement mourrait
+  // à la première synchronisation — comme la vente annulée juste au-dessus,
+  // dont la version annulée gagne pour exactement la même raison.
+  var eById={};
+  (base.erreurs||[]).concat(other.erreurs||[]).forEach(function(e){
+    if(!e||e.id==null)return;
+    var ex=eById[e.id];
+    if(!ex)eById[e.id]=e;
+    else if(ex.etat==='attente'&&e.etat&&e.etat!=='attente')eById[e.id]=e;
+  });
+  base.erreurs=Object.keys(eById).map(function(k){return eById[k];}).slice(0,60);
   var artById={};
   (artWin.articles||[]).forEach(function(p){if(p&&p.id!=null)artById[p.id]=p;});       // articles rebasés gagnent
   (artSec.articles||[]).forEach(function(p){if(p&&p.id!=null&&!artById[p.id])artById[p.id]=p;});
@@ -19561,6 +19621,7 @@ function migrateDBData(d){
   d.cfg=d.cfg||{};
   if(!Array.isArray(d.suppr))d.suppr=[]; // tombstones : articles supprimés (survit à la fusion)
   if(!Array.isArray(d.journal))d.journal=[]; // S4 : journal des gestes sensibles (prix/stock/suppression)
+  if(!Array.isArray(d.erreurs))d.erreurs=[]; // ventes qu'un vendeur dit avoir ratées, en attente du patron
   if(d.cfg.venteDeverrouillee===undefined)d.cfg.venteDeverrouillee=false; // on vend, on ne modifie pas
   if(d.cfg.recuAuto===undefined)d.cfg.recuAuto=false;                     // vente rapide par défaut
   if(!d.arch||typeof d.arch!=='object')d.arch={upTo:0,resume:[]}; // S3 : archivage (upTo = ventes<cette date repliées dans stk0/vd0)
@@ -20504,6 +20565,14 @@ function checkNotifications(skipPersist){
     DB=migrateDBData(DB);
     var changed=false,day=isoJour(new Date()),todaySales=getTodaySales(),todayTotal=todaySales.reduce(function(s,v){return s+Number(v.total||0);},0),todayCount=todaySales.length;
     (DB.articles||[]).forEach(function(p){var ts=getStk(p);if(p.rt&&ts<=0){if(sendNotifOnce(day+'-out-'+p.id,'⚠️ '+p.nm+' est épuisé !',p.id))changed=true;}else if(p.al>0&&ts<=p.al){if(sendNotifOnce(day+'-low-'+p.id,'📦 '+p.nm+' : stock faible ('+ts+' restants)',p.id))changed=true;}});
+    // ⚠️ La cloche du patron, et seulement la sienne : un vendeur n'a pas à
+    // être averti de ce qu'il vient lui-même d'écrire.
+    if(role==='patron'){
+      _erreursEnAttente().forEach(function(e){
+        var v=(DB.ventes||[]).find(function(x){return x.id===e.vid;})||{};
+        if(sendNotifOnce('err-'+e.id,'⚠️ '+e.par+' signale une erreur sur une vente de '+fmt(v.total||0)))changed=true;
+      });
+    }
     if(DB.objectif>0&&todayTotal>=DB.objectif){if(sendNotifOnce(day+'-goal','🎯 Objectif atteint !'))changed=true;}
     if(new Date().getHours()>=20){if(sendNotifOnce(day+'-summary','📊 Résumé du jour : '+todayCount+' ventes, '+fmt(todayTotal)+' de chiffre d\'affaires'))changed=true;}
     if(changed&&!skipPersist)persistDB();
@@ -20549,7 +20618,7 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
@@ -20735,7 +20804,7 @@ confirmerAnnulVente=function(){
 // étaient déjà. L'onglet 📊 n'existe plus : un deuxième écran de rapports
 // éteint par défaut, c'était un endroit de plus où chercher.
 function ouvrirHistory(){if(!(role==='patron'||hasPerm('rapports'))){showToast('⛔ Réservé au patron');return;}var d1=document.getElementById('hist-d1'),d2=document.getElementById('hist-d2'),today=new Date(),weekAgo=new Date();weekAgo.setDate(today.getDate()-7);d1.value=d1.value||dateInputValue(weekAgo);d2.value=d2.value||dateInputValue(today);var artSel=document.getElementById('hist-art');artSel.innerHTML='<option value="">Tous les articles</option>'+(DB.articles||[]).map(function(a){return '<option value="'+a.nm.replace(/"/g,'&quot;')+'">'+a.e+' '+a.nm+'</option>';}).join('');var vs=document.getElementById('hist-vendeur');var noms=Array.from(new Set((DB.ventes||[]).map(function(v){return v.vendeur||'Patron';})));vs.innerHTML='<option value="">Tous les vendeurs</option>'+noms.map(function(n){return '<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>';}).join('');document.getElementById('hist-vendeur-wrap').style.display=role==='patron'?'block':'none';filtrerHistory();document.getElementById('ov-history').classList.add('show');}
-function filtrerHistory(){var d1=document.getElementById('hist-d1').value,d2=document.getElementById('hist-d2').value,art=document.getElementById('hist-art').value,ven=document.getElementById('hist-vendeur').value;historyFiltered=(DB.ventes||[]).filter(function(v){var d=isoJour(getSaleDateObj(v));if(d1&&d<d1)return false;if(d2&&d>d2)return false;if(art&&!(v.lignes||[]).some(function(l){return saleArticleBaseName(l.nm)===art||String(l.nm||'').indexOf(art)===0;}))return false;if(ven&&(v.vendeur||'Patron')!==ven)return false;return true;}).sort(function(a,b){return getSaleDateObj(b)-getSaleDateObj(a);});var total=historyFiltered.reduce(function(s,v){return s+Number(v.total||0);},0),ben=historyFiltered.reduce(function(s,v){return s+getSaleBenef(v);},0);document.getElementById('hist-resume').innerHTML='<div class="rrow"><span class="rlbl">Ventes</span><span class="rval">'+historyFiltered.length+'</span></div><div class="rrow"><span class="rlbl">Total</span><span class="rval a">'+fmt(total)+'</span></div><div class="rrow"><span class="rlbl">Bénéfice</span><span class="rval g">'+fmt(ben)+'</span></div>';document.getElementById('hist-list').innerHTML=historyFiltered.length?historyFiltered.map(function(v){var ann=v.annulee?' · ANNULÉE':'';var btn=!v.annulee&&role==='patron'?'<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ Annuler</button>':'';return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+v.date+' · '+getSaleHeure(v)+ann+'</div><div class="hist-s">'+(v.vendeur||'Patron')+' · '+saleLinesLabel(v)+'</div></div><div class="hist-t">'+fmt(v.total||0)+'</div></div><div class="hist-actions"><span class="hist-s">Bénéfice: '+fmt(getSaleBenef(v))+'</span>'+btn+'</div></div>';}).join(''):'<div class="dash-empty">Aucune vente trouvée</div>';}
+function filtrerHistory(){var d1=document.getElementById('hist-d1').value,d2=document.getElementById('hist-d2').value,art=document.getElementById('hist-art').value,ven=document.getElementById('hist-vendeur').value;historyFiltered=(DB.ventes||[]).filter(function(v){var d=isoJour(getSaleDateObj(v));if(d1&&d<d1)return false;if(d2&&d>d2)return false;if(art&&!(v.lignes||[]).some(function(l){return saleArticleBaseName(l.nm)===art||String(l.nm||'').indexOf(art)===0;}))return false;if(ven&&(v.vendeur||'Patron')!==ven)return false;return true;}).sort(function(a,b){return getSaleDateObj(b)-getSaleDateObj(a);});var total=historyFiltered.reduce(function(s,v){return s+Number(v.total||0);},0),ben=historyFiltered.reduce(function(s,v){return s+getSaleBenef(v);},0);document.getElementById('hist-resume').innerHTML='<div class="rrow"><span class="rlbl">Ventes</span><span class="rval">'+historyFiltered.length+'</span></div><div class="rrow"><span class="rlbl">Total</span><span class="rval a">'+fmt(total)+'</span></div><div class="rrow"><span class="rlbl">Bénéfice</span><span class="rval g">'+fmt(ben)+'</span></div>';document.getElementById('hist-list').innerHTML=historyFiltered.length?historyFiltered.map(function(v){var ann=v.annulee?' · ANNULÉE':'';var btn=!v.annulee&&hasPerm('annuler')?'<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ Annuler</button>':'';return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+v.date+' · '+getSaleHeure(v)+ann+'</div><div class="hist-s">'+(v.vendeur||'Patron')+' · '+saleLinesLabel(v)+'</div></div><div class="hist-t">'+fmt(v.total||0)+'</div></div><div class="hist-actions"><span class="hist-s">Bénéfice: '+fmt(getSaleBenef(v))+'</span>'+btn+'</div></div>';}).join(''):'<div class="dash-empty">Aucune vente trouvée</div>';}
 function telechargerTableExcel(rows,filename){
   var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body><table border="1">'+
     rows.map(function(r,ri){return '<tr>'+r.map(function(x){return (ri===0?'<th>':'<td>')+String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+(ri===0?'</th>':'</td>');}).join('')+'</tr>';}).join('')+
@@ -21484,6 +21553,194 @@ function envoyerDiagnostic(){
     +(fr?'\n\nCe qui ne va pas :\n':'\n\nWhat is wrong:\n');
   try{window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(m),'_blank');}catch(e){}
   try{showToast('🩺 '+(fr?'Relis le message avant d’envoyer':'Check the message before sending'));}catch(e){}
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ « SI JE ME TROMPE, COMMENT JE ME JUSTIFIE ? EN APPELANT LE PATRON
+//        AU TÉLÉPHONE, OU EN ÉCRIVANT DANS L'APPLICATION ? ET PEUT-ÊTRE
+//        QUE JE N'AI PAS LA POSSIBILITÉ D'ANNULER. »
+//
+//  IL N'AVAIT PAS LA POSSIBILITÉ, ET IL N'AVAIT PAS NON PLUS LE MOYEN DE
+//  LE DIRE. `annulerVente()` commence par `if(role!=='patron') return`, et
+//  les deux boutons ↩️ ne s'affichent que pour le patron. Un vendeur qui
+//  se trompe n'a donc, aujourd'hui, que le téléphone — et le stock reste
+//  faux jusqu'à ce que le patron y repense le soir, s'il y repense.
+//
+//  DEUX RÉPONSES, PAS UNE :
+//   1. Le patron PEUT lui donner le droit d'annuler (nouvelle permission,
+//      éteinte par défaut : aucun vendeur ne gagne un pouvoir dans son dos).
+//   2. Et même sans ce droit, il peut SIGNALER : « c'était une erreur »,
+//      un motif, un mot. Ça part avec la boutique, ça arrive sur le
+//      téléphone du patron, et le patron tranche d'une tape. Pas d'appel
+//      à passer, rien à se rappeler, et une trace des deux côtés.
+//
+//  ⚠️ UN SIGNALEMENT N'ANNULE RIEN TOUT SEUL. C'est un message, pas une
+//  commande : la vente reste telle quelle, le stock aussi, jusqu'à ce que
+//  quelqu'un qui en a le droit décide. Sinon « signaler » serait « annuler »
+//  déguisé, et la permission ne voudrait plus rien dire.
+// ══════════════════════════════════════════════════════════════════
+var MOTIFS_ERREUR=[
+  {k:'article',e:'🔀',fr:'Ce n’était pas ce produit',en:'Wrong product'},
+  {k:'qte',    e:'🔢',fr:'Pas cette quantité',        en:'Wrong quantity'},
+  {k:'double', e:'👯',fr:'Vente enregistrée deux fois',en:'Recorded twice'},
+  {k:'rendu',  e:'↩️',fr:'Le client a rendu / annulé', en:'Customer returned it'},
+  {k:'prix',   e:'💰',fr:'Mauvais prix',              en:'Wrong price'},
+  {k:'autre',  e:'✍️',fr:'Autre — j’explique',        en:'Other — I explain'}
+];
+function _monNom(){
+  if(role==='patron')return (lang==='fr'?'Patron':'Owner');
+  try{return nomVendeur||'?';}catch(e){return '?';}
+}
+function _mesVentesDuJour(){
+  var jour=isoJour(new Date()),moi=txtNorm(_monNom());
+  return (DB.ventes||[]).filter(function(v){
+    if(isoJour(getSaleDateObj(v))!==jour)return false;
+    if(role==='patron')return true;
+    return txtNorm(v.vendeur||'Patron')===moi;
+  }).sort(function(a,b){return getSaleDateObj(b)-getSaleDateObj(a);});
+}
+function _erreurDe(vid){
+  return (DB.erreurs||[]).find(function(x){return x.vid===vid;})||null;
+}
+function ouvrirMesVentes(){
+  renderMesVentes();
+  document.getElementById('ov-mesventes').classList.add('show');
+}
+function renderMesVentes(){
+  var c=document.getElementById('mv-lst');if(!c)return;
+  var fr=(lang!=='en'),l=_mesVentesDuJour();
+  var t=document.getElementById('mv-tit');
+  if(t)t.textContent=(role==='patron')?(fr?'Les ventes du jour':'Today’s sales'):(fr?'Mes ventes du jour':'My sales today');
+  var a=document.getElementById('mv-aide');
+  if(a)a.textContent=hasPerm('annuler')
+    ?(fr?'Tu peux annuler une vente toi-même : le stock revient tout de suite.'
+        :'You can cancel a sale yourself: the stock comes straight back.')
+    :(fr?'Tu ne peux pas annuler toi-même — mais tu peux le signaler. Le patron le voit sur son téléphone et tranche. Pas besoin de l’appeler.'
+        :'You cannot cancel it yourself — but you can report it. The owner sees it on their phone and decides. No need to call.');
+  if(!l.length){c.innerHTML='<div class="dash-empty">'+(fr?'Aucune vente aujourd’hui.':'No sale today.')+'</div>';return;}
+  c.innerHTML=l.map(function(v){
+    var er=_erreurDe(v.id),etat='';
+    if(v.annulee)etat='<span style="font-size:10.5px;font-weight:900;color:var(--M)">'+(fr?'ANNULÉE':'CANCELLED')+'</span>';
+    else if(er&&er.etat==='attente')etat='<span style="font-size:10.5px;font-weight:900;color:var(--O)">⏳ '+(fr?'signalée — en attente':'reported — pending')+'</span>';
+    else if(er&&er.etat==='gardee')etat='<span style="font-size:10.5px;font-weight:900;color:var(--B)">'+(fr?'gardée par le patron':'kept by the owner')+'</span>';
+    var bouton='';
+    if(!v.annulee){
+      if(hasPerm('annuler'))
+        bouton='<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ '+(fr?'Annuler':'Cancel')+'</button>';
+      else if(!er||er.etat!=='attente')
+        bouton='<button class="mini-btn" style="background:#FFF3E0;color:var(--O)" onclick="ouvrirSignalErreur(\''+v.id+'\')">⚠️ '+(fr?'Je me suis trompé':'I made a mistake')+'</button>';
+    }
+    return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+getSaleHeure(v)+' · '+fmt(v.total||0)+'</div>'
+      +'<div class="hist-s">'+saleLinesLabel(v)+'</div>'+(etat?('<div style="margin-top:3px">'+etat+'</div>'):'')
+      +(er&&er.mot?('<div style="font-size:11px;color:var(--M);font-weight:600;margin-top:2px">« '+er.mot+' »</div>'):'')
+      +'</div></div><div class="hist-actions"><span></span>'+bouton+'</div></div>';
+  }).join('');
+}
+var _errVente=null,_errMotif=null;
+function ouvrirSignalErreur(vid){
+  var v=(DB.ventes||[]).find(function(x){return x.id===vid;});
+  if(!v||v.annulee)return;
+  _errVente=vid;_errMotif=null;
+  var fr=(lang!=='en');
+  document.getElementById('se-tit').textContent=fr?'Qu’est-ce qui s’est passé ?':'What happened?';
+  document.getElementById('se-vente').textContent=getSaleHeure(v)+' · '+fmt(v.total||0)+' · '+saleLinesLabel(v);
+  document.getElementById('se-mot').value='';
+  document.getElementById('se-mot').placeholder=fr?'Un mot pour le patron (facultatif)':'A word for the owner (optional)';
+  document.getElementById('se-env').textContent=fr?'Envoyer au patron':'Send to the owner';
+  document.getElementById('se-lst').innerHTML=MOTIFS_ERREUR.map(function(m){
+    return '<button class="se-m" data-k="'+m.k+'" onclick="choisirMotifErreur(\''+m.k+'\')">'+m.e+' '+(fr?m.fr:m.en)+'</button>';
+  }).join('');
+  closeSheet('ov-mesventes');
+  document.getElementById('ov-signal').classList.add('show');
+}
+function choisirMotifErreur(k){
+  _errMotif=k;
+  Array.prototype.forEach.call(document.querySelectorAll('#se-lst .se-m'),function(b){
+    b.classList.toggle('on',b.dataset.k===k);
+  });
+}
+function envoyerSignalErreur(){
+  var fr=(lang!=='en');
+  if(!_errVente)return;
+  if(!_errMotif){showToast('⚠️ '+(fr?'Choisis ce qui s’est passé':'Pick what happened'));return;}
+  if(_erreurDe(_errVente)){showToast('⏳ '+(fr?'Déjà signalée':'Already reported'));return;}
+  DB.erreurs=DB.erreurs||[];
+  DB.erreurs.unshift({
+    id:'e'+Date.now()+'-'+Math.random().toString(36).slice(2,6),
+    vid:_errVente, par:_monNom(), quand:new Date().toISOString(),
+    motif:_errMotif, mot:String(document.getElementById('se-mot').value||'').slice(0,160).trim(),
+    etat:'attente', parQui:'', decideLe:''
+  });
+  DB.erreurs=DB.erreurs.slice(0,60);
+  save();
+  closeSheet('ov-signal');
+  _errVente=null;_errMotif=null;
+  try{majLigneErreurs();}catch(e){}
+  showToast('📨 '+(fr?'C’est parti chez le patron. La vente ne bouge pas tant qu’il n’a pas tranché.'
+                    :'Sent to the owner. The sale stays as it is until they decide.'));
+}
+// ── CÔTÉ PATRON ──────────────────────────────────────────────────
+function _erreursEnAttente(){
+  return (DB&&DB.erreurs?DB.erreurs:[]).filter(function(e){
+    if(e.etat!=='attente')return false;
+    var v=(DB.ventes||[]).find(function(x){return x.id===e.vid;});
+    return !!v&&!v.annulee;      // déjà annulée ailleurs = plus rien à trancher
+  });
+}
+function majLigneErreurs(){
+  var r=document.getElementById('row-erreurs');if(!r)return;
+  var n=(role==='patron')?_erreursEnAttente().length:0;
+  r.style.display=n?'':'none';
+  if(!n)return;
+  var fr=(lang!=='en');
+  var t=document.getElementById('st-err');
+  if(t)t.textContent=fr?'Erreurs signalées':'Reported mistakes';
+  var s=document.getElementById('st-err-s');
+  if(s)s.textContent=fr?(n+' vente'+(n>1?'s':'')+' à trancher — un vendeur dit s’être trompé')
+                       :(n+' sale'+(n>1?'s':'')+' to decide — a seller says they made a mistake');
+}
+function ouvrirErreurs(){
+  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  renderErreurs();
+  document.getElementById('ov-erreurs').classList.add('show');
+}
+function renderErreurs(){
+  var c=document.getElementById('er-lst2');if(!c)return;
+  var fr=(lang!=='en'),l=_erreursEnAttente();
+  var a=document.getElementById('er-aide');
+  if(a)a.textContent=fr?'Le vendeur ne peut pas annuler : il te le dit ici. Rien n’a bougé — ni la vente, ni le stock — tant que tu n’as pas tranché.'
+                       :'The seller cannot cancel: they tell you here. Nothing has moved — not the sale, not the stock — until you decide.';
+  if(!l.length){c.innerHTML='<div class="dash-empty">'+(fr?'Rien à trancher. Tout est en ordre.':'Nothing to decide.')+'</div>';return;}
+  c.innerHTML=l.map(function(e){
+    var v=(DB.ventes||[]).find(function(x){return x.id===e.vid;})||{};
+    var m=MOTIFS_ERREUR.find(function(x){return x.k===e.motif;})||{e:'⚠️',fr:'?',en:'?'};
+    return '<div class="hist-sale"><div class="hist-h"><div>'
+      +'<div class="hist-d">'+(v.date||'')+' · '+getSaleHeure(v)+' · '+fmt(v.total||0)+'</div>'
+      +'<div class="hist-s">'+saleLinesLabel(v)+'</div>'
+      +'<div style="font-size:12px;font-weight:800;color:var(--O);margin-top:4px">'+m.e+' '+(fr?m.fr:m.en)+'</div>'
+      +'<div style="font-size:11.5px;font-weight:700;color:var(--M);margin-top:2px">'+(fr?'signalé par ':'reported by ')+e.par+'</div>'
+      +(e.mot?('<div style="font-size:12px;color:var(--T);font-weight:600;margin-top:4px">« '+e.mot+' »</div>'):'')
+      +'</div></div><div class="hist-actions">'
+      +'<button class="mini-btn" style="background:#EEE;color:var(--T)" onclick="trancherErreur(\''+e.id+'\',false)">'+(fr?'Garder la vente':'Keep the sale')+'</button>'
+      +'<button class="mini-btn red" onclick="trancherErreur(\''+e.id+'\',true)">↩️ '+(fr?'Annuler':'Cancel')+'</button>'
+      +'</div></div>';
+  }).join('');
+}
+function trancherErreur(eid,annuler){
+  if(role!=='patron')return;
+  var e=(DB.erreurs||[]).find(function(x){return x.id===eid;});
+  if(!e||e.etat!=='attente')return;
+  e.etat=annuler?'annulee':'gardee';
+  e.parQui=_monNom();e.decideLe=new Date().toISOString();
+  if(annuler){
+    // ⚠️ On passe par la vraie annulation — celle qui rend le stock, remet le
+    // compteur de ventes et coche `annulee`. Réécrire ce chemin ici, c'est
+    // s'assurer qu'un des deux oubliera quelque chose un jour.
+    ventAnnulEnCours=e.vid;
+    confirmerAnnulVente();
+  }else save();
+  renderErreurs();majLigneErreurs();
+  var fr=(lang!=='en');
+  if(!annuler)showToast('✅ '+(fr?'Vente gardée — le vendeur le verra':'Sale kept — the seller will see it'));
 }
 function majBoutonsInstaller(){
   var montrer=_peutInstaller(),fr=(lang!=='en');
