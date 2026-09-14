@@ -178,6 +178,15 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .sec-btn.on{border-color:var(--A);background:rgba(246,185,59,.14)}
 .sec-emoji{font-size:27px;display:block;margin-bottom:5px}
 .sec-nm{font-size:11.5px;font-weight:800;color:#fff;line-height:1.3}
+.ob-tel-rang{display:flex;gap:8px;width:100%;align-items:stretch}
+.ob-tel-rang .ob-inp{flex:1;margin-bottom:0;text-align:left}
+/* ⚠️ L'indicatif ne se tape pas à la main : il se lit. Un patron qui
+   l'écrit lui-même écrit « 00237 », « +237 » ou rien, et les trois
+   donnaient un numéro différent. */
+.ob-cc{display:flex;align-items:center;padding:0 13px;border-radius:12px;font-size:15px;font-weight:800;
+  color:var(--A);background:rgba(246,185,59,.13);border:2px solid rgba(246,185,59,.3);white-space:nowrap}
+.ob-tel-apercu{width:100%;min-height:17px;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);
+  margin:6px 0 11px;text-align:center;line-height:1.4}
 .ob-confirm{background:rgba(255,255,255,.05);border-radius:15px;padding:14px;width:100%;margin-bottom:16px}
 .ob-cr{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)}
 .ob-cr:last-child{border-bottom:none}
@@ -437,7 +446,9 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     <button class="btn-bk" onclick="obPrev(3)">← <span data-fr="Retour" data-en="Back">Retour</span></button>
     <div class="ob-step-h" data-fr="Le nom de l'établissement et ton numéro" data-en="Your bar's name and your phone number">Le nom de l'établissement</div>
     <input class="ob-inp" id="ob-nom" placeholder="Nom du bar" data-fr="Nom du bar" data-en="Bar name" data-ph maxlength="40" autocomplete="off">
-    <input class="ob-inp" id="ob-tel" placeholder="Téléphone du patron" data-fr="Téléphone du patron" data-en="Owner's phone" data-ph inputmode="tel" maxlength="20" autocomplete="off">
+    <div class="ob-tel-rang"><span class="ob-cc" id="ob-cc">+237</span>
+      <input class="ob-inp" id="ob-tel" placeholder="Numéro du bar" data-fr="Numéro du bar" data-en="Bar's phone" data-ph inputmode="tel" maxlength="20" autocomplete="off" oninput="apercuTel()"></div>
+    <div class="ob-tel-apercu" id="ob-tel-apercu"></div>
     <select class="reg-sel" id="ob-tables">
       <option value="8" data-fr="8 tables" data-en="8 tables">8 tables</option>
       <option value="12" selected data-fr="12 tables" data-en="12 tables">12 tables</option>
@@ -723,35 +734,113 @@ var DBKEY_ANCIEN='mybarq_v1';   // avant le renommage — relu une seule fois
    4 500 FC à Kinshasa, pas 1 000. Sans ça, le premier écran d'un
    nouveau patron affiche des prix absurdes, et il repart. */
 var PAYS=[
- {c:'CM',nm:'Cameroun',ne:'Cameroon',f:'🇨🇲',d:'XAF',s:'F',k:1},
- {c:'CI',nm:"Côte d'Ivoire",ne:'Ivory Coast',f:'🇨🇮',d:'XOF',s:'F',k:1},
- {c:'SN',nm:'Sénégal',ne:'Senegal',f:'🇸🇳',d:'XOF',s:'F',k:1},
- {c:'GA',nm:'Gabon',ne:'Gabon',f:'🇬🇦',d:'XAF',s:'F',k:1},
- {c:'CG',nm:'Congo-Brazzaville',ne:'Congo-Brazzaville',f:'🇨🇬',d:'XAF',s:'F',k:1},
- {c:'CD',nm:'RD Congo',ne:'DR Congo',f:'🇨🇩',d:'CDF',s:'FC',k:4.5},
- {c:'BJ',nm:'Bénin',ne:'Benin',f:'🇧🇯',d:'XOF',s:'F',k:1},
- {c:'BF',nm:'Burkina Faso',ne:'Burkina Faso',f:'🇧🇫',d:'XOF',s:'F',k:1},
- {c:'ML',nm:'Mali',ne:'Mali',f:'🇲🇱',d:'XOF',s:'F',k:1},
- {c:'TG',nm:'Togo',ne:'Togo',f:'🇹🇬',d:'XOF',s:'F',k:1},
- {c:'NE',nm:'Niger',ne:'Niger',f:'🇳🇪',d:'XOF',s:'F',k:1},
- {c:'TD',nm:'Tchad',ne:'Chad',f:'🇹🇩',d:'XAF',s:'F',k:1},
- {c:'CF',nm:'Centrafrique',ne:'Central African Rep.',f:'🇨🇫',d:'XAF',s:'F',k:1},
- {c:'GN',nm:'Guinée',ne:'Guinea',f:'🇬🇳',d:'GNF',s:'GNF',k:15},
- {c:'MG',nm:'Madagascar',ne:'Madagascar',f:'🇲🇬',d:'MGA',s:'Ar',k:7.5},
- {c:'MA',nm:'Maroc',ne:'Morocco',f:'🇲🇦',d:'MAD',s:'DH',k:0.016},
- {c:'DZ',nm:'Algérie',ne:'Algeria',f:'🇩🇿',d:'DZD',s:'DA',k:0.22},
- {c:'TN',nm:'Tunisie',ne:'Tunisia',f:'🇹🇳',d:'TND',s:'DT',k:0.005},
- {c:'HT',nm:'Haïti',ne:'Haiti',f:'🇭🇹',d:'HTG',s:'G',k:0.22},
- {c:'FR',nm:'France',ne:'France',f:'🇫🇷',d:'EUR',s:'€',k:0.0016},
- {c:'GH',nm:'Ghana',ne:'Ghana',f:'🇬🇭',d:'GHS',s:'GH₵',k:0.025},
- {c:'NG',nm:'Nigéria',ne:'Nigeria',f:'🇳🇬',d:'NGN',s:'₦',k:2.6},
- {c:'KE',nm:'Kenya',ne:'Kenya',f:'🇰🇪',d:'KES',s:'KSh',k:0.21},
+ {c:'CM',nm:'Cameroun',ne:'Cameroon',f:'🇨🇲',d:'XAF',s:'F',k:1,cc:'237'},
+ {c:'CI',nm:"Côte d'Ivoire",ne:'Ivory Coast',f:'🇨🇮',d:'XOF',s:'F',k:1,cc:'225'},
+ {c:'SN',nm:'Sénégal',ne:'Senegal',f:'🇸🇳',d:'XOF',s:'F',k:1,cc:'221'},
+ {c:'GA',nm:'Gabon',ne:'Gabon',f:'🇬🇦',d:'XAF',s:'F',k:1,cc:'241'},
+ {c:'CG',nm:'Congo-Brazzaville',ne:'Congo-Brazzaville',f:'🇨🇬',d:'XAF',s:'F',k:1,cc:'242'},
+ {c:'CD',nm:'RD Congo',ne:'DR Congo',f:'🇨🇩',d:'CDF',s:'FC',k:4.5,cc:'243'},
+ {c:'BJ',nm:'Bénin',ne:'Benin',f:'🇧🇯',d:'XOF',s:'F',k:1,cc:'229'},
+ {c:'BF',nm:'Burkina Faso',ne:'Burkina Faso',f:'🇧🇫',d:'XOF',s:'F',k:1,cc:'226'},
+ {c:'ML',nm:'Mali',ne:'Mali',f:'🇲🇱',d:'XOF',s:'F',k:1,cc:'223'},
+ {c:'TG',nm:'Togo',ne:'Togo',f:'🇹🇬',d:'XOF',s:'F',k:1,cc:'228'},
+ {c:'NE',nm:'Niger',ne:'Niger',f:'🇳🇪',d:'XOF',s:'F',k:1,cc:'227'},
+ {c:'TD',nm:'Tchad',ne:'Chad',f:'🇹🇩',d:'XAF',s:'F',k:1,cc:'235'},
+ {c:'CF',nm:'Centrafrique',ne:'Central African Rep.',f:'🇨🇫',d:'XAF',s:'F',k:1,cc:'236'},
+ {c:'GN',nm:'Guinée',ne:'Guinea',f:'🇬🇳',d:'GNF',s:'GNF',k:15,cc:'224'},
+ {c:'MG',nm:'Madagascar',ne:'Madagascar',f:'🇲🇬',d:'MGA',s:'Ar',k:7.5,cc:'261'},
+ {c:'MA',nm:'Maroc',ne:'Morocco',f:'🇲🇦',d:'MAD',s:'DH',k:0.016,cc:'212'},
+ {c:'DZ',nm:'Algérie',ne:'Algeria',f:'🇩🇿',d:'DZD',s:'DA',k:0.22,cc:'213'},
+ {c:'TN',nm:'Tunisie',ne:'Tunisia',f:'🇹🇳',d:'TND',s:'DT',k:0.005,cc:'216'},
+ {c:'HT',nm:'Haïti',ne:'Haiti',f:'🇭🇹',d:'HTG',s:'G',k:0.22,cc:'509'},
+ {c:'FR',nm:'France',ne:'France',f:'🇫🇷',d:'EUR',s:'€',k:0.0016,cc:'33'},
+ {c:'GH',nm:'Ghana',ne:'Ghana',f:'🇬🇭',d:'GHS',s:'GH₵',k:0.025,cc:'233'},
+ {c:'NG',nm:'Nigéria',ne:'Nigeria',f:'🇳🇬',d:'NGN',s:'₦',k:2.6,cc:'234'},
+ {c:'KE',nm:'Kenya',ne:'Kenya',f:'🇰🇪',d:'KES',s:'KSh',k:0.21,cc:'254'},
  {c:'ZA',nm:'Afrique du Sud',ne:'South Africa',f:'🇿🇦',d:'ZAR',s:'R',k:0.031}
 ];
 function paysNm(p){return L(p.nm,p.ne);}
+function paysDe(code){for(var i=0;i<PAYS.length;i++)if(PAYS[i].c===code)return PAYS[i];return PAYS[0];}
+function ccCourant(){return (DB&&DB.cfg&&DB.cfg.pays)?(paysDe(DB.cfg.pays).cc||''):((obPays&&obPays.cc)||'');}
+
+/* ══════════════════════════════════════════════════════════════════
+   LE NUMÉRO DE TÉLÉPHONE
+
+   ⚠️⚠️ MESURÉ : la relance d'ardoise par WhatsApp ne pouvait marcher
+   pour personne. Un numéro saisi « 699112233 » — la façon dont on
+   l'écrit au Cameroun — donnait `wa.me/699112233`, et WhatsApp répond
+   « numéro invalide ». Il lui faut le numéro INTERNATIONAL, indicatif
+   compris : `wa.me/237699112233`. Le pays était pourtant connu ; c'est
+   son indicatif qui manquait dans la table.
+
+   Nombre de chiffres attendu par pays, partie locale, sans indicatif.
+   Ces données vieillissent (la Côte d'Ivoire est passée à 10 chiffres
+   en 2021) : on s'en sert pour PRÉVENIR, jamais pour bloquer. Un
+   patron enfermé dehors par une table obsolète, c'est pire qu'un
+   numéro mal tapé. */
+var LONG_TEL={'237':9,'225':10,'221':9,'241':8,'242':9,'243':9,'229':10,'226':8,
+  '223':8,'228':8,'227':8,'235':8,'236':8,'224':9,'261':9,'212':9,'213':9,
+  '216':8,'509':8,'33':9,'233':9,'234':10,'254':9,'27':9};
+
+/* « 699112233 » -> « 699 11 22 33 » : si le compte est impair, le
+   premier groupe fait trois chiffres, puis des paires. */
+function _grouperTel(d){
+  d=String(d||'');
+  var tete=(d.length%2)?d.slice(0,3):'',reste=(d.length%2)?d.slice(3):d;
+  return (tete?tete+' ':'')+reste.replace(/(\d{2})(?=\d)/g,'$1 ');
+}
+function verifierTel(saisi,cc){
+  var brut=String(saisi||'').replace(/\D/g,'');
+  var d=brut;
+  if(cc&&d.indexOf(cc)===0&&d.length>cc.length)d=d.slice(cc.length);  // il a tapé son indicatif
+  if(d[0]==='0'&&d.length>1)d=d.replace(/^0+/,'');                    // le 0 local
+  /* Il a bien tapé quelque chose, mais il n'en reste rien après avoir
+     retiré les zéros de tête : ce n'est pas « champ vide », c'est
+     « 00000 ». Les deux ne se disent pas pareil. */
+  if(!d)return {ok:false,digits:'',msg:brut?L('Un numéro ne peut pas être fait de zéros.','A number cannot be all zeros.')
+                                          :L('Entre le numéro du bar',"Enter the bar's number")};
+  if(d.length<6)return {ok:false,digits:d,msg:L("Ce numéro n'a que "+d.length+' chiffre'+(d.length>1?'s':'')+" — ce n'est pas un vrai numéro",
+                                                'This number has only '+d.length+' digit'+(d.length>1?'s':'')+' — that is not a real number')};
+  if(d.length>15)return {ok:false,digits:d,msg:L('Ce numéro est trop long','This number is too long')};
+  if(/^(\d)\1+$/.test(d))return {ok:false,digits:d,msg:L('Un numéro ne peut pas être fait du même chiffre répété','A number cannot be the same digit repeated')};
+  var att=LONG_TEL[cc];
+  if(att&&d.length!==att)return {ok:true,digits:d,doute:true,
+    msg:L('Ce numéro a '+d.length+" chiffres, on en attend "+att+" pour ce pays. C'est bien le bon ?",
+          'This number has '+d.length+' digits, '+att+' expected for this country. Is it right?')};
+  return {ok:true,digits:d};
+}
+/* Ce que WhatsApp veut : que des chiffres, indicatif en tête. */
+function telIntl(num,cc){
+  /* ⚠️ Un client étranger donne son numéro avec SON indicatif (+33…).
+     Le préfixer de celui du bar donnerait « 23733… », un numéro qui
+     n'existe pas. Le « + » ou le « 00 » dit « c'est déjà complet ». */
+  var raw=String(num||'').trim();
+  if(/^(\+|00)/.test(raw))return raw.replace(/\D/g,'').replace(/^00/,'');
+  cc=(cc===undefined)?ccCourant():cc;
+  var v=verifierTel(num,cc);
+  if(!v.digits)return '';
+  return (cc&&v.digits.indexOf(cc)!==0?cc:'')+v.digits;
+}
+/* Ce qu'un humain lit : « +237 690 11 22 33 ». */
+function telJoli(num,cc){
+  cc=(cc===undefined)?ccCourant():cc;
+  var raw=String(num||'').trim();
+  if(/^(\+|00)/.test(raw)){
+    var i=raw.replace(/\D/g,'').replace(/^00/,'');
+    if(!i)return '';
+    /* Si c'est notre propre indicatif, on le détache pour grouper le
+       reste ; sinon on ne devine pas où finit l'indicatif d'un pays
+       qu'on ne connaît pas — on rend les chiffres tels quels. */
+    if(cc&&i.indexOf(cc)===0&&i.length>cc.length)return '+'+cc+' '+_grouperTel(i.slice(cc.length));
+    return '+'+i;
+  }
+  var v=verifierTel(num,cc);
+  if(!v.digits)return '';
+  return (cc?'+'+cc+' ':'')+_grouperTel(v.digits);
+}
 
 var TYPES=[
- {c:'bar',nm:'Bar / Buvette',ne:'Bar / Pub',e:'🍻',fams:['biere','sucr','eau','energ','vin','cuis','div']},
+ {c:'bar',nm:'Bar / Buvette',ne:'Bar / Pub',e:'🍻',fams:['biere','sucr','eau','energ','vin','cuis','div'],cc:'27'},
  {c:'snack',nm:'Snack-bar',ne:'Snack bar',e:'🍢',fams:['biere','sucr','eau','energ','cuis','cock','div']},
  {c:'cave',nm:'Cave à boissons',ne:'Drinks shop',e:'🏪',fams:['biere','sucr','eau','energ','vin','div']},
  {c:'resto',nm:'Restaurant-bar',ne:'Restaurant & bar',e:'🍽️',fams:['biere','sucr','eau','vin','cock','cuis','div']},
@@ -1012,6 +1101,16 @@ function migrer(d){
   d.depenses=d.depenses||[];d.equipe=d.equipe||[];d.clients=d.clients||[];
   d.appros=d.appros||[];d.clotures=d.clotures||[];d.reglements=d.reglements||[];d.cfg=d.cfg||{};
   if(d.cfg.happy==null)d.cfg.happy={on:false,debut:'17:00',fin:'19:00',remise:15};
+  /* ⚠️ Les numéros étaient rangés tels que tapés — donc refusés par
+     WhatsApp, qui veut l'indicatif. On les remet une fois sous forme
+     internationale, en se servant du pays du bar. `telIntl` laisse
+     tranquille ce qui commence déjà par « + » ou par l'indicatif. */
+  if(!d.cfg.telNorm){
+    var cc='';for(var z=0;z<PAYS.length;z++)if(PAYS[z].c===d.cfg.pays)cc=PAYS[z].cc||'';
+    if(d.cfg.tel)d.cfg.tel=telIntl(d.cfg.tel,cc);
+    (d.clients||[]).forEach(function(c){if(c.tel)c.tel=telIntl(c.tel,cc);});
+    d.cfg.telNorm=1;
+  }
   if(d.cfg.fondCaisse==null)d.cfg.fondCaisse=0;
   /* Les zones étaient stockées sous leur nom français ; elles le sont
      désormais sous un code, pour que la règle des vidanges tienne dans
@@ -1081,7 +1180,7 @@ function mhead(titre,sous){
    ══════════════════════════════════════════════════════════════════ */
 function allerInscription(){
   obEtape=1;obPays=PAYS[0];obType=TYPES[0];
-  rendrePays('');rendreTypes();majDots();
+  rendrePays('');rendreTypes();majDots();majIndicatif();
   ['obs1','obs2','obs3','obs4'].forEach(function(s,i){$(s).classList.toggle('on',i===0);});
   goScreen('s-onboard');
 }
@@ -1098,7 +1197,7 @@ function rendrePays(q){
   $('ob-pays-lst').innerHTML=h||'<div style="padding:18px;text-align:center;color:rgba(255,255,255,.4);font-size:12.5px;font-weight:700">'+L('Aucun pays trouvé','No country found')+'</div>';
 }
 function filtrerPays(q){rendrePays(q);}
-function choisirPays(i){obPays=PAYS[i];rendrePays($('ob-pays-srch').value);}
+function choisirPays(i){obPays=PAYS[i];rendrePays($('ob-pays-srch').value);majIndicatif();apercuTel();}
 function rendreTypes(){
   var h='';
   TYPES.forEach(function(t,i){
@@ -1121,14 +1220,33 @@ function obAller(n){
   try{window.scrollTo(0,0);}catch(e){}
 }
 function obPrev(n){obAller(Math.max(1,n-1));}
+var _telConfirme='';
 function obNext(n){
   if(n===3){
-    var nm=$('ob-nom').value.trim(),tel=$('ob-tel').value.trim();
+    var nm=$('ob-nom').value.trim();
     if(nm.length<2){toast(L('🍻 Donne un nom à ton bar.','🍻 Give your bar a name.'));return;}
-    if(tel.replace(/\D/g,'').length<6){toast(L('📞 Un numéro de téléphone valable, pour te retrouver.','📞 A working phone number, so we can reach you.'));return;}
+    var v=verifierTel($('ob-tel').value,obPays.cc);
+    if(!v.ok){toast('📞 '+v.msg);$('ob-tel').focus();return;}
+    /* Un doute ne bloque pas : on le dit, et un deuxième appui vaut
+       confirmation. C'est SON numéro, pas le nôtre. */
+    if(v.doute&&_telConfirme!==v.digits){
+      _telConfirme=v.digits;
+      toast('⚠️ '+v.msg+' '+L('Touche encore « Continuer » pour confirmer.','Tap Continue again to confirm.'));
+      return;
+    }
   }
   obAller(Math.min(4,n+1));
 }
+/* Le patron relit le numéro TEL QU'IL SERA ENREGISTRÉ, avant de valider. */
+function apercuTel(){
+  var el=$('ob-tel-apercu');if(!el)return;
+  var v=verifierTel($('ob-tel').value,obPays.cc);
+  if(!v.digits){el.textContent='';el.style.color='';return;}
+  if(!v.ok){el.style.color='#FFB4B4';el.textContent='⚠️ '+v.msg;return;}
+  el.style.color=v.doute?'#FFD08A':'rgba(255,255,255,.6)';
+  el.textContent=(v.doute?'⚠️ '+v.msg+'  ':'')+telJoli(v.digits,obPays.cc);
+}
+function majIndicatif(){var e=$('ob-cc');if(e)e.textContent='+'+(obPays.cc||'');}
 function majRecap(){
   var nbt=parseInt($('ob-tables').value,10)||12;
   $('ob-recap').innerHTML=
@@ -1155,7 +1273,10 @@ function creerTables(n){
 }
 function genCode(){var n=String(Math.floor(Math.random()*900000+100000));return 'BAR-'+n;}
 function creerEtablissement(){
-  var nm=$('ob-nom').value.trim(),tel=$('ob-tel').value.trim();
+  var nm=$('ob-nom').value.trim();
+  /* On range le numéro sous sa forme internationale — la seule que
+     WhatsApp accepte — et on l'affiche partout ailleurs en clair. */
+  var tel=telIntl($('ob-tel').value,obPays.cc);
   var pin=$('ob-pin').value.trim(),pin2=$('ob-pin2').value.trim();
   if(!/^\d{4}$/.test(pin)){toast(L('🔐 Le code patron fait exactement 4 chiffres.','🔐 The owner code is exactly 4 digits.'));return;}
   if(pin!==pin2){toast(L('🔐 Les deux codes ne sont pas les mêmes.','🔐 The two codes do not match.'));return;}
@@ -1762,7 +1883,7 @@ function ouvrirDivision(){
 function texteAddition(t){
   var l=(t.lignes||[]).map(function(x){
     return '• '+x.nm+' ×'+x.q+(x.offert?L(' (offert)',' (on the house)'):' — '+fmt(x.pu*x.q));}).join('\n');
-  return (DB.cfg.nom||'Bar')+'\n'+t.nm+' — '+heure()+'\n\n'+l+
+  return (DB.cfg.nom||'Bar')+(DB.cfg.tel?'\n'+telJoli(DB.cfg.tel):'')+'\n'+t.nm+' — '+heure()+'\n\n'+l+
     (t.remise?L('\nRemise : −','\nDiscount: −')+fmt(t.remise):'')+
     '\n────────────\nTOTAL : '+fmt(totalTable(t))+L('\n\nMerci et à bientôt 🍻','\n\nThank you, see you soon 🍻');
 }
@@ -1857,7 +1978,8 @@ function confirmerPaiement(){
     if(v==='__new'){
       var nm=$('pay-newnm').value.trim();
       if(nm.length<2){toast(L("📒 Le nom du client, sinon l'ardoise ne sert à rien.",'📒 The customer name — a tab without one is useless.'));return;}
-      cli={id:uid(),nm:nm,tel:$('pay-newtel').value.trim(),ardoise:0,total:0,visites:0,derniere:0};
+      var tb=$('pay-newtel').value.trim();
+      cli={id:uid(),nm:nm,tel:tb?telIntl(tb):'',ardoise:0,total:0,visites:0,derniere:0};
       DB.clients.push(cli);
     }else if(v){cli=client(parseInt(v,10));}
     if(!cli){toast(L("📒 Choisis le client qui prend l'ardoise.",'📒 Pick the customer taking the tab.'));return;}
@@ -1908,7 +2030,7 @@ function ticket(v,rendu,nmT){
 }
 function partagerVente(id){
   var v=null;DB.ventes.forEach(function(x){if(x.id===id)v=x;});if(!v)return;
-  var txt=(DB.cfg.nom||'Bar')+L('\nReçu — ','\nReceipt — ')+v.tableNm+' · '+heure(v.ts)+'\n\n'+
+  var txt=(DB.cfg.nom||'Bar')+(DB.cfg.tel?'\n'+telJoli(DB.cfg.tel):'')+L('\nReçu — ','\nReceipt — ')+v.tableNm+' · '+heure(v.ts)+'\n\n'+
     v.lignes.map(function(l){return '• '+l.nm+' ×'+l.q+(l.offert?L(' (offert)',' (on the house)'):' — '+fmt(l.pu*l.q));}).join('\n')+
     (v.remise?L('\nRemise : −','\nDiscount: −')+fmt(v.remise):'')+'\n────────────\nTOTAL : '+fmt(v.total)+
     L('\nPayé : ','\nPaid by: ')+modeNm(v.mode)+L('\n\nMerci 🍻','\n\nThank you 🍻');
@@ -2585,7 +2707,7 @@ function rendreListeClients(){
 function ficheClient(id){
   var c=client(id);if(!c)return;
   var vs=DB.ventes.filter(function(v){return v.client===c.id;}).slice(-8).reverse();
-  modal(mhead('📒 '+esc(c.nm),(c.tel?esc(c.tel)+' · ':'')+(c.visites||0)+L(' passage(s)',' visit(s)'))+
+  modal(mhead('📒 '+esc(c.nm),(c.tel?esc(telJoli(c.tel))+' · ':'')+(c.visites||0)+L(' passage(s)',' visit(s)'))+
    '<div class="ovc">'+
    '<div class="kv big"><span class="kv-l">'+L('Ardoise en cours','Current tab')+'</span><span class="kv-v" style="color:'+((c.ardoise||0)>0?'var(--R)':'#1B7A3A')+'">'+fmt(c.ardoise||0)+'</span></div>'+
    '<div class="kv"><span class="kv-l">'+L('Total dépensé chez toi','Total spent with you')+'</span><span class="kv-v">'+fmt(c.total||0)+'</span></div>'+
@@ -2598,12 +2720,13 @@ function ficheClient(id){
    :'')+
    '<div style="height:10px"></div>'+
    '<div class="fld"><label class="lbl">'+L('Nom','Name')+'</label><input class="inp" id="cl-nm" value="'+esc(c.nm)+'"></div>'+
-   '<div class="fld"><label class="lbl">'+L('Téléphone','Phone')+'</label><input class="inp" id="cl-tel" inputmode="tel" value="'+esc(c.tel||'')+'"></div>'+
+   '<div class="fld"><label class="lbl">'+L('Téléphone','Phone')+'</label><input class="inp" id="cl-tel" inputmode="tel" value="'+esc(telJoli(c.tel||''))+'"></div>'+
    '<button class="bse" onclick="sauverClient('+id+')">'+L('Enregistrer','Save')+'</button>'+
    '</div>');
 }
 function sauverClient(id){
-  var c=client(id);c.nm=$('cl-nm').value.trim()||c.nm;c.tel=$('cl-tel').value.trim();
+  var c=client(id);c.nm=$('cl-nm').value.trim()||c.nm;
+  var b=$('cl-tel').value.trim();c.tel=b?telIntl(b):'';
   save();fermerModal();rendreEquipe();toast(L('✅ Fiche client enregistrée.','✅ Customer saved.'));
 }
 function reglerArdoise(id){
@@ -2628,7 +2751,9 @@ function rappelClient(id){
   var txt=L('Bonjour ','Hello ')+c.nm+L(", c'est ",', this is ')+(DB.cfg.nom||L('le bar','the bar'))+
     L('. Ton ardoise est de ','. Your tab is ')+fmt(c.ardoise||0)+
     L('. Tu peux passer régler quand tu veux. Merci 🍻','. Come by and settle it whenever you can. Thank you 🍻');
-  try{window.open('https://wa.me/'+String(c.tel||'').replace(/\D/g,'')+'?text='+encodeURIComponent(txt),'_blank');}catch(e){}
+  var num=telIntl(c.tel);
+  if(!num){toast(L("📱 Ce client n'a pas de numéro enregistré.",'📱 This customer has no phone number.'));return;}
+  try{window.open('https://wa.me/'+num+'?text='+encodeURIComponent(txt),'_blank');}catch(e){}
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -2642,7 +2767,11 @@ function rendreSettings(){
   var c='';
   c+='<div class="rcard"><div class="rct">'+L("🍻 L'établissement",'🍻 The place')+'</div>'+
      '<div class="fld"><label class="lbl">'+L('Nom','Name')+'</label><input class="inp" id="se-nom" value="'+esc(DB.cfg.nom||'')+'"'+(estPatron()?'':' disabled')+'></div>'+
-     '<div class="fld"><label class="lbl">'+L('Téléphone','Phone')+'</label><input class="inp" id="se-tel" value="'+esc(DB.cfg.tel||'')+'"'+(estPatron()?'':' disabled')+'></div>'+
+     '<div class="fld"><label class="lbl">'+L('Téléphone du bar',"Bar's phone")+'</label>'+
+     '<input class="inp" id="se-tel" inputmode="tel" value="'+esc(telJoli(DB.cfg.tel||''))+'"'+(estPatron()?'':' disabled')+'>'+
+     '<div style="font-size:11.5px;font-weight:700;color:var(--M);margin-top:6px;line-height:1.45">'+
+       L('Il apparaît en tête des additions et des reçus que tu envoies au client.',
+         'It appears at the top of the bills and receipts you send to customers.')+'</div></div>'+
      '<div class="kv"><span class="kv-l">'+L('Monnaie','Currency')+'</span><span class="kv-v">'+DB.cfg.d+' ('+DB.cfg.s+')</span></div>'+
      '<div class="kv"><span class="kv-l">'+L('Type','Type')+'</span><span class="kv-v">'+esc(typeNm(TYPES.filter(function(t){return t.c===DB.cfg.type;})[0]||{nm:'Bar',ne:'Bar'}))+'</span></div>'+
      (estPatron()?'<div style="height:10px"></div><button class="bse" onclick="sauverEtab()">'+L('Enregistrer','Save')+'</button>':'')+
@@ -2699,7 +2828,12 @@ function rendreSettings(){
 }
 function sauverEtab(){
   DB.cfg.nom=$('se-nom').value.trim()||DB.cfg.nom;
-  DB.cfg.tel=$('se-tel').value.trim();
+  var brut=$('se-tel').value.trim();
+  if(brut){
+    var v=verifierTel(brut,ccCourant());
+    if(!v.ok){toast('📞 '+v.msg);return;}
+    DB.cfg.tel=telIntl(brut);
+  }else DB.cfg.tel='';
   save();rendreSettings();toast(L('✅ Enregistré.','✅ Saved.'));
 }
 function sauverHappy(){
@@ -2749,14 +2883,14 @@ function chargerDemo(){
       frais:x.pc?Math.floor(Math.random()*18):0,vides:0,seuil:x.pc?12:0,
       suivi:(x.sv===0?0:(x.pc>0?1:0)),actif:1,vendu:0};
   });
-  DB={cfg:{nom:L('Buvette Le Carrefour','The Crossroads Bar'),tel:'690000000',pin:'1234',lang:lang,pays:p.c,s:p.s,d:p.d,k:k,
+  DB={cfg:{nom:L('Buvette Le Carrefour','The Crossroads Bar'),tel:'237690000000',pin:'1234',lang:lang,pays:p.c,s:p.s,d:p.d,k:k,
       type:ty.c,code:genCode(),plan:'gratuit',cree:now(),
       happy:{on:false,debut:'17:00',fin:'19:00',remise:15},fondCaisse:20000,veille:false,build:BUILD},
     produits:produits,tables:creerTables(12),
     equipe:[{id:1,nm:L('Patron','Owner'),role:'patron',pin:'1234',actif:1,e:'👑'},
             {id:2,nm:'Aïcha',role:'serveur',pin:'1111',actif:1,e:'🧑‍🍳'},
             {id:3,nm:'Bernard',role:'serveur',pin:'2222',actif:1,e:'🧑‍🍳'}],
-    clients:[{id:10,nm:L('Tonton Jules','Uncle Jules'),tel:'699112233',ardoise:7500,total:86000,visites:23,derniere:now()-86400000}],
+    clients:[{id:10,nm:L('Tonton Jules','Uncle Jules'),tel:'237699112233',ardoise:7500,total:86000,visites:23,derniere:now()-86400000}],
     ventes:[],depenses:[],appros:[],clotures:[],reglements:[],nextId:1000};
   // Une vraie soirée : 14 additions étalées de 17 h à 1 h du matin.
   var bieres=produits.filter(function(x){return x.fam==='biere';});
