@@ -44,6 +44,49 @@ window.addEventListener('beforeinstallprompt',function(e){
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MyBar">
 <link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   ⚠️⚠️ SANS CE BLOC, « INSTALLER L'APPLICATION » INSTALLAIT MYBOUTIQ.
+
+   MyBar est servie à DEUX adresses : la racine d'un sous-domaine
+   (bar.myboutiq.online/) et un sous-dossier du site de MyBoutiQ
+   (myboutiq.online/bar). Dans le second cas, l'adresse du document
+   est « /bar » — SANS barre finale, parce que le site est configuré
+   en `trailingSlash:false`. Or une adresse relative se résout contre
+   le DOSSIER du document : depuis « /bar », le dossier est la RACINE.
+
+   Mesuré au banc sur l'arbre du site :
+       manifest.json  ->  /manifest.json   (celui de MyBoutiQ)
+       icon-192.png   ->  /icon-192.png    (l'icone de la boutique)
+       sw.js          ->  /sw.js           (le service worker de la boutique)
+
+   Consequence : le patron de buvette touchait « Installer », et son
+   telephone posait sur l'ecran d'accueil une application nommee
+   « MyBoutiQ — Ma boutique », avec l'icone de la boutique, qui ouvrait
+   la boutique. MyBar n'avait par ailleurs AUCUN service worker a elle :
+   son fonctionnement hors ligne etait emprunte au cache du voisin.
+
+   On calcule donc le dossier de l'application a partir de l'adresse du
+   document, et on repose les trois liens dessus. La regle vaut pour les
+   deux adresses, et pour « /bar/index.html » ouvert a la main :
+       /                  -> /
+       /index.html        -> /
+       /bar               -> /bar/
+       /bar/index.html    -> /bar/
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+  try{
+    var b=location.pathname.replace(/\/index\.html?$/i,'').replace(/\/$/,'')+'/';
+    window.MYBAR_BASE=b;
+    if(b==='/')return;               // servie a la racine : rien a corriger
+    var poser=function(sel,f){var e=document.querySelector(sel);if(e)e.setAttribute('href',b+f);};
+    poser('link[rel="manifest"]','manifest.json');
+    poser('link[rel="icon"]','icon-192.png');
+    poser('link[rel="apple-touch-icon"]','apple-touch-icon.png');
+  }catch(e){}
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all';this.onload=null">
@@ -1193,7 +1236,13 @@ function demarrer(){
   if(DB){goScreen('s-login');remplirServeurs();switchLogin('patron');}
   else goScreen('s-vitrine');
   majBoutonsInstaller();
-  if('serviceWorker' in navigator){try{navigator.serviceWorker.register('sw.js');}catch(e){}}
+  /* Le service worker se prend dans LE dossier de l'application, avec
+     sa portee : sinon, servie a « /bar », cette ligne reenregistrait
+     `/sw.js` — celui de MyBoutiQ — et MyBar n'avait pas le sien. */
+  if('serviceWorker' in navigator){
+    var base=window.MYBAR_BASE||'/';
+    try{navigator.serviceWorker.register(base+'sw.js',{scope:base});}catch(e){}
+  }
 }
 function majBoutonsInstaller(){
   var b=$('vit-install');if(b)b.style.display=window._pwaInvite?'':'none';
