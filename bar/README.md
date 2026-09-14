@@ -92,6 +92,35 @@ chaîne libre, affichée telle qu'il l'a écrite.
    vitrine tombait entièrement dedans et ne répondait pas, sans le moindre
    message. `pointer-events:none` sur tous les halos.
 
+## Les deux adresses, et ce que ça coûte
+
+MyBar est servie à deux endroits : la racine de son sous-domaine, et le
+sous-dossier `/bar` du site de MyBoutiQ. Le second cas est piégeux et a
+déjà coûté un défaut visible :
+
+1. **Le dossier de l'application est calculé à l'exécution.** À
+   `myboutiq.online/bar`, l'adresse du document n'a pas de barre finale
+   (le site est en `trailingSlash:false`), donc toute adresse relative se
+   résout contre la RACINE du domaine. `manifest.json` devenait celui de
+   MyBoutiQ, `icon-192.png` l'icône de la boutique, `sw.js` le service
+   worker de la boutique — et « Installer l'application » posait
+   *MyBoutiQ* sur l'écran d'accueil d'un patron de buvette. Le bloc en
+   tête de `index.html` recalcule le dossier et repose les trois liens.
+2. **`/bar` est une redirection vers `/bar/index.html`, pas une
+   réécriture.** La portée du service worker de MyBar est `/bar/`, et
+   `/bar` n'en fait pas partie : la page n'était contrôlée par personne,
+   donc pas disponible hors ligne. On ne redirige **pas** vers `/bar/` —
+   `trailingSlash:false` renverrait aussitôt sur `/bar`, en boucle.
+3. **`vercel.json` n'accepte aucun commentaire.** Ni `//`, ni une clé
+   `"//"` : le schéma est fermé, et une propriété inconnue fait échouer
+   le déploiement *avant* le build, sans un seul log. C'est pour ça que
+   ces explications sont ici et pas là-bas.
+
+Ce qui reste vrai dans les deux cas : l'application installée démarre sur
+`index.html` de son propre dossier et s'ouvre hors ligne. Seul le lien
+court `/bar` ne s'ouvre pas hors ligne — une redirection a besoin du
+réseau — ce qui ne concerne pas l'app posée sur l'écran d'accueil.
+
 ## Données
 
 Tout est dans `localStorage` (clé `mybar_v1`) : rien ne part sur
