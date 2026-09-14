@@ -110,6 +110,21 @@
     // n'a aucune raison d'attendre le JavaScript pour se montrer.
     var bio=null;try{bio=JSON.parse(localStorage.getItem('myboutiq_bio')||'null');}catch(x){}
     if(db&&bio&&bio.on&&bio.id&&window.PublicKeyCredential)h.className+=' doigt-pret';
+    // ⚠️⚠️ LA PORTE PEINTE ÉTAIT LA MAUVAISE PORTE.
+    // Mesuré, processeur ralenti ×12 : l'écran se peint à 910 ms avec le
+    // formulaire « Téléphone patron + PIN + Connexion 👑 »… que
+    // majEntreeRapide() efface à 1 257 ms pour poser l'entrée rapide à la
+    // place. 350 ms d'un formulaire que l'habitué n'utilise JAMAIS, puis un
+    // saut. C'est la 21.94 qui l'avait introduit : avant elle, l'écran
+    // attendait le JavaScript et personne ne voyait ce clignotement.
+    // La même lecture de stockage que `entreeRapidePossible()` fait plus
+    // bas, en trois lignes : si l'entrée rapide est possible, on peint
+    // DIRECTEMENT celle-là. Et si le JavaScript n'est pas d'accord, goScreen
+    // retire la classe à son premier passage — personne ne reste coincé.
+    var en=null;try{en=JSON.parse(localStorage.getItem('myboutiq_entree')||'null');}catch(x){}
+    if(en&&((en.role==='vendeur'&&en.code&&en.nom)
+            ||(en.role==='patron'&&en.tel&&((en.boutiques&&en.boutiques.length)||en.code||db))))
+      h.className+=' porte-rapide';
   }catch(x){}
 })();
 window._pwaInvite=null;
@@ -189,6 +204,17 @@ html.porte-login #s-splash,html.porte-vitrine #s-splash{display:none}
 html.porte-login #s-login{display:flex}
 html.porte-vitrine #s-landing{display:flex}
 html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
+/* La porte rapide se peint entière — le signe du doigt et le champ du PIN
+   compris — au lieu du formulaire patron que l'habitué n'utilise jamais. */
+/* ⚠️ CES DEUX-LÀ ÉTAIENT CACHÉS PAR UN style="display:none" ÉCRIT DANS LA
+   BALISE. Un style en ligne bat n'importe quelle règle de feuille : la porte
+   rapide restait invisible jusqu'au JavaScript, et ma première correction
+   n'avait rien changé — mesuré, pas supposé. Le « caché par défaut » revient
+   donc ici, où une règle plus précise peut le contredire. */
+#entree-rapide,#er-pin-wrap{display:none}
+html.porte-rapide #login-tabs,html.porte-rapide #fp,html.porte-rapide #conn-connu,
+html.porte-rapide #er-retour-b{display:none}
+html.porte-rapide #entree-rapide,html.porte-rapide #er-pin-wrap{display:block}
 
 /* ── SPLASH ── */
 #s-splash{background:linear-gradient(165deg,#200E4E 0%,#341764 45%,#57216B 100%);align-items:center;justify-content:center;gap:12px;position:relative;overflow:hidden}
@@ -277,6 +303,14 @@ html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
   border:1px solid rgba(255,255,255,.22);border-radius:11px;padding:8px 12px;color:rgba(255,255,255,.86);
   font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;cursor:pointer;min-height:36px}
 .lg-retour:active{background:rgba(255,255,255,.20)}
+/* ⚠️ « À CHAQUE FOIS, UN PEU PARTOUT » — il en manquait un, et pas le
+   moindre : l'écran d'entrée est celui que voit CHAQUE JOUR quelqu'un qui
+   n'a pas encore posé l'icône sur son écran d'accueil. C'est exactement là
+   qu'il faut le lui proposer, et nulle part ailleurs ça ne le rattrape. */
+.lg-install{position:absolute;top:14px;right:14px;z-index:5;background:rgba(240,169,62,.20);
+  border:1px solid rgba(240,169,62,.48);border-radius:11px;padding:8px 12px;color:var(--A);
+  font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:900;cursor:pointer;min-height:36px}
+.lg-install:active{background:rgba(240,169,62,.32)}
 #s-login::before{content:'';position:absolute;width:340px;height:340px;background:radial-gradient(circle,rgba(245,166,35,.20),transparent 70%);top:-70px;right:-90px;border-radius:50%}
 .login-logo{margin-bottom:8px;line-height:0;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 8px 18px rgba(0,0,0,.28))}
 .login-brand{font-family:'Nunito',sans-serif;font-size:36px;font-weight:900;color:#fff;letter-spacing:-1px}
@@ -400,12 +434,30 @@ html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
   align-items:center;justify-content:center;font-weight:900}
 .pcard:active .pemoji{transform:scale(.88)}
 .pcard-img{width:52px;height:52px;object-fit:cover;border-radius:12px;margin:0 auto 6px;display:block;box-shadow:0 3px 6px rgba(0,0,0,.11)}
-.pcard.has-photo{padding:0;aspect-ratio:1/1.18;overflow:hidden;display:flex;align-items:flex-end}
+/* ⚠️ LE FOND SOMBRE N'EST PAS UNE DÉCORATION. Le nom et le prix d'une carte
+   à photo sont écrits en BLANC : tant que la photo n'est pas arrivée, ils
+   sont blancs sur le blanc de la carte. Sur une connexion camerounaise ça
+   dure deux secondes à chaque ouverture de la caisse, et sur une photo qui
+   ne vient jamais, ça dure toujours. La photo se pose par-dessus et le fond
+   ne se voit plus jamais. */
+.pcard.has-photo{padding:0;aspect-ratio:1/1.18;overflow:hidden;display:flex;align-items:flex-end;background:#2B2733}
 .pcard.has-photo .pcard-img{position:absolute;inset:0;width:100%;height:100%;border-radius:14.5px;margin:0;box-shadow:none;transition:transform .15s}
 .pcard.has-photo:active .pcard-img{transform:scale(1.06)}
-.pcard-overlay{position:relative;z-index:1;width:100%;padding:8px 7px 8px;background:linear-gradient(to top,rgba(0,0,0,.75) 8%,rgba(0,0,0,.4) 55%,transparent 100%);border-radius:0 0 14.5px 14.5px;text-align:left}
-.pnm-ov{font-size:10px;font-weight:800;color:#fff;line-height:1.2;text-shadow:0 1px 3px rgba(0,0,0,.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ppr-ov{font-size:12px;font-weight:900;color:#fff;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+/* ⚠️⚠️ DÉFAUT VU SUR SA CAPTURE, ET REPRODUIT AU BANC : quand la photo ne
+   charge pas, `onerror` retire bien `has-photo` et remet l'emoji — mais le
+   voile, lui, restait écrit en BLANC. Mesuré : `color: rgb(255,255,255)`
+   sur une carte `rgb(255,255,255)`. Le nom de l'article disparaissait
+   purement et simplement.
+   La tuile de variante (.vtile) faisait déjà les choses correctement : tout
+   ce qui suppose une photo est rangé SOUS `.has-photo`. Le voile de la
+   carte ne l'était pas. Il l'est maintenant, et sans photo il redevient un
+   nom noir et un prix bleu — exactement la carte sans photo d'à côté. */
+.pcard-overlay{position:relative;z-index:1;width:100%;padding:8px 7px 8px;text-align:center}
+.pcard.has-photo .pcard-overlay{background:linear-gradient(to top,rgba(0,0,0,.75) 8%,rgba(0,0,0,.4) 55%,transparent 100%);border-radius:0 0 14.5px 14.5px;text-align:left}
+.pnm-ov{font-size:10px;font-weight:800;color:var(--T);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ppr-ov{font-size:12px;font-weight:900;color:var(--B);margin-top:2px}
+.pcard.has-photo .pnm-ov{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.pcard.has-photo .ppr-ov{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 .photo-preview{width:100%;display:flex;align-items:center;gap:10px;background:var(--BG);border-radius:12px;padding:8px 10px;margin-bottom:9px}
 .photo-preview img{width:44px;height:44px;object-fit:cover;border-radius:9px}
 .photo-preview .pp-txt{flex:1;font-size:11px;font-weight:700;color:var(--M)}
@@ -717,7 +769,7 @@ html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
    d'article fait pareil (aspect-ratio uniquement sur .pcard.has-photo). Mis
    sur toutes les tuiles, un carreau sans photo devenait 131 px de haut là où
    la carte voisine en faisait 153 — mesuré aux quatre largeurs. */
-.vtile.has-photo{padding:0;justify-content:flex-end;align-items:flex-end;aspect-ratio:1/1.18}
+.vtile.has-photo{padding:0;justify-content:flex-end;align-items:flex-end;aspect-ratio:1/1.18;background:#2B2733}
 /* ── LA CONTENANCE, LUE D'UN COUP D'ŒIL ──────────────────────────────
    Quand plusieurs variantes partagent la même photo parce qu'elles sont
    le même produit en plusieurs tailles, c'est le NOMBRE qui les
@@ -1524,6 +1576,11 @@ body{max-width:min(100%,1200px)}
 .vt-pied{margin-top:34px;padding-top:18px;border-top:1px solid var(--BD);text-align:center;
   font-size:11.5px;font-weight:600;color:#aaa;line-height:1.85}
 .vt-pied a{color:#8d8d8d}
+/* Les motifs d'erreur : de vraies cibles pour un doigt, pas une liste. */
+.se-m{width:100%;text-align:left;background:var(--C);border:1.5px solid var(--BD);border-radius:13px;
+  padding:13px 14px;font-family:'Outfit',sans-serif;font-size:13.5px;font-weight:800;color:var(--T);
+  cursor:pointer;min-height:48px}
+.se-m.on{border-color:var(--O);background:#FFF3E0;color:#8A4B00}
 /* ── SUR UN ÉCRAN LARGE ── ⚠️ le `max-width:430px` du haut de la feuille est
    déjà écrasé en fin de fichier par `body{max-width:min(100%,1200px)}` : la
    page n'a jamais été bloquée à 430 px sur un PC, j'avais lu la mauvaise
@@ -1770,7 +1827,11 @@ body{max-width:min(100%,1200px)}
           <li id="vp-l3">Tes données ne sont vendues à personne.</li>
           <li id="vp-l4">Tu peux emporter tout ce que tu as saisi, ou tout effacer, toi-même, depuis les Réglages.</li>
         </ul>
-        <div class="vt-prix-n" id="vp-note">MyBoutiQ est encore en construction. Si un prix arrive un jour, tu le sauras avant.</div>
+        <!-- ⚠️ « Si un prix arrive un jour, tu le sauras avant » était un
+             ENGAGEMENT PRIS À SA PLACE, sur une page qui porte son nom. Je
+             n'ai pas à promettre l'avenir commercial de quelqu'un d'autre.
+             Ce qui reste ne promet que ce que je tiens : cette page-ci. -->
+        <div class="vt-prix-n" id="vp-note">MyBoutiQ est encore en construction, et gratuite pendant ce temps. Ce qui viendra après n'est pas encore décidé — le jour où ça le sera, ce sera écrit ici.</div>
       </div>
     </section>
 
@@ -1894,6 +1955,7 @@ body{max-width:min(100%,1200px)}
 <!-- LOGIN -->
 <div id="s-login" class="scr">
   <button class="lg-retour" id="lg-retour" onclick="goScreen('s-landing')" style="display:none">← MyBoutiQ</button>
+  <button class="lg-install" id="lg-install" onclick="installerApp()" style="display:none">📲 Installer</button>
   <div class="login-logo">
     <svg viewBox="0 0 120 120" width="94" height="94" role="img" aria-label="MyBoutiQ">
       <defs><linearGradient id="mbAwn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD489"/><stop offset="1" stop-color="#F09A16"/></linearGradient></defs>
@@ -1924,16 +1986,21 @@ body{max-width:min(100%,1200px)}
       <button type="button" onclick="oublierEntree()" id="connu-chg" style="background:none;border:none;padding:6px 0 0;color:rgba(255,255,255,.75);font-size:11.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline"></button>
     </div>
     <!-- PORTE D'ENTRÉE RAPIDE : l'appareil se souvient de toi, tu ne donnes que ton PIN -->
-    <div id="entree-rapide" style="display:none;width:100%">
-      <div id="er-bonjour" style="font-size:15px;font-weight:800;color:#fff;margin-bottom:3px"></div>
-      <div id="er-sous" style="font-size:11.5px;font-weight:600;color:rgba(255,255,255,.6);margin-bottom:14px"></div>
+    <div id="entree-rapide" style="width:100%">
+      <!-- ⚠️ CES TEXTES NE SONT PAS DÉCORATIFS : ils sont ce que la porte
+           affiche AVANT que le JavaScript soit lu. Ce sont exactement les
+           mots que majEntreeRapide() écrit pour un patron — le cas de neuf
+           ouvertures sur dix. Un vendeur les voit corrigés un instant plus
+           tard : un mot qui change, jamais une ligne qui saute. -->
+      <div id="er-bonjour" style="font-size:15px;font-weight:800;color:#fff;margin-bottom:3px">Bonjour 👋</div>
+      <div id="er-sous" style="font-size:11.5px;font-weight:600;color:rgba(255,255,255,.6);margin-bottom:14px">Entre ton PIN pour ouvrir tes boutiques.</div>
       <div id="er-lst" style="max-height:36vh;overflow-y:auto;margin-bottom:14px"></div>
-      <div id="er-pin-wrap" style="display:none">
+      <div id="er-pin-wrap">
         <div id="er-cible" style="font-size:13px;font-weight:800;color:#fff;margin-bottom:9px;display:flex;align-items:center;gap:8px"></div>
         <button class="bio-sig" id="er-bio" onclick="toucherSigneBio('er-bio')" title="Empreinte" aria-label="Empreinte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>
-        <input class="fi" type="password" id="er-pin" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" style="text-align:center;letter-spacing:10px;font-size:22px;font-weight:900" onkeydown="if(event.key==='Enter')validerEntreeRapide()">
-        <button class="btn-login" style="margin-top:10px" onclick="validerEntreeRapide()"><span id="er-btn">Entrer</span></button>
-        <button class="btn-login" onclick="retourListeBoutiques()" style="margin-top:8px;background:transparent;color:rgba(255,255,255,.6);box-shadow:none">↩︎ <span id="er-retour">Choisir une autre boutique</span></button>
+        <input class="fi" type="password" id="er-pin" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" style="text-align:center;letter-spacing:10px;font-size:22px;font-weight:900" onkeydown="if(event.key==='Enter'&&window.validerEntreeRapide)validerEntreeRapide()">
+        <button class="btn-login" style="margin-top:10px" onclick="if(window.validerEntreeRapide)validerEntreeRapide()"><span id="er-btn">Ouvrir</span></button>
+        <button class="btn-login" id="er-retour-b" onclick="retourListeBoutiques()" style="margin-top:8px;background:transparent;color:rgba(255,255,255,.6);box-shadow:none">↩︎ <span id="er-retour">Choisir une autre boutique</span></button>
       </div>
       <div style="display:flex;gap:14px;justify-content:center;padding-top:6px">
         <button type="button" onclick="ouvrirResetPin()" id="er-oubli" style="background:none;border:none;padding:8px 0;color:rgba(255,255,255,.6);font-size:11.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline">PIN oublié ?</button>
@@ -1979,6 +2046,9 @@ body{max-width:min(100%,1200px)}
       <button class="hbtn" id="btn-dep" onclick="ouvrirDep()" style="display:none" title="Dépenses">💸</button>
       <button class="hbtn" id="btn-verrou" onclick="toggleVerrouVente()" title="Modifications bloquées pendant la vente" style="display:none">🔒</button>
       <button class="hbtn" id="btn-veille" onclick="toggleVeille()" title="Garder l'écran allumé" style="opacity:.55">🌙</button>
+      <!-- ⭐ Le vendeur n'avait AUCUNE liste de ses propres ventes : pour dire
+           « je me suis trompé sur celle de 11 h », il fallait appeler. -->
+      <button class="hbtn" id="btn-mesventes" onclick="ouvrirMesVentes()" title="Mes ventes du jour">📋</button>
       <button class="hbtn" onclick="showNotifs()" title="Notifications"><span>🔔</span><div class="hbtn-badge" id="notif-badge">0</div></button>
       <button class="hbtn bst" id="btn-st" onclick="goSt()" title="Paramètres">⚙️</button>
       <button class="hbtn" onclick="logout()">🚪</button>
@@ -2037,6 +2107,15 @@ body{max-width:min(100%,1200px)}
     <!-- ⭐ « À CHAQUE FOIS UN PEU PARTOUT » — mais refermable. Celui qui
          travaille dans un onglet de navigateur perd l'app dès qu'il ferme
          l'onglet ; celui qui a dit non une fois n'a pas à le redire. -->
+    <!-- ⭐ L'ÉCHÉANCE SE VOIT VENIR. Sept jours avant, puis trois jours de
+         grâce après : dix jours pour envoyer un Mobile Money. Un abonnement
+         qui coupe sans prévenir, on ne le renouvelle pas — on s'en va. -->
+    <div id="cai-abo" style="display:none;margin:0 15px 10px;background:#FFF8EC;border:1.5px solid #F2DCB4;
+         border-radius:12px;padding:10px 12px;align-items:center;gap:10px">
+      <span style="font-size:18px;flex-shrink:0">🔑</span>
+      <div style="flex:1;min-width:0;font-size:11.5px;font-weight:700;color:#5C4B6E;line-height:1.4" id="cai-abo-t"></div>
+      <button onclick="ecrireAbonnement()" style="flex-shrink:0;background:var(--A);color:#2E1065;border:none;border-radius:9px;padding:10px 12px;font-size:11.5px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap" id="cai-abo-b">Renouveler</button>
+    </div>
     <div id="cai-install" style="display:none;margin:0 15px 10px;background:#E8F5E9;border:1.5px solid #66BB6A;
          border-radius:12px;padding:10px 12px;display:none;align-items:center;gap:10px">
       <span style="font-size:18px;flex-shrink:0">📲</span>
@@ -2210,6 +2289,9 @@ body{max-width:min(100%,1200px)}
       <div class="stcd">
         <div class="stit2" onclick="ouvrirChangerPin()"><div class="stico" style="background:#FFEBEE">🔑</div><div class="stii"><div class="stitl" id="st-chpin">Changer mon PIN</div><div class="stisub" id="st-chpin-s">Le code qui ouvre ta caisse</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="toggleBiometrie()"><div class="stico" style="background:#E3F2FD">👆</div><div class="stii"><div class="stitl" id="st-bio2">Empreinte / Face ID</div><div class="stisub" id="st-bio2-s">Entrer sans taper le PIN</div></div><button class="tog off" id="tog-bio2" onclick="event.stopPropagation();toggleBiometrie()"></button></div>
+        <div class="stit2" id="row-erreurs" style="display:none" onclick="ouvrirErreurs()"><div class="stico" style="background:#FFF3E0">⚠️</div><div class="stii"><div class="stitl" id="st-err">Erreurs signalées</div><div class="stisub" id="st-err-s"></div></div><span class="starr">›</span></div>
+        <div class="stit2" id="row-abo" style="display:none" onclick="ecrireAbonnement()"><div class="stico" style="background:#FFF3E0">🔑</div><div class="stii"><div class="stitl" id="st-abo">Mon abonnement</div><div class="stisub" id="st-abo-s"></div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="envoyerDiagnostic()"><div class="stico" style="background:#EDE7F6">🩺</div><div class="stii"><div class="stitl" id="st-diag">Envoyer mon diagnostic</div><div class="stisub" id="st-diag-s">Version, réseau, dernière erreur — tu relis avant d'envoyer</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirDiagBio()"><div class="stico" style="background:#E3F2FD">🩺</div><div class="stii"><div class="stitl" id="st-biodiag">L'empreinte ne marche pas ?</div><div class="stisub" id="st-biodiag-s">Voir où ça bloque, sur ce téléphone</div></div><span class="starr">›</span></div>
       </div>
     </div>
@@ -2354,7 +2436,15 @@ body{max-width:min(100%,1200px)}
              Le serveur décide (table app_admins) : cacher l'entrée n'est que du
              confort, c'est la règle RLS qui protège vraiment. -->
         <div class="stit2" id="row-annonce" style="display:none" onclick="ouvrirEcrireAnnonce()"><div class="stico" style="background:#E8EAF6">📣</div><div class="stii"><div class="stitl">Écrire une annonce</div><div class="stisub">Un message à tous les commerçants</div></div><span class="starr">›</span></div>
+        <div class="stit2" id="row-abonnes" style="display:none" onclick="ouvrirAbonnes()"><div class="stico" style="background:#FFF8E1">🗂️</div><div class="stii"><div class="stitl">Abonnements</div><div class="stisub">Qui a payé, jusqu'à quand — et rouvrir d'une tape</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-photos-prop" style="display:none" onclick="ouvrirPhotosProposees()"><div class="stico" style="background:#E0F2F1">📷</div><div class="stii"><div class="stitl">Photos proposées</div><div class="stisub" id="pp-sub">Ce que les commerçants offrent à tous</div></div><span class="starr">›</span></div>
+        <!-- ⚠️ CETTE LIGNE N'APPARAÎT QUE S'IL Y A QUELQUE CHOSE À MONTRER.
+             Elle est le résultat d'un défaut réparé en 21.96 : deux boutiques
+             ouvertes sur le même téléphone se fusionnaient, et les photos de
+             l'une partaient chez l'autre. Le défaut est mort, mais les photos
+             déjà parties, elles, restent — et c'est au patron de la boutique,
+             pas à moi depuis un serveur, de dire ce qu'il en fait. -->
+        <div class="stit2" id="row-photos-etr" style="display:none" onclick="ouvrirPhotosEtrangeres()"><div class="stico" style="background:#FFF3E0">🖼️</div><div class="stii"><div class="stitl" id="st-petr">Photos venues d'ailleurs</div><div class="stisub" id="st-petr-s"></div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-install" onclick="installerApp()"><div class="stico" style="background:#E8F5E9">📲</div><div class="stii"><div class="stitl" id="st-install">Installer l'application</div><div class="stisub" id="st-install-s">Elle s'ouvre plein écran et démarre plus vite</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirArchivage()"><div class="stico" style="background:#E1F5FE">📦</div><div class="stii"><div class="stitl">Ranger les vieilles ventes</div><div class="stisub" id="st-archive-s">Elles sortent du détail, tes totaux ne bougent pas</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirSupprBoutique()"><div class="stico" style="background:#FFEBEE">⛔</div><div class="stii"><div class="stitl" id="st-sup" style="color:var(--R)">Supprimer ma boutique</div><div class="stisub" id="st-sup-s">Tout effacer de nos serveurs, définitivement</div></div><span class="starr">›</span></div>
@@ -3586,6 +3676,91 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- ABONNEMENTS (administrateurs MyBoutiQ seulement) -->
+<div class="ov" id="ov-abonnes" onclick="closeOv(event,'ov-abonnes')">
+  <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🗂️ <span>Abonnements</span></div><button class="bcl" onclick="closeSheet('ov-abonnes')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:700;margin-bottom:10px" id="ab-resume"></div>
+      <input class="pi" id="ab-src" type="text" placeholder="🔍 Nom, code ou numéro…" oninput="filtrerAbonnes(this.value)" style="margin-bottom:12px" autocomplete="off">
+      <div id="ab-lst"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROLONGER UN ABONNEMENT — la durée, et la date qu'elle donne -->
+<div class="ov" id="ov-prolonger" onclick="closeOv(event,'ov-prolonger')">
+  <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🔑 <span id="pr-nom"></span></div><button class="bcl" onclick="closeSheet('ov-prolonger');document.getElementById('ov-abonnes').classList.add('show')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div id="pr-etat" style="font-size:12.5px;font-weight:800;margin-bottom:13px"></div>
+      <div id="pr-lst" style="display:flex;flex-direction:column;gap:7px"></div>
+      <div id="pr-date-t" style="font-size:11.5px;font-weight:700;color:var(--M);margin:16px 0 7px"></div>
+      <input class="pi" id="pr-date" type="date" style="margin-bottom:9px">
+      <button class="bpay" style="background:var(--BG);color:var(--T)" onclick="poserDateAbonnement()" id="pr-date-b"></button>
+    </div>
+  </div>
+</div>
+
+<!-- MES VENTES DU JOUR — la liste que le vendeur n'avait pas -->
+<div class="ov" id="ov-mesventes" onclick="closeOv(event,'ov-mesventes')">
+  <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">📋 <span id="mv-tit">Mes ventes du jour</span></div><button class="bcl" onclick="closeSheet('ov-mesventes')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px;line-height:1.55" id="mv-aide"></div>
+      <div id="mv-lst"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SIGNALER UNE ERREUR — un motif, un mot, et ça part chez le patron -->
+<div class="ov" id="ov-signal" onclick="closeOv(event,'ov-signal')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">⚠️ <span id="se-tit">Qu'est-ce qui s'est passé ?</span></div><button class="bcl" onclick="closeSheet('ov-signal')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div id="se-vente" style="font-size:12.5px;font-weight:800;color:var(--T);background:var(--BG);border-radius:12px;padding:10px 12px;margin-bottom:13px;line-height:1.5"></div>
+      <div id="se-lst" style="display:flex;flex-direction:column;gap:7px;margin-bottom:12px"></div>
+      <input class="pi" id="se-mot" type="text" maxlength="160" style="margin-bottom:12px">
+      <button class="bpay" onclick="envoyerSignalErreur()" id="se-env">Envoyer au patron</button>
+    </div>
+  </div>
+</div>
+
+<!-- ERREURS SIGNALÉES — le patron tranche -->
+<div class="ov" id="ov-erreurs" onclick="closeOv(event,'ov-erreurs')">
+  <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">⚠️ <span>Erreurs signalées</span></div><button class="bcl" onclick="closeSheet('ov-erreurs')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px;line-height:1.55" id="er-aide"></div>
+      <div id="er-lst2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- BOUTIQUE SUSPENDUE — l'accès est en pause, RIEN n'est effacé -->
+<div id="ov-suspendu" style="display:none;position:fixed;inset:0;background:linear-gradient(165deg,#200E4E 0%,#341764 45%,#57216B 100%);z-index:100000;align-items:center;justify-content:center;padding:26px;text-align:center">
+  <div style="max-width:360px">
+    <div id="sus-emo" style="font-size:46px;margin-bottom:10px">⏸️</div>
+    <div id="sus-tit" style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:10px">Boutique suspendue</div>
+    <div id="sus-nom" style="font-size:15px;font-weight:800;color:var(--A);margin-bottom:2px"></div>
+    <div id="sus-code" style="font-size:12px;font-weight:700;color:rgba(255,255,255,.55);letter-spacing:2px;margin-bottom:18px"></div>
+    <div id="sus-txt" style="font-size:13.5px;font-weight:600;color:rgba(255,255,255,.80);line-height:1.65;margin-bottom:20px"></div>
+    <button id="sus-btn" onclick="ecrireSuspension()" style="width:100%;background:#25D366;border:none;border-radius:14px;padding:15px;color:#fff;font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;cursor:pointer">💬 Écrire au support</button>
+  </div>
+</div>
+
+<!-- PHOTOS VENUES D'UNE AUTRE BOUTIQUE -->
+<div class="ov" id="ov-photos-etr" onclick="closeOv(event,'ov-photos-etr')">
+  <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🖼️ <span id="pe-tit">Photos venues d'ailleurs</span></div><button class="bcl" onclick="closeSheet('ov-photos-etr')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px;line-height:1.55" id="pe-aide"></div>
+      <div id="pe-lst"></div>
+      <button class="bpay" style="margin-top:12px;background:#FFEBEE;color:var(--R)" id="pe-tout" onclick="retirerToutesPhotosEtrangeres()"></button>
+    </div>
+  </div>
+</div>
+
 <!-- ÉCRIRE UNE ANNONCE (administrateurs MyBoutiQ seulement) -->
 <div class="ov" id="ov-annonce" onclick="closeOv(event,'ov-annonce')">
   <div class="bsht"><div class="shndl"></div>
@@ -4109,7 +4284,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='21.98'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.07'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4591,8 +4766,14 @@ async function syncToSupa(){
         telephone:DB.cfg.tel||null,
         fonds_depart:Number(DB.fondsDepart||0),
         objectif:Number(DB.objectif||0),
-        plan:DB.cfg.plan||'gratuit',
-        actif:true,
+        // ⚠️⚠️ `actif:true` ET `plan` ÉTAIENT ICI, DANS LE PAYLOAD DE CHAQUE
+        // ÉCRITURE — donc réécrits par le téléphone à chaque vente.
+        // Ce champ est le seul frein dont dispose l'exploitant : la
+        // connexion le filtre déjà (`.eq('actif',true)`). Mais l'app le
+        // remettait à `true` À CHAQUE SAUVEGARDE — donc une suspension
+        // tenait jusqu'à la vente suivante, quelques secondes. Le frein
+        // existait et ne freinait rien. Il n'est plus posé qu'à la
+        // CRÉATION de la boutique ; ensuite, seul l'exploitant y touche.
         owner_id:(user&&user.id)||DB.cfg.ownerId||null,
         data:DB,
         updated_at:new Date().toISOString()
@@ -4691,7 +4872,7 @@ async function syncToSupa(){
         DB.cfg.code=genCode();
         continue;
       }
-      var ins=await supa.from('boutiques').insert(payload);
+      var ins=await supa.from('boutiques').insert(Object.assign({actif:true,plan:'gratuit'},payload));
       if(!ins.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv4=document.getElementById('code-val');if(cv4)cv4.textContent=DB.cfg.code;return true;}
       if(String(ins.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
       throw ins.error;
@@ -5155,7 +5336,7 @@ function goScreen(id){
   // qui décide, et lui seul.
   try{var _h=document.documentElement;
     if(_h.className.indexOf('porte-')>=0)
-      _h.className=_h.className.replace(/\s*porte-(login|vitrine)/g,'');
+      _h.className=_h.className.replace(/\s*porte-(login|vitrine|rapide)/g,'');
   }catch(e){}
   document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('on');});
   var el=document.getElementById(id);
@@ -5163,6 +5344,10 @@ function goScreen(id){
   // La vitrine peut aussi se rouvrir autrement qu'au démarrage (boutique
   // supprimée, retour arrière). Sa barre se branche ici, une seule fois.
   if(id==='s-landing'){try{majBlocAuteur();}catch(x){}try{_brancherNavSite();}catch(x){}}
+  // ⚠️ L'habitué ne passe JAMAIS par la vitrine : il tombe direct sur la
+  // porte, et c'est le seul endroit du démarrage qui n'appelait pas
+  // `majBoutonsInstaller()`. Son bouton d'installation n'existait donc pas.
+  if(id==='s-login'){try{majBoutonsInstaller();}catch(x){}}
   try{majFabAjout();}catch(x){}
   // ⚠️ Deux fois le même écran de suite gonflait la pile pour rien : le
   // retour du téléphone devait alors être touché deux fois pour bouger.
@@ -5428,7 +5613,7 @@ function entreeRapidePossible(){
 // avoir choisi la boutique n'avait aucun sens. Et une fois le compte ouvert,
 // on peut demander la liste au SERVEUR — une boutique créée sur un autre
 // téléphone apparaît donc tout de suite.
-var _erBoutiques=null;
+var _erBoutiques=null,_erPremierPassage=true;
 function majEntreeRapide(){
   var pan=document.getElementById('entree-rapide');
   var tabs=document.getElementById('login-tabs');
@@ -5478,7 +5663,12 @@ function majEntreeRapide(){
     try{requestAnimationFrame(function(){setTimeout(guetterEmpreinte,60);});}
     catch(x){setTimeout(guetterEmpreinte,120);}
   }
-  var p=document.getElementById('er-pin');p.value='';
+  var p=document.getElementById('er-pin');
+  // ⚠️ LA PORTE EST PEINTE AVANT QUE CE CODE TOURNE. Sur un téléphone lent
+  // il a eu le temps de commencer à taper : effacer le champ au premier
+  // passage, c'est lui reprendre son PIN des doigts.
+  if(!_erPremierPassage||!p.value)p.value='';
+  _erPremierPassage=false;
   // Le clavier doit être là tout de suite : il tape son PIN, il vend.
   try{p.focus();}catch(x){}
   setTimeout(function(){try{p.focus();}catch(x){}},60);
@@ -12167,7 +12357,7 @@ function encaisser(){
   planifierFermetureSucces(sc);
 }
 function annulerVente(ventId){
-  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Patron only'));return;}
+  if(!hasPerm('annuler')){showToast('⛔ '+(lang==='fr'?'Ton patron ne t’a pas donné ce droit — signale-lui l’erreur':'Your owner has not granted this — report the mistake instead'));return;}
   var v=DB.ventes.find(function(x){return x.id===ventId;});
   if(!v||v.annulee)return;
   ventAnnulEnCours=ventId;
@@ -16982,7 +17172,7 @@ function renderRpt(){
     '<div class="rcd"><div class="rctit">🕐 '+(lang==='fr'?'Dernières ventes':'Recent sales')+'</div>'+
     (vr.map(function(v){
       if(v.annulee)return '<div class="rrow"><span class="rlbl" style="text-decoration:line-through;color:var(--M)">⏰ '+v.h+' — '+(lang==='fr'?'ANNULÉE':'CANCELLED')+'</span><span class="rval" style="color:var(--M);text-decoration:line-through">'+fmt(v.total)+'</span></div>';
-      var btn=role==='patron'?'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">↩️ '+(lang==='fr'?'Annuler':'Cancel')+'</button>':'';
+      var btn=hasPerm('annuler')?'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">↩️ '+(lang==='fr'?'Annuler':'Cancel')+'</button>':'';
       return '<div class="rrow" style="align-items:center"><span class="rlbl">⏰ '+v.h+'</span><span style="display:flex;align-items:center"><span class="rval g">'+fmt(v.total)+'</span>'+btn+'</span></div>';
     }).join('')||'<div class="empty" style="padding:11px"><div class="empty-t">'+t('aucuneVente')+'</div></div>')+
     '</div>';
@@ -17076,7 +17266,10 @@ var PERM_LIST=[
   {k:'clients',e:'👥',fr:'Gérer les clients & crédits',en:'Manage clients & credit'},
   {k:'rapports',e:'📊',fr:'Voir les rapports complets',en:'View full reports'},
   {k:'depenses',e:'💸',fr:'Enregistrer des dépenses',en:'Record expenses'},
-  {k:'remises',e:'🏷️',fr:'Appliquer des remises',en:'Apply discounts'}
+  {k:'remises',e:'🏷️',fr:'Appliquer des remises',en:'Apply discounts'},
+  // ⚠️ NOUVELLE, ET ÉTEINTE PAR DÉFAUT (`defautPerms` n'allume que 'vente') :
+  // aucun vendeur ne gagne le droit d'annuler dans le dos de son patron.
+  {k:'annuler',e:'↩️',fr:'Annuler une vente',en:'Cancel a sale'}
 ];
 function defautPerms(){var o={};PERM_LIST.forEach(function(p){o[p.k]=p.k==='vente';});return o;}
 var permVendeurIdx=null;
@@ -19308,6 +19501,19 @@ function mergeDB(base,other){
   var aById={};
   (base.appros||[]).concat(other.appros||[]).forEach(function(a){if(a&&a.id!=null&&!aById[a.id])aById[a.id]=a;});
   base.appros=Object.keys(aById).map(function(k){return aById[k];}).filter(function(a){var e=_epochEvt(a);return e==null||e>=archUp;});
+  // ⚠️ LES SIGNALEMENTS VOYAGENT, ET UNE DÉCISION L'EMPORTE SUR UNE ATTENTE.
+  // C'est tout l'intérêt du mécanisme : le vendeur écrit sur SON téléphone,
+  // le patron tranche sur le SIEN. Sans cette fusion, le signalement mourrait
+  // à la première synchronisation — comme la vente annulée juste au-dessus,
+  // dont la version annulée gagne pour exactement la même raison.
+  var eById={};
+  (base.erreurs||[]).concat(other.erreurs||[]).forEach(function(e){
+    if(!e||e.id==null)return;
+    var ex=eById[e.id];
+    if(!ex)eById[e.id]=e;
+    else if(ex.etat==='attente'&&e.etat&&e.etat!=='attente')eById[e.id]=e;
+  });
+  base.erreurs=Object.keys(eById).map(function(k){return eById[k];}).slice(0,60);
   var artById={};
   (artWin.articles||[]).forEach(function(p){if(p&&p.id!=null)artById[p.id]=p;});       // articles rebasés gagnent
   (artSec.articles||[]).forEach(function(p){if(p&&p.id!=null&&!artById[p.id])artById[p.id]=p;});
@@ -19442,6 +19648,7 @@ function migrateDBData(d){
   d.cfg=d.cfg||{};
   if(!Array.isArray(d.suppr))d.suppr=[]; // tombstones : articles supprimés (survit à la fusion)
   if(!Array.isArray(d.journal))d.journal=[]; // S4 : journal des gestes sensibles (prix/stock/suppression)
+  if(!Array.isArray(d.erreurs))d.erreurs=[]; // ventes qu'un vendeur dit avoir ratées, en attente du patron
   if(d.cfg.venteDeverrouillee===undefined)d.cfg.venteDeverrouillee=false; // on vend, on ne modifie pas
   if(d.cfg.recuAuto===undefined)d.cfg.recuAuto=false;                     // vente rapide par défaut
   if(!d.arch||typeof d.arch!=='object')d.arch={upTo:0,resume:[]}; // S3 : archivage (upTo = ventes<cette date repliées dans stk0/vd0)
@@ -19847,7 +20054,7 @@ function _vitrineLangue(){
     'vp-l2':'No advertising in your till.',
     'vp-l3':'Your data is sold to nobody.',
     'vp-l4':'You can take everything you entered away, or erase all of it, yourself, from Settings.',
-    'vp-note':'MyBoutiQ is still being built. If a price ever comes, you will know before it does.',
+    'vp-note':'MyBoutiQ is still being built, and free while it is. What comes after is not decided yet — the day it is, it will be written here.',
     've-t':'Write to me',
     've-s':'A question, a fault, an idea, something the app does not cover yet. The message lands on WhatsApp, and I am the one who answers.',
     've-b':'💬 Write on WhatsApp',
@@ -20385,6 +20592,14 @@ function checkNotifications(skipPersist){
     DB=migrateDBData(DB);
     var changed=false,day=isoJour(new Date()),todaySales=getTodaySales(),todayTotal=todaySales.reduce(function(s,v){return s+Number(v.total||0);},0),todayCount=todaySales.length;
     (DB.articles||[]).forEach(function(p){var ts=getStk(p);if(p.rt&&ts<=0){if(sendNotifOnce(day+'-out-'+p.id,'⚠️ '+p.nm+' est épuisé !',p.id))changed=true;}else if(p.al>0&&ts<=p.al){if(sendNotifOnce(day+'-low-'+p.id,'📦 '+p.nm+' : stock faible ('+ts+' restants)',p.id))changed=true;}});
+    // ⚠️ La cloche du patron, et seulement la sienne : un vendeur n'a pas à
+    // être averti de ce qu'il vient lui-même d'écrire.
+    if(role==='patron'){
+      _erreursEnAttente().forEach(function(e){
+        var v=(DB.ventes||[]).find(function(x){return x.id===e.vid;})||{};
+        if(sendNotifOnce('err-'+e.id,'⚠️ '+e.par+' signale une erreur sur une vente de '+fmt(v.total||0)))changed=true;
+      });
+    }
     if(DB.objectif>0&&todayTotal>=DB.objectif){if(sendNotifOnce(day+'-goal','🎯 Objectif atteint !'))changed=true;}
     if(new Date().getHours()>=20){if(sendNotifOnce(day+'-summary','📊 Résumé du jour : '+todayCount+' ventes, '+fmt(todayTotal)+' de chiffre d\'affaires'))changed=true;}
     if(changed&&!skipPersist)persistDB();
@@ -20430,7 +20645,7 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
@@ -20616,7 +20831,7 @@ confirmerAnnulVente=function(){
 // étaient déjà. L'onglet 📊 n'existe plus : un deuxième écran de rapports
 // éteint par défaut, c'était un endroit de plus où chercher.
 function ouvrirHistory(){if(!(role==='patron'||hasPerm('rapports'))){showToast('⛔ Réservé au patron');return;}var d1=document.getElementById('hist-d1'),d2=document.getElementById('hist-d2'),today=new Date(),weekAgo=new Date();weekAgo.setDate(today.getDate()-7);d1.value=d1.value||dateInputValue(weekAgo);d2.value=d2.value||dateInputValue(today);var artSel=document.getElementById('hist-art');artSel.innerHTML='<option value="">Tous les articles</option>'+(DB.articles||[]).map(function(a){return '<option value="'+a.nm.replace(/"/g,'&quot;')+'">'+a.e+' '+a.nm+'</option>';}).join('');var vs=document.getElementById('hist-vendeur');var noms=Array.from(new Set((DB.ventes||[]).map(function(v){return v.vendeur||'Patron';})));vs.innerHTML='<option value="">Tous les vendeurs</option>'+noms.map(function(n){return '<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>';}).join('');document.getElementById('hist-vendeur-wrap').style.display=role==='patron'?'block':'none';filtrerHistory();document.getElementById('ov-history').classList.add('show');}
-function filtrerHistory(){var d1=document.getElementById('hist-d1').value,d2=document.getElementById('hist-d2').value,art=document.getElementById('hist-art').value,ven=document.getElementById('hist-vendeur').value;historyFiltered=(DB.ventes||[]).filter(function(v){var d=isoJour(getSaleDateObj(v));if(d1&&d<d1)return false;if(d2&&d>d2)return false;if(art&&!(v.lignes||[]).some(function(l){return saleArticleBaseName(l.nm)===art||String(l.nm||'').indexOf(art)===0;}))return false;if(ven&&(v.vendeur||'Patron')!==ven)return false;return true;}).sort(function(a,b){return getSaleDateObj(b)-getSaleDateObj(a);});var total=historyFiltered.reduce(function(s,v){return s+Number(v.total||0);},0),ben=historyFiltered.reduce(function(s,v){return s+getSaleBenef(v);},0);document.getElementById('hist-resume').innerHTML='<div class="rrow"><span class="rlbl">Ventes</span><span class="rval">'+historyFiltered.length+'</span></div><div class="rrow"><span class="rlbl">Total</span><span class="rval a">'+fmt(total)+'</span></div><div class="rrow"><span class="rlbl">Bénéfice</span><span class="rval g">'+fmt(ben)+'</span></div>';document.getElementById('hist-list').innerHTML=historyFiltered.length?historyFiltered.map(function(v){var ann=v.annulee?' · ANNULÉE':'';var btn=!v.annulee&&role==='patron'?'<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ Annuler</button>':'';return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+v.date+' · '+getSaleHeure(v)+ann+'</div><div class="hist-s">'+(v.vendeur||'Patron')+' · '+saleLinesLabel(v)+'</div></div><div class="hist-t">'+fmt(v.total||0)+'</div></div><div class="hist-actions"><span class="hist-s">Bénéfice: '+fmt(getSaleBenef(v))+'</span>'+btn+'</div></div>';}).join(''):'<div class="dash-empty">Aucune vente trouvée</div>';}
+function filtrerHistory(){var d1=document.getElementById('hist-d1').value,d2=document.getElementById('hist-d2').value,art=document.getElementById('hist-art').value,ven=document.getElementById('hist-vendeur').value;historyFiltered=(DB.ventes||[]).filter(function(v){var d=isoJour(getSaleDateObj(v));if(d1&&d<d1)return false;if(d2&&d>d2)return false;if(art&&!(v.lignes||[]).some(function(l){return saleArticleBaseName(l.nm)===art||String(l.nm||'').indexOf(art)===0;}))return false;if(ven&&(v.vendeur||'Patron')!==ven)return false;return true;}).sort(function(a,b){return getSaleDateObj(b)-getSaleDateObj(a);});var total=historyFiltered.reduce(function(s,v){return s+Number(v.total||0);},0),ben=historyFiltered.reduce(function(s,v){return s+getSaleBenef(v);},0);document.getElementById('hist-resume').innerHTML='<div class="rrow"><span class="rlbl">Ventes</span><span class="rval">'+historyFiltered.length+'</span></div><div class="rrow"><span class="rlbl">Total</span><span class="rval a">'+fmt(total)+'</span></div><div class="rrow"><span class="rlbl">Bénéfice</span><span class="rval g">'+fmt(ben)+'</span></div>';document.getElementById('hist-list').innerHTML=historyFiltered.length?historyFiltered.map(function(v){var ann=v.annulee?' · ANNULÉE':'';var btn=!v.annulee&&hasPerm('annuler')?'<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ Annuler</button>':'';return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+v.date+' · '+getSaleHeure(v)+ann+'</div><div class="hist-s">'+(v.vendeur||'Patron')+' · '+saleLinesLabel(v)+'</div></div><div class="hist-t">'+fmt(v.total||0)+'</div></div><div class="hist-actions"><span class="hist-s">Bénéfice: '+fmt(getSaleBenef(v))+'</span>'+btn+'</div></div>';}).join(''):'<div class="dash-empty">Aucune vente trouvée</div>';}
 function telechargerTableExcel(rows,filename){
   var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body><table border="1">'+
     rows.map(function(r,ri){return '<tr>'+r.map(function(x){return (ri===0?'<th>':'<td>')+String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+(ri===0?'</th>':'</td>');}).join('')+'</tr>';}).join('')+
@@ -21023,6 +21238,578 @@ function _fermerInstallCaisse(){
   try{localStorage.setItem('myboutiq_install_ferme','1');}catch(e){}
   var c=document.getElementById('cai-install');if(c)c.style.display='none';
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ LES PHOTOS VENUES D'UNE AUTRE BOUTIQUE
+//
+//  MESURÉ EN PRODUCTION, PAS SUPPOSÉ : 20 boutiques portent 292 photos qui
+//  ne sont pas les leurs. Toutes viennent de la MÊME boutique — la sienne,
+//  celle du numéro de support. Aucune photo d'un commerçant n'est jamais
+//  partie chez un autre commerçant : c'est un soulagement, et c'est la
+//  raison pour laquelle on ne se précipite pas.
+//
+//  ⚠️ ET SURTOUT : CES PHOTOS SERVENT. Sur les 292, 118 sont posées sur un
+//  article qui a un prix, du stock, ou qui a DÉJÀ ÉTÉ VENDU — jusqu'à 356
+//  unités dans une boutique. Un commerçant a mis un prix sur « Screenshot
+//  20260709 113553 » et le vend tous les jours : la photo est devenue la
+//  façon dont il RECONNAÎT son produit dans la caisse. Les effacer depuis
+//  un serveur, « pour faire propre », lui casserait sa caisse.
+//
+//  Donc : pas de ménage à sa place. Le défaut qui les a fait voyager est
+//  mort (21.96, `_memeBoutique`), rien de nouveau n'arrive. Ce qui manquait
+//  n'était pas un balai, c'était un INTERRUPTEUR : voir ce qui est arrivé
+//  par erreur, et décider soi-même, chez soi, photo par photo.
+// ══════════════════════════════════════════════════════════════════
+function _codePhoto(url){
+  var u=String(url||''),i=u.indexOf('/APP/products/');
+  if(i<0)return '';
+  var f='';try{f=decodeURIComponent(u.slice(i+14));}catch(e){f=u.slice(i+14);}
+  var m=f.match(/^([\d\s]+?)-\d{10,}/);
+  return m?m[1].replace(/\D/g,''):'';
+}
+function _photosEtrangeres(){
+  var out=[],mien='';
+  try{mien=normalizeShopCode((DB&&DB.cfg&&DB.cfg.code)||'');}catch(e){}
+  if(!mien||!DB||!DB.articles)return out;
+  DB.articles.forEach(function(a){
+    var c=_codePhoto(a.img);
+    if(c&&c!==mien)out.push({id:a.id,vid:null,nm:a.nm,url:a.img});
+    (a.vr||[]).forEach(function(v){
+      var cv=_codePhoto(v.img);
+      if(cv&&cv!==mien)out.push({id:a.id,vid:v.id,nm:a.nm+' — '+(v.nm||''),url:v.img});
+    });
+  });
+  return out;
+}
+function majLignePhotosEtrangeres(){
+  var r=document.getElementById('row-photos-etr');if(!r)return;
+  // Le vendeur ne décide pas des photos de la boutique : c'est le patron.
+  var n=(role==='patron')?_photosEtrangeres().length:0;
+  r.style.display=n?'':'none';
+  if(!n)return;
+  var fr=(lang!=='en');
+  var t=document.getElementById('st-petr');
+  if(t)t.textContent=fr?'Photos venues d’ailleurs':'Photos from elsewhere';
+  var sub=document.getElementById('st-petr-s');
+  if(sub)sub.textContent=fr
+    ?(n+' photo'+(n>1?'s':'')+' arrivée'+(n>1?'s':'')+' par erreur — à toi de voir')
+    :(n+' photo'+(n>1?'s':'')+' that arrived by mistake — your call');
+}
+function ouvrirPhotosEtrangeres(){
+  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  renderPhotosEtrangeres();
+  document.getElementById('ov-photos-etr').classList.add('show');
+}
+function renderPhotosEtrangeres(){
+  var c=document.getElementById('pe-lst');if(!c)return;
+  var l=_photosEtrangeres(),fr=(lang!=='en');
+  var aide=document.getElementById('pe-aide');
+  if(aide)aide.textContent=fr
+    ?'Un défaut, corrigé depuis, a copié ces photos depuis une autre boutique. Si l’image correspond quand même à ton produit, garde-la : elle t’aide à le reconnaître. Sinon retire-la — l’icône revient, et l’article ne bouge pas.'
+    :'A bug, since fixed, copied these photos from another shop. If the picture still matches your product, keep it — it helps you spot the item. Otherwise remove it: the icon comes back and the item itself does not change.';
+  var b=document.getElementById('pe-tout');
+  if(b){b.style.display=l.length?'':'none';
+        b.textContent=fr?('🗑️ Tout retirer ('+l.length+')'):('🗑️ Remove all ('+l.length+')');}
+  if(!l.length){c.innerHTML='<div class="dash-empty">'+(fr?'Plus aucune. Tout est à toi ici.':'None left. Everything here is yours.')+'</div>';return;}
+  c.innerHTML=l.map(function(x){
+    return '<div style="display:flex;align-items:center;gap:11px;background:var(--C);border:1px solid var(--BD);'
+      +'border-radius:14px;padding:9px 11px;margin-bottom:8px">'
+      +'<img src="'+x.url+'" loading="lazy" style="width:46px;height:46px;object-fit:cover;border-radius:11px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.2">'
+      +'<div style="flex:1;min-width:0;font-size:12.5px;font-weight:800;color:var(--T);overflow:hidden;text-overflow:ellipsis">'+x.nm+'</div>'
+      +'<button class="mini-btn" style="background:#FFEBEE;color:var(--R)" onclick="retirerPhotoEtrangere('+x.id+','+(x.vid===null?'null':x.vid)+')">'
+      +(fr?'Retirer':'Remove')+'</button></div>';
+  }).join('');
+}
+function _oterPhoto(id,vid){
+  var a=(DB.articles||[]).find(function(x){return x.id===id;});
+  if(!a)return false;
+  if(vid===null||vid===undefined){if(!a.img)return false;delete a.img;return true;}
+  var v=(a.vr||[]).find(function(x){return x.id===vid;});
+  if(!v||!v.img)return false;
+  delete v.img;return true;
+}
+function retirerPhotoEtrangere(id,vid){
+  if(role!=='patron')return;
+  var fr=(lang!=='en');
+  try{sauvegarderAvant(fr?'avant de retirer une photo venue d’ailleurs':'before removing a photo from elsewhere');}catch(e){}
+  if(!_oterPhoto(id,vid)){renderPhotosEtrangeres();return;}
+  save();
+  try{renderProd(DB.articles);}catch(e){}
+  try{renderStock(DB.articles);}catch(e){}
+  renderPhotosEtrangeres();
+  majLignePhotosEtrangeres();
+  showToast('🖼️ '+(fr?'Photo retirée — l’icône revient':'Photo removed — the icon is back'));
+}
+function retirerToutesPhotosEtrangeres(){
+  if(role!=='patron')return;
+  var l=_photosEtrangeres(),fr=(lang!=='en');
+  if(!l.length)return;
+  if(!confirm(fr?('Retirer '+l.length+' photo'+(l.length>1?'s':'')+' ? Les articles et leurs ventes ne bougent pas — seule l’image part, et l’icône revient.')
+               :('Remove '+l.length+' photo'+(l.length>1?'s':'')+'? The items and their sales do not change — only the picture goes, and the icon comes back.')))return;
+  try{sauvegarderAvant(fr?'avant de retirer les photos venues d’ailleurs':'before removing photos from elsewhere');}catch(e){}
+  var n=0;
+  l.forEach(function(x){if(_oterPhoto(x.id,x.vid))n++;});
+  save();
+  try{renderProd(DB.articles);}catch(e){}
+  try{renderStock(DB.articles);}catch(e){}
+  renderPhotosEtrangeres();
+  majLignePhotosEtrangeres();
+  showToast('🖼️ '+n+' '+(fr?'photos retirées':'photos removed'));
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ SUSPENDRE UNE BOUTIQUE — « comment je peux bloquer mes utilisateurs ? »
+//
+//  Le frein existait déjà : la colonne `actif` de la table `boutiques`, que
+//  la connexion filtre depuis toujours (`.eq('actif',true)`). Il ne freinait
+//  RIEN : l'app renvoyait `actif:true` dans le payload de chaque
+//  sauvegarde. Une suspension tenait jusqu'à la vente suivante — quelques
+//  secondes. C'est corrigé plus haut : `actif` n'est plus posé qu'à la
+//  création.
+//
+//  Ici, le deuxième morceau : l'app REGARDE. Une requête d'un seul champ à
+//  l'ouverture, et une porte fermée si la réponse est « non ».
+//
+//  ⚠️ TROIS RÈGLES QUE JE NE FRANCHIS PAS :
+//   1. Une suspension n'efface RIEN. Les ventes, le stock, les clients
+//      restent sur le téléphone et au serveur. Elle se lève en remettant
+//      `actif` à true, et la boutique rouvre entière.
+//   2. Pas de verdict sans réponse. Hors ligne, erreur réseau, requête
+//      refusée : on n'enferme personne sur un silence. Il faut un `false`
+//      explicite du serveur.
+//   3. On dit POURQUOI et COMMENT sortir. Un écran noir sans explication
+//      ferait juste désinstaller l'app.
+// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ « IL VIENT DE PAYER SON ABONNEMENT, JE VEUX L'AUTORISER »
+//
+//  Avec quelques dizaines de commerçants, l'encaissement se fait à la main
+//  par Mobile Money — c'est le conseil que je lui ai donné, et il tient :
+//  pas de société, pas de passerelle, pas de commission. Ce qui manquait
+//  n'était donc pas un paiement en ligne, c'était UNE DATE : jusqu'à quand
+//  celui-ci a payé, et que l'app la respecte toute seule.
+//
+//  ⚠️ RÈGLE QUI COMMANDE TOUT LE RESTE : `abonne_jusqu` À NULL = ACCÈS
+//  LIBRE. Les 49 boutiques d'aujourd'hui n'ont pas de date, donc RIEN ne
+//  change pour elles — et le site promet « gratuite pendant qu'on la
+//  construit ». Une boutique n'est concernée que le jour où l'exploitant
+//  lui pose une date, un par un. Je ne ferme la porte de personne par
+//  effet de bord.
+//
+//  ⚠️ ET ON NE CLAQUE PAS LA PORTE À MINUIT. Sept jours avant l'échéance
+//  un bandeau prévient ; trois jours APRÈS, on laisse encore entrer. Dix
+//  jours pour envoyer 500 F par Mobile Money, c'est le minimum décent —
+//  et ça évite dix appels au support le même matin.
+//
+//  ⚠️ La date est relue au serveur à chaque ouverture, et gardée à côté
+//  (`myboutiq_abo`, PAS dans la boutique synchronisée : elle appartient à
+//  l'exploitant, pas au commerçant). Sur un téléphone, tout stockage est
+//  modifiable par qui sait chercher : ce verrou décourage, il ne protège
+//  pas contre quelqu'un de déterminé. Ça se dit, ça ne se cache pas.
+// ══════════════════════════════════════════════════════════════════
+var ABO_PREVENIR=7, ABO_GRACE=3;
+function _aboLu(){
+  try{
+    var o=JSON.parse(localStorage.getItem('myboutiq_abo')||'null');
+    if(o&&DB&&DB.cfg&&normalizeShopCode(o.code||'')===normalizeShopCode(DB.cfg.code||''))return o;
+  }catch(e){}
+  return null;
+}
+function _aboEcrire(o){try{localStorage.setItem('myboutiq_abo',JSON.stringify(o));}catch(e){}}
+function _joursRestants(jour){
+  // ⚠️ ON COMPTE DES JOURS DE CALENDRIER, PAS DES HEURES. Avec une échéance
+  // à 23:59 et un arrondi vers le haut, « payé pour 40 jours » affichait
+  // « 41 jours restants » — faux d'un jour à chaque fois, et c'est le genre
+  // de détail qui fait écrire au support. Minuit à minuit, deux dates, un
+  // entier : payé jusqu'au 13, le 13 vaut 0 — il travaille toute la journée.
+  var d=new Date(String(jour)+'T00:00:00');
+  if(isNaN(d.getTime()))return null;
+  var a=new Date();a.setHours(0,0,0,0);
+  return Math.round((d.getTime()-a.getTime())/86400000);
+}
+function etatAbonnement(){
+  var o=_aboLu();
+  if(!o||!o.jusqu)return {libre:true};
+  var j=_joursRestants(o.jusqu);
+  if(j===null)return {libre:true};
+  return {libre:false,jusqu:o.jusqu,plan:o.plan||'',jours:j,
+          bloque:j<-ABO_GRACE, prevenir:j<=ABO_PREVENIR};
+}
+function _dateLisible(jour){
+  try{
+    var d=new Date(String(jour)+'T12:00:00');
+    return d.toLocaleDateString(lang==='en'?'en-GB':'fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  }catch(e){return String(jour);}
+}
+function majEtatAbonnement(){
+  var e=etatAbonnement(),fr=(lang!=='en');
+  // Le verrou dur (suspension) l'emporte : on ne se marche pas dessus.
+  var suspendu=false;
+  try{suspendu=document.getElementById('ov-suspendu').dataset.motif==='suspendue'
+              &&getComputedStyle(document.getElementById('ov-suspendu')).display!=='none';}catch(x){}
+  if(!suspendu)_verrouSuspension(!e.libre&&e.bloque,'abonnement');
+
+  var b=document.getElementById('cai-abo');
+  if(b){
+    var montrer=!e.libre&&e.prevenir&&!e.bloque;
+    b.style.display=montrer?'flex':'none';
+    if(montrer){
+      var t=document.getElementById('cai-abo-t');
+      if(t)t.textContent=(e.jours>=0)
+        ?(fr?('Ton abonnement se termine dans '+e.jours+' jour'+(e.jours>1?'s':'')+' — le '+_dateLisible(e.jusqu)+'.')
+             :('Your subscription ends in '+e.jours+' day'+(e.jours>1?'s':'')+' — on '+_dateLisible(e.jusqu)+'.'))
+        :(fr?('Ton abonnement a expiré le '+_dateLisible(e.jusqu)+'. Encore '+(ABO_GRACE+e.jours+1)+' jour'+((ABO_GRACE+e.jours+1)>1?'s':'')+' pour renouveler.')
+             :('Your subscription ended on '+_dateLisible(e.jusqu)+'. '+(ABO_GRACE+e.jours+1)+' day(s) left to renew.'));
+      var bb=document.getElementById('cai-abo-b');
+      if(bb)bb.textContent=fr?'Renouveler':'Renew';
+      b.style.background=(e.jours<0)?'#FFEBEE':'#FFF8EC';
+      b.style.borderColor=(e.jours<0)?'#EF9A9A':'#F2DCB4';
+    }
+  }
+  var r=document.getElementById('row-abo');
+  if(r){
+    r.style.display=e.libre?'none':'';
+    if(!e.libre){
+      var st=document.getElementById('st-abo-s');
+      if(st)st.textContent=(e.jours>=0)
+        ?(fr?('Payé jusqu’au '+_dateLisible(e.jusqu)+' · '+e.jours+' jour'+(e.jours>1?'s':'')+' restant'+(e.jours>1?'s':''))
+             :('Paid until '+_dateLisible(e.jusqu)+' · '+e.jours+' day(s) left'))
+        :(fr?('Expiré le '+_dateLisible(e.jusqu)):('Expired on '+_dateLisible(e.jusqu)));
+    }
+  }
+}
+// « J'ai payé » : le message part avec ce que l'exploitant doit retrouver —
+// la boutique, le code, et la place pour coller la référence Mobile Money.
+function ecrireAbonnement(){
+  var fr=(lang!=='en'),bq='',cd='';
+  try{bq=(DB&&DB.cfg&&DB.cfg.nom)||'';cd=(DB&&DB.cfg&&DB.cfg.code)||'';}catch(e){}
+  var m=(fr?'Bonjour MyBoutiQ 👋\n\nJe veux renouveler mon abonnement.\n':'Hello MyBoutiQ 👋\n\nI want to renew my subscription.\n')
+    +(bq?((fr?'Boutique : ':'Shop: ')+bq+'\n'):'')+(cd?('Code : '+cd+'\n'):'')
+    +(fr?'\nRéférence du paiement Mobile Money :\n':'\nMobile Money payment reference:\n');
+  try{window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(m),'_blank');}catch(e){}
+}
+async function verifierBoutiqueActive(){
+  try{
+    if(!supa||!DB||!DB.cfg||!DB.cfg.code)return;
+    if(!navigator.onLine)return;
+    var r=await supa.from('boutiques').select('actif,plan,abonne_jusqu').eq('code',DB.cfg.code).limit(1);
+    // Pas de réponse claire = pas de verdict. On n'enferme jamais sur un doute.
+    if(r.error||!r.data||!r.data.length||r.data[0].actif==null)return;
+    var ligne=r.data[0];
+    _aboEcrire({code:DB.cfg.code,jusqu:ligne.abonne_jusqu||null,plan:ligne.plan||'',lu:Date.now()});
+    _verrouSuspension(ligne.actif===false,'suspendue');
+    try{majEtatAbonnement();}catch(e){}
+  }catch(e){}
+}
+function _verrouSuspension(bloquee,motif){
+  var ov=document.getElementById('ov-suspendu');if(!ov)return;
+  if(!bloquee){ov.style.display='none';ov.dataset.motif='';return;}
+  ov.dataset.motif=motif||'suspendue';
+  var abo=(motif==='abonnement');
+  var fr=(lang!=='en');
+  var n=document.getElementById('sus-nom');
+  if(n)n.textContent=(DB&&DB.cfg&&DB.cfg.nom)||'';
+  var c=document.getElementById('sus-code');
+  if(c)c.textContent=(DB&&DB.cfg&&DB.cfg.code)||'';
+  var e0=document.getElementById('sus-emo');
+  if(e0)e0.textContent=abo?'🔑':'⏸️';
+  var t=document.getElementById('sus-tit');
+  if(t)t.textContent=abo?(fr?'Abonnement à renouveler':'Subscription to renew')
+                        :(fr?'Boutique suspendue':'Shop suspended');
+  var x=document.getElementById('sus-txt');
+  if(x)x.textContent=abo
+    ?(fr?'Ton abonnement est arrivé à échéance. Rien n’est effacé : tes ventes, ton stock et tes clients t’attendent, et tout revient dès le renouvellement. Envoie le paiement, puis écris-nous la référence.'
+        :'Your subscription has run out. Nothing is deleted: your sales, stock and customers are waiting, and everything comes back as soon as you renew. Send the payment, then send us the reference.')
+    :(fr?'L’accès à cette boutique a été mis en pause. Rien n’est effacé : tes ventes, ton stock et tes clients sont intacts et reviendront tels quels. Écris-nous pour comprendre et rouvrir.'
+        :'Access to this shop has been paused. Nothing is deleted: your sales, stock and customers are intact and will come back as they were. Write to us to sort it out.');
+  var b=document.getElementById('sus-btn');
+  if(b){b.textContent=abo?(fr?'💬 J’ai payé — envoyer la référence':'💬 I paid — send the reference')
+                         :(fr?'💬 Écrire au support':'💬 Write to support');
+        b.onclick=abo?ecrireAbonnement:ecrireSuspension;}
+  ov.style.display='flex';
+}
+function ecrireSuspension(){
+  var fr=(lang!=='en');
+  var bq='',cd='';
+  try{bq=(DB&&DB.cfg&&DB.cfg.nom)||'';cd=(DB&&DB.cfg&&DB.cfg.code)||'';}catch(e){}
+  var m=(fr?'Bonjour MyBoutiQ 👋\n\nMa boutique est suspendue.\n':'Hello MyBoutiQ 👋\n\nMy shop is suspended.\n')
+    +(bq?('Boutique : '+bq+'\n'):'')+(cd?('Code : '+cd+'\n'):'')
+    +(fr?'\nQu’est-ce qui se passe ?\n':'\nWhat is going on?\n');
+  try{window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(m),'_blank');}catch(e){}
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ « … OU DÉBOGUER MES UTILISATEURS ? »
+//
+//  Aujourd'hui, quand quelque chose ne va pas chez quelqu'un, il écrit
+//  « ça marche pas » — et il faut trois allers-retours WhatsApp pour
+//  apprendre sa version, son code et ce qu'il faisait. Le diagnostic de
+//  l'empreinte existait déjà, mais il ne parlait que du doigt et il ne
+//  PARTAIT pas : il s'affichait sur son téléphone, à lui.
+//
+//  Ce bouton assemble ce que je ne peux pas deviner depuis un serveur —
+//  version, navigateur, état du réseau, dernière erreur — et le met dans
+//  un message que le commerçant ENVOIE. Rien ne part tout seul : c'est lui
+//  qui appuie, et il voit le texte avant de l'envoyer.
+//
+//  ⚠️ AUCUNE DONNÉE DE VENTE, aucun nom de client, aucun PIN. Des
+//  compteurs et des états, pas son commerce.
+// ══════════════════════════════════════════════════════════════════
+function _diagnosticTexte(){
+  var fr=(lang!=='en'),L=[];
+  var pousse=function(k,v){L.push(k+' : '+v);};
+  try{pousse('Version',APP_BUILD);}catch(e){}
+  try{pousse(fr?'Boutique':'Shop',((DB&&DB.cfg&&DB.cfg.nom)||'?')+' · '+((DB&&DB.cfg&&DB.cfg.code)||'?'));}catch(e){}
+  try{pousse(fr?'Rôle':'Role',role||'?');}catch(e){}
+  try{pousse(fr?'Articles / ventes':'Items / sales',
+    ((DB&&DB.articles&&DB.articles.length)||0)+' / '+((DB&&DB.ventes&&DB.ventes.length)||0));}catch(e){}
+  try{pousse(fr?'Réseau':'Network',navigator.onLine?(fr?'en ligne':'online'):(fr?'hors ligne':'offline'));}catch(e){}
+  try{pousse(fr?'Installée':'Installed',_dejaInstallee()?(fr?'oui':'yes'):(fr?'non (navigateur)':'no (browser)'));}catch(e){}
+  try{pousse(fr?'Écran':'Screen',window.innerWidth+'×'+window.innerHeight);}catch(e){}
+  try{pousse(fr?'Langue':'Language',(navigator.language||'?')+' / '+lang);}catch(e){}
+  try{var d=bioLu()||{};pousse(fr?'Empreinte':'Biometrics',
+    (d.on?(fr?'allumée':'on'):(fr?'éteinte':'off'))+(d.id?(fr?' · clé posée':' · key set'):''));}catch(e){}
+  try{var ch=JSON.parse(localStorage.getItem('myboutiq_bio_chrono')||'null');
+      if(ch&&ch.demande!=null)pousse(fr?'Dernière ouverture':'Last launch',
+        (fr?'capteur ':'sensor ')+ch.demande+' ms'+(ch.peinture!=null?(fr?', écran ':', painted ')+ch.peinture+' ms':''));}catch(e){}
+  try{var er=_bioLu();if(er&&er.nom)pousse(fr?'Dernière erreur':'Last error',er.quoi+' · '+er.nom+' · '+String(er.msg||'').slice(0,90));}catch(e){}
+  try{pousse('Navigateur',String(navigator.userAgent||'').slice(0,140));}catch(e){}
+  return L.join('\n');
+}
+function envoyerDiagnostic(){
+  var fr=(lang!=='en');
+  var m=(fr?'Bonjour MyBoutiQ 👋\n\nVoici mon diagnostic :\n\n':'Hello MyBoutiQ 👋\n\nHere is my diagnostic:\n\n')
+    +_diagnosticTexte()
+    +(fr?'\n\nCe qui ne va pas :\n':'\n\nWhat is wrong:\n');
+  try{window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(m),'_blank');}catch(e){}
+  try{showToast('🩺 '+(fr?'Relis le message avant d’envoyer':'Check the message before sending'));}catch(e){}
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ « SI JE ME TROMPE, COMMENT JE ME JUSTIFIE ? EN APPELANT LE PATRON
+//        AU TÉLÉPHONE, OU EN ÉCRIVANT DANS L'APPLICATION ? ET PEUT-ÊTRE
+//        QUE JE N'AI PAS LA POSSIBILITÉ D'ANNULER. »
+//
+//  IL N'AVAIT PAS LA POSSIBILITÉ, ET IL N'AVAIT PAS NON PLUS LE MOYEN DE
+//  LE DIRE. `annulerVente()` commence par `if(role!=='patron') return`, et
+//  les deux boutons ↩️ ne s'affichent que pour le patron. Un vendeur qui
+//  se trompe n'a donc, aujourd'hui, que le téléphone — et le stock reste
+//  faux jusqu'à ce que le patron y repense le soir, s'il y repense.
+//
+//  DEUX RÉPONSES, PAS UNE :
+//   1. Le patron PEUT lui donner le droit d'annuler (nouvelle permission,
+//      éteinte par défaut : aucun vendeur ne gagne un pouvoir dans son dos).
+//   2. Et même sans ce droit, il peut SIGNALER : « c'était une erreur »,
+//      un motif, un mot. Ça part avec la boutique, ça arrive sur le
+//      téléphone du patron, et le patron tranche d'une tape. Pas d'appel
+//      à passer, rien à se rappeler, et une trace des deux côtés.
+//
+//  ⚠️ UN SIGNALEMENT N'ANNULE RIEN TOUT SEUL. C'est un message, pas une
+//  commande : la vente reste telle quelle, le stock aussi, jusqu'à ce que
+//  quelqu'un qui en a le droit décide. Sinon « signaler » serait « annuler »
+//  déguisé, et la permission ne voudrait plus rien dire.
+// ══════════════════════════════════════════════════════════════════
+var MOTIFS_ERREUR=[
+  {k:'article',e:'🔀',fr:'Ce n’était pas ce produit',en:'Wrong product'},
+  {k:'qte',    e:'🔢',fr:'Pas cette quantité',        en:'Wrong quantity'},
+  {k:'double', e:'👯',fr:'Vente enregistrée deux fois',en:'Recorded twice'},
+  {k:'rendu',  e:'↩️',fr:'Le client a rendu / annulé', en:'Customer returned it'},
+  {k:'prix',   e:'💰',fr:'Mauvais prix',              en:'Wrong price'},
+  {k:'autre',  e:'✍️',fr:'Autre — j’explique',        en:'Other — I explain'}
+];
+function _monNom(){
+  if(role==='patron')return (lang==='fr'?'Patron':'Owner');
+  try{return nomVendeur||'?';}catch(e){return '?';}
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️ JUSQU'OÙ REMONTER ? Le réglage qui coûte le moins, des deux côtés.
+//
+//  DEUX JOURS, ET PAS PLUS. Les erreurs se voient à deux moments : tout de
+//  suite, et au comptage du soir — souvent relu le lendemain matin. Au-delà,
+//  une vente « dont on se rend compte » trois jours après n'est plus une
+//  erreur qu'on corrige, c'est une version qu'on discute, et le patron n'a
+//  plus les moyens de vérifier.
+//
+//  ⚠️ ET HIER NE S'AFFICHE PAS TOUT SEUL. La liste du vendeur est un outil
+//  de travail : ce qu'il vient de faire doit être en HAUT, pas poussé vers
+//  le bas par les trente ventes de la veille. Hier tient sur UNE ligne
+//  repliée, qui n'apparaît que s'il y a quelque chose dedans.
+// ══════════════════════════════════════════════════════════════════
+var ERR_JOURS=2;
+function _mesVentesRecentes(){
+  var moi=txtNorm(_monNom()),jours=[];
+  for(var i=0;i<ERR_JOURS;i++){var d=new Date();d.setDate(d.getDate()-i);jours.push(isoJour(d));}
+  return (DB.ventes||[]).filter(function(v){
+    if(jours.indexOf(isoJour(getSaleDateObj(v)))<0)return false;
+    if(role==='patron')return true;
+    return txtNorm(v.vendeur||'Patron')===moi;
+  }).sort(function(a,b){return getSaleDateObj(b)-getSaleDateObj(a);});
+}
+function _mesVentesDuJour(){
+  var jour=isoJour(new Date());
+  return _mesVentesRecentes().filter(function(v){return isoJour(getSaleDateObj(v))===jour;});
+}
+function _mesVentesDHier(){
+  var jour=isoJour(new Date());
+  return _mesVentesRecentes().filter(function(v){return isoJour(getSaleDateObj(v))!==jour;});
+}
+function _erreurDe(vid){
+  return (DB.erreurs||[]).find(function(x){return x.vid===vid;})||null;
+}
+function ouvrirMesVentes(){
+  renderMesVentes();
+  document.getElementById('ov-mesventes').classList.add('show');
+}
+var _hierOuvert=false;
+function _ligneVenteMienne(v){
+  var fr=(lang!=='en'),er=_erreurDe(v.id),etat='';
+  if(v.annulee)etat='<span style="font-size:10.5px;font-weight:900;color:var(--M)">'+(fr?'ANNULÉE':'CANCELLED')+'</span>';
+  else if(er&&er.etat==='attente')etat='<span style="font-size:10.5px;font-weight:900;color:var(--O)">⏳ '+(fr?'signalée — en attente':'reported — pending')+'</span>';
+  else if(er&&er.etat==='gardee')etat='<span style="font-size:10.5px;font-weight:900;color:var(--B)">'+(fr?'gardée par le patron':'kept by the owner')+'</span>';
+  var bouton='';
+  if(!v.annulee){
+    if(hasPerm('annuler'))
+      bouton='<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ '+(fr?'Annuler':'Cancel')+'</button>';
+    // ⚠️ UNE VENTE NE SE SIGNALE QU'UNE FOIS. Sans ce `!er`, un vendeur à qui
+    // le patron a répondu « je garde » pouvait resignaler la même vente
+    // indéfiniment jusqu'à ce que l'autre cède par lassitude. La décision du
+    // patron est une décision, pas une étape.
+    else if(!er)
+      bouton='<button class="mini-btn" style="background:#FFF3E0;color:var(--O)" onclick="ouvrirSignalErreur(\''+v.id+'\')">⚠️ '+(fr?'Je me suis trompé':'I made a mistake')+'</button>';
+  }
+  return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+getSaleHeure(v)+' · '+fmt(v.total||0)+'</div>'
+    +'<div class="hist-s">'+saleLinesLabel(v)+'</div>'+(etat?('<div style="margin-top:3px">'+etat+'</div>'):'')
+    +(er&&er.mot?('<div style="font-size:11px;color:var(--M);font-weight:600;margin-top:2px">« '+er.mot+' »</div>'):'')
+    +'</div></div><div class="hist-actions"><span></span>'+bouton+'</div></div>';
+}
+function basculerHier(){_hierOuvert=!_hierOuvert;renderMesVentes();}
+function renderMesVentes(){
+  var c=document.getElementById('mv-lst');if(!c)return;
+  var fr=(lang!=='en'),l=_mesVentesDuJour(),h=_mesVentesDHier();
+  var t=document.getElementById('mv-tit');
+  if(t)t.textContent=(role==='patron')?(fr?'Les ventes du jour':'Today’s sales'):(fr?'Mes ventes du jour':'My sales today');
+  var a=document.getElementById('mv-aide');
+  if(a)a.textContent=hasPerm('annuler')
+    ?(fr?'Tu peux annuler une vente toi-même : le stock revient tout de suite.'
+        :'You can cancel a sale yourself: the stock comes straight back.')
+    :(fr?'Tu ne peux pas annuler toi-même — mais tu peux le signaler. Le patron le voit sur son téléphone et tranche. Pas besoin de l’appeler.'
+        :'You cannot cancel it yourself — but you can report it. The owner sees it on their phone and decides. No need to call.');
+  var html=l.length?l.map(_ligneVenteMienne).join('')
+                   :'<div class="dash-empty">'+(fr?'Aucune vente aujourd’hui.':'No sale today.')+'</div>';
+  // ⚠️ HIER TIENT SUR UNE LIGNE, ET SEULEMENT S'IL Y A QUELQUE CHOSE DEDANS.
+  // La liste est un outil de travail : ce qu'il vient de faire reste en haut.
+  if(h.length){
+    html+='<button onclick="basculerHier()" style="width:100%;background:none;border:none;border-top:1px solid var(--BD);'
+      +'margin-top:10px;padding:13px 2px 4px;font-family:\'Outfit\',sans-serif;font-size:12.5px;font-weight:800;'
+      +'color:var(--M);cursor:pointer;text-align:left;min-height:44px">'
+      +(_hierOuvert?'▾ ':'▸ ')+(fr?'Hier':'Yesterday')+' — '+h.length+' '+(fr?('vente'+(h.length>1?'s':'')):('sale'+(h.length>1?'s':'')))+'</button>';
+    if(_hierOuvert)html+=h.map(_ligneVenteMienne).join('');
+  }
+  c.innerHTML=html;
+}
+var _errVente=null,_errMotif=null;
+function ouvrirSignalErreur(vid){
+  var v=(DB.ventes||[]).find(function(x){return x.id===vid;});
+  if(!v||v.annulee)return;
+  _errVente=vid;_errMotif=null;
+  var fr=(lang!=='en');
+  document.getElementById('se-tit').textContent=fr?'Qu’est-ce qui s’est passé ?':'What happened?';
+  document.getElementById('se-vente').textContent=getSaleHeure(v)+' · '+fmt(v.total||0)+' · '+saleLinesLabel(v);
+  document.getElementById('se-mot').value='';
+  document.getElementById('se-mot').placeholder=fr?'Un mot pour le patron (facultatif)':'A word for the owner (optional)';
+  document.getElementById('se-env').textContent=fr?'Envoyer au patron':'Send to the owner';
+  document.getElementById('se-lst').innerHTML=MOTIFS_ERREUR.map(function(m){
+    return '<button class="se-m" data-k="'+m.k+'" onclick="choisirMotifErreur(\''+m.k+'\')">'+m.e+' '+(fr?m.fr:m.en)+'</button>';
+  }).join('');
+  closeSheet('ov-mesventes');
+  document.getElementById('ov-signal').classList.add('show');
+}
+function choisirMotifErreur(k){
+  _errMotif=k;
+  Array.prototype.forEach.call(document.querySelectorAll('#se-lst .se-m'),function(b){
+    b.classList.toggle('on',b.dataset.k===k);
+  });
+}
+function envoyerSignalErreur(){
+  var fr=(lang!=='en');
+  if(!_errVente)return;
+  if(!_errMotif){showToast('⚠️ '+(fr?'Choisis ce qui s’est passé':'Pick what happened'));return;}
+  if(_erreurDe(_errVente)){showToast('⏳ '+(fr?'Déjà signalée':'Already reported'));return;}
+  DB.erreurs=DB.erreurs||[];
+  DB.erreurs.unshift({
+    id:'e'+Date.now()+'-'+Math.random().toString(36).slice(2,6),
+    vid:_errVente, par:_monNom(), quand:new Date().toISOString(),
+    motif:_errMotif, mot:String(document.getElementById('se-mot').value||'').slice(0,160).trim(),
+    etat:'attente', parQui:'', decideLe:''
+  });
+  DB.erreurs=DB.erreurs.slice(0,60);
+  save();
+  closeSheet('ov-signal');
+  _errVente=null;_errMotif=null;
+  try{majLigneErreurs();}catch(e){}
+  showToast('📨 '+(fr?'C’est parti chez le patron. La vente ne bouge pas tant qu’il n’a pas tranché.'
+                    :'Sent to the owner. The sale stays as it is until they decide.'));
+}
+// ── CÔTÉ PATRON ──────────────────────────────────────────────────
+function _erreursEnAttente(){
+  return (DB&&DB.erreurs?DB.erreurs:[]).filter(function(e){
+    if(e.etat!=='attente')return false;
+    var v=(DB.ventes||[]).find(function(x){return x.id===e.vid;});
+    return !!v&&!v.annulee;      // déjà annulée ailleurs = plus rien à trancher
+  });
+}
+function majLigneErreurs(){
+  var r=document.getElementById('row-erreurs');if(!r)return;
+  var n=(role==='patron')?_erreursEnAttente().length:0;
+  r.style.display=n?'':'none';
+  if(!n)return;
+  var fr=(lang!=='en');
+  var t=document.getElementById('st-err');
+  if(t)t.textContent=fr?'Erreurs signalées':'Reported mistakes';
+  var s=document.getElementById('st-err-s');
+  if(s)s.textContent=fr?(n+' vente'+(n>1?'s':'')+' à trancher — un vendeur dit s’être trompé')
+                       :(n+' sale'+(n>1?'s':'')+' to decide — a seller says they made a mistake');
+}
+function ouvrirErreurs(){
+  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  renderErreurs();
+  document.getElementById('ov-erreurs').classList.add('show');
+}
+function renderErreurs(){
+  var c=document.getElementById('er-lst2');if(!c)return;
+  var fr=(lang!=='en'),l=_erreursEnAttente();
+  var a=document.getElementById('er-aide');
+  if(a)a.textContent=fr?'Le vendeur ne peut pas annuler : il te le dit ici. Rien n’a bougé — ni la vente, ni le stock — tant que tu n’as pas tranché.'
+                       :'The seller cannot cancel: they tell you here. Nothing has moved — not the sale, not the stock — until you decide.';
+  if(!l.length){c.innerHTML='<div class="dash-empty">'+(fr?'Rien à trancher. Tout est en ordre.':'Nothing to decide.')+'</div>';return;}
+  c.innerHTML=l.map(function(e){
+    var v=(DB.ventes||[]).find(function(x){return x.id===e.vid;})||{};
+    var m=MOTIFS_ERREUR.find(function(x){return x.k===e.motif;})||{e:'⚠️',fr:'?',en:'?'};
+    return '<div class="hist-sale"><div class="hist-h"><div>'
+      +'<div class="hist-d">'+(v.date||'')+' · '+getSaleHeure(v)+' · '+fmt(v.total||0)+'</div>'
+      +'<div class="hist-s">'+saleLinesLabel(v)+'</div>'
+      +'<div style="font-size:12px;font-weight:800;color:var(--O);margin-top:4px">'+m.e+' '+(fr?m.fr:m.en)+'</div>'
+      +'<div style="font-size:11.5px;font-weight:700;color:var(--M);margin-top:2px">'+(fr?'signalé par ':'reported by ')+e.par+'</div>'
+      +(e.mot?('<div style="font-size:12px;color:var(--T);font-weight:600;margin-top:4px">« '+e.mot+' »</div>'):'')
+      +'</div></div><div class="hist-actions">'
+      +'<button class="mini-btn" style="background:#EEE;color:var(--T)" onclick="trancherErreur(\''+e.id+'\',false)">'+(fr?'Garder la vente':'Keep the sale')+'</button>'
+      +'<button class="mini-btn red" onclick="trancherErreur(\''+e.id+'\',true)">↩️ '+(fr?'Annuler':'Cancel')+'</button>'
+      +'</div></div>';
+  }).join('');
+}
+function trancherErreur(eid,annuler){
+  if(role!=='patron')return;
+  var e=(DB.erreurs||[]).find(function(x){return x.id===eid;});
+  if(!e||e.etat!=='attente')return;
+  e.etat=annuler?'annulee':'gardee';
+  e.parQui=_monNom();e.decideLe=new Date().toISOString();
+  if(annuler){
+    // ⚠️ On passe par la vraie annulation — celle qui rend le stock, remet le
+    // compteur de ventes et coche `annulee`. Réécrire ce chemin ici, c'est
+    // s'assurer qu'un des deux oubliera quelque chose un jour.
+    ventAnnulEnCours=e.vid;
+    confirmerAnnulVente();
+  }else save();
+  renderErreurs();majLigneErreurs();
+  var fr=(lang!=='en');
+  if(!annuler)showToast('✅ '+(fr?'Vente gardée — le vendeur le verra':'Sale kept — the seller will see it'));
+}
 function majBoutonsInstaller(){
   var montrer=_peutInstaller(),fr=(lang!=='en');
   var txt=fr?'📲 Installer l\'application':'📲 Install the app';
@@ -21041,6 +21828,10 @@ function majBoutonsInstaller(){
     var cb=document.getElementById('cai-install-b');
     if(cb)cb.textContent=fr?'Installer':'Install';
   }
+  // L'écran d'entrée : la porte que voit tous les jours celui qui n'a pas
+  // encore l'icône sur son écran d'accueil.
+  var lg=document.getElementById('lg-install');
+  if(lg){lg.style.display=montrer?'block':'none';lg.textContent=fr?'📲 Installer':'📲 Install';}
   var r=document.getElementById('row-install');
   if(r){
     r.style.display=_dejaInstallee()?'none':'';
@@ -21096,6 +21887,178 @@ async function chercherAnnonces(force){
 // L'entrée « Écrire une annonce » n'apparaît que si le SERVEUR reconnaît ce
 // compte comme administrateur. Cacher le bouton n'est que du confort : même
 // affiché, la règle RLS refuserait l'écriture.
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ GÉRER LES ABONNEMENTS DEPUIS SA PROPRE BOUTIQUE
+//
+//  Jusqu'ici il fallait ouvrir le tableau de bord Supabase sur un
+//  ordinateur pour poser une date. Personne ne fait ça debout dans une
+//  boutique, le téléphone dans une main et le Mobile Money dans l'autre.
+//
+//  ⚠️ POURQUOI AUCUNE RÈGLE RLS N'A ÉTÉ TOUCHÉE. Une règle RLS s'applique
+//  à une LIGNE, jamais à une colonne : autoriser un admin à modifier les
+//  lignes des autres boutiques, c'est l'autoriser à réécrire `data` — les
+//  ventes, le stock et les clients de tout le monde. Deux fonctions
+//  SECURITY DEFINER font le travail à la place : elles vérifient
+//  `app_admins` elles-mêmes, ne rendent que ce qu'il faut lire, et ne
+//  laissent bouger que `abonne_jusqu` et `actif`. La surface d'attaque de
+//  la table reste exactement celle d'avant.
+// ══════════════════════════════════════════════════════════════════
+var _abonnes=[],_abonFiltre='';
+function _isoDate(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+// On repart de la date de fin si elle est encore devant : un mois ajouté
+// trois jours avant l'échéance doit donner un mois de PLUS, pas un mois
+// à partir d'aujourd'hui — sinon le commerçant perd ses trois jours.
+function _apresEcheance(jusqu,mois){
+  var base=new Date();base.setHours(12,0,0,0);
+  if(jusqu){
+    var j=new Date(String(jusqu)+'T12:00:00');
+    if(!isNaN(j.getTime())&&j.getTime()>base.getTime())base=j;
+  }
+  var d=new Date(base.getTime());
+  d.setMonth(d.getMonth()+mois);
+  return _isoDate(d);
+}
+async function ouvrirAbonnes(){
+  // ⚠️ LE MÊME GARDE QUE LES DEUX AUTRES ÉCRANS D'ADMINISTRATION. Le serveur
+  // refuse de toute façon — mais il refuse par une erreur brute. Quelqu'un
+  // qui arrive ici sans droit doit lire une phrase, pas « non autorise ».
+  if(!(await verifierAdmin())){showToast('⛔ '+(lang==='fr'?'Réservé à MyBoutiQ':'MyBoutiQ staff only'));return;}
+  document.getElementById('ov-abonnes').classList.add('show');
+  var c=document.getElementById('ab-lst');
+  c.innerHTML='<div style="text-align:center;color:var(--M);font-size:12px;font-weight:700;padding:16px">'
+    +((lang==='fr')?'Lecture…':'Loading…')+'</div>';
+  try{
+    var r=await supa.rpc('admin_boutiques');
+    if(r.error)throw r.error;
+    _abonnes=r.data||[];
+  }catch(e){
+    c.innerHTML='<div class="dash-empty">'+((lang==='fr')?'Impossible de lire la liste — réseau, ou ce compte n’est pas administrateur.':'Cannot read the list.')+'</div>';
+    return;
+  }
+  renderAbonnes();
+}
+function filtrerAbonnes(q){_abonFiltre=txtNorm(q||'');renderAbonnes();}
+function _etatBoutique(b){
+  var fr=(lang!=='en');
+  if(b.actif===false)return {t:(fr?'suspendue':'suspended'),c:'var(--R)'};
+  if(!b.abonne_jusqu)return {t:(fr?'libre — pas d’abonnement':'free — no subscription'),c:'var(--M)'};
+  var j=_joursRestants(b.abonne_jusqu);
+  if(j<0)return {t:(fr?'expiré le ':'expired ')+_dateLisible(b.abonne_jusqu),c:'var(--R)'};
+  if(j<=ABO_PREVENIR)return {t:(fr?('se termine dans '+j+' j'):(j+' days left')),c:'var(--O)'};
+  return {t:(fr?('payé jusqu’au '+_dateLisible(b.abonne_jusqu)):('paid until '+_dateLisible(b.abonne_jusqu))),c:'var(--G)'};
+}
+function renderAbonnes(){
+  var c=document.getElementById('ab-lst');if(!c)return;
+  var fr=(lang!=='en');
+  var l=_abonnes.filter(function(b){
+    if(!_abonFiltre)return true;
+    return txtNorm((b.nom||'')+' '+(b.code||'')+' '+(b.telephone||'')).indexOf(_abonFiltre)>=0;
+  });
+  var payants=_abonnes.filter(function(b){return !!b.abonne_jusqu;}).length;
+  var res=document.getElementById('ab-resume');
+  if(res)res.textContent=fr?(_abonnes.length+' boutiques · '+payants+' avec un abonnement')
+                           :(_abonnes.length+' shops · '+payants+' with a subscription');
+  if(!l.length){c.innerHTML='<div class="dash-empty">'+(fr?'Rien ne correspond.':'No match.')+'</div>';return;}
+  c.innerHTML=l.map(function(b){
+    var e=_etatBoutique(b),cd=(b.code||'').replace(/'/g,'');
+    return '<div class="hist-sale"><div class="hist-h"><div style="min-width:0">'
+      +'<div class="hist-d">'+(b.nom||'—')+'</div>'
+      +'<div class="hist-s">'+(b.code||'')+(b.telephone?(' · '+b.telephone):'')+'</div>'
+      +'<div style="font-size:11.5px;font-weight:900;color:'+e.c+';margin-top:3px">'+e.t+'</div>'
+      +'<div style="font-size:10.5px;font-weight:700;color:var(--M);margin-top:2px">'
+        +b.nb_ventes+' '+(fr?('vente'+(b.nb_ventes>1?'s':'')):('sale'+(b.nb_ventes>1?'s':'')))
+        +' · '+b.nb_articles+' '+(fr?('article'+(b.nb_articles>1?'s':'')):('item'+(b.nb_articles>1?'s':'')))+'</div>'
+      +'</div></div><div class="hist-actions" style="flex-wrap:wrap;gap:6px">'
+      // ⚠️ UN SEUL BOUTON, PAS CINQ. « +1 · +3 · +6 · +9 · +1 an » sur la
+      // ligne d'une boutique, c'est cinq cibles de 28 px collées sur un
+      // téléphone — et la mauvaise durée posée est un client qu'on fâche.
+      // Le choix s'ouvre en grand, et chaque durée annonce la date qu'elle
+      // donne : il lit « jusqu'au 14 mars 2027 » avant d'appuyer, pas après.
+      +'<button class="mini-btn" style="background:#E8F5E9;color:#2E7D32" onclick="ouvrirProlonger(\''+cd+'\')">'+(fr?'Prolonger':'Extend')+'</button>'
+      +(b.abonne_jusqu?('<button class="mini-btn" style="background:#EEE;color:var(--T)" onclick="retirerAbonnement(\''+cd+'\')">'+(fr?'Retirer':'Clear')+'</button>'):'')
+      +'<button class="mini-btn '+(b.actif===false?'':'red')+'" '+(b.actif===false?'style="background:#E8F5E9;color:#2E7D32"':'')
+        +' onclick="basculerActif(\''+cd+'\','+(b.actif===false)+')">'
+        +(b.actif===false?(fr?'Réactiver':'Reactivate'):(fr?'Suspendre':'Suspend'))+'</button>'
+      +'</div></div>';
+  }).join('');
+}
+async function _ecrireAbonnement(code,jusqu,actif,effacer){
+  var fr=(lang!=='en');
+  try{
+    var r=await supa.rpc('admin_abonnement',{p_code:code,p_jusqu:jusqu,p_actif:actif,p_effacer:!!effacer});
+    if(r.error)throw r.error;
+    var maj=(r.data&&r.data[0])||null;
+    if(!maj){showToast('⚠️ '+(fr?'Aucune boutique avec ce code':'No shop with that code'));return;}
+    // On corrige la ligne EN PLACE : relire la liste entière pour un bouton
+    // touché, c'est une seconde d'attente pour rien.
+    _abonnes.forEach(function(b){
+      if(normalizeShopCode(b.code)===normalizeShopCode(maj.code)){
+        b.abonne_jusqu=maj.abonne_jusqu;b.actif=maj.actif;
+      }
+    });
+    renderAbonnes();
+    showToast('✅ '+(maj.nom||maj.code)+' · '+_etatBoutique(maj).t);
+  }catch(e){
+    showToast('⛔ '+(fr?'Refusé : ':'Refused: ')+String((e&&e.message)||e).slice(0,60));
+  }
+}
+// Trois, six et neuf mois existent parce qu'un commerçant qui paie
+// d'avance paie ce qu'il a en poche ce jour-là, pas un forfait rond.
+var ABO_DUREES=[1,3,6,9,12];
+var _prolCode=null;
+function ouvrirProlonger(code){
+  var b=_abonnes.find(function(x){return normalizeShopCode(x.code)===normalizeShopCode(code);});
+  if(!b)return;
+  _prolCode=code;
+  var fr=(lang!=='en'),e=_etatBoutique(b);
+  document.getElementById('pr-nom').textContent=b.nom||b.code;
+  document.getElementById('pr-etat').innerHTML='<span style="color:'+e.c+'">'+e.t+'</span>';
+  document.getElementById('pr-lst').innerHTML=ABO_DUREES.map(function(m){
+    var d=_apresEcheance(b.abonne_jusqu,m);
+    var nom=(m===12)?(fr?'1 an':'1 year'):(m+' '+(fr?'mois':(m>1?'months':'month')));
+    return '<button class="se-m" onclick="prolongerAbonnement('+m+')">'
+      +'<span style="color:#2E7D32">+ '+nom+'</span>'
+      +'<span style="display:block;font-size:11.5px;font-weight:700;color:var(--M);margin-top:2px">'
+      +(fr?'jusqu’au ':'until ')+_dateLisible(d)+'</span></button>';
+  }).join('');
+  var ch=document.getElementById('pr-date');ch.value='';
+  document.getElementById('pr-date-b').textContent=fr?'Poser cette date':'Set this date';
+  document.getElementById('pr-date-t').textContent=fr?'Ou une date précise :':'Or a specific date:';
+  closeSheet('ov-abonnes');
+  document.getElementById('ov-prolonger').classList.add('show');
+}
+function prolongerAbonnement(mois){
+  if(!_prolCode)return;
+  var b=_abonnes.find(function(x){return normalizeShopCode(x.code)===normalizeShopCode(_prolCode);})||{};
+  var code=_prolCode;
+  closeSheet('ov-prolonger');_prolCode=null;
+  document.getElementById('ov-abonnes').classList.add('show');
+  _ecrireAbonnement(code,_apresEcheance(b.abonne_jusqu,mois),null,false);
+}
+function poserDateAbonnement(){
+  var fr=(lang!=='en');
+  var v=(document.getElementById('pr-date').value||'').trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){showToast('⚠️ '+(fr?'Choisis une date':'Pick a date'));return;}
+  if(!_prolCode)return;
+  var code=_prolCode;
+  closeSheet('ov-prolonger');_prolCode=null;
+  document.getElementById('ov-abonnes').classList.add('show');
+  _ecrireAbonnement(code,v,null,false);
+}
+function retirerAbonnement(code){
+  var fr=(lang!=='en');
+  if(!confirm(fr?'Retirer l’abonnement ? La boutique redevient libre, comme avant.'
+               :'Clear the subscription? The shop goes back to free access.'))return;
+  _ecrireAbonnement(code,null,null,true);
+}
+function basculerActif(code,rendre){
+  var fr=(lang!=='en');
+  if(!rendre&&!confirm(fr?'Suspendre cette boutique ? Rien n’est effacé, et tu peux la rouvrir d’une tape.'
+                        :'Suspend this shop? Nothing is deleted, and you can reopen it in one tap.'))return;
+  _ecrireAbonnement(code,null,!!rendre,false);
+}
 async function verifierAdmin(){
   try{
     if(typeof assurerConnexionSupa==='function')assurerConnexionSupa();
@@ -21108,6 +22071,8 @@ async function verifierAdmin(){
     if(row)row.style.display=ok?'':'none';
     var rowP=document.getElementById('row-photos-prop');
     if(rowP)rowP.style.display=ok?'':'none';
+    var rowA=document.getElementById('row-abonnes');
+    if(rowA)rowA.style.display=ok?'':'none';
     // Combien attendent son avis ? Le dire ici lui évite d'ouvrir pour rien.
     if(ok)try{
       var q=await supa.from('photos_partagees').select('id').eq('etat','proposee').limit(60);
