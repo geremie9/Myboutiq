@@ -4270,7 +4270,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.05'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.06'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -21907,6 +21907,10 @@ function _apresEcheance(jusqu,mois){
   return _isoDate(d);
 }
 async function ouvrirAbonnes(){
+  // ⚠️ LE MÊME GARDE QUE LES DEUX AUTRES ÉCRANS D'ADMINISTRATION. Le serveur
+  // refuse de toute façon — mais il refuse par une erreur brute. Quelqu'un
+  // qui arrive ici sans droit doit lire une phrase, pas « non autorise ».
+  if(!(await verifierAdmin())){showToast('⛔ '+(lang==='fr'?'Réservé à MyBoutiQ':'MyBoutiQ staff only'));return;}
   document.getElementById('ov-abonnes').classList.add('show');
   var c=document.getElementById('ab-lst');
   c.innerHTML='<div style="text-align:center;color:var(--M);font-size:12px;font-weight:700;padding:16px">'
