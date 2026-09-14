@@ -2436,6 +2436,7 @@ body{max-width:min(100%,1200px)}
              Le serveur décide (table app_admins) : cacher l'entrée n'est que du
              confort, c'est la règle RLS qui protège vraiment. -->
         <div class="stit2" id="row-annonce" style="display:none" onclick="ouvrirEcrireAnnonce()"><div class="stico" style="background:#E8EAF6">📣</div><div class="stii"><div class="stitl">Écrire une annonce</div><div class="stisub">Un message à tous les commerçants</div></div><span class="starr">›</span></div>
+        <div class="stit2" id="row-abonnes" style="display:none" onclick="ouvrirAbonnes()"><div class="stico" style="background:#FFF8E1">🗂️</div><div class="stii"><div class="stitl">Abonnements</div><div class="stisub">Qui a payé, jusqu'à quand — et rouvrir d'une tape</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-photos-prop" style="display:none" onclick="ouvrirPhotosProposees()"><div class="stico" style="background:#E0F2F1">📷</div><div class="stii"><div class="stitl">Photos proposées</div><div class="stisub" id="pp-sub">Ce que les commerçants offrent à tous</div></div><span class="starr">›</span></div>
         <!-- ⚠️ CETTE LIGNE N'APPARAÎT QUE S'IL Y A QUELQUE CHOSE À MONTRER.
              Elle est le résultat d'un défaut réparé en 21.96 : deux boutiques
@@ -3675,6 +3676,18 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- ABONNEMENTS (administrateurs MyBoutiQ seulement) -->
+<div class="ov" id="ov-abonnes" onclick="closeOv(event,'ov-abonnes')">
+  <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🗂️ <span>Abonnements</span></div><button class="bcl" onclick="closeSheet('ov-abonnes')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:700;margin-bottom:10px" id="ab-resume"></div>
+      <input class="pi" id="ab-src" type="text" placeholder="🔍 Nom, code ou numéro…" oninput="filtrerAbonnes(this.value)" style="margin-bottom:12px" autocomplete="off">
+      <div id="ab-lst"></div>
+    </div>
+  </div>
+</div>
+
 <!-- MES VENTES DU JOUR — la liste que le vendeur n'avait pas -->
 <div class="ov" id="ov-mesventes" onclick="closeOv(event,'ov-mesventes')">
   <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
@@ -4257,7 +4270,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.04'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.05'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -21860,6 +21873,131 @@ async function chercherAnnonces(force){
 // L'entrée « Écrire une annonce » n'apparaît que si le SERVEUR reconnaît ce
 // compte comme administrateur. Cacher le bouton n'est que du confort : même
 // affiché, la règle RLS refuserait l'écriture.
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ GÉRER LES ABONNEMENTS DEPUIS SA PROPRE BOUTIQUE
+//
+//  Jusqu'ici il fallait ouvrir le tableau de bord Supabase sur un
+//  ordinateur pour poser une date. Personne ne fait ça debout dans une
+//  boutique, le téléphone dans une main et le Mobile Money dans l'autre.
+//
+//  ⚠️ POURQUOI AUCUNE RÈGLE RLS N'A ÉTÉ TOUCHÉE. Une règle RLS s'applique
+//  à une LIGNE, jamais à une colonne : autoriser un admin à modifier les
+//  lignes des autres boutiques, c'est l'autoriser à réécrire `data` — les
+//  ventes, le stock et les clients de tout le monde. Deux fonctions
+//  SECURITY DEFINER font le travail à la place : elles vérifient
+//  `app_admins` elles-mêmes, ne rendent que ce qu'il faut lire, et ne
+//  laissent bouger que `abonne_jusqu` et `actif`. La surface d'attaque de
+//  la table reste exactement celle d'avant.
+// ══════════════════════════════════════════════════════════════════
+var _abonnes=[],_abonFiltre='';
+function _isoDate(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+// On repart de la date de fin si elle est encore devant : un mois ajouté
+// trois jours avant l'échéance doit donner un mois de PLUS, pas un mois
+// à partir d'aujourd'hui — sinon le commerçant perd ses trois jours.
+function _apresEcheance(jusqu,mois){
+  var base=new Date();base.setHours(12,0,0,0);
+  if(jusqu){
+    var j=new Date(String(jusqu)+'T12:00:00');
+    if(!isNaN(j.getTime())&&j.getTime()>base.getTime())base=j;
+  }
+  var d=new Date(base.getTime());
+  d.setMonth(d.getMonth()+mois);
+  return _isoDate(d);
+}
+async function ouvrirAbonnes(){
+  document.getElementById('ov-abonnes').classList.add('show');
+  var c=document.getElementById('ab-lst');
+  c.innerHTML='<div style="text-align:center;color:var(--M);font-size:12px;font-weight:700;padding:16px">'
+    +((lang==='fr')?'Lecture…':'Loading…')+'</div>';
+  try{
+    var r=await supa.rpc('admin_boutiques');
+    if(r.error)throw r.error;
+    _abonnes=r.data||[];
+  }catch(e){
+    c.innerHTML='<div class="dash-empty">'+((lang==='fr')?'Impossible de lire la liste — réseau, ou ce compte n’est pas administrateur.':'Cannot read the list.')+'</div>';
+    return;
+  }
+  renderAbonnes();
+}
+function filtrerAbonnes(q){_abonFiltre=txtNorm(q||'');renderAbonnes();}
+function _etatBoutique(b){
+  var fr=(lang!=='en');
+  if(b.actif===false)return {t:(fr?'suspendue':'suspended'),c:'var(--R)'};
+  if(!b.abonne_jusqu)return {t:(fr?'libre — pas d’abonnement':'free — no subscription'),c:'var(--M)'};
+  var j=_joursRestants(b.abonne_jusqu);
+  if(j<0)return {t:(fr?'expiré le ':'expired ')+_dateLisible(b.abonne_jusqu),c:'var(--R)'};
+  if(j<=ABO_PREVENIR)return {t:(fr?('se termine dans '+j+' j'):(j+' days left')),c:'var(--O)'};
+  return {t:(fr?('payé jusqu’au '+_dateLisible(b.abonne_jusqu)):('paid until '+_dateLisible(b.abonne_jusqu))),c:'var(--G)'};
+}
+function renderAbonnes(){
+  var c=document.getElementById('ab-lst');if(!c)return;
+  var fr=(lang!=='en');
+  var l=_abonnes.filter(function(b){
+    if(!_abonFiltre)return true;
+    return txtNorm((b.nom||'')+' '+(b.code||'')+' '+(b.telephone||'')).indexOf(_abonFiltre)>=0;
+  });
+  var payants=_abonnes.filter(function(b){return !!b.abonne_jusqu;}).length;
+  var res=document.getElementById('ab-resume');
+  if(res)res.textContent=fr?(_abonnes.length+' boutiques · '+payants+' avec un abonnement')
+                           :(_abonnes.length+' shops · '+payants+' with a subscription');
+  if(!l.length){c.innerHTML='<div class="dash-empty">'+(fr?'Rien ne correspond.':'No match.')+'</div>';return;}
+  c.innerHTML=l.map(function(b){
+    var e=_etatBoutique(b),cd=(b.code||'').replace(/'/g,'');
+    return '<div class="hist-sale"><div class="hist-h"><div style="min-width:0">'
+      +'<div class="hist-d">'+(b.nom||'—')+'</div>'
+      +'<div class="hist-s">'+(b.code||'')+(b.telephone?(' · '+b.telephone):'')+'</div>'
+      +'<div style="font-size:11.5px;font-weight:900;color:'+e.c+';margin-top:3px">'+e.t+'</div>'
+      +'<div style="font-size:10.5px;font-weight:700;color:var(--M);margin-top:2px">'
+        +b.nb_ventes+' '+(fr?('vente'+(b.nb_ventes>1?'s':'')):('sale'+(b.nb_ventes>1?'s':'')))
+        +' · '+b.nb_articles+' '+(fr?('article'+(b.nb_articles>1?'s':'')):('item'+(b.nb_articles>1?'s':'')))+'</div>'
+      +'</div></div><div class="hist-actions" style="flex-wrap:wrap;gap:6px">'
+      +'<button class="mini-btn" style="background:#E8F5E9;color:#2E7D32" onclick="prolongerAbonnement(\''+cd+'\',1)">+1 '+(fr?'mois':'month')+'</button>'
+      +'<button class="mini-btn" style="background:#E8F5E9;color:#2E7D32" onclick="prolongerAbonnement(\''+cd+'\',12)">+1 '+(fr?'an':'year')+'</button>'
+      +(b.abonne_jusqu?('<button class="mini-btn" style="background:#EEE;color:var(--T)" onclick="retirerAbonnement(\''+cd+'\')">'+(fr?'Retirer':'Clear')+'</button>'):'')
+      +'<button class="mini-btn '+(b.actif===false?'':'red')+'" '+(b.actif===false?'style="background:#E8F5E9;color:#2E7D32"':'')
+        +' onclick="basculerActif(\''+cd+'\','+(b.actif===false)+')">'
+        +(b.actif===false?(fr?'Réactiver':'Reactivate'):(fr?'Suspendre':'Suspend'))+'</button>'
+      +'</div></div>';
+  }).join('');
+}
+async function _ecrireAbonnement(code,jusqu,actif,effacer){
+  var fr=(lang!=='en');
+  try{
+    var r=await supa.rpc('admin_abonnement',{p_code:code,p_jusqu:jusqu,p_actif:actif,p_effacer:!!effacer});
+    if(r.error)throw r.error;
+    var maj=(r.data&&r.data[0])||null;
+    if(!maj){showToast('⚠️ '+(fr?'Aucune boutique avec ce code':'No shop with that code'));return;}
+    // On corrige la ligne EN PLACE : relire la liste entière pour un bouton
+    // touché, c'est une seconde d'attente pour rien.
+    _abonnes.forEach(function(b){
+      if(normalizeShopCode(b.code)===normalizeShopCode(maj.code)){
+        b.abonne_jusqu=maj.abonne_jusqu;b.actif=maj.actif;
+      }
+    });
+    renderAbonnes();
+    showToast('✅ '+(maj.nom||maj.code)+' · '+_etatBoutique(maj).t);
+  }catch(e){
+    showToast('⛔ '+(fr?'Refusé : ':'Refused: ')+String((e&&e.message)||e).slice(0,60));
+  }
+}
+function prolongerAbonnement(code,mois){
+  var b=_abonnes.find(function(x){return normalizeShopCode(x.code)===normalizeShopCode(code);})||{};
+  _ecrireAbonnement(code,_apresEcheance(b.abonne_jusqu,mois),null,false);
+}
+function retirerAbonnement(code){
+  var fr=(lang!=='en');
+  if(!confirm(fr?'Retirer l’abonnement ? La boutique redevient libre, comme avant.'
+               :'Clear the subscription? The shop goes back to free access.'))return;
+  _ecrireAbonnement(code,null,null,true);
+}
+function basculerActif(code,rendre){
+  var fr=(lang!=='en');
+  if(!rendre&&!confirm(fr?'Suspendre cette boutique ? Rien n’est effacé, et tu peux la rouvrir d’une tape.'
+                        :'Suspend this shop? Nothing is deleted, and you can reopen it in one tap.'))return;
+  _ecrireAbonnement(code,null,!!rendre,false);
+}
 async function verifierAdmin(){
   try{
     if(typeof assurerConnexionSupa==='function')assurerConnexionSupa();
@@ -21872,6 +22010,8 @@ async function verifierAdmin(){
     if(row)row.style.display=ok?'':'none';
     var rowP=document.getElementById('row-photos-prop');
     if(rowP)rowP.style.display=ok?'':'none';
+    var rowA=document.getElementById('row-abonnes');
+    if(rowA)rowA.style.display=ok?'':'none';
     // Combien attendent son avis ? Le dire ici lui évite d'ouvrir pour rien.
     if(ok)try{
       var q=await supa.from('photos_partagees').select('id').eq('etat','proposee').limit(60);
