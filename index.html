@@ -4415,7 +4415,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.20'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.21'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7254,15 +7254,77 @@ function _finishLoginP(){
   lancerApp();
   applyRolePerms();
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ LE RATTRAPAGE NE MARCHAIT QUE DANS UN SENS.
+//
+//  Mesuré : « Mbams » possède DEUX comptes pour un seul commerçant —
+//     693930689       compte fead662a, boutique VIDE
+//     +237693930689   compte 708aa11f, 1 article et 2 ventes
+//
+//  Si sa boutique a été créée avec l'indicatif et qu'il se reconnecte SANS,
+//  cette fonction ne proposait RIEN : la boucle des pays ne sait retirer un
+//  indicatif que si le numéro en porte déjà un. Elle n'a jamais su en
+//  AJOUTER quand le pays est inconnu — et à la connexion, `DB` est nul et
+//  `obPays` aussi. Il tombait donc sur le compte vide, définitivement.
+//
+//  Deux sources d'indices, aucune devinée :
+//   1. CE QUE LE TÉLÉPHONE SE RAPPELLE — la dernière entrée retenue porte le
+//      numéro dans l'écriture qui a MARCHÉ. C'est une preuve, pas un pari.
+//   2. LE PAYS DE L'APPAREIL (fuseau horaire). C'est le même signal qui
+//      servait à l'inscription : s'il a créé son compte sur ce téléphone,
+//      c'est celui-là.
+//
+//  ⚠️ ET ON NE BALAIE PAS LES 28 PAYS : chaque candidat est un essai de
+//  connexion refusé de plus, et le serveur finit par fermer la porte. La
+//  liste est donc bornée — des indices, pas un ratissage.
+// ══════════════════════════════════════════════════════════════════
+function _telRetenuDigits(){
+  var out=[];
+  try{
+    var e=JSON.parse(localStorage.getItem('myboutiq_entree')||'null');
+    if(e&&e.tel)out.push(String(e.tel).replace(/\D/g,''));
+  }catch(x){}
+  try{
+    var l=JSON.parse(localStorage.getItem('myboutiq_boutiques')||'[]');
+    (l||[]).forEach(function(b){if(b&&b.tel)out.push(String(b.tel).replace(/\D/g,''));});
+  }catch(x){}
+  return out.filter(Boolean);
+}
 function altPhoneDigits(tel){
   var digits=String(tel||'').replace(/\D/g,'');
   if(!digits)return [];
   var country=(DB&&DB.cfg&&DB.cfg.pays)||((typeof obPays!=='undefined')?obPays:null);
   var cc=country&&country.cc;
   var out=[];
+  // 1. Ce que ce téléphone a déjà réussi à ouvrir : la meilleure preuve.
+  try{
+    _telRetenuDigits().forEach(function(d){
+      if(!d||d===digits)return;
+      // On ne retient que s'il s'agit du MÊME numéro, à l'indicatif près.
+      if(d.indexOf(digits)>=0||digits.indexOf(d)>=0)out.push(d);
+    });
+  }catch(x){}
+  // 2. Le pays de l'appareil — le même signal qu'à l'inscription.
+  // ⚠️ MAIS SEULEMENT SI LE NUMÉRO N'EN PORTE PAS DÉJÀ UN. Sans ce test on
+  // fabriquait « 225237693930689 » — un indicatif collé devant un autre —
+  // et « 2250693930689 » sur un numéro qui commence par zéro. Deux essais
+  // de connexion brûlés pour des numéros qui n'existent nulle part, et
+  // deux pas de plus vers le blocage du compte.
+  var _aDejaUnIndicatif=false;
+  try{(PAYS||[]).forEach(function(pp){
+    if(pp&&pp.cc&&digits.indexOf(pp.cc)===0&&digits.length>pp.cc.length)_aDejaUnIndicatif=true;
+  });}catch(x){}
+  if(!_aDejaUnIndicatif&&digits[0]!=='0'){
+    try{
+      if(typeof paysParDefaut==='function'){
+        var pd=paysParDefaut();
+        if(pd&&pd.cc)out.push(pd.cc+digits);
+      }
+    }catch(x){}
+  }
   // Variantes liees au pays courant (comportement d'origine)
   if(cc&&digits.indexOf(cc)===0&&digits.length>cc.length)out.push(digits.slice(cc.length));
-  if(cc&&digits.indexOf(cc)!==0)out.push(cc+digits);
+  if(cc&&digits.indexOf(cc)!==0&&digits[0]!=='0')out.push(cc+digits);
   if(digits[0]==='0')out.push(digits.slice(1));
   // Robustesse : essayer tout indicatif connu, meme si le pays n'est pas connu a la connexion
   // (ex: compte cree en "677..." puis connexion en "+237677...", ou l'inverse)
@@ -7275,7 +7337,9 @@ function altPhoneDigits(tel){
       }
     });
   }catch(e){}
-  return out.filter(function(d,i,arr){return d&&d!==digits&&arr.indexOf(d)===i;});
+  // ⚠️ Borné : chaque candidat est un refus de connexion de plus, et le
+  // serveur finit par bloquer le compte pour excès d'essais.
+  return out.filter(function(d,i,arr){return d&&d!==digits&&arr.indexOf(d)===i;}).slice(0,8);
 }
 // Le serveur nous a déjà dit d'attendre : inutile de brûler un essai de plus.
 function _refusePendantBlocage(){
