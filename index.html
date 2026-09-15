@@ -4404,7 +4404,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.17'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.18'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -12476,7 +12476,7 @@ function procederPmt(){
   ['especes','orange','mtn','moov','credit'].forEach(function(m){var el=document.getElementById('pmv-'+m);if(el)el.classList.toggle('on',m==='especes');});
   var shcts=document.getElementById('calc-shcts');shcts.innerHTML='';
   var rds=[Math.ceil(total/500)*500,Math.ceil(total/1000)*1000,Math.ceil(total/2000)*2000,Math.ceil(total/5000)*5000].filter(function(v,i,a){return a.indexOf(v)===i&&v>=total;}).slice(0,4);
-  rds.forEach(function(r){var b=document.createElement('button');b.className='calc-shct';b.textContent=fmt(r);b.onclick=function(){document.getElementById('calc-recu').value=r;calcMonnaie();};shcts.appendChild(b);});
+  rds.forEach(function(r){var b=document.createElement('button');b.className='calc-shct';b.textContent=fmt(r);b.onclick=function(){document.getElementById('calc-recu').value=r;calcMonnaie(true);};shcts.appendChild(b);});
   document.getElementById('ov-calc').classList.add('show');
 }
 var pmntModeVente='especes',splitVenteOn=false,splitModeVente='orange',remiseVente=0;
@@ -12616,17 +12616,54 @@ function _nombreParlable(n){
 //     de la session paie le réveil. On le réveille donc à vide, une fois.
 //  3. Les voix ne sont pas chargées au premier appel, et sans voix choisie
 //     Android cherche, puis retombe sur un défaut — d'où l'attente.
-var _voixPrete=false;
+// ⚠️⚠️ ET CE RÉVEIL S'ANNULAIT LUI-MÊME. Mesuré au banc avec un moteur
+// réglé sur un Android d'entrée de gamme (700 ms pour la première phrase,
+// gel de 900 ms après un `cancel()`), pendant qu'il tape « 1000 » :
+//
+//        0 ms  on met le réveil MUET dans la file
+//      552 ms  la monnaie veut parler, voit `speaking`, et ANNULE
+//              → elle annule le réveil qui était là pour l'aider,
+//                et le `cancel()` gèle le moteur
+//     1512 ms  la voix sonne enfin.   ATTENTE RESSENTIE : 1 242 ms
+//
+// Sa phrase : « il y a une distance entre l'opération et la voix ».
+//
+// Deux corrections : on n'annule JAMAIS un réveil muet (il ne dit rien, il
+// n'y a rien à couper), et le réveil part au PREMIER CONTACT avec l'écran,
+// pas au moment où on a besoin de parler.
+var _voixPrete=false,_voixMuette=false;
 function _reveillerVoix(){
   if(_voixPrete||!voixActive())return;
   try{
     _voixFr();
     var u=new SpeechSynthesisUtterance(' ');
     u.volume=0;u.rate=2;
+    u.onend=u.onerror=function(){_voixMuette=false;};
+    _voixMuette=true;
+    setTimeout(function(){_voixMuette=false;},3000);   // filet si onend ne vient pas
     window.speechSynthesis.speak(u);
     _voixPrete=true;
   }catch(e){}
 }
+// ⚠️ LE RÉVEIL N'ÉTAIT APPELÉ QU'À UN SEUL ENDROIT : `calcMonnaie`.
+// Partout ailleurs — un casier ajouté au panier, un article épuisé, un
+// nom dicté — la première phrase payait le démarrage du moteur : 701 ms
+// mesurés, sur le geste le plus fréquent de sa journée.
+//
+// Android n'autorise la synthèse qu'après un geste de l'utilisateur. Le
+// PREMIER CONTACT avec l'écran est donc à la fois le plus tôt possible et
+// le seul moment permis. On s'y accroche une fois, puis on se retire.
+try{
+  var _armerVoix=function(){
+    try{_reveillerVoix();}catch(e){}
+    ['pointerdown','touchstart','keydown'].forEach(function(ev){
+      try{document.removeEventListener(ev,_armerVoix,true);}catch(e){}
+    });
+  };
+  ['pointerdown','touchstart','keydown'].forEach(function(ev){
+    document.addEventListener(ev,_armerVoix,true);
+  });
+}catch(e){}
 function parler(texte){
   if(!voixActive()||!texte)return;
   try{
@@ -12639,7 +12676,10 @@ function parler(texte){
       u.volume=1;
       s.speak(u);
     };
-    if(s.speaking||s.pending){
+    // ⚠️⚠️ ON NE COUPE JAMAIS LE RÉVEIL MUET. Il ne dit rien : il n'y a
+    // rien à interrompre, et l'annuler gèle le moteur pour près d'une
+    // seconde. On se met simplement à la file derrière lui.
+    if((s.speaking||s.pending)&&!_voixMuette){
       // On coupe, PUIS on parle au battement suivant. Enchaîner les deux
       // dans la même instruction est exactement ce qui bloquait le moteur.
       s.cancel();
@@ -12669,7 +12709,7 @@ function basculerVoix(){
               :('🔇 '+(lang==='fr'?'L\'app se tait':'The app is silent')));
   if(on)parler(lang==='fr'?'Je te dirai la monnaie à rendre.':'I will tell you the change.');
 }
-function calcMonnaie(){
+function calcMonnaie(immediat){
   _reveillerVoix();
   // La monnaie se calcule sur ce qu'il DOIT payer, consigne comprise.
   var total=calcAPayer(),recu=parseFloat(document.getElementById('calc-recu').value)||0;
@@ -12680,8 +12720,11 @@ function calcMonnaie(){
   else{res.className='calc-res ok';document.getElementById('calc-res-lbl').textContent=t('monnaiea');}
   // Elle se dit toute seule, dès qu'il a fini de taper ce qu'il a reçu :
   // c'est le moment où il a un client devant lui et les mains occupées.
+  // ⚠️ L'attente existe pour ne pas le couper pendant qu'il tape chiffre
+  // par chiffre. Mais quand il touche un raccourci (« 1 000 »), il a FINI :
+  // attendre encore, c'est du silence gratuit devant un client.
   clearTimeout(_direMonnaieT);
-  if(recu>0)_direMonnaieT=setTimeout(direMonnaie,280);
+  if(recu>0)_direMonnaieT=setTimeout(direMonnaie,immediat?0:200);
 }
 var _direMonnaieT=null;
 function encaisser(){
