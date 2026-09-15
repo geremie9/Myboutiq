@@ -343,13 +343,33 @@ html.porte-rapide #entree-rapide,html.porte-rapide #er-pin-wrap{display:block}
    règle. On ne retire rien non plus. La rangée passe donc À LA LIGNE
    quand elle ne tient pas : deux rangs sur un petit écran, et TOUT reste
    visible sans jamais pousser l'écran de côté. */
-.mhdr{background:var(--P);padding:12px 15px 10px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;flex-wrap:wrap;gap:8px;overflow-x:hidden}
-.mhdr>div:first-child{min-width:0;flex:1 1 auto}
-.mhdr .hrgt{flex-wrap:wrap;justify-content:flex-end;max-width:100%}
+/* ══════════════════════════════════════════════════════════════════
+   ⚠️⚠️ LA LIGNE ENTIÈRE GASPILLÉE VENAIT D'ICI, PAS DU NOMBRE DE BOUTONS.
+
+   `flex-wrap:wrap` + `flex:1 1 auto` sur le bloc de gauche : celui-ci
+   réclamait TOUTE la largeur (mesuré : 370 px sur 400), et la rangée de
+   boutons — qui n'en demandait que 197 — était chassée à la ligne
+   suivante. D'où la bande vide sur sa capture. Ajouter ou retirer des
+   boutons n'y changeait rien : même avec quatre, ça débordait.
+
+   Une seule rangée, toujours : le nom se coupe à la largeur disponible,
+   les boutons ne se compriment jamais.
+   ══════════════════════════════════════════════════════════════════ */
+.mhdr{background:var(--P);padding:12px 15px 10px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;flex-wrap:nowrap;gap:8px;overflow-x:hidden}
+.mhdr>div:first-child{min-width:0;flex:1 1 auto;overflow:hidden}
+.mhdr .hrgt{flex-wrap:nowrap;flex-shrink:0;justify-content:flex-end}
 .hn{min-width:0}
 .hn>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hg{font-size:10px;color:rgba(255,255,255,.4);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .hn{font-size:17px;font-weight:800;color:#fff;display:flex;align-items:center;gap:5px}
+/* ⚠️ Le nom de la boutique était coupé AU PREMIER MOT (`split(' ')[0]`).
+   Quand toutes tes boutiques s'appellent « ETS … », l'entête affiche
+   « ETS » pour chacune : il ne dit plus laquelle est ouverte. On affiche
+   le nom entier et on le coupe à la largeur, pas au mot. */
+#u-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* Un état allumé se voit ; un état éteint ne prend aucune place. */
+.hchip{font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.16);color:#fff;white-space:nowrap;cursor:pointer;flex-shrink:0}
+.hchip.chaud{background:var(--A);color:var(--P)}
 .rbdg{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:700}
 .rb-p{background:var(--A);color:var(--P)}.rb-v{background:var(--B);color:#fff}.rb-g{background:var(--PU);color:#fff}
 .hrgt{display:flex;gap:7px;align-items:center}
@@ -2041,7 +2061,7 @@ body{max-width:min(100%,1200px)}
 <!-- CAISSE -->
 <div id="s-caisse" class="scr">
   <div class="mhdr">
-    <div><div class="hg" id="hg-bonjour">Bonjour 👋</div><div class="hn"><span id="u-nm">Patron</span><span class="rbdg rb-p" id="u-role">Patron</span></div></div>
+    <div><div class="hg" id="hg-bonjour">Bonjour 👋</div><div class="hn"><span id="u-nm">Patron</span><span class="rbdg rb-p" id="u-role">Patron</span><span id="u-chips" style="display:none"></span></div></div>
     <div class="hrgt">
       <button class="hbtn" id="btn-dep" onclick="ouvrirDep()" style="display:none" title="Dépenses">💸</button>
       <button class="hbtn" id="btn-verrou" onclick="toggleVerrouVente()" title="Modifications bloquées pendant la vente" style="display:none">🔒</button>
@@ -4336,7 +4356,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.13'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.14'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6817,7 +6837,10 @@ function applyRolePerms(){
   var showBen=(role==='patron'||hasPerm('rapports'));
   var ba=document.getElementById('btn-add');if(ba)ba.style.display=showAdd?'block':'none';try{majFabAjout();}catch(x){}
   var bas=document.getElementById('btn-add-stk');if(bas)bas.style.display=showStk?'flex':'none';
-  var bd=document.getElementById('btn-dep');if(bd)bd.style.display=showExp?'flex':'none';
+  // Le patron l'a dans ses Réglages (« 💸 Dépenses boutique ») : dans la barre,
+  // c'est une icône de plus à lire à chaque ouverture de caisse.
+  var bd=document.getElementById('btn-dep');if(bd)bd.style.display=(showExp&&role!=='patron')?'flex':'none';
+  try{majEnteteCaisse();}catch(x){}
   var cb=document.getElementById('card-ben');if(cb)cb.style.display=showBen?'':'none';
   // Remises et clients/crédits : les interrupteurs existaient dans « Mon équipe »
   // mais n'étaient branchés sur RIEN. On cache maintenant ce qui est interdit.
@@ -7060,7 +7083,7 @@ function _finishLoginP(){
     _pinRefuse=false;_pinRefuseJusqua=0;                                        // nouvelle connexion : on repart propre
     assurerPinVendeur();
   } // 2e facteur serveur du patron
-  document.getElementById('u-nm').textContent=DB.cfg.nom.split(' ')[0];
+  document.getElementById('u-nm').textContent=DB.cfg.nom;
   document.getElementById('u-role').textContent=t('patron')+' 👑';
   document.getElementById('u-role').className='rbdg rb-p';
   ['btn-st','btn-add-stk','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
@@ -16621,6 +16644,7 @@ function toggleVeille(){
   var _tne=document.getElementById('tog-noemoji');if(_tne)_tne.className='tog '+(DB.cfg&&DB.cfg.noEmoji?'on':'off');
   save();
   majBoutonVeille();
+  try{majEnteteCaisse();}catch(e){}
   if(DB.cfg.veille){activerVeille();showToast(lang==='fr'?'🔆 Écran maintenu allumé':'🔆 Screen kept on');}
   else{desactiverVeille();showToast(lang==='fr'?'🌙 Veille normale rétablie':'🌙 Normal sleep restored');}
 }
@@ -16634,10 +16658,68 @@ function toggleVerrouVente(){
   if(!(role==='patron'||hasPerm('produits'))){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
   DB.cfg.venteDeverrouillee=!DB.cfg.venteDeverrouillee;
   save();majBoutonVerrou();
+  try{majEnteteCaisse();}catch(e){}
   try{renderProd(DB.articles);}catch(e){}
   showToast(DB.cfg.venteDeverrouillee
     ?('✏️ '+(lang==='fr'?'Modifications ouvertes — appui long et crayon disponibles':'Editing unlocked'))
     :('🔒 '+(lang==='fr'?'Modifications bloquées — tu peux vendre tranquillement':'Editing locked — sell safely')));
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ SEPT BOUTONS DANS L'EN-TÊTE : UNE LIGNE ENTIÈRE GASPILLÉE
+//
+//  Sa remarque, sur sa propre capture : « moi-même je sais que je suis le
+//  patron, on ne peut pas montrer autrement ? Et voyez un espace gaspillé
+//  avec ces fonctionnalités. »
+//
+//  MESURÉ au banc, écran de 400 px :
+//     5 boutons  → en-tête 66 px, une ligne.
+//     7 boutons  → en-tête 105 px : le 7ᵉ passe à la ligne et laisse une
+//                  bande vide. Avec les compteurs, 165 px avant la
+//                  recherche — 21 % de l'écran, déjà mangés.
+//  Ses deux boutons conditionnels (💸 dépenses, 🔒 verrou) étaient allumés :
+//  le débordement ne frappe donc que les patrons équipés, pas les autres.
+//
+//  ET LE BADGE « PATRON 👑 » lui apprenait ce qu'il sait déjà, à la place de
+//  la seule chose qu'il ignore : LAQUELLE de ses quinze boutiques est
+//  ouverte. Le nom était d'ailleurs coupé au premier mot — « ETS » pour
+//  toutes celles qui s'appellent « ETS … ».
+//
+//  La règle retenue : l'en-tête ne porte que ce qui n'existe nulle part
+//  ailleurs, un état éteint ne prend aucune place, et chaque rôle voit ce
+//  dont il a besoin.
+//    Patron  : 🔒 🔔 ⚙️ 🚪   (🌙 📋 💸 sont dans ses Réglages)
+//    Vendeur : 🌙 📋 🔔 🚪   (il n'a pas de Réglages : ils restent ici)
+//  Quatre boutons dans les deux cas — la ligne ne déborde plus jamais.
+// ══════════════════════════════════════════════════════════════════
+function majEnteteCaisse(){
+  try{
+    var patron=(role==='patron');
+    // 1. Le badge de rôle ne sert qu'à celui qui pourrait en douter.
+    var rb=document.getElementById('u-role');
+    if(rb)rb.style.display=patron?'none':'';
+    // 2. Ce que le patron a déjà dans ses Réglages sort de sa barre.
+    var bv=document.getElementById('btn-veille');
+    if(bv)bv.style.display=patron?'none':'flex';
+    var bm=document.getElementById('btn-mesventes');
+    if(bm)bm.style.display=patron?'none':'flex';
+    // 3. Les états allumés se disent en toutes lettres, et s'éteignent d'une
+    //    tape. Éteints, ils ne prennent pas un pixel.
+    // ⚠️ MESURÉ : deux pastilles écrites en toutes lettres reprenaient
+    //    exactement la place que les boutons venaient de libérer — l'en-tête
+    //    repassait à 105 px. Et le verrou n'en a pas besoin : SON BOUTON DIT
+    //    DÉJÀ SON ÉTAT (🔒 fermé, ✏️ sur fond orange ouvert). Une seule
+    //    pastille reste donc, muette, pour le seul état dont plus rien ne
+    //    parle chez le patron : l'écran maintenu allumé.
+    var c=document.getElementById('u-chips');
+    if(c){
+      var fr=(lang!=='en'),h='';
+      if(patron&&DB&&DB.cfg&&DB.cfg.veille)
+        h+='<span class="hchip" onclick="toggleVeille()" title="'
+          +(fr?'Écran maintenu allumé — toucher pour éteindre':'Screen kept on — tap to stop')+'">🔆</span>';
+      c.innerHTML=h;
+      c.style.display=h?'':'none';
+    }
+  }catch(e){}
 }
 function majBoutonVerrou(){
   var b=document.getElementById('btn-verrou');if(!b)return;
@@ -18266,7 +18348,7 @@ async function switchBoutiqueParCode(code){
   enregistrerBoutiqueActuelle();
   closeSheet('ov-boutiques');
   role='patron';
-  document.getElementById('u-nm').textContent=DB.cfg.nom.split(' ')[0];
+  document.getElementById('u-nm').textContent=DB.cfg.nom;
   document.getElementById('u-role').textContent=t('patron')+' 👑';
   document.getElementById('u-role').className='rbdg rb-p';
   ['btn-st','btn-add-stk','btn-clot'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='flex';});
@@ -21012,7 +21094,7 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majLigneMaVille();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
