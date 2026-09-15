@@ -4296,7 +4296,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.10'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.11'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -13197,12 +13197,23 @@ function _comparerPhotos(a,b){
 // Rend, pour chaque produit, la photo qui doit être servie — et seulement
 // celle-là. Les rivales restent en base : si la gagnante se fait signaler,
 // la suivante prend sa place toute seule, sans que personne n'intervienne.
+// ⚠️ UNE PHOTO CERTIFIÉE NE CONCOURT PAS. Les autres se départagent aux
+// voix — gardée par beaucoup, signalée par peu — et une majorité de
+// signalements les retire. Celle que MyBoutiQ a vérifiée, elle, ne bouge
+// pas : c'est tout l'intérêt d'avoir pris la peine de la vérifier.
 function _meilleuresPhotos(lignes){
   var par={};
   (lignes||[]).forEach(function(r){
     if(!r||!r.slug||!r.url)return;
-    if(_photoRetiree(r))return;
     var d=par[r.slug];
+    if(r.certifiee){
+      // Entre deux certifiées (ça ne devrait pas arriver — l'index unique
+      // l'interdit — on tranche quand même sans hésiter).
+      if(!d||!d.certifiee||_comparerPhotos(r,d)<0)par[r.slug]=r;
+      return;
+    }
+    if(d&&d.certifiee)return;
+    if(_photoRetiree(r))return;
     if(!d||_comparerPhotos(r,d)<0)par[r.slug]=r;
   });
   return par;
@@ -13225,7 +13236,7 @@ async function chargerManifestePhotos(){
   try{
     assurerConnexionSupa();
     if(supa&&navigator.onLine){
-      var q=await supa.from('photos_partagees').select('id,slug,url,nb_garde,nb_signale,cree_le')
+      var q=await supa.from('photos_partagees').select('id,slug,url,nb_garde,nb_signale,cree_le,certifiee')
                .eq('etat','approuvee').limit(2000);
       if(!q.error&&q.data){
         // On retient l'identifiant de TOUTES les photos publiées, pas
@@ -13233,9 +13244,11 @@ async function chargerManifestePhotos(){
         // d'être détrônée, sa voix doit quand même savoir où aller.
         q.data.forEach(function(p){if(p&&p.url&&p.id)_photoManif._id[p.url]=p.id;});
         var gagnantes=_meilleuresPhotos(q.data);
+        _photoManif._cert={};
         Object.keys(gagnantes).forEach(function(s){
           _photoManif._set[s]=1;
           _photoManif._url[s]=gagnantes[s].url;
+          if(gagnantes[s].certifiee)_photoManif._cert[s]=gagnantes[s].url;
         });
       }
     }
@@ -13414,7 +13427,25 @@ function appliquerFicheCatalogue(a,nom){
 function photoCatalogue(nom){
   var cle=txtNorm(nom).replace(/\s+/g,' ').trim();
   if(!cle)return '';
-  // ── Le catalogue visuel d'abord : 600 articles, chacun sa photo ──
+  // ══════════════════════════════════════════════════════════════════
+  //  ⚠️⚠️ LA PHOTO CERTIFIÉE PASSE AVANT LE CATALOGUE EMBARQUÉ.
+  //
+  //  Sans cette recherche-là, tout le mécanisme de certification serait
+  //  décoratif : le catalogue livré avec l'app répondait en premier et la
+  //  fonction s'arrêtait là. Une photo vérifiée par MyBoutiQ n'aurait été
+  //  servie que pour les produits que le catalogue ne connaît PAS — c'est
+  //  à dire jamais pour le riz, l'huile ou le savon, ceux qui comptent.
+  //
+  //  L'ordre est donc : sa photo à lui (décidée ailleurs, sur l'article) >
+  //  la certifiée > le catalogue embarqué > les photos offertes et votées.
+  // ══════════════════════════════════════════════════════════════════
+  try{
+    if(_photoManif&&_photoManif._cert){
+      var _sc=_slugPhoto(nom);
+      if(_photoManif._cert[_sc])return _photoManif._cert[_sc];
+    }
+  }catch(e){}
+  // ── Le catalogue visuel ensuite : 600 articles, chacun sa photo ──
   // On cherche dans son index (nom, famille, mots-clés — donc aussi les
   // fautes de frappe). C'est ce qui permet à une boutique DÉJÀ remplie de
   // recevoir les nouvelles photos sur ses articles existants.
@@ -22391,6 +22422,10 @@ function _ligPhotoAdmin(p,fr,publiee){
     +'<div style="margin-top:3px">'+note+'</div></div>'
     +'<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">'
     +(publiee?'':'<button class="shct" style="min-height:36px;background:#E8F5E9;color:#2E7D32" onclick="deciderPhoto(\''+p.id+'\',\'approuvee\')">✓ '+(fr?'Publier':'Publish')+'</button>')
+    // ⭐ CERTIFIER : celle-là devient LA photo du produit, devant le
+    // catalogue embarqué, et aucun vote ne la détrône.
+    +'<button class="shct" style="min-height:36px;'+(p.certifiee?'background:#FFF8E1;color:#8A6100':'')+'" onclick="certifierPhoto(\''+p.id+'\','+(p.certifiee?'false':'true')+')">'
+      +(p.certifiee?('🏅 '+(fr?'Certifiée':'Certified')):('🏅 '+(fr?'Certifier':'Certify')))+'</button>'
     +'<button class="shct" style="min-height:36px" onclick="deciderPhoto(\''+p.id+'\',\'refusee\')">✕ '+(fr?(publiee?'Retirer':'Refuser'):'Refuser')+'</button>'
     +'</div></div>';
 }
@@ -22398,14 +22433,18 @@ async function renderPhotosProposees(){
   var c=document.getElementById('pp-lst');if(!c)return;var fr=(lang==='fr');
   c.innerHTML='<div style="font-size:11.5px;color:var(--M);font-weight:700">'+(fr?'Chargement…':'Loading…')+'</div>';
   try{
-    var r=await supa.from('photos_partagees').select('id,slug,url,article_nm,etat,cree_le,nb_garde,nb_signale')
+    var r=await supa.from('photos_partagees').select('id,slug,url,article_nm,etat,cree_le,nb_garde,nb_signale,certifiee')
              .in('etat',['proposee','approuvee']).order('cree_le',{ascending:true}).limit(300);
     if(r.error){c.innerHTML='<div style="font-size:12px;color:var(--R);font-weight:700">'+(fr?'Lecture refusée':'Read refused')+'</div>';return;}
     var tout=r.data||[];
     var att=tout.filter(function(x){return x.etat==='proposee';});
     // Les publiées : la plus contestée d'abord — c'est là qu'il doit regarder.
     var pub=tout.filter(function(x){return x.etat==='approuvee';})
-                .sort(function(a,b){return (+(b.nb_signale||0))-(+(a.nb_signale||0));});
+                .sort(function(a,b){
+                  // La certifiée d'abord — c'est celle qui est servie.
+                  if(!!b.certifiee!==!!a.certifiee)return b.certifiee?1:-1;
+                  return (+(b.nb_signale||0))-(+(a.nb_signale||0));
+                });
     var h='';
     h+='<div class="sth" style="margin-bottom:6px">'+(fr?'En attente de ton avis':'Waiting for you')+'</div>';
     h+=att.length?att.map(function(p){return _ligPhotoAdmin(p,fr,false);}).join('')
@@ -22435,6 +22474,31 @@ async function deciderPhoto(id,etat){
     showToast(etat==='approuvee'
       ?('📷 '+(fr?'Publiée dans toutes les boutiques':'Published to all shops'))
       :('🗑️ '+(fr?'Refusée':'Rejected')));
+    _photoManif=null;                       // le manifeste doit être relu
+    renderPhotosProposees();
+  }catch(e){showToast('❌ '+(fr?'Échec':'Failed'));}
+}
+// ⚠️ CERTIFIER, C'EST AUSSI PUBLIER. Une photo certifiée mais restée
+// « proposée » ne serait servie nulle part : le manifeste ne lit que les
+// approuvées. Les deux vont donc ensemble, sinon il croirait avoir agi.
+async function certifierPhoto(id,oui){
+  var fr=(lang==='fr');
+  try{
+    var u=await getAuthUser();
+    var maj={certifiee:!!oui,decide_le:new Date().toISOString(),decide_par:u?u.id:null};
+    if(oui)maj.etat='approuvee';
+    var r=await supa.from('photos_partagees').update(maj).eq('id',id);
+    if(r.error){
+      // L'index unique dit non : une autre porte déjà le sceau pour ce produit.
+      var m=String(r.error.message||'');
+      showToast('❌ '+(/une_certifiee_par_slug|duplicate key/i.test(m)
+        ?(fr?'Une autre photo de ce produit est déjà certifiée — retire-lui d\'abord le sceau'
+            :'Another photo of this product is already certified')
+        :(fr?'Refusé par le serveur':'Refused by server')));
+      return;
+    }
+    showToast(oui?('🏅 '+(fr?'Certifiée — c\'est elle que verront les boutiques':'Certified'))
+                 :('🏅 '+(fr?'Sceau retiré':'Seal removed')));
     _photoManif=null;                       // le manifeste doit être relu
     renderPhotosProposees();
   }catch(e){showToast('❌ '+(fr?'Échec':'Failed'));}
