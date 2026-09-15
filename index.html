@@ -2108,8 +2108,12 @@ body{max-width:min(100%,1200px)}
     <div class="ssec">
       <div class="sbar2">
         <input class="sinp" id="src-c" oninput="filtrC(this.value)" placeholder="🔍 Chercher...">
-        <button class="bmic" onclick="voiceSearch()">🎤</button>
-        <button class="bmic" id="btn-mic-continu" onclick="toggleEcouteContinue()" title="Écoute continue">🎙️</button>
+        <!-- ⚠️ DEUX MICROS CÔTE À CÔTE (🎤 et 🎙️) : presque la même icône, deux
+             fonctions différentes, et la largeur d'un bouton entier prise pour
+             une distinction que personne ne peut deviner. Un seul micro :
+             une tape dicte la recherche, un appui long ouvre l'écoute continue,
+             et pendant l'écoute une tape l'arrête. -->
+        <button class="bmic" id="btn-mic" onclick="micTape()" oncontextmenu="micLongPress(event)" title="Toucher pour dicter · rester appuyé pour l'écoute continue">🎤</button>
       </div>
       <div class="tscr" id="tabs-c"></div>
     </div>
@@ -4356,7 +4360,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.14'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.15'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -18961,6 +18965,63 @@ function dicterDans(idChamp,idBouton){
   try{r.start();showToast('🎤 '+(fr?'Parle maintenant…':'Speak now…'));}catch(x){fini();}
 }
 function voiceSearch(){if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}var SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();r.lang=lang==='fr'?'fr-FR':'en-US';r.onresult=function(e){var q=e.results[0][0].transcript;document.getElementById('src-c').value=q;filtrC(q);};r.onerror=function(){showToast('🎤');};r.start();showToast(t('microParle'));}
+// ══════════════════════════════════════════════════════════════════
+//  UN SEUL MICRO
+//
+//  Il y avait 🎤 et 🎙️ côte à côte. Deux fonctions bien réelles — dicter sa
+//  recherche, et l'écoute continue qui met un article en avant quand on
+//  prononce son nom — mais deux icônes presque identiques, et la largeur
+//  d'un bouton prise pour une distinction indevinable.
+//
+//  Une tape dicte. Un appui long ouvre l'écoute continue. Et pendant
+//  l'écoute, UNE TAPE L'ARRÊTE : demander un second appui long pour sortir
+//  d'un micro qui écoute serait hostile.
+//
+//  ⚠️ Un appui long ne se voit pas. Les trois premières fois qu'il dicte,
+//  le message qui dit « Parle maintenant » le lui apprend — au moment où il
+//  s'en sert, sans une ligne d'écran en plus.
+// ══════════════════════════════════════════════════════════════════
+var _micLong=false,_micChrono=null;
+function micTape(){
+  if(_micLong){_micLong=false;return;}   // l'appui long a déjà agi
+  if(ecouteContinue){arreterEcouteContinue();return;}
+  voiceSearch();
+  try{
+    var v=parseInt(localStorage.getItem('myboutiq_mic_vu')||'0',10)||0;
+    if(v<3){
+      localStorage.setItem('myboutiq_mic_vu',String(v+1));
+      setTimeout(function(){
+        showToast('🎙️ '+(lang!=='en'?'Reste appuyé sur le micro pour l\'écoute continue'
+                                     :'Hold the mic for continuous listening'));
+      },2200);
+    }
+  }catch(e){}
+}
+function micLongPress(e){
+  if(e&&e.preventDefault)e.preventDefault();
+  _micLong=true;
+  if(!ecouteContinue)toggleEcouteContinue();
+}
+function majBoutonMic(){
+  var b=document.getElementById('btn-mic');if(!b)return;
+  var fr=(lang!=='en');
+  b.textContent=ecouteContinue?'🎙️':'🎤';
+  b.title=ecouteContinue
+    ?(fr?'Écoute continue — toucher pour arrêter':'Listening — tap to stop')
+    :(fr?'Toucher pour dicter · rester appuyé pour l\'écoute continue'
+        :'Tap to dictate · hold for continuous listening');
+}
+// L'appui long au doigt : même durée que sur les cartes d'articles.
+document.addEventListener('DOMContentLoaded',function(){
+  var b=document.getElementById('btn-mic');if(!b)return;
+  b.addEventListener('touchstart',function(){
+    _micChrono=setTimeout(function(){_micChrono=null;micLongPress(null);},600);
+  },{passive:true});
+  function fini(){if(_micChrono){clearTimeout(_micChrono);_micChrono=null;}}
+  b.addEventListener('touchend',fini);
+  b.addEventListener('touchmove',fini);   // il fait défiler : ce n'est pas un appui
+  b.addEventListener('touchcancel',fini);
+});
 var ecouteContinue=false,recogContinue=null;
 function toggleEcouteContinue(){
   if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}
@@ -18986,13 +19047,15 @@ function toggleEcouteContinue(){
   recogContinue.onend=function(){if(ecouteContinue){try{recogContinue.start();}catch(e){}}};
   try{recogContinue.start();}catch(e){}
   ecouteContinue=true;
-  var b=document.getElementById('btn-mic-continu');if(b)b.classList.add('on');
+  var b=document.getElementById('btn-mic');if(b)b.classList.add('on');
+  try{majBoutonMic();}catch(e){}
   showToast('🎙️ '+(lang==='fr'?'Écoute continue activée (dis un nom d\'article)':'Continuous listening on (say an item name)'));
 }
 function arreterEcouteContinue(){
   ecouteContinue=false;
   if(recogContinue){try{recogContinue.stop();}catch(e){}}
-  var b=document.getElementById('btn-mic-continu');if(b)b.classList.remove('on');
+  var b=document.getElementById('btn-mic');if(b)b.classList.remove('on');
+  try{majBoutonMic();}catch(e){}
   showToast('🎙️ '+(lang==='fr'?'Écoute continue désactivée':'Continuous listening off'));
 }
 // ═══════════════════════════════════════════
