@@ -666,6 +666,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
   <div class="mcont" style="padding-bottom:40px"><div style="padding:14px 15px" id="st-cont"></div></div>
 </div>
 
+<input type="file" id="fic-restore" accept=".json,application/json" style="display:none" onchange="restaurer(this)">
 <div class="ov" id="ov" onclick="if(event.target===this)fermerModal()"><div class="ovb" id="ovb"></div></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -2817,13 +2818,15 @@ function rendreSettings(){
      '<div style="height:10px"></div>'+
      '<button class="bse" onclick="exporterCSV()">'+L('📥 Exporter les ventes (Excel)','📥 Export sales (Excel)')+'</button>'+
      '<button class="bse" onclick="sauvegarder()">'+L('💾 Sauvegarde complète (fichier)','💾 Full backup (file)')+'</button>'+
+     '<button class="bse" onclick="document.getElementById(\'fic-restore\').click()">'+
+       L('📂 Restaurer une sauvegarde','📂 Restore a backup')+'</button>'+
      (estPatron()?'<button class="bse bdg2" onclick="toutEffacer()">'+L('🗑️ Effacer et recommencer','🗑️ Erase and start over')+'</button>':'')+
      '</div>';
   c+='<div class="rcard"><div class="rct">'+L('📲 Application','📲 App')+'</div>'+
      '<button class="bse" onclick="installerApp()">'+L("Installer sur l'écran d'accueil",'Install on the home screen')+'</button>'+
      '<button class="bse" onclick="logout()">'+L('🚪 Fermer la session','🚪 Sign out')+'</button>'+
-     '<div class="note bleu" style="margin-top:8px">'+L('MyBar fonctionne hors-ligne. Tout est enregistré sur ce téléphone : pense à faire une sauvegarde de temps en temps.',
-       'MyBar works offline. Everything is stored on this phone — take a backup now and then.')+'</div></div>';
+     '<div class="note bleu" style="margin-top:8px">'+L('MyBar fonctionne hors-ligne. Tout est enregistré sur ce téléphone, et sur cette adresse : une sauvegarde est la seule façon de récupérer ton bar sur un autre téléphone, ou après une casse.',
+       'MyBar works offline. Everything is stored on this phone, at this address: a backup is the only way to get your bar back on another phone, or after a breakage.')+'</div></div>';
   $('st-cont').innerHTML=c;
 }
 function sauverEtab(){
@@ -2864,6 +2867,52 @@ function sauvegarder(){
   a.href=URL.createObjectURL(blob);a.download='mybar-sauvegarde-'+jour()+'.json';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   toast(L('💾 Sauvegarde téléchargée. Garde-la ailleurs que sur ce téléphone.','💾 Backup downloaded. Keep it somewhere other than this phone.'));
+}
+/* ══════════════════════════════════════════════════════════════════
+   RESTAURER — la moitié qui manquait
+
+   ⚠️ Les données d'une application vivent PAR ADRESSE. Un bar saisi sur
+   myboutiq.online/bar n'existe pas sur bar.myboutiq.online : ce ne sont
+   pas les mêmes tiroirs, et aucun réglage n'y change rien. Sans
+   restauration, déménager MyBar d'une adresse à l'autre — ou changer de
+   téléphone, ou en casser un — voulait dire ressaisir la carte, le
+   stock, les clients et les ardoises à la main.
+
+   L'export existait depuis le début et ne servait donc à rien : on
+   téléchargeait un fichier que rien ne savait relire.
+   ══════════════════════════════════════════════════════════════════ */
+function restaurer(input){
+  var f=input&&input.files&&input.files[0];
+  input.value='';                       // pour pouvoir reprendre le même fichier
+  if(!f)return;
+  var r=new FileReader();
+  r.onerror=function(){toast(L('📂 Impossible de lire ce fichier.','📂 Could not read this file.'));};
+  r.onload=function(){
+    var d=null;
+    try{d=JSON.parse(r.result);}catch(e){
+      toast(L("📂 Ce fichier n'est pas une sauvegarde MyBar.",'📂 This file is not a MyBar backup.'));return;}
+    /* On refuse tout ce qui n'a pas la forme d'un bar — une sauvegarde
+       de MyBoutiQ, par exemple, a des `articles` et des `boutiques`. */
+    if(!d||!d.cfg||!d.produits||!d.tables){
+      toast(L("📂 Ce fichier n'est pas une sauvegarde MyBar.",'📂 This file is not a MyBar backup.'));return;}
+    var quoi=(d.produits.length)+L(' produits · ',' products · ')+(d.tables.length)+L(' tables · ',' tables · ')+
+             ((d.ventes||[]).length)+L(' additions',' bills');
+    var actuel=DB?((DB.ventes||[]).length+L(' additions',' bills')):L('rien','nothing');
+    if(!confirm(L('Restaurer « '+(d.cfg.nom||'?')+' » ('+quoi+') ?\n\nCe qui est sur ce téléphone ('+actuel+') sera REMPLACÉ.',
+                  'Restore "'+(d.cfg.nom||'?')+'" ('+quoi+')?\n\nWhat is on this phone ('+actuel+') will be REPLACED.')))return;
+    try{
+      DB=migrer(d);
+      save();
+      moi=DB.equipe.filter(function(m){return m.role==='patron';})[0]||DB.equipe[0];
+      if(DB.cfg.lang&&DB.cfg.lang!==lang)setLang(DB.cfg.lang,true);
+      fermerModal();
+      goScreen('s-service');rendreService();
+      toast('✅ '+(DB.cfg.nom||'')+L(' restauré. Vérifie ton stock et tes ardoises.',' restored. Check your stock and tabs.'));
+    }catch(e){
+      toast(L('📂 Sauvegarde illisible — rien n\'a été remplacé.','📂 Unreadable backup — nothing was replaced.'));
+    }
+  };
+  r.readAsText(f);
 }
 function toutEffacer(){
   if(!confirm(L("Effacer TOUT : carte, tables, ventes, clients ? C'est définitif.",'Erase EVERYTHING: menu, tables, sales, customers? This cannot be undone.')))return;
