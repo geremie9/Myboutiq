@@ -4296,7 +4296,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.09'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.10'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -12607,6 +12607,9 @@ function saveR(){
       pa=corrigerPrixGros(artCours.nm,pa,pv,uniteArt(artCours));
       if(pa===null)return;
     }
+    // ⚠️ Il vient de regarder les prix : ce ne sont plus des propositions.
+    // Tant que la pastille reste, elle finit par devenir du décor.
+    try{delete artCours._sugg;}catch(e){}
     if(pa>=0&&!isNaN(pa)&&Number(artCours.pa)!==pa){
       journalAjouter('prix',artCours.nm+(lang==='fr'?' (achat)':' (cost)'),fmt(artCours.pa||0),fmt(pa));
       artCours.pa=pa;
@@ -13298,11 +13301,16 @@ function _motsDe(t){
 // bibliothèque des commerçants ne l'est pas : une photo approuvée pendant
 // la session doit pouvoir apparaître sans redémarrer.
 var _phCache=null,_phCacheIdx=null;
-function _chercherPhoto600(cle,idx){
+// ⚠️ CE CHERCHEUR NE SERVAIT QU'AUX PHOTOS. Il sait pourtant retrouver la
+// FICHE d'un produit à partir d'un nom approximatif — et cette fiche porte
+// aussi le prix d'achat, le prix de vente, l'unité et le conditionnement.
+// On le rend donc réutilisable au lieu d'en écrire un second qui divergerait.
+// `garde` dit ce qu'on cherche : une photo, ou un prix.
+function _chercherEntree600(cle,idx,garde){
   // Le nom exact d'abord : c'est la seule réponse qui ne se discute pas.
   var trouve=null;
   idx.some(function(e){
-    if(!e.img600)return false;
+    if(!garde(e))return false;
     if(e._pf===cle||e._nf===cle){trouve=e;return true;}
     return false;
   });
@@ -13311,7 +13319,7 @@ function _chercherPhoto600(cle,idx){
     if(mots.length){
       var meilleur=-1;
       idx.forEach(function(e){
-        if(!e.img600||!e._km)return;
+        if(!garde(e)||!e._km)return;
         var sc=0;
         for(var i=0;i<mots.length;i++){
           if(!e._km[mots[i]])return;          // un mot manque : ce n'est pas elle
@@ -13322,7 +13330,86 @@ function _chercherPhoto600(cle,idx){
       });
     }
   }
+  return trouve;
+}
+function _chercherPhoto600(cle,idx){
+  var trouve=_chercherEntree600(cle,idx,function(e){return !!e.img600;});
   return trouve?_photo600(trouve.img600):'';
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ CE QUE LE CATALOGUE SAIT DÉJÀ, ET QU'ON LUI FAISAIT RETAPER
+//
+//  « Après avoir importé les images avec leur nom, il faut maintenant
+//   configurer le prix d'achat, le prix de vente, le stock — c'est là le
+//   problème. Et l'enregistrement du stock se fait à l'unité, pas en gros. »
+//
+//  MESURÉ : l'import de photos en masse crée `px:0, pa:0, stk:0` et ne
+//  consulte JAMAIS le catalogue embarqué. Or celui-ci porte 361 fiches avec
+//  leur unité et leur conditionnement, dont 170 avec un prix d'achat ET un
+//  prix de vente. Coca-Cola 60 cl : acheté 450, vendu 600, à la pièce —
+//  c'est écrit, c'est dans le téléphone, hors ligne, et on le lui faisait
+//  taper à la main soixante fois.
+//
+//  ⚠️ ET C'EST LA MÊME CAUSE POUR LE STOCK. Le compteur de contenants
+//  (« 3 cartons » au lieu de 36) ne s'affiche que si l'article sait ce qu'il
+//  y a dans un carton. L'article sorti de l'import ne savait rien : le
+//  compteur ne pouvait pas apparaître, et il tapait 36.
+//
+//  ⚠️ CE SONT DES PROPOSITIONS, PAS DES VÉRITÉS. Les prix se font par ville
+//  — le catalogue donne un ordre de grandeur, pas SON prix. L'article est
+//  donc marqué (`_sugg`) tant qu'il n'y a pas touché, et l'app le dit.
+// ══════════════════════════════════════════════════════════════════
+// ⚠️⚠️ « RIZ PARFUMÉ 5 KG » PRENAIT LE PRIX DU 1 KG. Mesuré : le chercheur
+// laisse tomber les mots de moins de trois lettres, donc le « 5 » de « 5 kg »
+// ne pesait rien et le sac de 5 kilos héritait de 600 F, le prix du kilo.
+// C'est exactement le danger qu'il redoutait : une proposition fausse validée
+// sans regarder. Quand les DEUX noms portent une contenance et qu'elles ne
+// sont pas la même, on ne propose PAS de prix — le conditionnement, lui,
+// reste bon (un sac de riz reste un sac de riz).
+// Une contenance absente d'un côté n'est pas un désaccord : au Cameroun
+// « Fanta » veut dire la 60 cl, et refuser là ferait perdre le bon cas.
+function _tailleDe(nm){
+  var t=txtNorm(nm||'').replace(',','.');
+  var m=t.match(/(\d+(?:\.\d+)?)\s*(kg|g|l|cl|ml|w|cc)\b/);
+  return m?(m[1]+m[2]):null;
+}
+function ficheCatalogue(nom){
+  var cle=txtNorm(nom||'').replace(/\s+/g,' ').trim();
+  if(!cle||cle.length<2)return null;
+  var idx=catalogueIndex();
+  // On cherche d'abord une fiche qui SAIT quelque chose d'utile.
+  var e=_chercherEntree600(cle,idx,function(x){return (x.px>0&&x.pa>0)||(x.sac>0);});
+  if(!e)return null;
+  var o={um:e.um||'pc',sac:Number(e.sac)||0,cont:e.cont||null,cat:e.cat||null,
+         px:Number(e.px)||0,pa:Number(e.pa)||0,nm:e.plein||e.nm};
+  var ta=_tailleDe(nom),tb=_tailleDe(o.nm);
+  var memeTaille=!(ta&&tb&&ta!==tb);
+  if(!memeTaille){o.px=0;o.pa=0;o.tailleDifferente=1;}
+  // Une fiche du catalogue visuel connaît le carton mais pas le prix : on
+  // complète avec une fiche de MÊME NOM qui, elle, le connaît.
+  if(!(o.px>0&&o.pa>0)&&memeTaille){
+    var t=txtNorm(o.nm);
+    idx.some(function(x){
+      if(!(x.px>0&&x.pa>0))return false;
+      if(txtNorm(x.plein||x.nm)!==t)return false;
+      o.px=Number(x.px)||0;o.pa=Number(x.pa)||0;return true;
+    });
+  }
+  return o;
+}
+// Pose sur un article neuf ce que le catalogue sait, et RIEN de plus :
+// jamais par-dessus une valeur que le commerçant a déjà donnée.
+function appliquerFicheCatalogue(a,nom){
+  var f=null;try{f=ficheCatalogue(nom||a.nm);}catch(e){}
+  if(!f)return null;
+  var pose=[];
+  if(!(Number(a.px)>0)&&f.px>0){a.px=f.px;pose.push('px');}
+  if(!(Number(a.pa)>0)&&f.pa>0){a.pa=f.pa;pose.push('pa');}
+  if(!a.um&&f.um){a.um=f.um;pose.push('um');}
+  if(!(Number(a.umSac)>0)&&f.sac>0){a.umSac=f.sac;if(f.cont)a.umCont=f.cont;pose.push('sac');}
+  if(!a.cat&&f.cat)a.cat=f.cat;
+  if(pose.indexOf('px')>=0||pose.indexOf('pa')>=0)a._sugg=1;   // « à vérifier »
+  return pose.length?pose:null;
 }
 function photoCatalogue(nom){
   var cle=txtNorm(nom).replace(/\s+/g,' ').trim();
@@ -14497,10 +14584,25 @@ function importerPhotosMasse(ev){
     var nm=nomFichierGenerique(file.name)?_aNommer:(nettoyerNomFichierProduit(file.name)||_aNommer);
     var emoji=emojiDepuisNomProduit(nm);
     var cat=categorieDepuisNomProduit(nm);
+    // ⭐ Ce que le catalogue sait de ce nom-là : prix, unité, contenant.
+    var _fiche=null;try{_fiche=ficheCatalogue(nm);}catch(x){}
     function tenterUpload(){return compresserImage(file,300,0.6).then(function(blob){return uploadBlobProduit(blob);});}
     tenterUpload().catch(function(){return tenterUpload();}).then(function(publicUrl){
       var newId=_prochainIdArticle();
-      DB.articles.push({id:newId,nm:nm,e:emoji,img:publicUrl,cat:cat,px:0,pa:0,stk:0,al:5,vd:0,vr:[],rt:true,_srcName:file.name,_autoNm:nm});
+      // ⚠️ `px:0, pa:0` ÉTAIT ÉCRIT EN DUR ICI. Soixante photos importées,
+      // c'étaient soixante formulaires vides à remplir à la main — alors que
+      // le catalogue embarqué connaît le prix, l'unité et le carton de 361
+      // de ces produits. On les pose, et on les marque « à vérifier ».
+      var _a={id:newId,nm:nm,e:emoji,img:publicUrl,cat:(_fiche&&_fiche.cat)||cat,
+              px:0,pa:0,stk:0,al:5,vd:0,vr:[],rt:true,_srcName:file.name,_autoNm:nm};
+      if(_fiche){
+        if(_fiche.px>0)_a.px=_fiche.px;
+        if(_fiche.pa>0)_a.pa=_fiche.pa;
+        if(_fiche.um)_a.um=_fiche.um;
+        if(_fiche.sac>0){_a.umSac=_fiche.sac;if(_fiche.cont)_a.umCont=_fiche.cont;}
+        if(_a.px>0||_a.pa>0)_a._sugg=1;
+      }
+      DB.articles.push(_a);
       importedIds.push(newId);
       ok++;
     }).catch(function(e){
@@ -16526,7 +16628,8 @@ ti.innerHTML='<span>'+(replie?'▸':'▾')+' '+(CE[cat]||'📦')+' '+cat+'</span
 ti.onclick=function(){toggleCatStock(cat);};
 c.appendChild(ti);
 if(replie)return;
-var card=document.createElement('div');card.className='scd';items.forEach(function(p){var ts=getStk(p),dc=(role==='patron')?depCount(p):0,pct=Math.min(100,ts<=0?0:ts/Math.max(ts+10,20)*100),cls=ts<=0?'out':ts<=p.al?'low':'ok';var d=document.createElement('div');d.className='sit';d.onclick=function(){if(role==='patron'){selArtStk(p);document.getElementById('ov-stk').classList.add('show');}};d.innerHTML=(p.img?'<img class="siemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'siemo\',textContent:\''+p.e+'\'}))">':'<div class="siemo-wrap">'+(DB.cfg&&DB.cfg.noEmoji?'<span class="siemo simono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="siemo simono" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</span>';})())+((role==='patron'||hasPerm('produits'))?'<button class="siphoto" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">📷</button>':'')+'</div>')+'<div class="siinf"><div class="sinm">'+p.nm+(p.vr.length?' <span style="font-size:9px;color:var(--B);font-weight:700">('+p.vr.length+')</span>':'')+'</div><div class="sidet">'+prixCarte(p)+' · '+(lang==='fr'?'Vendu 30 j':'Sold 30 d')+' : '+fmtQ(_q30[p.id]||0)+(( !p.vr.length&&p.px>0&&!(p.pa>0))?(' · <span style="color:var(--O);font-weight:800">'+(lang==='fr'?'⚠️ prix d\'achat à mettre':'⚠️ cost missing')+'</span>'):'')+'</div>'+(p.vr.length&&!utiliseStockBase(p)?'<div class="svlist">'+p.vr.map(function(v){var vs=v.stk||0;return '<span class="svchip" style="color:'+(vs<=0?'var(--R)':vs<=2?'var(--O)':'var(--G)')+'">'+(v.nm||'?')+' : '+fmtQ(Math.max(0,vs))+(vs<=0?' ⛔':'')+'</span>';}).join('')+'</div>':'')+'<div class="sbb"><div class="sbf" style="width:'+pct+'%;background:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'"></div></div></div><div class="sistock"><div class="siqty '+cls+'">'+fmtQ(Math.max(0,ts))+'</div><div class="siu">'+uniteArt(p)+'</div>'+(dc>0?'<div style="font-size:9px;color:var(--PU);font-weight:800;margin-top:2px">🔁 '+dc+' '+(lang==='fr'?'dépannage':'stopgap')+'</div>':'')+(role==='patron'?'<div style="font-size:9px;color:var(--B);font-weight:700;margin-top:2px">+ '+(lang==='fr'?'Entrée':'Entry')+'</div>':'')+'</div>';if(_stkFiltre==='cmd'){var _sg='';try{_sg=_suggestionCommande(p,_q30);}catch(e){}
+var card=document.createElement('div');card.className='scd';items.forEach(function(p){var ts=getStk(p),dc=(role==='patron')?depCount(p):0,pct=Math.min(100,ts<=0?0:ts/Math.max(ts+10,20)*100),cls=ts<=0?'out':ts<=p.al?'low':'ok';var d=document.createElement('div');d.className='sit';d.onclick=function(){if(role==='patron'){selArtStk(p);document.getElementById('ov-stk').classList.add('show');}};d.innerHTML=(p.img?'<img class="siemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'siemo\',textContent:\''+p.e+'\'}))">':'<div class="siemo-wrap">'+(DB.cfg&&DB.cfg.noEmoji?'<span class="siemo simono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="siemo simono" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</span>';})())+((role==='patron'||hasPerm('produits'))?'<button class="siphoto" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">📷</button>':'')+'</div>')+'<div class="siinf"><div class="sinm">'+p.nm+(p.vr.length?' <span style="font-size:9px;color:var(--B);font-weight:700">('+p.vr.length+')</span>':'')+'</div><div class="sidet">'+prixCarte(p)+' · '+(lang==='fr'?'Vendu 30 j':'Sold 30 d')+' : '+fmtQ(_q30[p.id]||0)+(( !p.vr.length&&p.px>0&&!(p.pa>0))?(' · <span style="color:var(--O);font-weight:800">'+(lang==='fr'?'⚠️ prix d\'achat à mettre':'⚠️ cost missing')+'</span>'):'')
++(p._sugg?(' · <span style="color:var(--B);font-weight:800">'+(lang==='fr'?'💡 prix indicatif — vérifie':'💡 suggested price — check')+'</span>'):'')+'</div>'+(p.vr.length&&!utiliseStockBase(p)?'<div class="svlist">'+p.vr.map(function(v){var vs=v.stk||0;return '<span class="svchip" style="color:'+(vs<=0?'var(--R)':vs<=2?'var(--O)':'var(--G)')+'">'+(v.nm||'?')+' : '+fmtQ(Math.max(0,vs))+(vs<=0?' ⛔':'')+'</span>';}).join('')+'</div>':'')+'<div class="sbb"><div class="sbf" style="width:'+pct+'%;background:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'"></div></div></div><div class="sistock"><div class="siqty '+cls+'">'+fmtQ(Math.max(0,ts))+'</div><div class="siu">'+uniteArt(p)+'</div>'+(dc>0?'<div style="font-size:9px;color:var(--PU);font-weight:800;margin-top:2px">🔁 '+dc+' '+(lang==='fr'?'dépannage':'stopgap')+'</div>':'')+(role==='patron'?'<div style="font-size:9px;color:var(--B);font-weight:700;margin-top:2px">+ '+(lang==='fr'?'Entrée':'Entry')+'</div>':'')+'</div>';if(_stkFiltre==='cmd'){var _sg='';try{_sg=_suggestionCommande(p,_q30);}catch(e){}
 if(_sg){var _if=d.querySelector('.siinf');if(_if){var _dc=document.createElement('div');_dc.className='sicmd';_dc.textContent=_sg;_if.appendChild(_dc);}}}
 card.appendChild(d);});c.appendChild(card);});}
 // ═══ Navigation du stock : recherche + filtres rapides + catégories repliables ═══
