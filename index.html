@@ -373,6 +373,17 @@ html.porte-rapide #entree-rapide,html.porte-rapide #er-pin-wrap{display:block}
    ⚠️ Les cases restent sous le pouce (40 px de haut) et la ligne ne déborde
    jamais : c'est le nom qui se coupe, jamais un champ qui rétrécit. */
 .grrow{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--BD)}
+/* 🛒 La liste de courses : une ligne par chose à acheter, lisible d'un
+   coup d'œil devant un grossiste, le nom à gauche et la quantité à droite. */
+.cmdl{display:flex;align-items:center;gap:10px;background:var(--C);border-radius:13px;
+      padding:10px 12px;margin-bottom:7px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.cmdm{width:36px;height:36px;border-radius:10px;background:var(--BG);display:flex;align-items:center;
+      justify-content:center;font-size:19px;overflow:hidden;flex-shrink:0}
+.cmdm img{width:100%;height:100%;object-fit:cover}
+.cmdn{font-size:13px;font-weight:800;color:var(--T);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmds{font-size:10.5px;font-weight:700;color:var(--M);margin-top:2px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmdq{flex-shrink:0;font-size:12px;font-weight:900;color:var(--B);text-align:right;max-width:44%;line-height:1.3}
 .grrow.grfam{cursor:pointer}
 .grrow.grperte{background:rgba(198,40,40,.05);border-radius:9px;padding-left:5px;padding-right:5px}
 .grmed{width:36px;height:36px;border-radius:10px;background:var(--BG);display:flex;align-items:center;
@@ -4404,7 +4415,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.18'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.19'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -17235,6 +17246,150 @@ function _suggestionCommande(p,q30){
   }else cible=_qteMot(p,Math.ceil(b.besoin));
   return '🛒 '+bouts.join(' · ')+' → '+cible;
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « JE VEUX JUSTE VOIR LES ARTICLES QUE JE DOIS COMMANDER, ET UN
+//        MÉLANGE PARCE QU'ILS SONT EN VARIANTE ? »
+//
+//  `_besoinRachat` ne regardait QUE le total de la famille :
+//      ts   = getStk(p)      → la somme des variantes
+//      v30  = q30[p.id]      → les ventes de toute la famille
+//
+//  Conséquence, sur son huile : Diamaor 24, Mayor 0, Locale 0.
+//  Le total fait 24 — ça a l'air en bonne santé — donc la famille
+//  N'APPARAISSAIT MÊME PAS dans « À commander », alors que DEUX de ses
+//  trois huiles sont à zéro. Et quand une famille y apparaissait, elle
+//  disait « Huile → 2 cartons » sans dire LAQUELLE : il arrive chez le
+//  grossiste et il ne sait pas quoi acheter.
+//
+//  Ici : une ligne par CHOSE À ACHETER. La variante porte son propre
+//  compte, ses propres ventes, son propre contenant. Et la liste se copie
+//  d'une tape — c'est ce qu'il envoie au grossiste.
+// ══════════════════════════════════════════════════════════════════
+// Les ventes des 30 derniers jours, variante par variante.
+function qteVendueParVariante(jours){
+  var map={},limite=null;
+  if(jours>0){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-(jours-1));limite=d.getTime();}
+  (DB.ventes||[]).forEach(function(v){
+    if(!v||v.annulee)return;
+    if(jours===0){if(!isSaleToday(v))return;}
+    else if(limite!=null){var t=getSaleDateObj(v).getTime();if(t<limite)return;}
+    (v.lignes||[]).forEach(function(l){
+      if(!l||l.pid==null||l.vid==null)return;
+      // Un carton puise dans la variante de base : c'est elle qu'il rachète.
+      var q=(Number(l.qte||l.qty)||0)*(Number(l.qBase)||1);
+      map[l.pid+'|'+l.vid]=(map[l.pid+'|'+l.vid]||0)+q;
+    });
+  });
+  return map;
+}
+function _besoinRachatVar(p,v,q30v){
+  if(!p||!v)return null;
+  if(_estGrosDeVariante(v))return null;        // un lot n'est pas un article à racheter
+  var ts=Math.max(0,Number(v.stk)||0);
+  var v30=Number((q30v&&q30v[p.id+'|'+v.id])||0);
+  var seuil=Number(p.al)||0;                    // le seuil de la famille sert de repère
+  var parJour=v30/30;
+  var jours=parJour>0?(ts/parJour):Infinity;
+  var sous=(seuil>0&&ts<=seuil)||ts<=0;
+  var bientot=(parJour>0&&jours<7);
+  if(!sous&&!bientot)return null;
+  // Une variante qui n'a rien vendu et qui n'est pas à zéro n'est pas une
+  // commande : ce serait noyer les vraies sous des lignes oubliées.
+  if(v30<=0&&ts>0)return null;
+  if(v30<=0&&ts<=0&&!(Number(v.vd)>0)&&seuil<=0)return null;
+  var besoin=Math.max(v30-ts,seuil-ts,0);
+  if(besoin<=0)besoin=(v30>0?v30:Math.max(seuil,1));
+  return {ts:ts,v30:v30,jours:jours,besoin:besoin};
+}
+// Ce qu'il doit acheter, à plat : un article simple = une ligne ; une
+// famille = une ligne PAR variante qui en a besoin, jamais un total mélangé.
+function _lignesACommander(q30,q30v){
+  var out=[];
+  (DB.articles||[]).forEach(function(p){
+    if(!p)return;
+    var parVariante=(p.vr&&p.vr.length&&!utiliseStockBase(p));
+    if(parVariante){
+      (p.vr||[]).forEach(function(v){
+        var b=_besoinRachatVar(p,v,q30v);
+        if(b)out.push({p:p,v:v,b:b,nm:p.nm+' — '+(v.nm||'?')});
+      });
+    }else{
+      var b2=_besoinRachat(p,q30);
+      if(b2)out.push({p:p,v:null,b:b2,nm:p.nm});
+    }
+  });
+  // Le plus urgent d'abord : ce qui est à zéro, puis ce qui tient le moins.
+  out.sort(function(a,b){
+    var za=a.b.ts<=0?0:1, zb=b.b.ts<=0?0:1;
+    if(za!==zb)return za-zb;
+    if(a.b.jours!==b.b.jours)return a.b.jours-b.b.jours;
+    return txtNorm(a.nm)<txtNorm(b.nm)?-1:1;
+  });
+  return out;
+}
+// « 2 cartons (24) » — ce qu'il va dire au grossiste, pas « 24 unités ».
+function _cibleCommande(p,v,besoin){
+  var cd=null;try{cd=_condDe(p,v||null);}catch(e){}
+  if(cd&&cd.n>0){
+    var nc=Math.max(1,Math.ceil(besoin/cd.n));
+    var mot=cd.mot+((nc>1&&!/s$/.test(cd.mot))?'s':'');
+    return fmtQ(nc)+' '+mot+' ('+_qteMot(p,nc*cd.n)+')';
+  }
+  return _qteMot(p,Math.ceil(besoin));
+}
+var _cmdLignes=[];
+function renderCommande(c,q30,q30v){
+  var fr=(lang!=='en');
+  _cmdLignes=_lignesACommander(q30,q30v);
+  if(!_cmdLignes.length){
+    c.innerHTML='<div class="empty"><div class="empty-e">👍</div><div class="empty-t">'
+      +(fr?'Rien à commander':'Nothing to order')+'</div>'
+      +'<div style="font-size:12px;color:var(--M);font-weight:600;margin-top:6px;line-height:1.55">'
+      +(fr?'Aucun article n\'est à zéro ni sur le point de manquer.':'Nothing is out or about to run out.')
+      +'</div></div>';
+    return;
+  }
+  var zero=_cmdLignes.filter(function(l){return l.b.ts<=0;}).length;
+  var h='<div style="display:flex;align-items:center;gap:9px;margin-bottom:11px">'
+    +'<div style="flex:1;min-width:0;font-size:12.5px;font-weight:800;color:var(--T)">'
+    +'🛒 '+_cmdLignes.length+' '+(fr?('article'+(_cmdLignes.length>1?'s':'')+' à commander'):'to order')
+    +(zero?('<span style="color:var(--R)"> · '+zero+' '+(fr?'à zéro':'out')+'</span>'):'')+'</div>'
+    +'<button class="shct" style="flex-shrink:0;min-height:36px" onclick="partagerCommande()">📤 '
+    +(fr?'Envoyer la liste':'Send list')+'</button></div>';
+  _cmdLignes.forEach(function(l){
+    var p=l.p,v=l.v,b=l.b;
+    var reste=b.ts<=0?('<span style="color:var(--R);font-weight:800">'+(fr?'ÉPUISÉ':'OUT')+'</span>')
+                     :((fr?'reste ':'left ')+'<b>'+_qteMot(p,b.ts)+'</b>');
+    var vend=b.v30>0?(' · '+(fr?'vend ':'sells ')+_qteMot(p,b.v30)+(fr?'/mois':'/mo')):'';
+    var img=(v&&v.img)||p.img;
+    h+='<div class="cmdl">'
+      +'<div class="cmdm">'+(img?('<img src="'+img+'">'):('<span>'+(p.e||'📦')+'</span>'))+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div class="cmdn">'+l.nm+'</div>'
+      +'<div class="cmds">'+reste+vend+'</div></div>'
+      +'<div class="cmdq">'+_cibleCommande(p,v,b.besoin)+'</div>'
+      +'</div>';
+  });
+  c.innerHTML=h;
+}
+// Il ne recopie pas trente lignes à la main : il l'envoie à son grossiste.
+function partagerCommande(){
+  var fr=(lang!=='en');
+  if(!_cmdLignes.length)return;
+  var txt=(fr?'Commande — ':'Order — ')+((DB&&DB.cfg&&DB.cfg.nom)||'')+'\n\n'
+    +_cmdLignes.map(function(l){
+      return '• '+l.nm+' : '+_cibleCommande(l.p,l.v,l.b.besoin);
+    }).join('\n');
+  try{
+    if(navigator.share){navigator.share({text:txt});return;}
+  }catch(e){}
+  try{
+    navigator.clipboard.writeText(txt);
+    showToast('📋 '+(fr?'Liste copiée — colle-la dans WhatsApp':'List copied'));
+    return;
+  }catch(e){}
+  try{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}catch(e){}
+}
 // La ligne au-dessus de la liste + le compteur du filtre « À commander ».
 function majValeurStock(q30){
   var z=document.getElementById('stk-valeur');
@@ -17252,16 +17407,31 @@ function majValeurStock(q30){
   }
   var bt=document.getElementById('sf-cmd');
   if(bt){
+    // ⚠️ LE BADGE DISAIT « (2) » PENDANT QUE LA LISTE EN MONTRAIT 4.
+    // Il comptait les ARTICLES avec `_besoinRachat`, qui ne voit que le
+    // total d'une famille : deux huiles à zéro derrière un total de 24 ne
+    // comptaient pour rien. Il compte maintenant exactement les lignes que
+    // la liste affiche — sinon le chiffre annonce une chose et l'écran une
+    // autre, et c'est le chiffre qu'on croit.
     if(!q30)q30=qteVendueParArticle(30);
     var n=0;
-    (DB.articles||[]).forEach(function(p){if(_besoinRachat(p,q30))n++;});
+    try{n=_lignesACommander(q30,qteVendueParVariante(30)).length;}catch(e){
+      (DB.articles||[]).forEach(function(p){if(_besoinRachat(p,q30))n++;});
+    }
     bt.textContent='🛒 '+(fr?'À commander':'To order')+(n>0?(' ('+n+')'):'');
   }
 }
 function renderStock(lst){var c=document.getElementById('stk-lst');if(!c)return;c.innerHTML='';var _fr=lang==='fr';
   // "Vendu" sur 30 jours : c'est la donnée utile pour décider quoi racheter.
   // (Avant : p.vd = total depuis toujours, qui ne dit rien de l'activité récente.)
-  var _q30=qteVendueParArticle(30);if(!lst.length){c.innerHTML=(!DB.articles.length&&(role==='patron'||hasPerm('produits')))?('<div class="empty-guide"><div class="eg-ico">📦</div><div class="eg-t">'+(_fr?'Ton stock est vide':'Your stock is empty')+'</div><div class="eg-s">'+(_fr?'Ajoute tes articles pour suivre les quantités et être alerté quand ça baisse.':'Add your items to track quantities and get low-stock alerts.')+'</div><button class="eg-btn" onclick="ouvrirPorteArticles()">📦 '+(_fr?'Ajouter un article':'Add an item')+'</button></div>'):('<div class="empty"><div class="empty-e">🔍</div><div class="empty-t">'+(_fr?'Aucun résultat':'No result')+'</div></div>');return;}var bc={};lst.forEach(function(p){if(!bc[p.cat])bc[p.cat]=[];bc[p.cat].push(p);});Object.entries(bc).forEach(function(e){var cat=e[0],items=e[1];var replie=!!_catsRepliees[cat];
+  var _q30=qteVendueParArticle(30);
+  // ⚠️ « À commander » n'est pas une vue du stock : c'est une LISTE DE
+  // COURSES. Une ligne par chose à acheter, variantes comprises, et rien
+  // d'autre à l'écran.
+  if(_stkFiltre==='cmd'&&!_stkQ){
+    try{renderCommande(c,_q30,qteVendueParVariante(30));return;}catch(e){}
+  }
+  if(!lst.length){c.innerHTML=(!DB.articles.length&&(role==='patron'||hasPerm('produits')))?('<div class="empty-guide"><div class="eg-ico">📦</div><div class="eg-t">'+(_fr?'Ton stock est vide':'Your stock is empty')+'</div><div class="eg-s">'+(_fr?'Ajoute tes articles pour suivre les quantités et être alerté quand ça baisse.':'Add your items to track quantities and get low-stock alerts.')+'</div><button class="eg-btn" onclick="ouvrirPorteArticles()">📦 '+(_fr?'Ajouter un article':'Add an item')+'</button></div>'):('<div class="empty"><div class="empty-e">🔍</div><div class="empty-t">'+(_fr?'Aucun résultat':'No result')+'</div></div>');return;}var bc={};lst.forEach(function(p){if(!bc[p.cat])bc[p.cat]=[];bc[p.cat].push(p);});Object.entries(bc).forEach(function(e){var cat=e[0],items=e[1];var replie=!!_catsRepliees[cat];
 var ti=document.createElement('div');ti.className='scat-h';
 ti.innerHTML='<span>'+(replie?'▸':'▾')+' '+(CE[cat]||'📦')+' '+cat+'</span><span class="scat-n">'+items.length+'</span>';
 ti.onclick=function(){toggleCatStock(cat);};
@@ -17284,14 +17454,23 @@ function filtreStock(f){
 }
 function appliquerFiltreStock(){
   if(!DB)return;
-  var q=txtNorm(_stkQ),q30=qteVendueParArticle(30);
+  var q=txtNorm(_stkQ),q30=qteVendueParArticle(30),_q30v=null;
   var lst=DB.articles.filter(function(p){
     if(q&&txtNorm(p.nm).indexOf(q)===-1)return false;
     var ts=getStk(p);
     if(_stkFiltre==='bas')return ts>0&&p.al>0&&ts<=p.al;
     if(_stkFiltre==='out')return ts<=0||(p.vr.length&&!utiliseStockBase(p)&&p.vr.some(function(v){return (v.stk||0)<=0;}));
     if(_stkFiltre==='vend')return (q30[p.id]||0)>0;
-    if(_stkFiltre==='cmd')return !!_besoinRachat(p,q30);
+    if(_stkFiltre==='cmd'){
+      // ⚠️ Une famille dont UNE SEULE variante est à zéro doit compter :
+      // le total de la famille la cachait (Diamaor 24 · Mayor 0 · Locale 0
+      // faisait 24, donc « tout va bien »).
+      if(p.vr&&p.vr.length&&!utiliseStockBase(p)){
+        var _qv=_q30v||(_q30v=qteVendueParVariante(30));
+        return (p.vr||[]).some(function(v){return !!_besoinRachatVar(p,v,_qv);});
+      }
+      return !!_besoinRachat(p,q30);
+    }
     if(_stkFiltre==='sanspa')return _valeurArticle(p).inconnu;
     return true;
   });
