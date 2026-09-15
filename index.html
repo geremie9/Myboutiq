@@ -2438,6 +2438,7 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" id="row-annonce" style="display:none" onclick="ouvrirEcrireAnnonce()"><div class="stico" style="background:#E8EAF6">📣</div><div class="stii"><div class="stitl">Écrire une annonce</div><div class="stisub">Un message à tous les commerçants</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-abonnes" style="display:none" onclick="ouvrirAbonnes()"><div class="stico" style="background:#FFF8E1">🗂️</div><div class="stii"><div class="stitl">Abonnements</div><div class="stisub">Qui a payé, jusqu'à quand — et rouvrir d'une tape</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-photos-prop" style="display:none" onclick="ouvrirPhotosProposees()"><div class="stico" style="background:#E0F2F1">📷</div><div class="stii"><div class="stitl">Photos proposées</div><div class="stisub" id="pp-sub">Ce que les commerçants offrent à tous</div></div><span class="starr">›</span></div>
+        <div class="stit2" id="row-equiper" style="display:none" onclick="ouvrirEquiperCatalogue()"><div class="stico" style="background:#FFF8E1">🏅</div><div class="stii"><div class="stitl">Équiper le catalogue</div><div class="stisub" id="eq-sub">Certifier d'un coup les vraies photos de cette boutique</div></div><span class="starr">›</span></div>
         <!-- ⚠️ CETTE LIGNE N'APPARAÎT QUE S'IL Y A QUELQUE CHOSE À MONTRER.
              Elle est le résultat d'un défaut réparé en 21.96 : deux boutiques
              ouvertes sur le même téléphone se fusionnaient, et les photos de
@@ -3677,6 +3678,23 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- ÉQUIPER LE CATALOGUE (administrateurs MyBoutiQ seulement) -->
+<div class="ov" id="ov-equiper" onclick="closeOv(event,'ov-equiper')">
+  <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🏅 <span>Équiper le catalogue</span></div><button class="bcl" onclick="closeSheet('ov-equiper')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.6;margin-bottom:11px">
+        Les photos prises dans <b>cette boutique</b>. Celles que tu coches deviennent la photo officielle du produit
+        pour toutes les boutiques — devant le catalogue embarqué, et aucun vote ne les détrône.
+        Vérifie que chaque image montre bien le bon produit.
+      </div>
+      <div style="font-size:12px;color:var(--T);font-weight:800;margin-bottom:9px" id="eq-resume"></div>
+      <div id="eq-lst"></div>
+      <button class="bt" id="eq-go" style="display:none;margin-top:15px;width:100%" onclick="lancerEquiper()">🏅 Certifier</button>
+    </div>
+  </div>
+</div>
+
 <!-- ABONNEMENTS (administrateurs MyBoutiQ seulement) -->
 <div class="ov" id="ov-abonnes" onclick="closeOv(event,'ov-abonnes')">
   <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
@@ -4296,7 +4314,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.11'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.12'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -13069,6 +13087,47 @@ function _indexPhotos(){
   }catch(e){}
   return _photoIdx;
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ UN NOM, PLUSIEURS SLUGS — SINON LA CERTIFICATION NE SERT À RIEN
+//
+//  La photo certifiée était rangée et cherchée sous `_slugPhoto(nom)` :
+//  les lettres du nom, telles qu'il les a tapées. Mesuré : sa boutique
+//  écrit « Riz parfumé 5 kg », une autre écrit « Riz parfumé 5kg », et ce
+//  sont DEUX slugs. La photo qu'il a pris la peine de vérifier ne serait
+//  jamais servie à la seconde boutique.
+//
+//  Pire : le catalogue embarqué répond juste après, et lui sait rapprocher
+//  les deux écritures. La photo certifiée perdait donc contre la photo
+//  générique, pour les 600 produits qui comptent le plus.
+//
+//  On range donc la photo sous le nom CANONIQUE du catalogue, et on la
+//  cherche sous tous les noms qui mènent au même produit.
+// ══════════════════════════════════════════════════════════════════
+var _slugCache={},_slugCacheIdx=null;
+function _slugsPourNom(nom){
+  var cle=txtNorm(nom||'').replace(/\s+/g,' ').trim();
+  if(!cle)return [];
+  var idx=null;
+  try{idx=(_cat600&&_cat600.entrees)?catalogueIndex():null;}catch(e){}
+  if(_slugCacheIdx!==idx){_slugCache={};_slugCacheIdx=idx;}
+  if(_slugCache[cle])return _slugCache[cle];
+  var out=[],vu={};
+  function add(x){if(x&&!vu[x]){vu[x]=1;out.push(x);}}
+  // 1. Le libellé canonique du catalogue visuel : le filet le plus large,
+  //    celui qui rapproche « 5kg » de « 5 kg » et « coca » de « Coca-Cola ».
+  try{
+    if(idx){
+      var e=_chercherEntree600(cle,idx,function(x){return !!x.plein;});
+      if(e)add(_slugPhoto(e.plein));
+    }
+  }catch(e){}
+  // 2. Le catalogue embarqué, clé exacte (nom, famille, nom+famille).
+  try{(_indexPhotos().cles[cle]||[]).forEach(add);}catch(e){}
+  // 3. Et enfin le nom tel qu'il l'a écrit.
+  add(_slugPhoto(nom));
+  _slugCache[cle]=out;
+  return out;
+}
 // ── Offrir sa photo aux autres commerçants ──────────────────────────
 // Le travail se divise : personne ne photographie mille articles, chacun
 // photographie les siens et tout le monde en profite. On ne peut pas deviner
@@ -13081,8 +13140,14 @@ async function proposerPhotoPartagee(nomArticle,url){
     var fr=(lang==='fr');
     // Il faut que l'article soit reconnu au catalogue : sinon on ne saurait
     // pas à QUEL produit rattacher la photo, et elle ne servirait à personne.
+    // ⚠️ On range sous le MÊME slug que la certification, sinon deux
+    // photos du même produit vivent dans deux cases qui s'ignorent.
     var idx=_indexPhotos(),cle=txtNorm(nomArticle).replace(/\s+/g,' ').trim();
-    var slug=(idx.cles[cle]||[])[0];
+    var _cs=_slugsPourNom(nomArticle);
+    // Le dernier candidat est toujours le nom brut : s'il est seul, c'est
+    // que le catalogue ne reconnaît pas l'article, et on se tait (une photo
+    // rangée sous un slug que personne d'autre ne calcule ne sert personne).
+    var slug=(_cs.length>1)?_cs[0]:((idx.cles[cle]||[])[0]||'');
     if(!slug)return;
     // ⭐ Une photo existe déjà pour ce produit ? On propose QUAND MÊME.
     // C'est ainsi que la meilleure finit par gagner : s'il n'y a jamais de
@@ -13441,8 +13506,10 @@ function photoCatalogue(nom){
   // ══════════════════════════════════════════════════════════════════
   try{
     if(_photoManif&&_photoManif._cert){
-      var _sc=_slugPhoto(nom);
-      if(_photoManif._cert[_sc])return _photoManif._cert[_sc];
+      var _cands=_slugsPourNom(nom);
+      for(var _i=0;_i<_cands.length;_i++){
+        if(_photoManif._cert[_cands[_i]])return _photoManif._cert[_cands[_i]];
+      }
     }
   }catch(e){}
   // ── Le catalogue visuel ensuite : 600 articles, chacun sa photo ──
@@ -22388,6 +22455,10 @@ async function verifierAdmin(){
     if(rowP)rowP.style.display=ok?'':'none';
     var rowA=document.getElementById('row-abonnes');
     if(rowA)rowA.style.display=ok?'':'none';
+    // ⚠️ Réservée au patron ET administrateur : c'est la boutique OUVERTE
+    // dont on certifie les photos, pas une boutique choisie dans une liste.
+    var rowE=document.getElementById('row-equiper');
+    if(rowE)rowE.style.display=(ok&&role==='patron')?'':'none';
     // Combien attendent son avis ? Le dire ici lui évite d'ouvrir pour rien.
     if(ok)try{
       var q=await supa.from('photos_partagees').select('id').eq('etat','proposee').limit(60);
@@ -22502,6 +22573,187 @@ async function certifierPhoto(id,oui){
     _photoManif=null;                       // le manifeste doit être relu
     renderPhotosProposees();
   }catch(e){showToast('❌ '+(fr?'Échec':'Failed'));}
+}
+// ═══════════════════════════════════════════════════════════════════
+//  🏅 ÉQUIPER LE CATALOGUE AVEC LES PHOTOS D'UNE BOUTIQUE MODÈLE
+//
+//  Sa demande, mot pour mot : « pour mes boutiques test je vous envoie des
+//  images pour équiper ma boutique test des vraies images et permettre de
+//  faciliter la tâche à plusieurs commerçants ».
+//
+//  ⚠️ CE QUI MANQUAIT, MESURÉ : l'import en masse crée les articles et
+//  téléverse les photos — mais n'en propose AUCUNE au catalogue partagé.
+//  `proposerPhotoPartagee` n'est appelée que depuis l'upload d'UNE photo,
+//  avec un `confirm()`. Cent photos, c'était donc cent refus d'écran, puis
+//  cent tapes « 🏅 Certifier » dans l'écran d'administration : trois cents
+//  gestes pour un travail qu'il fait une fois.
+//
+//  Ici : il importe ses photos comme d'habitude (Réglages ▸ importer des
+//  photos), puis UNE tape ici publie et certifie tout le lot.
+//
+//  ⚠️ Rien n'est envoyé sans qu'il ait vu la liste : une photo certifiée
+//  est servie à toutes les boutiques du pays, c'est la décision la plus
+//  lourde de l'application. La liste dit, ligne par ligne, ce qui va partir
+//  et ce qui est déjà pris.
+// ═══════════════════════════════════════════════════════════════════
+var _eqLignes=[],_eqSel={},_eqEnCours=false;
+// Une photo qui n'a pas été prise DANS cette boutique n'a rien à faire au
+// catalogue : ce serait certifier le travail d'un autre sans le lui demander.
+function _photosDeMaBoutique(){
+  var out=[],mien='';
+  try{mien=normalizeShopCode((DB&&DB.cfg&&DB.cfg.code)||'');}catch(e){}
+  if(!mien||!DB||!DB.articles)return out;
+  function poser(nm,url){
+    if(!url||_codePhoto(url)!==mien)return;
+    nm=String(nm||'').trim();
+    if(!nm)return;
+    // « À nommer 3 » : le nom que l'import pose quand le fichier n'en
+    // portait aucun. Certifier ça polluerait le catalogue pour de bon.
+    if(/^(a nommer|name me)\s*\d*$/i.test(txtNorm(nm)))return;
+    if(nomFichierGenerique(nm))return;
+    var cands=_slugsPourNom(nm);
+    if(!cands.length)return;
+    out.push({nm:nm,url:url,slug:cands[0],connu:cands.length>1});
+  }
+  DB.articles.forEach(function(a){
+    poser(a.nm,a.img);
+    (a.vr||[]).forEach(function(v){poser((a.nm||'')+(v.nm?' '+v.nm:''),v.img);});
+  });
+  // Deux articles peuvent porter la même photo : on ne l'envoie qu'une fois.
+  var vu={},uniq=[];
+  out.forEach(function(l){var k=l.slug+'|'+l.url;if(vu[k])return;vu[k]=1;uniq.push(l);});
+  return uniq;
+}
+async function ouvrirEquiperCatalogue(){
+  if(!(await verifierAdmin())){showToast('⛔ '+(lang==='fr'?'Réservé à MyBoutiQ':'MyBoutiQ staff only'));return;}
+  document.getElementById('ov-equiper').classList.add('show');
+  renderEquiper();
+}
+async function renderEquiper(){
+  var c=document.getElementById('eq-lst');if(!c)return;var fr=(lang!=='en');
+  c.innerHTML='<div style="font-size:11.5px;color:var(--M);font-weight:700">'+(fr?'Lecture…':'Loading…')+'</div>';
+  _eqLignes=_photosDeMaBoutique();_eqSel={};
+  var r=document.getElementById('eq-resume');
+  if(!_eqLignes.length){
+    c.innerHTML='<div style="font-size:12.5px;color:var(--M);font-weight:600;line-height:1.6">'
+      +(fr?'Aucune photo prise dans cette boutique. Importe d\'abord tes images : <b>Réglages ▸ Articles ▸ importer des photos</b>. L\'app crée un article par photo, et elles apparaîtront ici.'
+          :'No photo taken in this shop yet. Import your images first.')+'</div>';
+    if(r)r.textContent='';
+    var b=document.getElementById('eq-go');if(b)b.style.display='none';
+    return;
+  }
+  // Ce qui porte déjà le sceau, pour ne rien écraser sans le dire.
+  var cert={};
+  try{
+    assurerConnexionSupa();
+    var q=await supa.from('photos_partagees').select('id,slug,url').eq('certifiee',true).limit(2000);
+    if(q.error){c.innerHTML='<div style="font-size:12px;color:var(--R);font-weight:700">'+(fr?'Lecture refusée par le serveur':'Read refused')+'</div>';return;}
+    (q.data||[]).forEach(function(x){cert[x.slug]=x;});
+  }catch(e){c.innerHTML='<div style="font-size:12px;color:var(--R);font-weight:700">'+(fr?'Réseau requis':'Network required')+'</div>';return;}
+  // Deux articles différents qui mènent au même slug : un seul peut être
+  // certifié. On garde le premier et on le dit sur le second.
+  var prisIci={};
+  _eqLignes.forEach(function(l,i){
+    var d=cert[l.slug];
+    if(d&&d.url===l.url)l.etat='deja';
+    else if(d)l.etat='occupee';
+    else if(prisIci[l.slug])l.etat='doublon';
+    else {l.etat='libre';prisIci[l.slug]=1;}
+    if(l.etat==='libre')_eqSel[i]=1;
+  });
+  var h='';
+  _eqLignes.forEach(function(l,i){
+    var badge='';
+    if(l.etat==='deja')badge='<span style="font-size:10px;font-weight:800;color:#2E7D32">🏅 '+(fr?'DÉJÀ CERTIFIÉE':'ALREADY CERTIFIED')+'</span>';
+    else if(l.etat==='occupee')badge='<span style="font-size:10px;font-weight:800;color:#8A6100">⚠️ '+(fr?'UNE AUTRE PHOTO EST CERTIFIÉE — cocher la remplace':'ANOTHER PHOTO IS CERTIFIED')+'</span>';
+    else if(l.etat==='doublon')badge='<span style="font-size:10px;font-weight:800;color:#8A6100">⚠️ '+(fr?'MÊME PRODUIT QU\'UNE LIGNE PLUS HAUT':'SAME PRODUCT AS A LINE ABOVE')+'</span>';
+    else if(!l.connu)badge='<span style="font-size:10px;font-weight:800;color:var(--M)">'+(fr?'HORS CATALOGUE — ne servira qu\'aux boutiques qui écrivent le même nom':'NOT IN CATALOGUE')+'</span>';
+    else badge='<span style="font-size:10px;font-weight:700;color:var(--M)">'+l.slug+'</span>';
+    h+='<div style="display:flex;gap:11px;align-items:center;padding:10px 0;border-bottom:1px solid var(--BD)'+(l.etat==='deja'?';opacity:.55':'')+'" onclick="basculerEquiper('+i+')">'
+      +'<div id="eq-ck-'+i+'" style="width:23px;height:23px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;border:2px solid '+(_eqSel[i]?'var(--B)':'var(--BD)')+';background:'+(_eqSel[i]?'var(--B)':'transparent')+';color:#fff">'+(_eqSel[i]?'✓':'')+'</div>'
+      +'<img src="'+l.url+'" style="width:48px;height:48px;object-fit:cover;border-radius:11px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.25">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:13px;font-weight:800;color:var(--T);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+l.nm+'</div>'
+      +'<div style="margin-top:2px">'+badge+'</div></div></div>';
+  });
+  c.innerHTML=h;
+  majResumeEquiper();
+}
+function basculerEquiper(i){
+  var l=_eqLignes[i];if(!l||l.etat==='deja')return;
+  _eqSel[i]=_eqSel[i]?0:1;
+  var ck=document.getElementById('eq-ck-'+i);
+  if(ck){
+    ck.style.borderColor=_eqSel[i]?'var(--B)':'var(--BD)';
+    ck.style.background=_eqSel[i]?'var(--B)':'transparent';
+    ck.textContent=_eqSel[i]?'✓':'';
+  }
+  majResumeEquiper();
+}
+function _eqChoisies(){
+  var out=[],slugVu={};
+  _eqLignes.forEach(function(l,i){
+    if(!_eqSel[i]||l.etat==='deja')return;
+    if(slugVu[l.slug])return;        // un seul sceau par produit, toujours
+    slugVu[l.slug]=1;out.push(l);
+  });
+  return out;
+}
+function majResumeEquiper(){
+  var fr=(lang!=='en'),n=_eqChoisies().length;
+  var r=document.getElementById('eq-resume');
+  if(r)r.textContent=fr?(n+' photo'+(n>1?'s':'')+' à publier et certifier')
+                       :(n+' photo'+(n>1?'s':'')+' to publish and certify');
+  var b=document.getElementById('eq-go');
+  if(b){b.style.display=n?'':'none';b.textContent='🏅 '+(fr?('Certifier ces '+n+' photos'):('Certify these '+n));}
+}
+async function lancerEquiper(){
+  var fr=(lang!=='en');
+  if(_eqEnCours)return;
+  var lot=_eqChoisies();
+  if(!lot.length)return;
+  var remplaces=lot.filter(function(l){return l.etat==='occupee';}).length;
+  if(!confirm(fr
+    ?('🏅 Certifier '+lot.length+' photo'+(lot.length>1?'s':'')+' ?\n\n'
+      +'Elles seront servies à TOUTES les boutiques du pays pour ces produits, devant le catalogue embarqué.'
+      +(remplaces?('\n\n⚠️ '+remplaces+' remplacera'+(remplaces>1?'ont':'')+' une photo déjà certifiée.'):''))
+    :('Certify '+lot.length+' photo'+(lot.length>1?'s':'')+' for every shop?')))return;
+  _eqEnCours=true;
+  var b=document.getElementById('eq-go');if(b)b.classList.add('busy');
+  var ok=0,ko=0;
+  try{
+    var u=await getAuthUser();
+    var maintenant=new Date().toISOString();
+    // 1. Libérer les sceaux qu'il a choisi de remplacer. L'index unique
+    //    n'accepte qu'une certifiée par produit : si on insérait d'abord,
+    //    tout le lot serait refusé d'un coup.
+    for(var i=0;i<lot.length;i++){
+      if(lot[i].etat!=='occupee')continue;
+      var d=await supa.from('photos_partagees').update({certifiee:false}).eq('slug',lot[i].slug).eq('certifiee',true);
+      if(d.error){lot[i]._bloque=1;}
+    }
+    var aEcrire=lot.filter(function(l){return !l._bloque;}).map(function(l){
+      return {slug:l.slug,url:l.url,article_nm:String(l.nm).slice(0,80),
+              code_source:(DB&&DB.cfg&&DB.cfg.code)||null,
+              etat:'approuvee',certifiee:true,decide_le:maintenant,decide_par:u?u.id:null};
+    });
+    ko=lot.length-aEcrire.length;
+    // 2. Par paquets de 40 : un lot de 200 sur un réseau de marché coupe.
+    for(var j=0;j<aEcrire.length;j+=40){
+      var paq=aEcrire.slice(j,j+40);
+      var r=await supa.from('photos_partagees').insert(paq);
+      if(r.error)ko+=paq.length;else ok+=paq.length;
+    }
+  }catch(e){ko=lot.length-ok;}
+  _eqEnCours=false;
+  if(b)b.classList.remove('busy');
+  _photoManif=null;                    // le manifeste doit être relu
+  try{_phCache={};}catch(e){}
+  showToast(ok
+    ?('🏅 '+ok+' '+(fr?('photo'+(ok>1?'s':'')+' certifiée'+(ok>1?'s':'')+' — toutes les boutiques les verront'):'certified')
+      +(ko?(' · ⚠️ '+ko+(fr?' refusée'+(ko>1?'s':''):' refused')):''))
+    :('❌ '+(fr?'Rien n\'est parti — vérifie la connexion':'Nothing sent')));
+  renderEquiper();
 }
 var _annCible='tous',_annNiveau='info';
 function selAnnCible(c,btn){_annCible=c;(btn.parentNode||document).querySelectorAll('.cbtn').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');}
