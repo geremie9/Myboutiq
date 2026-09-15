@@ -4404,7 +4404,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.16'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.17'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7804,6 +7804,28 @@ function stockVarDispo(p,v){
 // ⚠️ Le total d'une famille ne doit compter le stock QU'UNE FOIS. Une
 // variante « carton d'Azur » ne possède rien : elle regarde celui d'Azur.
 // La compter reviendrait à afficher deux fois les mêmes savons.
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️ « HUILE : 9 UNITÉS » PENDANT QUE SES PASTILLES DISENT 24, 0 ET 0
+//
+//  Vu sur sa capture. `getStk` fait la somme NETTE des variantes, dettes
+//  comprises : 24 (Diamaor) − 15 (une autre) + 0 = 9. Mais les pastilles,
+//  elles, montrent chaque variante ramenée à zéro — donc 24, 0, 0.
+//  Le commerçant lit deux chiffres qui ne peuvent pas se réconcilier.
+//
+//  Et c'est le total affiché qui a tort : la dette de « Mayor » ne se vend
+//  pas avec l'huile « Diamaor ». Ce qu'il peut vendre, c'est 24.
+//
+//  `getStk` ne bouge pas — le net reste le net, et tout le calcul s'appuie
+//  dessus. C'est l'AFFICHAGE qui dit maintenant ce qu'on peut vendre, et
+//  la dette à côté, en toutes lettres, au lieu de la cacher dans le total.
+// ══════════════════════════════════════════════════════════════════
+function _stkVendable(p){
+  if(!p)return 0;
+  if(!p.vr||!p.vr.length||utiliseStockBase(p))return Math.max(0,Number(p.stk)||0);
+  return p.vr.reduce(function(s,v){
+    return s+(_estGrosDeVariante(v)?0:Math.max(0,Number(v.stk)||0));
+  },0);
+}
 function getStk(p){
   if(!p.vr.length)return p.stk;
   if(utiliseStockBase(p))return p.stk||0;
@@ -17202,8 +17224,8 @@ ti.innerHTML='<span>'+(replie?'▸':'▾')+' '+(CE[cat]||'📦')+' '+cat+'</span
 ti.onclick=function(){toggleCatStock(cat);};
 c.appendChild(ti);
 if(replie)return;
-var card=document.createElement('div');card.className='scd';items.forEach(function(p){var ts=getStk(p),dc=(role==='patron')?depCount(p):0,pct=Math.min(100,ts<=0?0:ts/Math.max(ts+10,20)*100),cls=ts<=0?'out':ts<=p.al?'low':'ok';var d=document.createElement('div');d.className='sit';d.onclick=function(){if(role==='patron'){selArtStk(p);document.getElementById('ov-stk').classList.add('show');}};d.innerHTML=(p.img?'<img class="siemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'siemo\',textContent:\''+p.e+'\'}))">':'<div class="siemo-wrap">'+(DB.cfg&&DB.cfg.noEmoji?'<span class="siemo simono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="siemo simono" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</span>';})())+((role==='patron'||hasPerm('produits'))?'<button class="siphoto" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">📷</button>':'')+'</div>')+'<div class="siinf"><div class="sinm">'+p.nm+(p.vr.length?' <span style="font-size:9px;color:var(--B);font-weight:700">('+p.vr.length+')</span>':'')+'</div><div class="sidet">'+prixCarte(p)+' · '+(lang==='fr'?'Vendu 30 j':'Sold 30 d')+' : '+fmtQ(_q30[p.id]||0)+(( !p.vr.length&&p.px>0&&!(p.pa>0))?(' · <span style="color:var(--O);font-weight:800">'+(lang==='fr'?'⚠️ prix d\'achat à mettre':'⚠️ cost missing')+'</span>'):'')
-+(p._sugg?(' · <span style="color:var(--B);font-weight:800">'+(lang==='fr'?'💡 prix indicatif — vérifie':'💡 suggested price — check')+'</span>'):'')+'</div>'+(p.vr.length&&!utiliseStockBase(p)?'<div class="svlist">'+p.vr.map(function(v){var vs=v.stk||0;return '<span class="svchip" style="color:'+(vs<=0?'var(--R)':vs<=2?'var(--O)':'var(--G)')+'">'+(v.nm||'?')+' : '+fmtQ(Math.max(0,vs))+(vs<=0?' ⛔':'')+'</span>';}).join('')+'</div>':'')+'<div class="sbb"><div class="sbf" style="width:'+pct+'%;background:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'"></div></div></div><div class="sistock"><div class="siqty '+cls+'">'+fmtQ(Math.max(0,ts))+'</div><div class="siu">'+uniteArt(p)+'</div>'+(dc>0?'<div style="font-size:9px;color:var(--PU);font-weight:800;margin-top:2px">🔁 '+dc+' '+(lang==='fr'?'dépannage':'stopgap')+'</div>':'')+(role==='patron'?'<div style="font-size:9px;color:var(--B);font-weight:700;margin-top:2px">+ '+(lang==='fr'?'Entrée':'Entry')+'</div>':'')+'</div>';if(_stkFiltre==='cmd'){var _sg='';try{_sg=_suggestionCommande(p,_q30);}catch(e){}
+var card=document.createElement('div');card.className='scd';items.forEach(function(p){var ts=getStk(p),_tsv=_stkVendable(p),_dette=Math.max(0,_tsv-ts),dc=(role==='patron')?depCount(p):0,pct=Math.min(100,_tsv<=0?0:_tsv/Math.max(_tsv+10,20)*100),cls=_tsv<=0?'out':_tsv<=p.al?'low':'ok';var d=document.createElement('div');d.className='sit';d.onclick=function(){if(role==='patron'){selArtStk(p);document.getElementById('ov-stk').classList.add('show');}};d.innerHTML=(p.img?'<img class="siemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'siemo\',textContent:\''+p.e+'\'}))">':'<div class="siemo-wrap">'+(DB.cfg&&DB.cfg.noEmoji?'<span class="siemo simono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="siemo simono" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</span>';})())+((role==='patron'||hasPerm('produits'))?'<button class="siphoto" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">📷</button>':'')+'</div>')+'<div class="siinf"><div class="sinm">'+p.nm+(p.vr.length?' <span style="font-size:9px;color:var(--B);font-weight:700">('+p.vr.length+')</span>':'')+'</div><div class="sidet">'+prixCarte(p)+' · '+(lang==='fr'?'Vendu 30 j':'Sold 30 d')+' : '+fmtQ(_q30[p.id]||0)+(( !p.vr.length&&p.px>0&&!(p.pa>0))?(' · <span style="color:var(--O);font-weight:800">'+(lang==='fr'?'⚠️ prix d\'achat à mettre':'⚠️ cost missing')+'</span>'):'')
++(p._sugg?(' · <span style="color:var(--B);font-weight:800">'+(lang==='fr'?'💡 prix indicatif — vérifie':'💡 suggested price — check')+'</span>'):'')+'</div>'+(p.vr.length&&!utiliseStockBase(p)?'<div class="svlist">'+p.vr.map(function(v){var vs=v.stk||0;return '<span class="svchip" style="color:'+(vs<=0?'var(--R)':vs<=2?'var(--O)':'var(--G)')+'">'+(v.nm||'?')+' : '+fmtQ(Math.max(0,vs))+(vs<=0?' ⛔':'')+'</span>';}).join('')+'</div>':'')+'<div class="sbb"><div class="sbf" style="width:'+pct+'%;background:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'"></div></div></div><div class="sistock"><div class="siqty '+cls+'">'+fmtQ(_tsv)+'</div><div class="siu">'+uniteArt(p)+'</div>'+(_dette>0?'<div style="font-size:9px;color:var(--R);font-weight:800;margin-top:2px">−'+fmtQ(_dette)+' '+(lang==='fr'?'à rattraper':'to catch up')+'</div>':'')+(dc>0?'<div style="font-size:9px;color:var(--PU);font-weight:800;margin-top:2px">🔁 '+dc+' '+(lang==='fr'?'dépannage':'stopgap')+'</div>':'')+(role==='patron'?'<div style="font-size:9px;color:var(--B);font-weight:700;margin-top:2px">+ '+(lang==='fr'?'Entrée':'Entry')+'</div>':'')+'</div>';if(_stkFiltre==='cmd'){var _sg='';try{_sg=_suggestionCommande(p,_q30);}catch(e){}
 if(_sg){var _if=d.querySelector('.siinf');if(_if){var _dc=document.createElement('div');_dc.className='sicmd';_dc.textContent=_sg;_if.appendChild(_dc);}}}
 card.appendChild(d);});c.appendChild(card);});}
 // ═══ Navigation du stock : recherche + filtres rapides + catégories repliables ═══
@@ -19811,7 +19833,7 @@ function _epochEvt(o){
 function archiverAnciennesVentes(cutoff){
   if(!DB||!cutoff)return 0;
   var artById={};(DB.articles||[]).forEach(function(p){if(p&&p.id!=null)artById[p.id]=p;});
-  var approBase={},approVar={},soldBase={},soldVar={},vendu={},resume={},nb=0;
+  var approBase={},approVar={},soldBase={},soldVar={},vendu={},deps={},resume={},nb=0;
   (DB.appros||[]).forEach(function(a){var e=_epochEvt(a);if(e==null||e>=cutoff||a.pid==null)return;var qy=Number(a.qty)||0;if(a.vid==null)approBase[a.pid]=(approBase[a.pid]||0)+qy;else approVar[a.pid+'|'+a.vid]=(approVar[a.pid+'|'+a.vid]||0)+qy;});
   (DB.ventes||[]).forEach(function(v){
     var e=_epochEvt(v);if(e==null||e>=cutoff)return;
@@ -19830,6 +19852,11 @@ function archiverAnciennesVentes(cutoff){
         if(!l||l.pid==null)return;
         var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;
         vendu[l.pid]=(vendu[l.pid]||0)+qt;
+        // ⚠️ L'ARCHIVAGE OUBLIAIT LES DÉPANNAGES. `depCount` additionne
+        // `dep0` et les dépannages des ventes VIVANTES : replier une vente
+        // sans reporter son `dep` faisait baisser le compteur tout seul.
+        // C'est ici, et seulement ici, que `dep0` doit grandir.
+        if(dep>0)deps[l.pid]=(deps[l.pid]||0)+dep;
         var p=artById[l.pid];if(!p)return;
         if(l.vid){
           if(utiliseStockBase(p))soldBase[l.pid]=(soldBase[l.pid]||0)+norm*(Number(l.qBase)||1);
@@ -19855,6 +19882,7 @@ function archiverAnciennesVentes(cutoff){
   DB.articles.forEach(function(p){
     p.stk0=(Number(p.stk0)||0)+(approBase[p.id]||0)-(soldBase[p.id]||0);
     p.vd0=(Number(p.vd0)||0)+(vendu[p.id]||0);
+    if(deps[p.id]>0)p.dep0=(Number(p.dep0)||0)+deps[p.id];
     (p.vr||[]).forEach(function(v){var k=p.id+'|'+v.id;v.stk0=(Number(v.stk0)||0)+(approVar[k]||0)-(soldVar[k]||0);});
   });
   // Fusion du résumé mensuel
@@ -20424,12 +20452,47 @@ function migrateDBData(d){
   d.articles=Array.isArray(d.articles)?d.articles:[];
   d.depenses=Array.isArray(d.depenses)?d.depenses:[];
   d.equipe=Array.isArray(d.equipe)?d.equipe:[];
+  // ══════════════════════════════════════════════════════════════
+  //  ⚠️⚠️ « 203 378 DÉPANNAGES » SUR UN ARTICLE VENDU 0 FOIS EN 30 JOURS
+  //
+  //  Ce qui était écrit ici :
+  //     if(a.stk<0){ a.dep0 = (a.dep0||0) + (-a.stk); a.stk = 0; }
+  //
+  //  C'était pensé comme une réparation À FAIRE UNE FOIS, sur une vieille
+  //  base où le stock avait pu passer sous zéro sans que la ligne de vente
+  //  porte son `dep`. Mais `migrateDBData` tourne À CHAQUE OUVERTURE DE
+  //  L'APPLICATION — et juste après, `recomputeStock` recrée le stock
+  //  négatif à partir des ventes (stk = stk0 + ravitaillements − ventes).
+  //
+  //  Le cycle, à chaque lancement :
+  //     recompute → stk = −89   ·   migrate → dep0 += 89, stk = 0
+  //     recompute → stk = −89   ·   migrate → dep0 += 89 …
+  //
+  //  MESURÉ EN PRODUCTION, et c'est la preuve : sur sa boutique « G »,
+  //  Bougie (stk −16) porte dep0 = 29 344, et Allumettes (stk −89) porte
+  //  dep0 = 163 226. Les deux donnent EXACTEMENT le même rapport : 1 834.
+  //  Ce n'était pas un compteur de dépannages — c'était le nombre de fois
+  //  qu'il a ouvert son application, multiplié par sa dette de stock.
+  //  15 boutiques sur 31 touchées, 63 articles.
+  //
+  //  Et le clamp `a.stk = 0` ne servait à rien : `recomputeStock` écrase
+  //  `stk` juste après. Il ne faisait qu'alimenter la boucle.
+  //
+  //  Personne d'autre n'écrit `dep0` — l'archivage, qui le devrait, l'avait
+  //  oublié (corrigé plus bas). On retire donc tout, et on répare.
+  // ══════════════════════════════════════════════════════════════
   d.articles.forEach(function(a){
     if(a.stk===undefined)a.stk=0;
     if(!Array.isArray(a.vr))a.vr=[];
-    a.vr.forEach(function(v){if(v.qBase===undefined)v.qBase=1;if(v.stk<0){a.dep0=(a.dep0||0)+(-v.stk);v.stk=0;}});
-    if(a.stk<0){a.dep0=(a.dep0||0)+(-a.stk);a.stk=0;}
+    a.vr.forEach(function(v){if(v.qBase===undefined)v.qBase=1;});
     if(a.dep0===undefined)a.dep0=0;
+    // Réparation : un dépannage, c'est une unité VENDUE alors qu'il n'y en
+    // avait plus. Il ne peut donc pas y en avoir plus que d'unités vendues.
+    // Au-dessus, le chiffre ne vient pas du commerce : il vient du défaut.
+    // On ne cherche pas à démêler le vrai du faux dans un nombre pourri —
+    // on le remet à zéro, et il se reconstruira honnêtement.
+    var _vdTot=(Number(a.vd)||0)+(Number(a.vd0)||0);
+    if((Number(a.dep0)||0)>_vdTot)a.dep0=0;
   });
   d.clients.forEach(function(cl,i){if(cl.id===undefined)cl.id=i+1;if(cl.points===undefined)cl.points=0;majNiveauClient(cl);if(!Array.isArray(cl.hist))cl.hist=[];});
   d.ventes.forEach(function(v){if(v.annulee===undefined)v.annulee=false;if(v.cloturee===undefined)v.cloturee=false;if(v.benefice===undefined&&v.ben!==undefined)v.benefice=v.ben;if(v.ben===undefined&&v.benefice!==undefined)v.ben=v.benefice;if(v.heure===undefined&&v.h!==undefined)v.heure=v.h;if(v.h===undefined&&v.heure!==undefined)v.h=v.heure;if(!v.vendeur)v.vendeur='Patron';if(Array.isArray(v.lignes))v.lignes.forEach(function(l){if(l.qte===undefined&&l.qty!==undefined)l.qte=l.qty;if(l.qty===undefined&&l.qte!==undefined)l.qty=l.qte;if(l.pa===undefined)l.pa=0;if(l.dep===undefined)l.dep=0;});});
