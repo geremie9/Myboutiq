@@ -214,6 +214,15 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .fi::placeholder{color:rgba(255,255,255,.2)}
 .btn-login{width:100%;background:var(--A);color:var(--P);border:none;border-radius:12px;padding:14px;font-size:17px;font-weight:800;cursor:pointer;margin-top:5px;position:relative}
 .btn-login:active{transform:scale(.97)}
+/* ── PROPOSER L'INSTALLATION ─────────────────────────────────────── */
+.lg-install{width:100%;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);
+  color:#fff;border-radius:12px;padding:12px;font-size:13.5px;font-weight:800;cursor:pointer;margin-top:12px;position:relative}
+.inst-band{display:flex;align-items:center;gap:10px;margin:0 15px 10px;background:#E7F8EE;
+  border:1.5px solid #8FDCAE;border-radius:12px;padding:10px 12px}
+.inst-band .ib-t{flex:1;min-width:0;font-size:11.5px;font-weight:700;color:#136B36;line-height:1.4}
+.inst-band .ib-b{flex-shrink:0;background:#1B7F6E;color:#fff;border:none;border-radius:9px;padding:10px 12px;
+  font-size:11.5px;font-weight:900;cursor:pointer;white-space:nowrap}
+.inst-band .ib-x{flex-shrink:0;background:transparent;border:none;color:#136B36;font-size:15px;font-weight:900;cursor:pointer;padding:8px 4px}
 .login-hint{color:rgba(255,255,255,.3);font-size:11.5px;text-align:center;margin-top:14px;font-weight:600;position:relative;line-height:1.5}
 .lnk{color:var(--A);font-weight:800;cursor:pointer;text-decoration:underline}
 
@@ -490,6 +499,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
       <div class="fg"><label class="fl" data-fr="Ton code" data-en="Your code">Ton code</label><input class="fi" id="v-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div>
       <button class="btn-login" onclick="loginServeur()" data-fr="Connexion 🧑‍🍳" data-en="Sign in 🧑‍🍳">Connexion 🧑‍🍳</button>
     </div>
+    <button class="lg-install" id="lg-install" style="display:none" onclick="installerApp()">📲 Installer</button>
     <div class="login-hint" id="login-hint"></div>
   </div>
 </div>
@@ -512,6 +522,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     <div class="sc" id="sc-ben"><div class="sl" data-fr="Net du soir" data-en="Tonight's net">Net du soir</div><div class="sv sv-g" id="sv-ben">0</div></div>
   </div>
   <div class="mcont">
+    <div id="svc-install" style="display:none"></div>
     <div id="svc-alertes"></div>
     <div class="ssec"><div class="tscr" id="svc-zones" style="padding-top:0"></div></div>
     <div class="shdr"><span class="stit" id="svc-tit">Tables</span><button class="sact" onclick="ouvrirNouvelleTable()" data-fr="+ Table" data-en="+ Table">+ Table</button></div>
@@ -666,6 +677,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
   <div class="mcont" style="padding-bottom:40px"><div style="padding:14px 15px" id="st-cont"></div></div>
 </div>
 
+<input type="file" id="fic-restore" accept=".json,application/json" style="display:none" onchange="restaurer(this)">
 <div class="ov" id="ov" onclick="if(event.target===this)fermerModal()"><div class="ovb" id="ovb"></div></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -1038,7 +1050,7 @@ function rendreVitrine(){
         "Tables and tabs, crates and bottles, deposits to claim back, servers, nightly closing. It works with no network — because at 10 pm, there is no network.")+'</div>'+
      '<button class="vit-cta" onclick="allerInscription()">'+L('🆕 Ouvrir mon bar','🆕 Open my bar')+'</button>'+
      '<button class="vit-cta2" onclick="goScreen(\'s-login\')">'+L("J'ai déjà un compte",'I already have an account')+'</button>'+
-     '<button class="vit-cta2" id="vit-install" style="display:'+(window._pwaInvite?'':'none')+'" onclick="installerApp()">'+
+     '<button class="vit-cta2" id="vit-install" style="display:'+(_dejaInstallee()?'none':'')+'" onclick="installerApp()">'+
         L("📲 Installer l'application",'📲 Install the app')+'</button>'+
      '<button class="vit-cta2" onclick="chargerDemo()">'+L("👀 Voir une soirée d'exemple",'👀 See a sample night')+'</button>'+
    '</div>'+
@@ -1357,24 +1369,151 @@ function demarrer(){
   if(DB){goScreen('s-login');remplirServeurs();switchLogin('patron');}
   else goScreen('s-vitrine');
   majBoutonsInstaller();
-  /* Le service worker se prend dans LE dossier de l'application, avec
-     sa portee : sinon, servie a « /bar », cette ligne reenregistrait
-     `/sw.js` — celui de MyBoutiQ — et MyBar n'avait pas le sien. */
-  if('serviceWorker' in navigator){
-    var base=window.MYBAR_BASE||'/';
-    try{navigator.serviceWorker.register(base+'sw.js',{scope:base});}catch(e){}
-  }
+}
+/* ══════════════════════════════════════════════════════════════════
+   « INSTALLER » DOIT INSTALLER, PAS EXPLIQUER
+
+   Le bouton ne s'affichait que si le navigateur avait DÉJÀ donné son
+   invitation. Or Chrome ne l'émet ni quand l'app est déjà posée, ni sur
+   un navigateur qui ne sait pas installer, ni parfois sans raison — et
+   dans tous ces cas l'écran ne montrait rien du tout. Il y a toujours
+   quelque chose à dire : soit l'invitation native, soit les trois gestes
+   à faire à la main. Le bouton s'affiche donc toujours, et c'est
+   `installerApp()` qui choisit quoi faire derrière.
+   ══════════════════════════════════════════════════════════════════ */
+function _dejaInstallee(){
+  try{
+    if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)return true;
+    if(window.matchMedia&&window.matchMedia('(display-mode: minimal-ui)').matches)return true;
+    if(window.navigator&&window.navigator.standalone===true)return true;   // iOS
+  }catch(e){}
+  return false;
+}
+function _estIOS(){
+  try{
+    var u=navigator.userAgent||'';
+    if(/iPad|iPhone|iPod/.test(u))return true;
+    return /Macintosh/.test(u)&&navigator.maxTouchPoints>1;   // iPad récent
+  }catch(e){return false;}
+}
+function _instFerme(){try{return localStorage.getItem('mybar_install_ferme')==='1';}catch(e){return false;}}
+function fermerBandeauInstall(){
+  try{localStorage.setItem('mybar_install_ferme','1');}catch(e){}
+  majBoutonsInstaller();
+}
+/* Attend l'invitation du navigateur, au plus `ms` millisecondes. */
+function _attendreInvitation(ms){
+  return new Promise(function(res){
+    if(window._pwaInvite)return res(window._pwaInvite);
+    var fini=false;
+    var t=setTimeout(function(){
+      if(fini)return;fini=true;
+      try{window.removeEventListener('beforeinstallprompt',h);}catch(x){}
+      res(null);
+    },ms);
+    function h(){
+      if(fini)return;fini=true;clearTimeout(t);
+      try{window.removeEventListener('beforeinstallprompt',h);}catch(x){}
+      setTimeout(function(){res(window._pwaInvite||null);},0);   // l'écouteur du haut l'a rangée
+    }
+    try{window.addEventListener('beforeinstallprompt',h);}catch(x){res(null);}
+  });
 }
 function majBoutonsInstaller(){
-  var b=$('vit-install');if(b)b.style.display=window._pwaInvite?'':'none';
+  var montrer=!_dejaInstallee();
+  var v=$('vit-install');
+  if(v){v.style.display=montrer?'':'none';v.textContent=L("📲 Installer l'application",'📲 Install the app');}
+  var lg=$('lg-install');
+  if(lg){lg.style.display=montrer?'':'none';lg.textContent=L('📲 Installer MyBar','📲 Install MyBar');}
+  /* Dans le service, on peut la refermer pour de bon : celui qui a dit
+     non une fois n'a pas à le redire tous les soirs. */
+  var c=$('svc-install');
+  if(c){
+    var ok=montrer&&!_instFerme();
+    c.style.display=ok?'':'none';
+    if(ok)c.innerHTML='<div class="inst-band"><span style="font-size:18px;flex-shrink:0">📲</span>'+
+      '<div class="ib-t">'+L("Garde MyBar sur ton écran d'accueil — elle s'ouvre plus vite, et sans réseau.",
+                             'Keep MyBar on your home screen — it opens faster, and with no network.')+'</div>'+
+      '<button class="ib-b" onclick="installerApp()">'+L('Installer','Install')+'</button>'+
+      '<button class="ib-x" onclick="fermerBandeauInstall()" aria-label="Fermer">✕</button></div>';
+  }
 }
-/* La vitrine est peinte par le JavaScript : au tout premier affichage,
-   c'est ce démarrage-ci qui la déclenche. */
-function installerApp(){
-  if(!window._pwaInvite){toast(L("📲 Menu du navigateur → « Installer l'application » / « Ajouter à l'écran d'accueil ».","📲 Browser menu → \"Install app\" / \"Add to Home screen\"."));return;}
-  window._pwaInvite.prompt();
-  window._pwaInvite.userChoice.then(function(){window._pwaInvite=null;majBoutonsInstaller();});
+async function installerApp(){
+  if(_dejaInstallee()){
+    toast('✅ '+L('Elle est déjà installée sur ce téléphone','Already installed on this phone'));
+    majBoutonsInstaller();return;
+  }
+  /* ⚠️ L'invitation arrive parfois APRÈS le geste : Chrome l'envoie quand
+     il veut, souvent une ou deux secondes après l'ouverture. Abandonner à
+     la première lecture, c'est montrer le mode d'emploi à quelqu'un qui
+     aurait eu la vraie installation une seconde plus tard. */
+  if(!window._pwaInvite&&!_estIOS()){
+    toast('⏳ '+L("Préparation de l'installation…",'Preparing the install…'));
+    await _attendreInvitation(3000);
+  }
+  if(window._pwaInvite){
+    try{
+      var e=window._pwaInvite;
+      e.prompt();
+      var r=await e.userChoice;
+      window._pwaInvite=null;      // seulement APRÈS la réponse
+      if(r&&r.outcome==='accepted'){
+        try{localStorage.setItem('mybar_install_ferme','1');}catch(x){}
+        toast('✅ '+L('Installée — ouvre-la par son icône, elle démarre plus vite','Installed — open it from its icon'));
+      }else{
+        toast(L("D'accord. Le bouton reste là si tu changes d'avis.",'All right — the button stays if you change your mind.'));
+      }
+    }catch(x){}
+    majBoutonsInstaller();return;
+  }
+  ouvrirCommentInstaller();
 }
+/* Le mode d'emploi — et l'état RÉEL du téléphone, pour qu'il n'y ait rien
+   à deviner quand ça ne marche pas. */
+function ouvrirCommentInstaller(){
+  var ios=_estIOS();
+  var sur=(location.protocol==='https:'||location.hostname==='localhost');
+  var sw=false;try{sw=!!(navigator.serviceWorker&&navigator.serviceWorker.controller);}catch(e){}
+  var l=function(ok,t,v){return '<div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px">'+
+    '<span style="flex-shrink:0">'+(ok?'✅':'⛔')+'</span><span><b>'+t+'</b> — '+v+'</span></div>';};
+  modal(mhead(ios?L("📲 Sur iPhone, c'est en deux gestes",'📲 On iPhone, two taps')
+                 :L("📲 Ton navigateur ne propose pas l'installation directe ici",'📲 Your browser will not install it directly here'),
+              L("MyBar sur ton écran d'accueil",'MyBar on your home screen'))+
+   '<div class="ovc">'+
+   '<div style="font-size:13.5px;font-weight:700;line-height:1.7;margin-bottom:14px">'+
+   (ios?L('<b>1.</b> Touche <b>Partager</b> en bas de Safari (le carré avec la flèche ↑)<br><br><b>2.</b> Descends et touche <b>« Sur l\'écran d\'accueil »</b><br><br><b>3.</b> Touche <b>Ajouter</b>',
+          '<b>1.</b> Tap <b>Share</b> at the bottom of Safari<br><br><b>2.</b> Scroll and tap <b>"Add to Home Screen"</b><br><br><b>3.</b> Tap <b>Add</b>')
+       :L('<b>1.</b> Touche le menu <b>⋮</b> en haut à droite du navigateur<br><br><b>2.</b> Touche <b>« Installer l\'application »</b> ou <b>« Ajouter à l\'écran d\'accueil »</b>',
+          '<b>1.</b> Tap the <b>⋮</b> menu of your browser<br><br><b>2.</b> Tap <b>"Install app"</b> or <b>"Add to Home screen"</b>'))+
+   '</div>'+
+   '<div class="note bleu" style="margin:0 0 14px">'+
+     L("Elle s'ouvre alors comme une vraie application : plein écran, plus rapide, et elle marche sans réseau.",
+       'It then opens like a real app: full screen, faster, and it works with no network.')+'</div>'+
+   '<div class="rct" style="margin-bottom:8px">'+L('Ce que répond ce téléphone','What this phone reports')+'</div>'+
+   '<div style="font-size:12px;font-weight:600;color:var(--M);line-height:1.5">'+
+     l(sur,L('Adresse sécurisée','Secure address'),location.protocol+'//'+location.hostname)+
+     l(sw,L('Service worker actif','Service worker'),sw?L('oui','yes'):L('pas encore — recharge une fois','not yet — reload once'))+
+     l(!!window._pwaInvite,L('Invitation du navigateur','Browser invitation'),
+       window._pwaInvite?L('reçue','received'):L('pas reçue — suis les étapes ci-dessus','not received — follow the steps above'))+
+   '</div></div>');
+}
+/* ⚠️⚠️ LE SERVICE WORKER ATTENDAIT LA DERNIÈRE IMAGE — et sans lui,
+   Chrome n'a pas le droit de proposer l'installation. Il était enregistré
+   dans `demarrer()`, accroché à `window.load` PUIS retardé de 900 ms :
+   sur un téléphone lent, plusieurs secondes après que l'écran soit
+   utilisable. Le patron touche « Installer » avant que le navigateur ait
+   eu le droit de proposer quoi que ce soit, et il tombe sur le mode
+   d'emploi. Même défaut que MyBoutiQ 22.08, même correction :
+   `DOMContentLoaded` suffit — le HTML est reçu, et on ne dispute plus la
+   bande passante au premier affichage.
+   ⚠️ Le service worker se prend dans LE dossier de l'application, avec sa
+   portée : servie à « /bar », une adresse relative réenregistrerait
+   `/sw.js` — celui de MyBoutiQ. */
+document.addEventListener('DOMContentLoaded',function(){
+  if(!('serviceWorker' in navigator))return;
+  var base=window.MYBAR_BASE||'/';
+  try{navigator.serviceWorker.register(base+'sw.js',{scope:base});}catch(e){}
+});
 window.addEventListener('load',function(){setTimeout(demarrer,900);});
 document.addEventListener('keydown',function(e){
   if(e.key!=='Enter')return;
@@ -1523,6 +1662,7 @@ function rendreService(){
   $('sc-ben').style.display=estPatron()?'':'none';
   $('sv-ben').textContent=fmt(marge);
 
+  majBoutonsInstaller();
   var al=alertes();
   var b=$('alert-badge');b.textContent=al.length;b.classList.toggle('show',al.length>0);
   $('svc-alertes').innerHTML=al.slice(0,2).map(function(x){
@@ -2817,13 +2957,15 @@ function rendreSettings(){
      '<div style="height:10px"></div>'+
      '<button class="bse" onclick="exporterCSV()">'+L('📥 Exporter les ventes (Excel)','📥 Export sales (Excel)')+'</button>'+
      '<button class="bse" onclick="sauvegarder()">'+L('💾 Sauvegarde complète (fichier)','💾 Full backup (file)')+'</button>'+
+     '<button class="bse" onclick="document.getElementById(\'fic-restore\').click()">'+
+       L('📂 Restaurer une sauvegarde','📂 Restore a backup')+'</button>'+
      (estPatron()?'<button class="bse bdg2" onclick="toutEffacer()">'+L('🗑️ Effacer et recommencer','🗑️ Erase and start over')+'</button>':'')+
      '</div>';
   c+='<div class="rcard"><div class="rct">'+L('📲 Application','📲 App')+'</div>'+
      '<button class="bse" onclick="installerApp()">'+L("Installer sur l'écran d'accueil",'Install on the home screen')+'</button>'+
      '<button class="bse" onclick="logout()">'+L('🚪 Fermer la session','🚪 Sign out')+'</button>'+
-     '<div class="note bleu" style="margin-top:8px">'+L('MyBar fonctionne hors-ligne. Tout est enregistré sur ce téléphone : pense à faire une sauvegarde de temps en temps.',
-       'MyBar works offline. Everything is stored on this phone — take a backup now and then.')+'</div></div>';
+     '<div class="note bleu" style="margin-top:8px">'+L('MyBar fonctionne hors-ligne. Tout est enregistré sur ce téléphone, et sur cette adresse : une sauvegarde est la seule façon de récupérer ton bar sur un autre téléphone, ou après une casse.',
+       'MyBar works offline. Everything is stored on this phone, at this address: a backup is the only way to get your bar back on another phone, or after a breakage.')+'</div></div>';
   $('st-cont').innerHTML=c;
 }
 function sauverEtab(){
@@ -2864,6 +3006,52 @@ function sauvegarder(){
   a.href=URL.createObjectURL(blob);a.download='mybar-sauvegarde-'+jour()+'.json';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   toast(L('💾 Sauvegarde téléchargée. Garde-la ailleurs que sur ce téléphone.','💾 Backup downloaded. Keep it somewhere other than this phone.'));
+}
+/* ══════════════════════════════════════════════════════════════════
+   RESTAURER — la moitié qui manquait
+
+   ⚠️ Les données d'une application vivent PAR ADRESSE. Un bar saisi sur
+   myboutiq.online/bar n'existe pas sur bar.myboutiq.online : ce ne sont
+   pas les mêmes tiroirs, et aucun réglage n'y change rien. Sans
+   restauration, déménager MyBar d'une adresse à l'autre — ou changer de
+   téléphone, ou en casser un — voulait dire ressaisir la carte, le
+   stock, les clients et les ardoises à la main.
+
+   L'export existait depuis le début et ne servait donc à rien : on
+   téléchargeait un fichier que rien ne savait relire.
+   ══════════════════════════════════════════════════════════════════ */
+function restaurer(input){
+  var f=input&&input.files&&input.files[0];
+  input.value='';                       // pour pouvoir reprendre le même fichier
+  if(!f)return;
+  var r=new FileReader();
+  r.onerror=function(){toast(L('📂 Impossible de lire ce fichier.','📂 Could not read this file.'));};
+  r.onload=function(){
+    var d=null;
+    try{d=JSON.parse(r.result);}catch(e){
+      toast(L("📂 Ce fichier n'est pas une sauvegarde MyBar.",'📂 This file is not a MyBar backup.'));return;}
+    /* On refuse tout ce qui n'a pas la forme d'un bar — une sauvegarde
+       de MyBoutiQ, par exemple, a des `articles` et des `boutiques`. */
+    if(!d||!d.cfg||!d.produits||!d.tables){
+      toast(L("📂 Ce fichier n'est pas une sauvegarde MyBar.",'📂 This file is not a MyBar backup.'));return;}
+    var quoi=(d.produits.length)+L(' produits · ',' products · ')+(d.tables.length)+L(' tables · ',' tables · ')+
+             ((d.ventes||[]).length)+L(' additions',' bills');
+    var actuel=DB?((DB.ventes||[]).length+L(' additions',' bills')):L('rien','nothing');
+    if(!confirm(L('Restaurer « '+(d.cfg.nom||'?')+' » ('+quoi+') ?\n\nCe qui est sur ce téléphone ('+actuel+') sera REMPLACÉ.',
+                  'Restore "'+(d.cfg.nom||'?')+'" ('+quoi+')?\n\nWhat is on this phone ('+actuel+') will be REPLACED.')))return;
+    try{
+      DB=migrer(d);
+      save();
+      moi=DB.equipe.filter(function(m){return m.role==='patron';})[0]||DB.equipe[0];
+      if(DB.cfg.lang&&DB.cfg.lang!==lang)setLang(DB.cfg.lang,true);
+      fermerModal();
+      goScreen('s-service');rendreService();
+      toast('✅ '+(DB.cfg.nom||'')+L(' restauré. Vérifie ton stock et tes ardoises.',' restored. Check your stock and tabs.'));
+    }catch(e){
+      toast(L('📂 Sauvegarde illisible — rien n\'a été remplacé.','📂 Unreadable backup — nothing was replaced.'));
+    }
+  };
+  r.readAsText(f);
 }
 function toutEffacer(){
   if(!confirm(L("Effacer TOUT : carte, tables, ventes, clients ? C'est définitif.",'Erase EVERYTHING: menu, tables, sales, customers? This cannot be undone.')))return;
