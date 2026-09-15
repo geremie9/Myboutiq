@@ -2378,6 +2378,7 @@ body{max-width:min(100%,1200px)}
              veut que les autres métiers RESTENT VISIBLES, marqués « Bientôt ».
              C'est ici qu'ils vivent : consultable, jamais bloquant. -->
         <div class="stit2" onclick="ouvrirSecteur()"><div class="stico" style="background:#FFF3E0">🏪</div><div class="stii"><div class="stitl" id="st-secteur">Mon type de commerce</div><div class="stisub" id="st-secteur-s">Boutique — les autres métiers arrivent</div></div><span class="starr">›</span></div>
+        <div class="stit2" id="row-maville" onclick="ouvrirMaVille()"><div class="stico" style="background:#E0F2F1">📍</div><div class="stii"><div class="stitl" id="st-mv">Ma ville</div><div class="stisub" id="st-mv-s">—</div></div><span class="starr">›</span></div>
       </div>
 
       <div class="sttit">🧾 Facturation</div>
@@ -2958,6 +2959,7 @@ body{max-width:min(100%,1200px)}
           <input class="pi" type="number" id="inp-npv" oninput="calcBenR()" inputmode="numeric">
           <div class="shcts"><button class="shct" onclick="setNPV(50)">+50</button><button class="shct" onclick="setNPV(100)">+100</button><button class="shct" onclick="setNPV(200)">+200</button><button class="shct" onclick="setNPV(0)">×2</button></div>
         </div>
+        <div id="px-ind-r" style="display:none;font-size:11px;font-weight:700;color:var(--B);margin:-4px 0 11px;line-height:1.45"></div>
         <!-- ⭐ « SI ON VEUT MODIFIER UN PRIX EN GROS ON APPUIE SEULEMENT SUR
              MODIFICATION. » Le prix du contenant vit sur l'article : il se
              corrige donc ici, à côté des deux autres, et pas dans un écran
@@ -3023,6 +3025,7 @@ body{max-width:min(100%,1200px)}
         <div class="cauto" style="margin-bottom:13px"><div class="crow"><span class="clbl" id="lbl-pa-u2">💡 Prix achat/unité</span><span class="cval" id="rc-pa">0</span></div></div>
         <div class="sth" id="ps2-h">🏷️ Prix de vente ?</div>
         <div class="pig"><label class="pl" id="lbl-pv">Prix de vente</label><input class="pi" type="number" id="inp-pv" oninput="calcBen()" inputmode="numeric"><div class="shcts"><button class="shct" onclick="setSug(50)">+50</button><button class="shct" onclick="setSug(100)">+100</button><button class="shct" onclick="setSug(200)">+200</button><button class="shct" onclick="setSug(0)">×2</button></div></div>
+        <div id="px-ind-p" style="display:none;font-size:11px;font-weight:700;color:var(--B);margin:-4px 0 11px;line-height:1.45"></div>
         <div class="bcard bon" id="bc2" style="display:none"><div><div class="blbl" id="bl2">📈 Bénéfice</div><div style="font-size:10px;font-weight:700;margin-top:2px;color:#2E7D32" id="bs2">Marge</div></div><div class="bamt" id="ba2">+0</div></div>
         <button class="bnxt" onclick="goPS(3)" id="btn-recap">✅ <span id="lbl-recap">Récapitulatif</span></button>
       </div>
@@ -3199,6 +3202,7 @@ body{max-width:min(100%,1200px)}
         <div class="pig"><label class="pl" id="albl-transp">Frais de transport</label><input class="pi" type="number" id="ainp-transp" oninput="calcAutoA()" inputmode="numeric" placeholder="0"></div>
         <div class="cauto" id="acauto" style="display:none"><div class="crow"><span class="clbl" id="albl-pa-u">Prix achat/unité</span><span class="cval" id="ac-unit">= 0</span></div></div>
         <div class="pig"><label class="pl" id="albl-pv">Prix de vente</label><input class="pi" type="number" id="ainp-pv" oninput="calcBenA()" inputmode="numeric"></div>
+        <div id="px-ind-a" style="display:none;font-size:11px;font-weight:700;color:var(--B);margin:-6px 0 11px;line-height:1.45"></div>
         <div id="sug-prix-a" style="display:none;background:#FFF8E1;border:1.4px solid #FFD79A;border-radius:9px;padding:8px 11px;font-size:11.5px;font-weight:700;color:#B45309;margin-bottom:10px"></div>
         <div class="bcard bon" id="abc" style="display:none"><div><div class="blbl" id="abl">📈 Bénéfice</div><div style="font-size:10px;font-weight:700;margin-top:2px;color:#2E7D32" id="absub">Marge</div></div><div class="bamt" id="aba">+0</div></div>
         <button class="bnxt" onclick="goAS(2)" id="btn-as1">→ Continuer</button>
@@ -3674,6 +3678,24 @@ body{max-width:min(100%,1200px)}
     <div style="padding:8px 19px 24px">
       <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px" id="pp-aide">Une photo approuvée part dans toutes les boutiques pour cet article. Vérifie que c'est bien le bon produit.</div>
       <div id="pp-lst"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MA VILLE -->
+<div class="ov" id="ov-maville" onclick="closeOv(event,'ov-maville')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">📍 <span>Ma ville</span></div><button class="bcl" onclick="closeSheet('ov-maville')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.6;margin-bottom:12px">
+        Elle sert à une seule chose : te proposer un prix indicatif à partir de ce qui se vend
+        vraiment ici. <b>Le prix d'aucune boutique n'est jamais montré</b> — ni le tien aux autres,
+        ni le leur à toi.
+      </div>
+      <div class="pig"><label class="pl">Ville ou quartier</label>
+        <input class="pi" type="text" id="mv-inp" maxlength="40" placeholder="ex : Ngong" autocomplete="off"></div>
+      <div id="mv-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 15px"></div>
+      <button class="bt" style="width:100%" onclick="enregistrerMaVille()">✅ Enregistrer</button>
     </div>
   </div>
 </div>
@@ -4314,7 +4336,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.12'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.13'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6581,7 +6603,9 @@ async function _finaliserObSuite(nm,tel,pin,_relacher){
     _relacher();return;
   }
   var p=obPays||PAYS[0];
-  var reg=document.getElementById('ob-region')?.value.trim()||'';
+  // Normalisée dès la saisie : c'est ce qui rassemble les boutiques d'une
+  // même ville au lieu d'en faire deux groupes qui ne se voient pas.
+  var reg=villeJolie(document.getElementById('ob-region')?.value||'');
   // Générer code boutique scalable (1 milliard de combinaisons)
   var code=genCode();
   // La boutique démarre VIDE : le patron ajoute SES articles.
@@ -12549,7 +12573,7 @@ function showNotifs(){var al=DB.articles.filter(function(p){var ts=getStk(p);ret
 // PRIX
 // ═══════════════════════════════════════════
 function ouvrirPrix(p){if(role!=='patron')return;artCours=p;renderAgpx();goPS(0);document.getElementById('ov-prix').classList.add('show');}
-function ouvrirModifR(p){artCours=p;pxAU=p.pa;document.getElementById('ae-0b').textContent=p.e;document.getElementById('an-0b').textContent=p.nm;document.getElementById('lbl-pa-cur').textContent=lang==='fr'?'Prix achat actuel':'Current buy price';document.getElementById('lbl-pv-cur').textContent=lang==='fr'?'Prix vente actuel':'Current sell price';document.getElementById('cur-pa').textContent=fmt(p.pa);document.getElementById('cur-pv').textContent=fmt(p.px);document.getElementById('inp-npv').value=p.px;var _ipa=document.getElementById('inp-npa');if(_ipa)_ipa.value=p.pa>0?p.pa:'';document.getElementById('bc-r').style.display='none';majPrixGrosModif(p);calcBenR();goPS('0b');document.getElementById('ov-prix').classList.add('show');}
+function ouvrirModifR(p){artCours=p;pxAU=p.pa;document.getElementById('ae-0b').textContent=p.e;document.getElementById('an-0b').textContent=p.nm;document.getElementById('lbl-pa-cur').textContent=lang==='fr'?'Prix achat actuel':'Current buy price';document.getElementById('lbl-pv-cur').textContent=lang==='fr'?'Prix vente actuel':'Current sell price';document.getElementById('cur-pa').textContent=fmt(p.pa);document.getElementById('cur-pv').textContent=fmt(p.px);document.getElementById('inp-npv').value=p.px;var _ipa=document.getElementById('inp-npa');if(_ipa)_ipa.value=p.pa>0?p.pa:'';document.getElementById('bc-r').style.display='none';majPrixGrosModif(p);calcBenR();try{majPrixIndicatif(p.nm,'px-ind-r');}catch(e){}goPS('0b');document.getElementById('ov-prix').classList.add('show');}
 // Le troisième prix : celui du contenant, quand l'app sait ce qu'il contient.
 function majPrixGrosModif(p){
   var row=document.getElementById('npg-row'),inp=document.getElementById('inp-npg'),
@@ -12594,7 +12618,7 @@ function _vignettePicker(p){if(p.img)return '<img src="'+p.img+'" style="width:4
 function renderAgpx(){var g=document.getElementById('agpx');g.innerHTML='';DB.articles.forEach(function(p){var d=document.createElement('div');d.className='apcd';d.innerHTML=_vignettePicker(p)+'<div style="font-size:11px;font-weight:700;color:var(--T);margin-bottom:2px">'+p.nm+'</div><div style="font-size:11px;font-weight:800;color:var(--B)">'+prixCarte(p)+'</div>';d.onclick=function(){selArt(p,true);};g.appendChild(d);});}
 function filtrAP(q){Array.from(document.getElementById('agpx').children).forEach(function(c){c.style.display=c.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});}
 function selArt(p,rapide){artCours=p;if(p.vr&&p.vr.length){closeSheet('ov-prix');ouvrirCompleterArticle(p);return;}if(rapide&&p.pa>0){ouvrirModifR(p);return;}document.getElementById('ae-1').textContent=p.e;document.getElementById('an-1').textContent=p.nm;if(p.pa>0){document.getElementById('inp-pa').value=p.pa;pxAU=p.pa;}if(p.px>0)document.getElementById('inp-pv').value=p.px;achatType='carton';selType('carton');goPS(1);calcAuto();}
-function goPS(n){document.querySelectorAll('.pst').forEach(function(s){s.classList.remove('on');});var el=document.getElementById('ps'+n);if(el)el.classList.add('on');if(n===0){var src=document.getElementById('src-ap');if(src)src.value='';renderAgpx();}if(n===3)buildRecap();}
+function goPS(n){document.querySelectorAll('.pst').forEach(function(s){s.classList.remove('on');});var el=document.getElementById('ps'+n);if(el)el.classList.add('on');if(n===2)try{majPrixIndicatif(artCours?artCours.nm:'','px-ind-p');}catch(e){}if(n===0){var src=document.getElementById('src-ap');if(src)src.value='';renderAgpx();}if(n===3)buildRecap();}
 function selType(tp){achatType=tp;['carton','lot','unite'].forEach(function(x){document.getElementById('t-'+x[0]).classList.toggle('on',x===tp);});var qs=document.getElementById('qsec');if(tp==='unite'){qs.style.display='none';}else{qs.style.display='block';document.getElementById('lbl-nb-u').textContent=tp==='carton'?(lang==='fr'?'Unités dans 1 carton':'Units per box'):(lang==='fr'?'Pièces dans 1 lot':'Pieces per batch');}calcAuto();}
 function setQ(n){document.getElementById('inp-qte').value=n;calcAuto();}
 function calcAuto(){
@@ -12992,6 +13016,127 @@ function txtNorm(s){
     .replace(/\u0153/g,'oe').replace(/\u00e6/g,'ae')
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/\s+/g,' ').trim();
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « NGONG » ET « NGONG » ÉTAIENT DEUX VILLES DIFFÉRENTES
+//
+//  Mesuré en production : 14 boutiques écrites « NGONG », 5 écrites
+//  « Ngong ». Le serveur comparait `region = region`, lettre pour lettre :
+//  les deux groupes ne se voyaient pas. Et 23 boutiques sur 49 n'ont aucune
+//  ville — parce que le champ n'existe QU'À L'INSCRIPTION et n'est jamais
+//  modifiable ensuite. Elles ne pouvaient donc plus jamais la renseigner.
+//
+//  Tant que ça reste vrai, aucun prix par ville ne peut fonctionner :
+//  il n'y a pas de ville.
+// ══════════════════════════════════════════════════════════════════
+function cleVille(s){
+  return txtNorm(s).replace(/[^a-z0-9]+/g,' ').trim().toUpperCase();
+}
+// Ce qu'on AFFICHE et ce qu'on enregistre : « ngong » et « NGONG » s'écrivent
+// tous les deux « Ngong », donc les deux boutiques finissent au même endroit.
+function villeJolie(s){
+  var v=String(s||'').replace(/\s+/g,' ').trim().slice(0,40);
+  if(!v)return '';
+  return v.toLowerCase().replace(/(^|[\s'\u2019\-])([a-z\u00e0-\u00f6\u00f8-\u00ff])/g,
+    function(m,a,b){return a+b.toUpperCase();});
+}
+var VILLES_CM=['Douala','Yaound\u00e9','Garoua','Bafoussam','Bamenda','Maroua','Ngaound\u00e9r\u00e9',
+  'Bertoua','Buea','Ebolowa','Kribi','Limbe','Kumba','Ed\u00e9a','Dschang','Foumban','Nkongsamba',
+  'Ngong','Guider','Mbalmayo','Sangm\u00e9lima','Meiganga','Yagoua','Kouss\u00e9ri','Mokolo','Batouri'];
+function ouvrirMaVille(){
+  if(role!=='patron'){showToast('\u26d4 '+(lang==='fr'?'R\u00e9serv\u00e9 au patron':'Owner only'));return;}
+  var inp=document.getElementById('mv-inp');
+  if(inp)inp.value=(DB&&DB.cfg&&DB.cfg.region)||'';
+  var c=document.getElementById('mv-chips');
+  if(c)c.innerHTML=VILLES_CM.map(function(v){
+    return '<button type="button" class="shct" onclick="poserMaVille(\''+v.replace(/'/g,"\\'")+'\')">'+v+'</button>';
+  }).join('');
+  document.getElementById('ov-maville').classList.add('show');
+}
+function poserMaVille(v){
+  var inp=document.getElementById('mv-inp');
+  if(inp)inp.value=v;
+  enregistrerMaVille();
+}
+function enregistrerMaVille(){
+  var fr=(lang!=='en');
+  var v=villeJolie((document.getElementById('mv-inp')||{}).value||'');
+  DB.cfg.region=v;
+  save();
+  try{_pxInd=null;_pxIndCode=null;}catch(e){}
+  try{syncToSupa();}catch(e){}
+  majLigneMaVille();
+  closeSheet('ov-maville');
+  showToast(v?('\ud83d\udccd '+(fr?('Ta ville : '+v):('Your town: '+v)))
+             :('\ud83d\uddd1\ufe0f '+(fr?'Ville retir\u00e9e':'Town removed')));
+}
+function majLigneMaVille(){
+  var r=document.getElementById('row-maville');if(!r)return;
+  r.style.display=(role==='patron')?'':'none';
+  var sub=document.getElementById('st-mv-s');if(!sub)return;
+  var fr=(lang!=='en'),v=(DB&&DB.cfg&&DB.cfg.region)||'';
+  sub.textContent=v?v:(fr?'\u26a0\ufe0f Pas encore renseign\u00e9e \u2014 touche pour la dire'
+                         :'\u26a0\ufe0f Not set yet \u2014 tap to set it');
+}
+// ══════════════════════════════════════════════════════════════════
+//  \ud83d\udca1 PRIX INDICATIF PAR VILLE \u2014 SUGG\u00c9RER SANS DIVULGUER
+//
+//  Sa r\u00e8gle, mot pour mot : « les prix par r\u00e9gion veut dire juste sugg\u00e9rer
+//  des prix SANS DIVULGUER LE PRIX DES VOISINS AUX CONCURRENTS ».
+//
+//  Elle n'est pas tenue par cet \u00e9cran, elle est tenue par le serveur :
+//  `prix_indicatif` ne renvoie QUE la m\u00e9diane, arrondie \u00e0 25 F, et
+//  seulement \u00e0 partir de CINQ PROPRI\u00c9TAIRES DIFF\u00c9RENTS (pas cinq
+//  boutiques : cinq num\u00e9ros, sinon on fabrique un quorum tout seul), le
+//  demandeur exclu, et uniquement sur des prix ATTEST\u00c9S PAR UNE VENTE.
+//  Aucun nom, aucun code, aucun minimum, aucun maximum ne sort jamais.
+//
+//  ⚠️ MESUR\u00c9 AVANT D'\u00c9CRIRE : une seule ligne du pays passe ce seuil
+//  aujourd'hui. L'indication reste donc muette presque partout \u2014 c'est
+//  voulu. Elle s'allumera d'elle-m\u00eame quand de vraies boutiques arriveront.
+//  Mieux vaut ne rien dire que d'annoncer « le prix de ta ville » en
+//  renvoyant les prix de d\u00e9monstration de l'application.
+// ══════════════════════════════════════════════════════════════════
+var _pxInd=null,_pxIndCode=null,_pxIndQuand=0;
+async function chargerPrixIndicatifs(){
+  try{
+    var code=(DB&&DB.cfg&&DB.cfg.code)||'';
+    if(!code||!(DB.cfg.region||'').trim())return null;
+    if(_pxInd&&_pxIndCode===code&&(Date.now()-_pxIndQuand)<6*3600*1000)return _pxInd;
+    assurerConnexionSupa();
+    if(!supa||!navigator.onLine)return _pxInd;
+    var r=await supa.rpc('prix_indicatif',{p_code:code});
+    if(r.error)return _pxInd;
+    var m={};
+    (r.data||[]).forEach(function(x){
+      if(!x||!x.cle||!(x.prix>0))return;
+      m[txtNorm(x.cle)]={prix:Number(x.prix),nb:Number(x.nb)||0};
+    });
+    _pxInd=m;_pxIndCode=code;_pxIndQuand=Date.now();
+    return _pxInd;
+  }catch(e){return _pxInd;}
+}
+function prixIndicatifDe(nm){
+  if(!_pxInd)return null;
+  var c=txtNorm(nm);
+  if(!c)return null;
+  return _pxInd[c]||null;
+}
+// Une ligne discr\u00e8te sous le champ, jamais un \u00e9cran, jamais une liste.
+function majPrixIndicatif(nm,elId){
+  var el=document.getElementById(elId);if(!el)return;
+  function dessiner(){
+    var d=prixIndicatifDe(nm);
+    if(!d){el.style.display='none';el.innerHTML='';return;}
+    var fr=(lang!=='en');
+    el.style.display='';
+    el.innerHTML='\ud83d\udca1 '+(fr?'Dans ta ville : environ <b>':'In your town: about <b>')
+      +fmt(d.prix)+'</b>'
+      +' <span style="font-weight:600;opacity:.8">('+(fr?('m\u00e9diane de '+d.nb+' boutiques, sans leurs prix')
+                                                       :('median of '+d.nb+' shops'))+')</span>';
+  }
+  dessiner();
+  if(!_pxInd)chargerPrixIndicatifs().then(dessiner).catch(function(){});
 }
 function emojiDepuisNomProduit(nm){
   // Contextuel commerce informel : chaque produit courant a SON image, pas un fourre-tout.
@@ -16392,7 +16537,7 @@ function analyserCollage(){
   _verserDansListe(res);
 }
 function ouvrirAjout(){if(!(role==='patron'||hasPerm('produits')))return;selEmo='📦';selCat=lang==='fr'?'Alimentation':'Food';achatTypeA='carton';ruptSel=true;selImg=null;_lastAutoStk=null;umSel='pc';try{choisirUm('pc');}catch(e){}document.getElementById('photo-real-preview').style.display='none';['art-nm','ainp-qte','ainp-pa','ainp-pv','ainp-stk','ainp-transp','ainp-mult','ainp-parcont','ainp-umnom'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('ainp-alerte').value='5';document.getElementById('acauto').style.display='none';document.getElementById('abc').style.display='none';var _sa=document.getElementById('sug-prix-a');if(_sa)_sa.style.display='none';document.getElementById('tog-rupt').className='tog on';var emojiBtn=document.getElementById('btn-photo-emoji');if(emojiBtn)emojiBtn.style.display='none';initEmoGrid();initCatGrid();masquerSuggestions();_emoManuel=false;_catManuel=false;var _cg=document.getElementById('cgrd');if(_cg)_cg.style.display='none';var _cl=document.getElementById('lnk-cat');if(_cl)_cl.textContent=(lang==='fr'?'Changer ▾':'Change ▾');var _ew=document.getElementById('egrd-wrap');if(_ew)_ew.style.display='none';var _lk=document.getElementById('lnk-ico');if(_lk)_lk.textContent=(lang==='fr'?'Changer l\'icône ▾':'Change icon ▾');majIdentitePastille();goAS(0);document.getElementById('ov-art').classList.add('show');}
-function goAS(n){document.querySelectorAll('#ov-art .pst').forEach(function(s){s.classList.remove('on');});document.getElementById('as'+n).classList.add('on');if(n===1){var nm=document.getElementById('art-nm').value||'Article';var _idh=selImg?('<img src="'+selImg+'" style="width:100%;height:100%;object-fit:cover">'):selEmo;document.getElementById('ae-as').innerHTML=_idh;document.getElementById('an-as').textContent=nm;document.getElementById('ae-as2').innerHTML=_idh;document.getElementById('an-as2').textContent=nm;selTypeA('carton');}}
+function goAS(n){document.querySelectorAll('#ov-art .pst').forEach(function(s){s.classList.remove('on');});document.getElementById('as'+n).classList.add('on');if(n===1){var nm=document.getElementById('art-nm').value||'Article';var _idh=selImg?('<img src="'+selImg+'" style="width:100%;height:100%;object-fit:cover">'):selEmo;document.getElementById('ae-as').innerHTML=_idh;document.getElementById('an-as').textContent=nm;document.getElementById('ae-as2').innerHTML=_idh;document.getElementById('an-as2').textContent=nm;selTypeA('carton');try{majPrixIndicatif(nm,'px-ind-a');}catch(e){}}}
 function selTypeA(tp){achatTypeA=tp;['carton','palette','lot','unite'].forEach(function(x){var el=document.getElementById('at-'+x[0]);if(el)el.classList.toggle('on',x===tp);});var qs=document.getElementById('aqsec'),qm=document.getElementById('aqmult');if(tp==='unite'){qs.style.display='none';qm.style.display='none';}else{qs.style.display='block';qm.style.display='flex';}
   // Au poids/litre, on parle la langue du patron : SACS et BIDONS, pas des casiers
   var mesureA=(typeof umSel!=='undefined'&&(umSel==='kg'||umSel==='L'));
@@ -19862,6 +20007,15 @@ function migrateDBData(d){
   if(!Array.isArray(d.suppr))d.suppr=[]; // tombstones : articles supprimés (survit à la fusion)
   if(!Array.isArray(d.journal))d.journal=[]; // S4 : journal des gestes sensibles (prix/stock/suppression)
   if(!Array.isArray(d.erreurs))d.erreurs=[]; // ventes qu'un vendeur dit avoir ratées, en attente du patron
+  // ⚠️ « NGONG » et « Ngong » étaient deux villes. On range tout le monde
+  // sous la même écriture, à chaque ouverture — sinon la correction faite
+  // sur le serveur serait réécrite par le premier téléphone qui se synchronise.
+  try{
+    if(typeof villeJolie==='function'&&d.cfg.region){
+      var _vj=villeJolie(d.cfg.region);
+      if(_vj&&_vj!==d.cfg.region)d.cfg.region=_vj;
+    }
+  }catch(e){}
   if(d.cfg.venteDeverrouillee===undefined)d.cfg.venteDeverrouillee=false; // on vend, on ne modifie pas
   if(d.cfg.recuAuto===undefined)d.cfg.recuAuto=false;                     // vente rapide par défaut
   if(!d.arch||typeof d.arch!=='object')d.arch={upTo:0,resume:[]}; // S3 : archivage (upTo = ventes<cette date repliées dans stk0/vd0)
@@ -20858,7 +21012,7 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majLigneMaVille();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
