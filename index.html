@@ -4415,7 +4415,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.19'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.20'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4791,6 +4791,53 @@ async function signUpOwnerAuth(phone,pin){
 async function _lireAvantEcrire(code){
   try{return await _lireBoutique(code,true);}catch(e){return null;}
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ L'INSCRIPTION CRÉAIT 2 À 4 BOUTIQUES. EN UNE À TROIS SECONDES.
+//
+//  MESURÉ EN PRODUCTION, sur les 10 comptes qui ont plusieurs boutiques :
+//     Kodji Geremie   2 boutiques en 0 seconde
+//     Reines shop     3 boutiques en 1 seconde
+//     Sinicelestin    2 en 1 s · Sanika 2 en 1 s · tati 2 en 1 s
+//     Ets vag         2 en 2 s · RPG BOUBA 2 en 2 s
+//     Teko center     4 en 3 secondes
+//  Sept comptes sur dix. Ce n'est pas quelqu'un qui tape plusieurs fois :
+//  c'est la machine. 18 boutiques de la base sur 48 sont des FANTÔMES —
+//  zéro article, zéro vente, zéro client, zéro dépense. 37 %.
+//
+//  ET C'EST LÀ QUE LES COMMERÇANTS SE PERDENT. Ils reviennent, ils voient
+//  trois « Teko center » identiques dont deux vides, ils en ouvrent une au
+//  hasard, elle est vide — et ils concluent que l'app a perdu leur travail.
+//
+//  La boucle `for(attempt<3)` tire un code neuf et réinsère à chaque échec,
+//  et deux synchronisations peuvent partir en même temps (l'inscription et
+//  la veille). Plutôt que de deviner lequel des deux chemins a tiré, on rend
+//  la création IMPOSSIBLE À RÉPÉTER : avant d'insérer une boutique neuve, si
+//  ce compte en a déjà une VIDE qui lui ressemble, on réécrit dedans.
+//  Rien ne peut être perdu — elle est vide, par définition.
+// ══════════════════════════════════════════════════════════════════
+async function _boutiqueVideDuCompte(uid,nom){
+  try{
+    if(!supa||!uid)return null;
+    var r=await supa.from('boutiques').select('id,code,nom,created_at,data')
+            .eq('owner_id',uid).order('created_at',{ascending:false}).limit(20);
+    if(r.error||!r.data||!r.data.length)return null;
+    var cible=txtNorm(nom||'');
+    var recent=Date.now()-10*60*1000;
+    return r.data.find(function(x){
+      var d=x&&x.data;
+      var vide=!d||(!(d.articles&&d.articles.length)&&!(d.ventes&&d.ventes.length)
+                   &&!(d.clients&&d.clients.length)&&!(d.depenses&&d.depenses.length));
+      if(!vide)return false;
+      // ⚠️ On ne réécrit PAS dans n'importe quelle boutique vide : seulement
+      // dans celle qui porte le même nom, ou dans une créée à l'instant.
+      // Sinon un patron qui ouvre volontairement une deuxième boutique
+      // verrait sa première, encore vide, se faire remplacer.
+      if(cible&&txtNorm(x.nom||'')===cible)return true;
+      var t=x.created_at?Date.parse(x.created_at):0;
+      return t>0&&t>recent;
+    })||null;
+  }catch(e){return null;}
+}
 async function syncToSupa(){
   // ⚠️ RÈGLE 2 DE LA BOUTIQUE D'EXEMPLE : elle ne quitte JAMAIS le téléphone.
   // Sans cette ligne, 170 faux articles et leurs faux stocks partiraient au
@@ -5002,6 +5049,20 @@ async function syncToSupa(){
         }
         DB.cfg.code=genCode();
         continue;
+      }
+      // ⚠️⚠️ AVANT D'EN CRÉER UNE DE PLUS : ce compte en a-t-il déjà une vide ?
+      // C'est ce test qui manquait, et c'est lui qui a produit les 18
+      // boutiques fantômes de la base.
+      if(user){
+        var _vide=await _boutiqueVideDuCompte(user.id,payload.nom);
+        if(_vide){
+          var _majV=await supa.from('boutiques').update(payload).eq('id',_vide.id).select('id');
+          if(!_majV.error&&_majV.data&&_majV.data.length){
+            DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();
+            var cv5=document.getElementById('code-val');if(cv5)cv5.textContent=DB.cfg.code;
+            return true;
+          }
+        }
       }
       var ins=await supa.from('boutiques').insert(Object.assign({actif:true,plan:'gratuit'},payload));
       if(!ins.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv4=document.getElementById('code-val');if(cv4)cv4.textContent=DB.cfg.code;return true;}
@@ -6634,6 +6695,29 @@ var _obEnCours=false;
 async function finaliserOb(){
   if(_obEnCours)return;
   var nm=document.getElementById('ob-nom')?.value.trim()||'';
+  // ══════════════════════════════════════════════════════════════
+  //  ⚠️⚠️ DÉFAUT CONNU, PAS ENCORE RÉPARÉ : LE MÊME NUMÉRO PEUT FABRIQUER
+  //  DEUX COMPTES DIFFÉRENTS.
+  //
+  //  `normalizePhone` a besoin du pays pour remettre l'indicatif. À
+  //  l'inscription il n'y a pas encore de base et `obPays` peut être nul :
+  //  un numéro tapé sans indicatif ressort tel quel, et
+  //  `authEmailFromPhone` en tire `owner-693930689@…` au lieu de
+  //  `owner-237693930689@…`.
+  //
+  //  MESURÉ EN BASE — « Mbams », deux comptes pour un seul commerçant :
+  //     693930689      → compte fead662a, boutique VIDE
+  //     +237693930689  → compte 708aa11f, 1 article et 2 ventes
+  //  S'il revient en tapant son numéro sans l'indicatif, il tombe sur le
+  //  compte vide et ne retrouve jamais ses ventes. Idem « Ets vag ».
+  //
+  //  ⚠️ ET LA CORRECTION ÉVIDENTE EST PIRE QUE LE MAL : forcer un pays par
+  //  défaut avant de normaliser donne `owner-225693930689@` pour un numéro
+  //  camerounais quand le téléphone répond « Côte d'Ivoire » — un TROISIÈME
+  //  compte. Mesuré au banc. La réparation doit se faire à la CONNEXION —
+  //  essayer les deux écritures et ouvrir celle qui existe — pas ici, où
+  //  l'on graverait une devinette dans l'identité du commerçant.
+  // ══════════════════════════════════════════════════════════════
   var tel=normalizePhone(document.getElementById('ob-tel')?.value.trim()||'');
   var pin=document.getElementById('ob-pin')?.value.trim()||'';
   if(!nm){showToast(t('errBoutique'));return;}
