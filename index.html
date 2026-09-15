@@ -369,6 +369,30 @@ html.porte-rapide #entree-rapide,html.porte-rapide #er-pin-wrap{display:block}
 #u-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 /* Un état allumé se voit ; un état éteint ne prend aucune place. */
 .hchip{font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.16);color:#fff;white-space:nowrap;cursor:pointer;flex-shrink:0}
+/* ⚡ Tout configurer : une ligne par article, trois cases, rien d'autre.
+   ⚠️ Les cases restent sous le pouce (40 px de haut) et la ligne ne déborde
+   jamais : c'est le nom qui se coupe, jamais un champ qui rétrécit. */
+.grrow{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--BD)}
+.grrow.grfam{cursor:pointer}
+.grrow.grperte{background:rgba(198,40,40,.05);border-radius:9px;padding-left:5px;padding-right:5px}
+.grmed{width:36px;height:36px;border-radius:10px;background:var(--BG);display:flex;align-items:center;
+       justify-content:center;font-size:19px;overflow:hidden;flex-shrink:0}
+.grmed img{width:100%;height:100%;object-fit:cover}
+.grmed.grpetit{width:22px;height:36px;background:transparent;font-size:14px;color:var(--M)}
+.grnm{flex:1;min-width:0}
+.grn1{font-size:12.5px;font-weight:800;color:var(--T);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grn2{font-size:10px;font-weight:700;color:var(--M);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grcases{display:flex;gap:5px;flex-shrink:0}
+.grlab{display:flex;flex-direction:column;gap:2px;font-size:9px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.3px}
+.grin{height:40px;border:1.5px solid var(--BD);border-radius:9px;background:var(--C);color:var(--T);
+      font-size:13.5px;font-weight:800;text-align:center;font-family:Outfit,sans-serif;padding:0 4px}
+.grin:focus{outline:none;border-color:var(--B)}
+.grun{margin-top:3px;background:var(--BG);border:none;border-radius:7px;padding:3px 0;width:100%;
+      font-size:9px;font-weight:800;color:var(--B);cursor:pointer;font-family:Outfit,sans-serif;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grchev{font-size:15px;color:var(--M);font-weight:800;flex-shrink:0;padding:0 4px}
+@media(max-width:360px){.grin{font-size:12.5px}.grlab{font-size:8.5px}}
+
 .hchip.chaud{background:var(--A);color:var(--P)}
 .rbdg{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:700}
 .rb-p{background:var(--A);color:var(--P)}.rb-v{background:var(--B);color:#fff}.rb-g{background:var(--PU);color:#fff}
@@ -2383,6 +2407,7 @@ body{max-width:min(100%,1200px)}
       <div class="sttit">🛍️ Catalogue</div>
       <div class="stcd">
         <div class="stit2" onclick="ouvrirPorteArticles();goBack()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="st-art">Ajouter un article</div><div class="stisub" id="st-art-s">Nouvel article</div></div><span class="starr">›</span></div>
+        <div class="stit2" id="row-grille" onclick="ouvrirGrilleConfig()"><div class="stico" style="background:#FFF8E1">⚡</div><div class="stii"><div class="stitl" id="st-gr">Tout configurer</div><div class="stisub" id="st-gr-s">—</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirPrix(null);goBack()"><div class="stico" style="background:#E3F2FD">💰</div><div class="stii"><div class="stitl" id="st-prix">Modifier les prix</div><div class="stisub" id="st-prix-s">Prix achat, vente, bénéfice</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirStk(null);goBack()"><div class="stico" style="background:#E8F5E9">📦</div><div class="stii"><div class="stitl" id="st-stk">Entrée de stock</div><div class="stisub" id="st-stk-s">Ajouter des quantités</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="afficherVentesRapides()"><div class="stico" style="background:#FFFDE7">⚡</div><div class="stii"><div class="stitl">Remettre les ventes rapides</div><div class="stisub">La rangée des articles qui partent le plus, en haut de la caisse</div></div><span class="starr">›</span></div>
@@ -3706,6 +3731,25 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- ⚡ TOUT CONFIGURER -->
+<div class="ov" id="ov-grille" onclick="closeOv(event,'ov-grille')">
+  <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">⚡ <span>Tout configurer</span></div><button class="bcl" onclick="closeSheet('ov-grille')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.6;margin-bottom:10px">
+        Prix d'achat, prix de vente et stock — une ligne par article. Ça s'enregistre tout seul.
+        <b>Tes ventes et ton bénéfice ne bougent pas.</b>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--T);margin-bottom:9px" id="gr-etat"></div>
+      <div style="display:flex;gap:6px;margin-bottom:9px">
+        <button class="cbtn on" id="gr-f-manque" onclick="grFiltrer('manque')">⚠️ Ce qui manque</button>
+        <button class="cbtn" id="gr-f-tout" onclick="grFiltrer('tout')">Tout</button>
+      </div>
+      <div id="gr-lst"></div>
+    </div>
+  </div>
+</div>
+
 <!-- MA VILLE -->
 <div class="ov" id="ov-maville" onclick="closeOv(event,'ov-maville')">
   <div class="bsht"><div class="shndl"></div>
@@ -4360,7 +4404,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.15'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.16'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8126,6 +8170,207 @@ function cmpPlus(){
   if(b)b.style.display='none';
   if(s)s.style.display='block';
   try{document.getElementById('cmp-pa').focus();}catch(e){}
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⚡ TOUT CONFIGURER — UNE LIGNE PAR ARTICLE
+//
+//  Sa phrase, celle qui a commandé tout ce travail :
+//  « La difficulté est principalement APRÈS AVOIR IMPORTÉ les images. C'est
+//   précisément là : il faut maintenant configurer le prix d'achat et de
+//   vente, le stock — c'est là le problème. Et l'enregistrement du stock
+//   pareil, difficile : ça s'enregistre de façon unitaire, pas en gros. »
+//
+//  Ce qui existait : un écran qui pose UN article à la fois. Soixante
+//  photos importées, c'étaient soixante écrans à traverser, sans pouvoir
+//  revenir, sans voir où on en est, et à perdre pour de bon en le fermant.
+//
+//  Ici : tout tient sur une liste. Une ligne, trois cases. Ce qui manque
+//  remonte en haut. Ça se rouvre autant de fois qu'il veut, des jours plus
+//  tard, et les boutiques déjà installées y ont droit aussi.
+//
+//  ⚠️ DEUX RÈGLES ABSOLUES, les mêmes que partout ici :
+//   1. ON NE TOUCHE QUE `pa`, `px` ET LE STOCK. Jamais une vente, jamais un
+//      total, jamais un bénéfice déjà enregistré.
+//   2. LE STOCK SE COMPTE EN GROS. Il dit « 3 cartons », pas « 72 » — c'est
+//      exactement la moitié de sa plainte, et elle n'était réparée nulle part.
+//
+//  ⚠️ ET LE PIÈGE DU STOCK : `stk` est CALCULÉ (`stk0` + ravitaillements −
+//  ventes). L'écrire directement, c'est le voir effacé au prochain recalcul.
+//  On ajuste donc `stk0` de la différence : ce qu'il voit devient ce qu'il a
+//  tapé, et pas une seule vente n'a bougé.
+// ══════════════════════════════════════════════════════════════════
+var _grFiltre='manque',_grOuverts={},_grUnite={};
+function _grIncomplet(p,v){
+  if(v)return !(Number(v.px)>0);
+  if(p.vr&&p.vr.length)return (p.vr||[]).some(function(x){return !(Number(x.px)>0);});
+  return !(Number(p.px)>0);
+}
+// La liste à plat : les familles restent repliées tant qu'il ne les ouvre pas,
+// « pour économiser l'écran touffu » — sa demande sur les boissons.
+function _grLignes(){
+  var out=[];
+  (DB.articles||[]).forEach(function(p){
+    if(!p)return;
+    var fam=!!(p.vr&&p.vr.length);
+    var manque=_grIncomplet(p,null);
+    if(_grFiltre==='manque'&&!manque)return;
+    out.push({p:p,v:null,fam:fam,cle:'a'+p.id,manque:manque,
+              nb:fam?p.vr.length:0});
+    if(fam&&_grOuverts[p.id])(p.vr||[]).forEach(function(v){
+      out.push({p:p,v:v,fam:false,sous:true,cle:'v'+p.id+'_'+v.id,manque:_grIncomplet(p,v)});
+    });
+  });
+  // Ce qui manque d'abord : c'est la liste de travail, pas un inventaire.
+  out.sort(function(a,b){
+    var ca=(a.sous?a.p.id:a.p.id), cb=(b.sous?b.p.id:b.p.id);
+    if(ca!==cb){
+      var ma=_grIncomplet(a.p,null)?0:1, mb=_grIncomplet(b.p,null)?0:1;
+      if(ma!==mb)return ma-mb;
+      return txtNorm(a.p.nm)<txtNorm(b.p.nm)?-1:1;
+    }
+    return (a.sous?1:0)-(b.sous?1:0);
+  });
+  return out;
+}
+function _grEtat(){
+  var tot=0,ok=0;
+  (DB.articles||[]).forEach(function(p){
+    if(!p)return;
+    if(p.vr&&p.vr.length){(p.vr||[]).forEach(function(v){tot++;if(Number(v.px)>0)ok++;});}
+    else{tot++;if(Number(p.px)>0)ok++;}
+  });
+  return {tot:tot,ok:ok,manque:tot-ok};
+}
+function majLigneGrille(){
+  var r=document.getElementById('row-grille');if(!r)return;
+  var peut=(role==='patron'||hasPerm('produits'));
+  r.style.display=peut?'':'none';
+  if(!peut)return;
+  var sub=document.getElementById('st-gr-s');if(!sub)return;
+  var fr=(lang!=='en'),e=_grEtat();
+  sub.textContent=e.manque
+    ?(fr?(e.manque+' article'+(e.manque>1?'s':'')+' sans prix — prix, stock en gros, d\'un seul écran')
+        :(e.manque+' item'+(e.manque>1?'s':'')+' without a price'))
+    :(fr?'Prix d\'achat, prix de vente et stock — une ligne par article'
+        :'Cost, price and stock — one line per item');
+}
+function ouvrirGrilleConfig(){
+  if(!(role==='patron'||hasPerm('produits'))){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  _grOuverts={};_grUnite={};
+  var e=_grEtat();
+  _grFiltre=e.manque?'manque':'tout';
+  document.getElementById('ov-grille').classList.add('show');
+  renderGrille();
+}
+function grFiltrer(f){_grFiltre=f;renderGrille();}
+function grBasculerFamille(id){_grOuverts[id]=!_grOuverts[id];renderGrille();}
+// ⚠️ « Ça s'enregistre de façon unitaire, pas en gros. » Le carton est ici.
+function _grEtageDe(p,v){
+  try{var e=_etagesGros(p,v||null);return (e&&e.length)?e[0]:null;}catch(x){return null;}
+}
+function grBasculerUnite(cle){_grUnite[cle]=!_grUnite[cle];renderGrille();}
+function _grCase(cle,champ,val,ph,largeur){
+  return '<input class="grin" inputmode="decimal" data-gr="'+cle+'" data-ch="'+champ+'" '
+    +'style="width:'+largeur+'px" value="'+(val>0?val:'')+'" placeholder="'+ph+'" '
+    +'onchange="grEcrire(this)" onclick="event.stopPropagation()">';
+}
+function renderGrille(){
+  var c=document.getElementById('gr-lst');if(!c)return;
+  var fr=(lang!=='en'),lignes=_grLignes(),e=_grEtat();
+  var t=document.getElementById('gr-etat');
+  if(t)t.innerHTML=e.tot
+    ?('<b>'+e.ok+'</b> '+(fr?'sur':'of')+' <b>'+e.tot+'</b> '+(fr?'prêts à vendre':'ready')
+      +(e.manque?(' · <span style="color:#B45309">'+e.manque+' '+(fr?'sans prix':'without price')+'</span>'):' 🎉'))
+    :'';
+  var fm=document.getElementById('gr-f-manque'),ft=document.getElementById('gr-f-tout');
+  if(fm)fm.className='cbtn'+(_grFiltre==='manque'?' on':'');
+  if(ft)ft.className='cbtn'+(_grFiltre==='tout'?' on':'');
+  if(!lignes.length){
+    c.innerHTML='<div style="font-size:12.5px;color:var(--M);font-weight:600;padding:14px 0;line-height:1.6">'
+      +(_grFiltre==='manque'
+        ?(fr?'🎉 Tout est configuré. Touche « Tout » pour revoir la liste entière.':'🎉 Everything is set.')
+        :(fr?'Aucun article. Commence par en ajouter ou par importer tes photos.':'No item yet.'))+'</div>';
+    return;
+  }
+  var h='';
+  lignes.forEach(function(l){
+    var p=l.p,v=l.v,cible=v||p;
+    var nom=v?(v.nm||''):p.nm;
+    var pa=Number(cible.pa)||0,px=Number(cible.px)||0,stk=Number(cible.stk)||0;
+    var perte=(pa>0&&px>0&&pa>=px);
+    // Famille repliée : une seule ligne, et le détail attend qu'on le demande.
+    if(l.fam){
+      var ouvert=!!_grOuverts[p.id];
+      h+='<div class="grrow grfam" onclick="grBasculerFamille('+p.id+')">'
+        +'<div class="grmed">'+(p.img?'<img src="'+p.img+'">':'<span>'+(p.e||'📦')+'</span>')+'</div>'
+        +'<div class="grnm"><div class="grn1">'+p.nm+'</div>'
+        +'<div class="grn2">'+l.nb+' '+(fr?'variante'+(l.nb>1?'s':''):'variants')
+        +(l.manque?(' · <span style="color:#B45309;font-weight:800">'+(fr?'à compléter':'to complete')+'</span>'):'')+'</div></div>'
+        +'<div class="grchev">'+(ouvert?'▾':'▸')+'</div></div>';
+      return;
+    }
+    var et=_grEtageDe(p,v);
+    var enGros=!!(et&&_grUnite[l.cle]);
+    var stkAff=enGros?(Math.round(stk/et.n*100)/100):stk;
+    h+='<div class="grrow'+(l.sous?' grsous':'')+(perte?' grperte':'')+'">'
+      +(l.sous?'<div class="grmed grpetit"><span>↳</span></div>'
+              :'<div class="grmed">'+(cible.img||p.img?'<img src="'+(cible.img||p.img)+'">':'<span>'+(p.e||'📦')+'</span>')+'</div>')
+      +'<div class="grnm"><div class="grn1">'+nom+'</div>'
+      +(perte?('<div class="grn2" style="color:var(--R);font-weight:800">⚠️ '+(fr?'vendu moins cher qu\'acheté':'sold below cost')+'</div>')
+             :(cible._sugg?('<div class="grn2" style="color:var(--B);font-weight:800">💡 '+(fr?'prix indicatif — vérifie':'suggested — check')+'</div>'):''))
+      +'</div>'
+      +'<div class="grcases">'
+      +'<label class="grlab">'+(fr?'achat':'cost')+_grCase(l.cle,'pa',pa,'—',58)+'</label>'
+      +'<label class="grlab">'+(fr?'vente':'price')+_grCase(l.cle,'px',px,'—',58)+'</label>'
+      +'<label class="grlab">'+(fr?'stock':'stock')+_grCase(l.cle,'stk',stkAff,'0',52)
+        +(et?('<button class="grun" onclick="event.stopPropagation();grBasculerUnite(\''+l.cle+'\')" title="'
+              +(fr?('1 '+et.mot+' = '+fmtQ(et.n)):'')+'">'+(enGros?et.mot:(fr?'pièce':'unit'))+' ⇄</button>')
+            :'')
+      +'</label>'
+      +'</div></div>';
+  });
+  c.innerHTML=h;
+}
+// ⚠️ Écrire le stock, c'est la seule case qui demande de la prudence :
+// `stk` est calculé, pas stocké. On ajuste le stock DE DÉPART de la
+// différence — ce qu'il voit devient ce qu'il a tapé, et aucune vente,
+// aucun ravitaillement, aucun bénéfice n'a changé.
+function grEcrire(inp){
+  try{
+    var cle=inp.getAttribute('data-gr'),champ=inp.getAttribute('data-ch');
+    var val=parseFloat(String(inp.value||'').replace(',','.'));
+    if(!(val>=0)||!isFinite(val))val=0;
+    var p=null,v=null;
+    if(cle.charAt(0)==='a'){p=(DB.articles||[]).find(function(x){return String(x.id)===cle.slice(1);});}
+    else{
+      var m=cle.slice(1).split('_');
+      p=(DB.articles||[]).find(function(x){return String(x.id)===m[0];});
+      if(p)v=(p.vr||[]).find(function(x){return String(x.id)===m[1];});
+    }
+    if(!p)return;
+    var cible=v||p,fr=(lang!=='en');
+    if(champ==='stk'){
+      var et=_grEtageDe(p,v);
+      if(et&&_grUnite[cle])val=Math.round(val*et.n*100)/100;
+      var actuel=Number(cible.stk)||0;
+      if(val!==actuel){
+        journalAjouter('stock',(p.nm||'')+(v?(' — '+(v.nm||'')):''),fmtQ(actuel),fmtQ(val));
+        cible.stk0=(Number(cible.stk0)||0)+(val-actuel);
+      }
+    }else{
+      var avant=Number(cible[champ])||0;
+      if(avant===val)return;
+      if(champ==='px')journalAjouter('prix',(p.nm||'')+(v?(' — '+(v.nm||'')):''),fmt(avant),fmt(val));
+      cible[champ]=val;
+      // Le prix posé à la main n'est plus « indicatif » : il est vérifié.
+      try{delete cible._sugg;}catch(x){}
+    }
+    DB=recomputeStock(DB);
+    save();
+    try{renderProd(DB.articles);renderStock(DB.articles);}catch(x){}
+    try{majLigneGrille();}catch(x){}
+    renderGrille();
+  }catch(e){}
 }
 function articleIncomplet(p){
   if(!p)return false;
@@ -21157,7 +21402,7 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneGrille();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
