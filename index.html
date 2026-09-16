@@ -1203,6 +1203,9 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 .hist-amt{font-size:13px;font-weight:900}
 
 /* ── SETTINGS ── */
+.fmt-chip{border:2px solid var(--BD);background:#fff;border-radius:22px;padding:9px 16px;
+  font-family:Outfit,sans-serif;font-size:14.5px;font-weight:800;color:var(--T);cursor:pointer}
+.fmt-chip.on{border-color:var(--B);background:var(--BG);color:var(--B)}
 .porte-reco{border:2px solid var(--A);border-radius:16px;background:linear-gradient(180deg,#FFFBF2,#FFF6E6);
   padding:15px 16px;display:flex;gap:13px;align-items:center;cursor:pointer;margin-bottom:6px}
 .porte-reco .pr-ico{width:46px;height:46px;border-radius:13px;background:#FFF;display:flex;align-items:center;
@@ -3864,6 +3867,25 @@ body{max-width:min(100%,1200px)}
      d'afficher d'autres boîtes ». Le geste ne faisait alors PLUS RIEN, sans
      un mot. Et pour un article ordinaire, l'entrée n'existait même pas.
      Un seul écran, pour les deux. -->
+<!-- ⚠️ UNE BOISSON SE VEND EN PLUSIEURS CONTENANCES EN MÊME TEMPS.
+     Le catalogue se servait des variantes pour les PARFUMS et les MARQUES
+     (Fanta orange, Bière Castel) et ne portait qu'UNE contenance figée par
+     entrée. « Fanta orange 50 cl » existait ; « Fanta orange 1,5 L », nulle
+     part — et le commerçant qui vend les deux n'avait aucun moyen de le dire.
+     La contenance devient donc une DIMENSION : on coche les formats vendus,
+     et chacun devient sa propre ligne, avec son stock en bouteilles, ses
+     prix et son casier ou sa palette. Sa règle, qu'il a tranchée lui-même :
+     chaque contenance a son propre stock, aucune conversion entre elles. -->
+<div class="ov" id="ov-format" onclick="closeOv(event,'ov-format')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🥤 <span id="fmt-tit">Quelles contenances&nbsp;?</span></div><button class="bcl" onclick="closeSheet('ov-format')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div id="fmt-sub" style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.6;margin-bottom:13px"></div>
+      <div id="fmt-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:17px"></div>
+      <button class="bt" style="width:100%" id="fmt-ok" onclick="validerFormats()">✅ <span>Ajouter</span></button>
+    </div>
+  </div>
+</div>
 <div class="ov" id="ov-renom" onclick="closeOv(event,'ov-renom')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">🔤 <span id="rn-tit">Renommer</span></div><button class="bcl" onclick="closeSheet('ov-renom')">✕</button></div>
@@ -4529,7 +4551,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.28'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.29'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -16680,8 +16702,85 @@ function chaBasculer(cle,nm,img,emo,cat,sac,cont){
   else _chaSel[cle]={nm:nm,img:img,e:emo,cat:cat,sac:(+sac||0),cont:cont||''};
   chaRendre();
 }
+// ══════════════════════════════════════════════════════════════════
+//  LES CONTENANCES — une boisson, plusieurs formats EN MÊME TEMPS
+//
+//  Chaque format coché devient sa PROPRE ligne : son stock en bouteilles,
+//  ses prix, son casier ou sa palette. Aucune conversion entre formats —
+//  on ne verse pas une 1,5 L dans des 50 cl, et une conversion silencieuse
+//  est le meilleur moyen de fausser un stock sans que personne ne le voie.
+// ══════════════════════════════════════════════════════════════════
+var _fmtCible=null,_fmtChoix={};
+function _formatsDe(nomFamille){
+  try{
+    var t=_cat600&&_cat600.formats;
+    if(!t)return null;
+    var k=txtNorm(nomFamille||'').replace(/[^a-z0-9]+/g,'');
+    var l=t[k];
+    return (l&&l.length>1)?l:null;      // un seul format : rien à demander
+  }catch(e){return null;}
+}
+// `base` est le nom SANS contenance (« Fanta orange »), `famille` sert à
+// retrouver la liste des formats (« Fanta »).
+function chaFormats(cle,base,famille,img,emo,cat,sac,cont){
+  var l=_formatsDe(famille);
+  if(!l){chaBasculer(cle,base,img,emo,cat,sac,cont);return;}
+  var fr=(lang==='fr');
+  _fmtCible={cle:cle,base:base,img:img,e:emo,cat:cat,sac:(+sac||0),cont:cont||'',formats:l};
+  _fmtChoix={};
+  // Ce qui est déjà dans le panier reste coché : on ne fait pas retaper.
+  l.forEach(function(f){ if(_chaSel[cle+'#'+f])_fmtChoix[f]=1; });
+  var t=document.getElementById('fmt-tit');
+  if(t)t.textContent=fr?'Quelles contenances ?':'Which sizes?';
+  var sub=document.getElementById('fmt-sub');
+  if(sub)sub.textContent=fr
+    ?(base+' — coche tout ce que tu vends. Chaque contenance aura son propre stock, son prix et son casier.')
+    :(base+' — tick every size you sell. Each one gets its own stock, price and crate.');
+  renderFormats();
+  document.getElementById('ov-format').classList.add('show');
+}
+function renderFormats(){
+  var b=document.getElementById('fmt-chips');if(!b||!_fmtCible)return;
+  b.innerHTML=_fmtCible.formats.map(function(f){
+    return '<button type="button" class="fmt-chip'+(_fmtChoix[f]?' on':'')+'" onclick="fmtBasculer(\''+f+'\')">'
+      +(_fmtChoix[f]?'✓ ':'')+f+'</button>';
+  }).join('');
+  var ok=document.getElementById('fmt-ok'),n=Object.keys(_fmtChoix).length,fr=(lang==='fr');
+  if(ok){
+    ok.disabled=!n;ok.style.opacity=n?'1':'.5';
+    ok.innerHTML='✅ <span>'+(n?((fr?'Ajouter ':'Add ')+n+(fr?(n>1?' contenances':' contenance'):(n>1?' sizes':' size')))
+                              :(fr?'Choisis au moins une':'Pick at least one'))+'</span>';
+  }
+}
+function fmtBasculer(f){
+  if(_fmtChoix[f])delete _fmtChoix[f];else _fmtChoix[f]=1;
+  renderFormats();
+}
+function validerFormats(){
+  if(!_fmtCible)return;
+  var c=_fmtCible,pris=Object.keys(_fmtChoix);
+  if(!pris.length)return;
+  // On retire d'abord TOUTES les lignes de cette boisson, puis on repose ce
+  // qui est coché : sans ça, décocher une contenance ne la retirerait pas.
+  c.formats.forEach(function(f){ delete _chaSel[c.cle+'#'+f]; });
+  c.formats.forEach(function(f){
+    if(!_fmtChoix[f])return;
+    _chaSel[c.cle+'#'+f]={nm:c.base+' '+f,img:c.img,e:c.e,cat:c.cat,sac:c.sac,cont:c.cont,fmt:f};
+  });
+  closeSheet('ov-format');
+  _fmtCible=null;_fmtChoix={};
+  chaRendre();
+}
+// Une boisson est-elle déjà au panier, et en combien de contenances ?
+function _chaCompteFormats(cle){
+  var n=0;
+  Object.keys(_chaSel).forEach(function(k){ if(k.indexOf(cle+'#')===0)n++; });
+  return n;
+}
 function _chaTuile(cle,nm,img,emo,cat,sous,onclick){
-  var pris=!!_chaSel[cle];
+  var nf=_chaCompteFormats(cle);
+  var pris=!!_chaSel[cle]||nf>0;
+  if(nf>0)sous=nf+(lang==='fr'?(nf>1?' contenances':' contenance'):(nf>1?' sizes':' size'));
   var media=img
     ?('<img src="'+_photo600(img)+'" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:11px;display:block" onerror="this.style.display=\'none\'">')
     :('<div style="width:100%;aspect-ratio:1;border-radius:11px;background:var(--BG);display:flex;align-items:center;justify-content:center;font-size:30px">'+(emo||'📦')+'</div>');
@@ -16713,7 +16812,7 @@ function chaRendre(){
       var cle='v'+_chaFam+'_'+j, plein=f[0]+' '+v[0];
       var vsac=(+v[5]||+f[7]||0), vcont=(v[6]||f[8]||'');
       h+=_chaTuile(cle,v[0],v[2],v[1],CAT_IDX_N[f[1]],v[3],
-        'chaBasculer(\''+cle+'\',\''+plein.replace(/'/g,"\\'")+'\',\''+v[2]+'\',\''+v[1]+'\',\''+(CAT_IDX_N[f[1]]||'').replace(/'/g,"\\'")+'\','+vsac+',\''+String(vcont).replace(/'/g,"\\'")+'\')');
+        'chaFormats(\''+cle+'\',\''+plein.replace(/'/g,"\\'")+'\',\''+f[0].replace(/'/g,"\\'")+'\',\''+v[2]+'\',\''+v[1]+'\',\''+(CAT_IDX_N[f[1]]||'').replace(/'/g,"\\'")+'\','+vsac+',\''+String(vcont).replace(/'/g,"\\'")+'\')');
     });
     g.innerHTML=h;majChaBouton();return;
   }
@@ -16732,7 +16831,7 @@ function chaRendre(){
       h+=_chaTuile('f'+i,e[0],e[3],e[2],cat,vr.length+(fr?' sortes':' kinds'),'chaOuvrirFamille('+i+')');
     }else{
       h+=_chaTuile('a'+i,e[0],e[3],e[2],cat,e[4],
-        'chaBasculer(\'a'+i+'\',\''+e[0].replace(/'/g,"\\'")+'\',\''+e[3]+'\',\''+e[2]+'\',\''+cat.replace(/'/g,"\\'")+'\','+(+e[7]||0)+',\''+String(e[8]||'').replace(/'/g,"\\'")+'\')');
+        'chaFormats(\'a'+i+'\',\''+e[0].replace(/'/g,"\\'")+'\',\''+e[0].replace(/'/g,"\\'")+'\',\''+e[3]+'\',\''+e[2]+'\',\''+cat.replace(/'/g,"\\'")+'\','+(+e[7]||0)+',\''+String(e[8]||'').replace(/'/g,"\\'")+'\')');
     }
   });
   // ⚠️ « RIEN TROUVÉ » ÉTAIT UN CUL-DE-SAC, et c'est ce qui rendait ce
