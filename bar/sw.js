@@ -1,7 +1,7 @@
 /* MyBar — service worker.
    Même principe que celui de MyBoutiQ : la coquille est gardée une fois
    pour toutes, et l'app s'ouvre à 2 h du matin sans réseau. */
-const CACHE_NAME='mybar-v1';
+const CACHE_NAME='mybar-v2';
 const FONT_CACHE='mybar-polices-v1';
 const APP_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png','./icon-maskable-512.png'];
 
