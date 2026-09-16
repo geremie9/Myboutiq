@@ -165,7 +165,21 @@ déjà coûté un défaut visible :
    `/bar` n'en fait pas partie : la page n'était contrôlée par personne,
    donc pas disponible hors ligne. On ne redirige **pas** vers `/bar/` —
    `trailingSlash:false` renverrait aussitôt sur `/bar`, en boucle.
-3. **`vercel.json` n'accepte aucun commentaire.** Ni `//`, ni une clé
+3. **`/bar` prévient au lieu de rediriger.** Les données d'une
+   application vivent **par adresse** : un bar saisi sur
+   `myboutiq.online/bar` n'existe pas sur `bar.myboutiq.online`, ce ne
+   sont pas les mêmes tiroirs. Rediriger, c'est ouvrir un bar **vide** à
+   quelqu'un qui a déjà travaillé ici et lui laisser croire qu'il a tout
+   perdu — alors que ses données sont toujours là, derrière une porte
+   qu'on vient de fermer. Donc : sur l'ancienne adresse, la vitrine dit
+   où aller, un bar déjà ouvert reçoit un bandeau « Déménager »
+   (sauvegarde → nouvelle adresse → restauration), et « Installer »
+   **disparaît** — poser l'application depuis là installerait la copie
+   qu'on retire, et le patron se retrouverait avec deux MyBar sur son
+   écran d'accueil, dont une vide, sans rien pour les distinguer.
+   `ancienneAdresse()` teste l'hôte, pas le chemin : un banc en local ne
+   déclenche rien.
+4. **`vercel.json` n'accepte aucun commentaire.** Ni `//`, ni une clé
    `"//"` : le schéma est fermé, et une propriété inconnue fait échouer
    le déploiement *avant* le build, sans un seul log. C'est pour ça que
    ces explications sont ici et pas là-bas.

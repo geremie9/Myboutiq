@@ -348,6 +348,15 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .inst-band .ib-b{flex-shrink:0;background:#1B7F6E;color:#fff;border:none;border-radius:9px;padding:10px 12px;
   font-size:11.5px;font-weight:900;cursor:pointer;white-space:nowrap}
 .inst-band .ib-x{flex-shrink:0;background:transparent;border:none;color:var(--NvT);font-size:15px;font-weight:900;cursor:pointer;padding:8px 4px}
+.inst-band.adr{background:var(--Na);border-color:var(--NaD)}
+.inst-band.adr .ib-t{color:var(--NaT)}
+.inst-band.adr .ib-b{background:#8A6100}
+.vit-adr{margin:0 0 14px;padding:12px 14px;border-radius:13px;background:rgba(246,185,59,.14);
+  border:1.5px solid rgba(246,185,59,.42);text-align:left}
+.vit-adr b{display:block;color:#F6B93B;font-size:12.5px;font-weight:900;letter-spacing:.2px;margin-bottom:5px}
+.vit-adr span{display:block;color:rgba(255,255,255,.80);font-size:12px;font-weight:700;line-height:1.5}
+.vit-adr button{margin-top:10px;width:100%;background:#F6B93B;color:#3A2A00;border:none;border-radius:10px;
+  padding:11px;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit}
 .login-hint{color:rgba(255,255,255,.3);font-size:11.5px;text-align:center;margin-top:14px;font-weight:600;position:relative;line-height:1.5}
 .lnk{color:var(--A);font-weight:800;cursor:pointer;text-decoration:underline}
 
@@ -648,6 +657,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
       <div class="fg"><label class="fl" data-fr="Ton code" data-en="Your code">Ton code</label><input class="fi" id="v-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div>
       <button class="btn-login" onclick="loginServeur()" data-fr="Connexion 🧑‍🍳" data-en="Sign in 🧑‍🍳">Connexion 🧑‍🍳</button>
     </div>
+    <div id="lg-adresse"></div>
     <button class="lg-install" id="lg-install" style="display:none" onclick="installerApp()">📲 Installer</button>
     <div class="login-hint" id="login-hint"></div>
   </div>
@@ -672,6 +682,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     <div class="sc" id="sc-ben"><div class="sl" data-fr="Net du soir" data-en="Tonight's net">Net du soir</div><div class="sv sv-g" id="sv-ben">0</div></div>
   </div>
   <div class="mcont">
+    <div id="svc-adresse"></div>
     <div id="svc-install" style="display:none"></div>
     <div id="svc-alertes"></div>
     <div class="ssec"><div class="tscr" id="svc-zones" style="padding-top:0"></div></div>
@@ -829,7 +840,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
      déchet.
    • on achète en casiers, on vend à la bouteille.
    ══════════════════════════════════════════════════════════════════ */
-var BUILD='1.2';
+var BUILD='1.3';
 
 /* ══════════════════════════════════════════════════════════════════
    LA LANGUE
@@ -1349,6 +1360,12 @@ function rendreVitrine(){
        '<div class="vt-dpay">'+L('ENCAISSER','CASH IN')+'</div>'+
        '<div class="vt-dok"><em>✅</em><span>'+L('Encaissé · monnaie F 500','Paid · change F 500')+'</span></div>'+
      '</div>'+
+     (ancienneAdresse()
+       ?'<div class="vit-adr"><b>'+L("ℹ️ TU ES SUR L'ANCIENNE ADRESSE",'ℹ️ YOU ARE ON THE OLD ADDRESS')+'</b>'+
+         '<span>'+L("MyBar habite maintenant bar.myboutiq.online. Ouvre ton bar là-bas plutôt qu'ici : les données d'une application restent à l'adresse où elles ont été saisies, et celle-ci finira par fermer.",
+                     'MyBar now lives at bar.myboutiq.online. Open your bar over there rather than here: an app\'s data stays at the address it was entered at, and this one will close in the end.')+'</span>'+
+         '<button onclick="allerNouvelleAdresse()">'+L('🍻 Aller à la bonne adresse','🍻 Go to the right address')+'</button></div>'
+       :'')+
      '<button class="vit-cta" onclick="allerInscription()">'+L('Ouvrir mon bar — c\'est gratuit','Open my bar — it is free')+'</button>'+
      '<button class="vit-cta2" onclick="chargerDemo()">'+L("👀 Voir une soirée d'exemple",'👀 See a sample night')+'</button>'+
      '<button class="vit-cta3" onclick="goScreen(\'s-login\')">'+L("J'ai déjà un bar",'I already have a bar')+'</button>'+
@@ -1602,6 +1619,7 @@ function navTo(tab){
 function rendreEcran(id){
   horlogeSalle(id==='s-service');
   if(DB)majNavs();
+  majBandeauxAdresse();
   if(id==='s-service')rendreService();
   else if(id==='s-stock')rendreStock();
   else if(id==='s-rapports')rendreRapports();
@@ -1835,6 +1853,62 @@ function _estIOS(){
     return /Macintosh/.test(u)&&navigator.maxTouchPoints>1;   // iPad récent
   }catch(e){return false;}
 }
+/* ╔═ L'ANCIENNE ADRESSE ═══════════════════════════════════════════
+   MyBar a deux portes : bar.myboutiq.online, et myboutiq.online/bar,
+   celle d'avant, restée ouverte pour les liens et les raccourcis déjà
+   posés. Les données d'une application vivent PAR ADRESSE : un bar saisi
+   sur l'une n'existe pas sur l'autre — ce ne sont pas les mêmes tiroirs,
+   et aucun réglage n'y change rien.
+
+   ⚠️ ON NE REDIRIGE PAS. Une redirection ouvrirait un bar VIDE à
+   quiconque a déjà travaillé ici, et lui laisserait croire qu'il a tout
+   perdu — or ses données seraient toujours là, de l'autre côté d'une
+   porte qu'on vient de fermer. On prévient, et on donne le chemin.
+
+   ⚠️ ET ON N'INSTALLE PAS DEPUIS ICI. Poser l'application depuis cette
+   adresse-ci installé la copie qu'on veut retirer, avec SON tiroir à
+   elle : le patron se retrouverait avec deux MyBar sur son écran
+   d'accueil, dont une vide, sans rien pour les distinguer.
+   ╚════════════════════════════════════════════════════════════════ */
+var MYBAR_URL='https://bar.myboutiq.online/';
+function ancienneAdresse(){
+  try{
+    var h=(location.hostname||'').toLowerCase();
+    return /(^|\.)myboutiq\.online$/.test(h)&&h!=='bar.myboutiq.online';
+  }catch(e){return false;}
+}
+function allerNouvelleAdresse(){
+  try{location.href=MYBAR_URL;}catch(e){}
+}
+function majBandeauxAdresse(){
+  if(!ancienneAdresse())return;
+  var lg=$('lg-adresse'),sv=$('svc-adresse');
+  var h='<div class="inst-band adr"><span style="font-size:18px;flex-shrink:0">🚚</span>'+
+    '<div class="ib-t">'+L("Ton bar est à l'ancienne adresse. MyBar habite maintenant bar.myboutiq.online — les deux ne partagent pas les mêmes données.",
+                           'Your bar is at the old address. MyBar now lives at bar.myboutiq.online — the two do not share the same data.')+'</div>'+
+    '<button class="ib-b" onclick="ouvrirDemenagement()">'+L("Déménager",'Move it')+'</button></div>';
+  if(lg)lg.innerHTML=DB?h:'';
+  if(sv)sv.innerHTML=DB?h:'';
+}
+function ouvrirDemenagement(){
+  modal(mhead('🚚 '+L('Emmener ton bar','Take your bar with you'),
+              L('Trois gestes, et rien ne se perd','Three moves, and nothing is lost'))+
+   '<div class="ovc">'+
+   '<div class="note">'+L(
+     "Un bar vit dans le téléphone, sous l'adresse où il a été ouvert. Celui-ci est rangé sous myboutiq.online, pas sous bar.myboutiq.online : la nouvelle adresse ne le verra pas toute seule. La sauvegarde est le déménageur.",
+     "A bar lives in the phone, filed under the address it was opened at. This one is filed under myboutiq.online, not bar.myboutiq.online: the new address will not see it on its own. The backup is the removal van.")+'</div>'+
+   '<div class="kv"><span class="kv-l"><b>1.</b> '+L('Télécharge la sauvegarde','Download the backup')+'</span></div>'+
+   '<button class="bpr" onclick="sauvegarder()">'+L('💾 Sauvegarder maintenant','💾 Back up now')+'</button>'+
+   '<div style="height:12px"></div>'+
+   '<div class="kv"><span class="kv-l"><b>2.</b> '+L('Ouvre la nouvelle adresse','Open the new address')+'</span></div>'+
+   '<button class="bse" onclick="allerNouvelleAdresse()">🍻 bar.myboutiq.online</button>'+
+   '<div style="height:12px"></div>'+
+   '<div class="kv"><span class="kv-l"><b>3.</b> '+L('Là-bas : Paramètres → Restaurer une sauvegarde','There: Settings → Restore a backup')+'</span></div>'+
+   '<div class="note bleu" style="margin-top:12px">'+L(
+     "Garde ce téléphone-ci tant que tu n'as pas vérifié là-bas que tout y est — la carte, le stock, les ardoises. Rien n'est effacé ici tant que tu ne l'effaces pas.",
+     "Keep this one until you have checked over there that everything is in — the menu, the stock, the tabs. Nothing is deleted here until you delete it.")+'</div>'+
+   '</div>');
+}
 function _instFerme(){try{return localStorage.getItem('mybar_install_ferme')==='1';}catch(e){return false;}}
 function fermerBandeauInstall(){
   try{localStorage.setItem('mybar_install_ferme','1');}catch(e){}
@@ -1859,7 +1933,10 @@ function _attendreInvitation(ms){
   });
 }
 function majBoutonsInstaller(){
-  var montrer=!_dejaInstallee();
+  majBandeauxAdresse();
+  /* Depuis l'ancienne adresse, « Installer » poserait la copie qu'on
+     retire. Le seul geste utile ici, c'est d'aller à la bonne porte. */
+  var montrer=!_dejaInstallee()&&!ancienneAdresse();
   var v=$('vit-install');
   if(v){v.style.display=montrer?'':'none';v.textContent=L("📲 Installer l'application",'📲 Install the app');}
   var lg=$('lg-install');
