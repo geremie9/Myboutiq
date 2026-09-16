@@ -2012,7 +2012,7 @@ body{max-width:min(100%,1200px)}
     <div style="position:relative"><input class="ob-inp" type="text" id="ob-nom" placeholder="Nom de ta boutique..."><button type="button" id="mic-obnom" onclick="dicterDans('ob-nom','mic-obnom')" title="Dicter" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--BG);border:none;border-radius:9px;width:38px;height:38px;font-size:17px;cursor:pointer;font-family:Outfit,sans-serif;z-index:2">🎤</button></div>
     <input class="ob-inp" type="tel" id="ob-tel" placeholder="📱 Ton numéro de téléphone" inputmode="tel" oninput="apercuTelOb()" autocomplete="off">
     <div id="ob-tel-apercu" style="font-size:12.5px;font-weight:800;color:rgba(255,255,255,.85);margin:-6px 0 10px;min-height:16px"></div>
-    <input class="ob-inp" type="password" id="ob-pin" placeholder="🔐 Code PIN (4 chiffres)" maxlength="4" inputmode="numeric" autocomplete="new-password">
+    <input class="ob-inp" type="password" id="ob-pin" placeholder="🔐 Code PIN (4 chiffres)" maxlength="6" inputmode="numeric" autocomplete="new-password">
     <div style="font-size:11.5px;color:rgba(255,255,255,.6);font-weight:600;margin:-6px 0 10px;line-height:1.4" id="ob-pin-aide">Ce numéro et ce PIN sont ta clé pour revenir dans ta boutique. Note-les.</div>
     <button class="btn-ob" id="ob5-btn" onclick="validerEtapeBoutique()">Continuer →</button>
   </div>
@@ -3577,8 +3577,8 @@ body{max-width:min(100%,1200px)}
       <div class="pstps">
         <div style="background:#FFF8E1;border:1.4px solid #FFD79A;border-radius:10px;padding:10px 12px;font-size:11.5px;font-weight:700;color:#B45309;margin-bottom:13px;line-height:1.5" id="cp-note">Ton PIN ouvre ta caisse et tes bénéfices. Ne le dis à personne, et n'utilise pas ta date de naissance.</div>
         <div class="pig"><label class="pl" id="cp-l1">PIN actuel</label><input class="pi" type="password" id="cp-actuel" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
-        <div class="pig"><label class="pl" id="cp-l2">Nouveau PIN (4 chiffres)</label><input class="pi" type="password" id="cp-new" maxlength="4" inputmode="numeric" placeholder="••••"></div>
-        <div class="pig"><label class="pl" id="cp-l3">Répète le nouveau PIN</label><input class="pi" type="password" id="cp-new2" maxlength="4" inputmode="numeric" placeholder="••••"></div>
+        <div class="pig"><label class="pl" id="cp-l2">Nouveau PIN (4 chiffres)</label><input class="pi" type="password" id="cp-new" maxlength="6" inputmode="numeric" placeholder="••••"></div>
+        <div class="pig"><label class="pl" id="cp-l3">Répète le nouveau PIN</label><input class="pi" type="password" id="cp-new2" maxlength="6" inputmode="numeric" placeholder="••••"></div>
         <button class="bnxt" onclick="validerChangerPin()"><span id="cp-btn">Changer mon PIN</span></button>
       </div>
     </div>
@@ -4477,7 +4477,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.23'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.24'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4722,6 +4722,15 @@ function isInvalidCredError(err){
   return msg.indexOf('invalid login credentials')!==-1||msg.indexOf('invalid credentials')!==-1;
 }
 function authFriendlyError(err){
+  // ⚠️ « Password should be at least 6 characters » arrivait tel quel, en
+  // anglais, à un commerçant camerounais — quand il arrivait. C'est le refus
+  // le plus probable le jour où l'on raccourcit les PIN : il doit se lire.
+  var _m=String((err&&err.message)||'').toLowerCase();
+  if(_m.indexOf('password')!==-1&&(_m.indexOf('at least')!==-1||_m.indexOf('too short')!==-1||_m.indexOf('6 characters')!==-1)){
+    return new Error(lang==='fr'
+      ?'🔐 Le serveur exige un code plus long. Prends 6 chiffres — ça marchera.'
+      :'🔐 The server requires a longer code. Use 6 digits — that will work.');
+  }
   if(isInvalidCredError(err)){
     return new Error(lang==='fr'
       ?'❌ Ce numéro existe déjà avec un autre PIN. Utilise le PIN d\'origine en mode "Ancien utilisateur".'
@@ -6640,7 +6649,11 @@ function validerEtapeBoutique(){
   // ⚠️ MAIS ON NE TOUCHE PAS AUX ÉCRANS DE CONNEXION : les boutiques déjà
   // créées portent des PIN de 5 ou 6 chiffres. Les forcer à 4 à l'entrée,
   // ce serait fermer la porte à ceux qui sont déjà dedans.
-  if(!/^\d{4}$/.test(pin)){showToast('🔐 '+(fr?'Choisis un PIN de 4 chiffres':'Choose a 4-digit PIN'));document.getElementById('ob-pin').focus();return;}
+  // ⚠️ NE JAMAIS EXIGER EXACTEMENT 4. On ANNONCE 4 (c'est la norme, et c'est
+  // plus rapide à taper), mais on ACCEPTE 4 à 6. Exiger exactement 4 ferme la
+  // porte à quiconque a déjà un PIN plus long — et si le serveur d'auth refuse
+  // un mot de passe de 4 caractères, cela laisse le commerçant SANS PIN valide.
+  if(!/^\d{4,6}$/.test(pin)){showToast('🔐 '+(fr?'Choisis un PIN de 4 chiffres':'Choose a 4-digit PIN'));document.getElementById('ob-pin').focus();return;}
   // ⚠️ L'écran « ✅ Tout est prêt ! » ne servait qu'à récapituler ce qu'il
   // venait de taper. Un écran de plus pour dire qu'on a fini, alors que le
   // but est de ne PAS le perdre en route. On ouvre sa boutique directement.
@@ -7033,7 +7046,7 @@ async function validerChangerPin(){
   var n2=(document.getElementById('cp-new2').value||'').trim();
   if(!DB||!DB.cfg)return;
   if(act!==String(DB.cfg.pin||'')){showToast('❌ '+(fr?'PIN actuel incorrect':'Wrong current PIN'));return;}
-  if(!/^\d{4}$/.test(n1)){showToast('⚠️ '+(fr?'Le nouveau PIN doit faire 4 chiffres':'New PIN must be 4 digits'));return;}
+  if(!/^\d{4,6}$/.test(n1)){showToast('⚠️ '+(fr?'Le nouveau PIN doit faire 4 chiffres':'New PIN must be 4 digits'));return;}
   if(n1!==n2){showToast('⚠️ '+(fr?'Les deux nouveaux PIN ne sont pas pareils':'The two new PINs differ'));return;}
   if(n1===act){showToast('⚠️ '+(fr?'C\'est déjà ton PIN actuel':'That is already your PIN'));return;}
   if(/^(\d)\1+$/.test(n1)||n1==='1234'||n1==='123456'){
