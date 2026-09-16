@@ -4498,7 +4498,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.25'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.26'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -23434,11 +23434,25 @@ async function chercherAnnonces(force){
     _annonceDerniereVerif=t;
     if(typeof assurerConnexionSupa==='function')assurerConnexionSupa();
     if(!supa||!navigator.onLine)return;
-    var r=await supa.from('annonces').select('id,titre,message,niveau,cible,debut')
+    // ⚠️ UNE ANNONCE RETIRÉE REVENAIT QUAND MÊME.
+    // Le bouton « retirer » écrit actif=false, et la règle RLS de lecture
+    // filtre bien (actif AND debut<=now AND (fin IS NULL OR fin>now)).
+    // Mais la SECONDE police, « seuls les admins écrivent », est en FOR ALL :
+    // les polices RLS se CUMULENT (OU), donc pour un administrateur elle
+    // rouvrait la lecture de TOUTES les lignes, retirées comprises. Comme le
+    // client ne regardait ni actif, ni debut, ni fin, l'annonce d'août
+    // remontait indéfiniment — sur chacune de ses boutiques, à chaque
+    // appareil neuf (le « déjà vu » est gardé en localStorage).
+    // On redemande donc ces colonnes et on les respecte ici : le serveur
+    // protège les autres, cette condition protège l'administrateur.
+    var r=await supa.from('annonces').select('id,titre,message,niveau,cible,debut,fin,actif')
              .order('debut',{ascending:false}).limit(10);
     if(r.error||!r.data||!r.data.length)return;
-    var moi=(typeof role!=='undefined'&&role)||'patron',vues=_annoncesVues();
+    var moi=(typeof role!=='undefined'&&role)||'patron',vues=_annoncesVues(),maintenant=Date.now();
     var a=r.data.filter(function(x){
+      if(x.actif===false)return false;                                   // retirée
+      if(x.debut&&Date.parse(x.debut)>maintenant)return false;           // pas encore commencée
+      if(x.fin&&Date.parse(x.fin)<=maintenant)return false;              // terminée
       if(x.cible&&x.cible!=='tous'&&x.cible!==moi)return false;
       return vues.indexOf(x.id)<0;
     })[0];
