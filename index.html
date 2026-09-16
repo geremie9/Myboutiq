@@ -375,6 +375,49 @@ html.porte-rapide #entree-rapide,html.porte-rapide #er-pin-wrap{display:block}
 .grrow{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--BD)}
 /* 🛒 La liste de courses : une ligne par chose à acheter, lisible d'un
    coup d'œil devant un grossiste, le nom à gauche et la quantité à droite. */
+/* 📄 Relevé d'activité : un document, pas un écran d'application. Sobre,
+   dense, imprimable — c'est ce qu'un agent de crédit sait lire. */
+.rel-tete{border-bottom:2px solid var(--T);padding-bottom:13px;margin-bottom:15px}
+.rel-marque{font-size:10.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--A);font-weight:800}
+.rel-titre{font-size:22px;font-weight:900;color:var(--T);margin-top:5px;letter-spacing:-.01em}
+.rel-sous{font-size:12.5px;color:var(--M);font-weight:700;margin-top:3px}
+.rel-num{font-size:12px;font-weight:800;color:var(--T);margin-top:8px;letter-spacing:.06em}
+.rel-phare{background:var(--BG);border-radius:13px;padding:16px 17px;margin-bottom:15px;
+           display:flex;flex-direction:column;gap:8px}
+.rel-gros{font-size:36px;font-weight:900;color:var(--G);line-height:1;letter-spacing:-.02em}
+.rel-gros small{font-size:15px;color:var(--M);font-weight:700}
+.rel-phare-txt{font-size:13px;color:var(--T);line-height:1.55}
+.rel-lig{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
+         padding:9px 0;border-bottom:1px solid var(--BD);font-size:13.5px}
+.rel-lig span{color:var(--M);font-weight:700}
+.rel-lig b{font-weight:900;color:var(--T);font-variant-numeric:tabular-nums;text-align:right}
+.rel-sect{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--M);
+          font-weight:800;margin:20px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--T)}
+.rel-tbl{overflow-x:auto}
+.rel-tbl table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+.rel-tbl th{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--M);
+            font-weight:800;text-align:right;padding:7px 9px;border-bottom:1px solid var(--BD)}
+.rel-tbl th:first-child,.rel-tbl td:first-child{text-align:left}
+.rel-tbl td{font-size:13px;font-weight:700;padding:8px 9px;border-bottom:1px solid var(--BD);text-align:right}
+.rel-note{background:#FFF8E1;border-left:3px solid var(--A);border-radius:0 9px 9px 0;
+          padding:11px 13px;font-size:12px;color:#7A5200;font-weight:600;line-height:1.55;margin:13px 0}
+.rel-reserve{border:1px solid var(--BD);border-radius:11px;padding:14px 16px;margin-top:20px}
+.rel-reserve b{font-size:13px;color:var(--T)}
+.rel-reserve ul{margin:9px 0 0;padding-left:17px;display:flex;flex-direction:column;gap:6px}
+.rel-reserve li{font-size:12px;color:var(--M);font-weight:600;line-height:1.55}
+.rel-pied{margin-top:18px;padding-top:12px;border-top:1px solid var(--BD);
+          font-size:10.5px;color:var(--M);font-weight:600;line-height:1.6}
+/* ⚠️ À l'impression, tout disparaît sauf le relevé : un prêteur ne doit pas
+   recevoir une feuille où traînent les boutons de la caisse. */
+body.impr-releve #ov-releve{position:static!important;display:block!important;background:#fff!important}
+@media print{
+  body.impr-releve > *:not(#ov-releve){display:none!important}
+  body.impr-releve #ov-releve .bsht{max-height:none!important;border-radius:0!important;box-shadow:none!important}
+  body.impr-releve #ov-releve .shhdr,body.impr-releve #ov-releve .shndl,
+  body.impr-releve #ov-releve #rel-actions,body.impr-releve #ov-releve #rel-aide{display:none!important}
+  body.impr-releve .rel-note{background:#FFF8E1!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.impr-releve .rel-phare{background:#F2F2F2!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 .cmdl{display:flex;align-items:center;gap:10px;background:var(--C);border-radius:13px;
       padding:10px 12px;margin-bottom:7px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
 .cmdm{width:36px;height:36px;border-radius:10px;background:var(--BG);display:flex;align-items:center;
@@ -1969,7 +2012,7 @@ body{max-width:min(100%,1200px)}
     <div style="position:relative"><input class="ob-inp" type="text" id="ob-nom" placeholder="Nom de ta boutique..."><button type="button" id="mic-obnom" onclick="dicterDans('ob-nom','mic-obnom')" title="Dicter" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--BG);border:none;border-radius:9px;width:38px;height:38px;font-size:17px;cursor:pointer;font-family:Outfit,sans-serif;z-index:2">🎤</button></div>
     <input class="ob-inp" type="tel" id="ob-tel" placeholder="📱 Ton numéro de téléphone" inputmode="tel" oninput="apercuTelOb()" autocomplete="off">
     <div id="ob-tel-apercu" style="font-size:12.5px;font-weight:800;color:rgba(255,255,255,.85);margin:-6px 0 10px;min-height:16px"></div>
-    <input class="ob-inp" type="password" id="ob-pin" placeholder="🔐 Code PIN (6 chiffres)" maxlength="6" inputmode="numeric" autocomplete="new-password">
+    <input class="ob-inp" type="password" id="ob-pin" placeholder="🔐 Code PIN (4 chiffres)" maxlength="4" inputmode="numeric" autocomplete="new-password">
     <div style="font-size:11.5px;color:rgba(255,255,255,.6);font-weight:600;margin:-6px 0 10px;line-height:1.4" id="ob-pin-aide">Ce numéro et ce PIN sont ta clé pour revenir dans ta boutique. Note-les.</div>
     <button class="btn-ob" id="ob5-btn" onclick="validerEtapeBoutique()">Continuer →</button>
   </div>
@@ -2418,6 +2461,7 @@ body{max-width:min(100%,1200px)}
       <div class="sttit">🛍️ Catalogue</div>
       <div class="stcd">
         <div class="stit2" onclick="ouvrirPorteArticles();goBack()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="st-art">Ajouter un article</div><div class="stisub" id="st-art-s">Nouvel article</div></div><span class="starr">›</span></div>
+        <div class="stit2" id="row-releve" onclick="ouvrirReleve()"><div class="stico" style="background:#E8F5E9">📄</div><div class="stii"><div class="stitl" id="st-rel">Relevé d’activité</div><div class="stisub" id="st-rel-s">—</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-grille" onclick="ouvrirGrilleConfig()"><div class="stico" style="background:#FFF8E1">⚡</div><div class="stii"><div class="stitl" id="st-gr">Tout configurer</div><div class="stisub" id="st-gr-s">—</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirPrix(null);goBack()"><div class="stico" style="background:#E3F2FD">💰</div><div class="stii"><div class="stitl" id="st-prix">Modifier les prix</div><div class="stisub" id="st-prix-s">Prix achat, vente, bénéfice</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirStk(null);goBack()"><div class="stico" style="background:#E8F5E9">📦</div><div class="stii"><div class="stitl" id="st-stk">Entrée de stock</div><div class="stisub" id="st-stk-s">Ajouter des quantités</div></div><span class="starr">›</span></div>
@@ -3533,8 +3577,8 @@ body{max-width:min(100%,1200px)}
       <div class="pstps">
         <div style="background:#FFF8E1;border:1.4px solid #FFD79A;border-radius:10px;padding:10px 12px;font-size:11.5px;font-weight:700;color:#B45309;margin-bottom:13px;line-height:1.5" id="cp-note">Ton PIN ouvre ta caisse et tes bénéfices. Ne le dis à personne, et n'utilise pas ta date de naissance.</div>
         <div class="pig"><label class="pl" id="cp-l1">PIN actuel</label><input class="pi" type="password" id="cp-actuel" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
-        <div class="pig"><label class="pl" id="cp-l2">Nouveau PIN (4 à 6 chiffres)</label><input class="pi" type="password" id="cp-new" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
-        <div class="pig"><label class="pl" id="cp-l3">Répète le nouveau PIN</label><input class="pi" type="password" id="cp-new2" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
+        <div class="pig"><label class="pl" id="cp-l2">Nouveau PIN (4 chiffres)</label><input class="pi" type="password" id="cp-new" maxlength="4" inputmode="numeric" placeholder="••••"></div>
+        <div class="pig"><label class="pl" id="cp-l3">Répète le nouveau PIN</label><input class="pi" type="password" id="cp-new2" maxlength="4" inputmode="numeric" placeholder="••••"></div>
         <button class="bnxt" onclick="validerChangerPin()"><span id="cp-btn">Changer mon PIN</span></button>
       </div>
     </div>
@@ -3738,6 +3782,24 @@ body{max-width:min(100%,1200px)}
     <div style="padding:8px 19px 24px">
       <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px" id="pp-aide">Une photo approuvée part dans toutes les boutiques pour cet article. Vérifie que c'est bien le bon produit.</div>
       <div id="pp-lst"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 📄 RELEVÉ D'ACTIVITÉ -->
+<div class="ov" id="ov-releve" onclick="closeOv(event,'ov-releve')">
+  <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">📄 <span>Relevé d’activité</span></div><button class="bcl" onclick="closeSheet('ov-releve')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div id="rel-aide" style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.6;margin-bottom:14px">
+        Ce que ta boutique a fait, mis en forme pour une banque ou une microfinance.
+        <b>Rien n’est inventé</b> : tout vient de tes ventes enregistrées.
+      </div>
+      <div id="rel-corps"></div>
+      <div id="rel-actions" style="display:none;gap:8px;margin-top:18px">
+        <button class="bt" style="flex:1" onclick="imprimerReleve()">🖨️ Imprimer / PDF</button>
+        <button class="shct" style="flex:1;min-height:44px" onclick="partagerReleve()">📤 Envoyer</button>
+      </div>
     </div>
   </div>
 </div>
@@ -4415,7 +4477,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.21'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.22'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6553,7 +6615,14 @@ function validerEtapeBoutique(){
     showToast('⚠️ '+v.msg+' '+(fr?'Touche encore « Continuer » pour confirmer.':'Tap Continue again to confirm.'));
     return;
   }
-  if(!pin||pin.length<4){showToast('🔐 '+(fr?'Choisis un PIN d\'au moins 4 chiffres':'Choose a PIN of at least 4 digits'));document.getElementById('ob-pin').focus();return;}
+  // ⚠️ QUATRE CHIFFRES, NI PLUS NI MOINS, POUR LES NOUVELLES BOUTIQUES.
+  // Sa décision : « le PIN, on ramène à 4, c'est mieux pour faciliter la
+  // connexion. » Un commerçant tape ce code vingt fois par jour, debout,
+  // une main sur la marchandise.
+  // ⚠️ MAIS ON NE TOUCHE PAS AUX ÉCRANS DE CONNEXION : les boutiques déjà
+  // créées portent des PIN de 5 ou 6 chiffres. Les forcer à 4 à l'entrée,
+  // ce serait fermer la porte à ceux qui sont déjà dedans.
+  if(!/^\d{4}$/.test(pin)){showToast('🔐 '+(fr?'Choisis un PIN de 4 chiffres':'Choose a 4-digit PIN'));document.getElementById('ob-pin').focus();return;}
   // ⚠️ L'écran « ✅ Tout est prêt ! » ne servait qu'à récapituler ce qu'il
   // venait de taper. Un écran de plus pour dire qu'on a fini, alors que le
   // but est de ne PAS le perdre en route. On ouvre sa boutique directement.
@@ -6946,7 +7015,7 @@ async function validerChangerPin(){
   var n2=(document.getElementById('cp-new2').value||'').trim();
   if(!DB||!DB.cfg)return;
   if(act!==String(DB.cfg.pin||'')){showToast('❌ '+(fr?'PIN actuel incorrect':'Wrong current PIN'));return;}
-  if(!/^\d{4,6}$/.test(n1)){showToast('⚠️ '+(fr?'Le nouveau PIN doit faire 4 à 6 chiffres':'New PIN must be 4 to 6 digits'));return;}
+  if(!/^\d{4}$/.test(n1)){showToast('⚠️ '+(fr?'Le nouveau PIN doit faire 4 chiffres':'New PIN must be 4 digits'));return;}
   if(n1!==n2){showToast('⚠️ '+(fr?'Les deux nouveaux PIN ne sont pas pareils':'The two new PINs differ'));return;}
   if(n1===act){showToast('⚠️ '+(fr?'C\'est déjà ton PIN actuel':'That is already your PIN'));return;}
   if(/^(\d)\1+$/.test(n1)||n1==='1234'||n1==='123456'){
@@ -20195,7 +20264,32 @@ function _epochEvt(o){
     if(e>1000000000000&&e<4000000000000&&(meilleur==null||e>meilleur))meilleur=e;
   }
   if(meilleur!=null)return meilleur;
-  if(o.date){var d=new Date(o.date);if(!isNaN(d))return d.getTime();var f=(typeof parseDateFR==='function')&&parseDateFR(o.date);if(f&&!isNaN(f))return f.getTime();}
+  // ══════════════════════════════════════════════════════════════
+  //  ⚠️⚠️ LES DATES ÉTAIENT LUES À L'ENVERS : JOUR ET MOIS INVERSÉS.
+  //
+  //  `new Date("12/08/2025")` rend le 8 DÉCEMBRE en JavaScript, pas le
+  //  12 août : la norme américaine mois/jour. Et comme cette lecture
+  //  RÉUSSIT, `parseDateFR` — qui, lui, sait lire le format français —
+  //  n'était jamais atteint.
+  //
+  //  Toutes les ventes dont le jour du mois vaut 12 ou moins étaient donc
+  //  datées de plusieurs mois de travers. C'est l'archivage qui s'en sert
+  //  pour décider quoi replier dans `stk0`/`vd0` et pour ranger le chiffre
+  //  d'affaires par mois : de mauvaises ventes étaient repliées, et le
+  //  résumé mensuel attribuait l'argent au mauvais mois.
+  //
+  //  Trouvé par accident : un test d'archivage passait la veille et tombait
+  //  le lendemain, parce que « 11/08 » se lit 8 novembre et « 12/08 » se lit
+  //  8 décembre — la bascule tombait entre les deux.
+  //
+  //  On lit donc le format français D'ABORD, et `new Date` ne sert plus que
+  //  de dernier recours (dates ISO, formats venus d'ailleurs).
+  // ══════════════════════════════════════════════════════════════
+  if(o.date){
+    var f=(typeof parseDateFR==='function')?parseDateFR(o.date):null;
+    if(f&&!isNaN(f))return f.getTime();
+    var d=new Date(o.date);if(!isNaN(d))return d.getTime();
+  }
   return null; // inconnu -> on ne l'archivera jamais (prudence : ne rien perdre)
 }
 // S3 : replier les ventes/appros plus vieux que "cutoff" (ms) dans stk0/vd0.
@@ -21835,7 +21929,7 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneGrille();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneGrille();}catch(e){}try{majLigneReleve();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
@@ -23731,6 +23825,246 @@ async function lancerEquiper(){
       +(ko?(' · ⚠️ '+ko+(fr?' refusée'+(ko>1?'s':''):' refused')):''))
     :('❌ '+(fr?'Rien n\'est parti — vérifie la connexion':'Nothing sent')));
   renderEquiper();
+}
+// ══════════════════════════════════════════════════════════════════
+//  📄 RELEVÉ D'ACTIVITÉ
+//
+//  Sa demande : « le relevé MyBoutiQ permettant de demander tout financement,
+//  authentique et difficilement falsifiable. »
+//
+//  Le nom retenu est celui que l'agent de crédit sait déjà lire : un RELEVÉ,
+//  comme un relevé bancaire. Pas une « attestation » — nous n'attestons rien
+//  de ce que la loi appelle ainsi, et promettre plus que ce qu'on tient est
+//  le plus sûr moyen de se faire refermer le dossier.
+//
+//  ⚠️ CE QUE LE RELEVÉ MET EN AVANT N'EST PAS LE CHIFFRE D'AFFAIRES.
+//  C'est la RÉGULARITÉ : combien de journées différentes il a tenu sa caisse
+//  sur la période. Un chiffre d'affaires s'invente en une soirée ; quarante-six
+//  journées éparpillées sur soixante-douze, non. C'est la seule ligne du
+//  document qui coûte cher à falsifier, donc c'est elle qui passe en premier.
+//
+//  ⚠️ ET LA MARGE N'EST CALCULÉE QUE SUR LES LIGNES SAINES. Mesuré en
+//  production : 9 % des lignes de vente portent un prix d'achat SUPÉRIEUR au
+//  prix de vente — le coût du carton saisi pour l'unité. Les inclure ferait
+//  dire au relevé « bénéfice : −1 930 200 F », et le dossier serait refusé à
+//  la première ligne. On les écarte, et ON ÉCRIT COMBIEN ON EN A ÉCARTÉ :
+//  un document qui déclare ce qu'il exclut est plus croyable qu'un document
+//  propre.
+// ══════════════════════════════════════════════════════════════════
+function _releveDonnees(){
+  var r={ok:false};
+  try{
+    if(!DB||!DB.articles)return r;
+    var ventes=(DB.ventes||[]).filter(function(v){return v&&!v.annulee;});
+    if(!ventes.length)return r;
+    var jours={},mois={},nMobile=0,total=0,nTr=0;
+    var pre=null,der=null;
+    var ligTot=0,ligSaines=0,ligSansCout=0,ligImpossibles=0,caSain=0,margeSaine=0;
+    var parArticle={};
+    ventes.forEach(function(v){
+      var d=getSaleDateObj(v),j=isoJour(d);
+      jours[j]=1;
+      if(!pre||d<pre)pre=d;
+      if(!der||d>der)der=d;
+      var mo=j.slice(0,7);
+      var m=mois[mo]||(mois[mo]={tr:0,enc:0,jours:{},mob:0});
+      m.tr++;m.enc+=Number(v.total)||0;m.jours[j]=1;
+      var mode=(v.paiement&&v.paiement.mode)||'especes';
+      if(mode!=='especes'){nMobile++;m.mob++;}
+      total+=Number(v.total)||0;nTr++;
+      (v.lignes||[]).forEach(function(l){
+        if(!l)return;
+        var px=Number(l.px)||0,pa=Number(l.pa)||0,q=Number(l.qte||l.qty)||0;
+        ligTot++;
+        if(px>0&&q>0){
+          var a=parArticle[l.nm||'?']||(parArticle[l.nm||'?']={ca:0,q:0});
+          a.ca+=px*q;a.q+=q;
+        }
+        if(!(pa>0)){ligSansCout++;return;}
+        if(pa>px&&px>0){ligImpossibles++;return;}
+        ligSaines++;caSain+=px*q;margeSaine+=(px-pa)*q;
+      });
+    });
+    var nJours=Object.keys(jours).length;
+    var calend=Math.round((der-pre)/86400000)+1;
+    r.ok=true;
+    r.nom=(DB.cfg&&DB.cfg.nom)||'';
+    r.code=(DB.cfg&&DB.cfg.code)||'';
+    r.ville=(DB.cfg&&DB.cfg.region)||'';
+    r.debut=pre;r.fin=der;
+    r.jours=nJours;r.calend=calend;
+    r.regularite=calend>0?Math.round(nJours/calend*100):0;
+    r.transactions=nTr;r.encaisse=Math.round(total);
+    r.panier=nTr?Math.round(total/nTr):0;
+    r.pctMobile=nTr?Math.round(nMobile/nTr*100):0;
+    r.mois=Object.keys(mois).sort().map(function(k){
+      var m=mois[k];
+      return {mois:k,tr:m.tr,enc:Math.round(m.enc),jours:Object.keys(m.jours).length,
+              panier:m.tr?Math.round(m.enc/m.tr):0,
+              pctMobile:m.tr?Math.round(m.mob/m.tr*100):0};
+    });
+    r.ligTot=ligTot;r.ligSaines=ligSaines;
+    r.ligEcartees=ligSansCout+ligImpossibles;
+    r.ligSansCout=ligSansCout;r.ligImpossibles=ligImpossibles;
+    r.caSain=Math.round(caSain);r.marge=Math.round(margeSaine);
+    r.tauxMarge=caSain>0?Math.round(margeSaine/caSain*1000)/10:0;
+    r.top=Object.keys(parArticle).map(function(n){
+      return {nm:n,ca:Math.round(parArticle[n].ca),q:Math.round(parArticle[n].q*100)/100};
+    }).sort(function(a,b){return b.ca-a.ca;}).slice(0,6);
+    r.numero=_numeroReleve(r);
+    r.editeLe=new Date();
+  }catch(e){}
+  return r;
+}
+// ⚠️ PAS D'ADRESSE DE VÉRIFICATION TANT QU'ELLE N'EXISTE PAS. Imprimer
+// « vérifiez sur myboutiq.online/verif » alors que la page n'est pas en
+// ligne, c'est offrir au prêteur la preuve que le document ment.
+// À la place, un NUMÉRO calculé sur les chiffres eux-mêmes : deux relevés
+// qui ne disent pas la même chose ne portent pas le même numéro. Le prêteur
+// peut demander au commerçant de le régénérer devant lui et comparer.
+function _numeroReleve(r){
+  try{
+    var base=[r.code,r.jours,r.calend,r.transactions,r.encaisse,r.marge,r.ligSaines].join('|');
+    var h=0;
+    for(var i=0;i<base.length;i++){h=((h<<5)-h+base.charCodeAt(i))|0;}
+    var clef=Math.abs(h).toString(36).toUpperCase();
+    while(clef.length<6)clef='0'+clef;
+    return 'MBQ-'+normalizeShopCode(r.code).slice(0,5)+'-'+clef.slice(0,6);
+  }catch(e){return 'MBQ-000000';}
+}
+function _dateLongue(d){
+  try{
+    var M=['janvier','février','mars','avril','mai','juin','juillet','août',
+           'septembre','octobre','novembre','décembre'];
+    return d.getDate()+' '+M[d.getMonth()]+' '+d.getFullYear();
+  }catch(e){return '';}
+}
+function _moisLisible(k){
+  var M=['janvier','février','mars','avril','mai','juin','juillet','août',
+         'septembre','octobre','novembre','décembre'];
+  var p=String(k).split('-');
+  return (M[parseInt(p[1],10)-1]||'')+' '+p[0];
+}
+var _relDonnees=null;
+function ouvrirReleve(){
+  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  _relDonnees=_releveDonnees();
+  document.getElementById('ov-releve').classList.add('show');
+  renderReleve();
+}
+function majLigneReleve(){
+  var r=document.getElementById('row-releve');if(!r)return;
+  r.style.display=(role==='patron')?'':'none';
+  var sub=document.getElementById('st-rel-s');if(!sub)return;
+  var fr=(lang!=='en');
+  var n=0;try{n=Object.keys(((DB.ventes||[]).filter(function(v){return v&&!v.annulee;})
+        .reduce(function(a,v){a[isoJour(getSaleDateObj(v))]=1;return a;},{}))).length;}catch(e){}
+  sub.textContent=n
+    ?(fr?(n+' journée'+(n>1?'s':'')+' d’activité enregistrée'+(n>1?'s':'')+' — à montrer à un prêteur')
+        :(n+' active day'+(n>1?'s':'')+' recorded'))
+    :(fr?'Vends quelques jours, puis reviens ici':'Sell for a few days, then come back');
+}
+function renderReleve(){
+  var c=document.getElementById('rel-corps');if(!c)return;
+  var fr=(lang!=='en'),d=_relDonnees;
+  var b=document.getElementById('rel-actions');
+  if(!d||!d.ok){
+    c.innerHTML='<div class="empty"><div class="empty-e">\U0001F4C4</div><div class="empty-t">'
+      +(fr?'Pas encore de relevé':'No statement yet')+'</div>'
+      +'<div style="font-size:12.5px;color:var(--M);font-weight:600;margin-top:7px;line-height:1.6;max-width:32ch;margin-left:auto;margin-right:auto">'
+      +(fr?'Le relevé se construit tout seul à partir de tes ventes. Enregistre quelques journées et il apparaîtra ici.'
+          :'The statement builds itself from your sales.')+'</div></div>';
+    if(b)b.style.display='none';
+    return;
+  }
+  if(b)b.style.display='flex';
+  // ⚠️ Un commerçant, plusieurs boutiques dans un téléphone : le relevé porte
+  // TOUJOURS le nom et le code de celle qui est ouverte, et on le lui dit.
+  var nbBout=0;try{nbBout=(JSON.parse(localStorage.getItem('myboutiq_boutiques')||'[]')||[]).length;}catch(e){}
+  var h='';
+  h+='<div class="rel-tete">'
+    +'<div class="rel-marque">MyBoutiQ</div>'
+    +'<div class="rel-titre">'+(fr?'Relevé d’activité':'Activity statement')+'</div>'
+    +'<div class="rel-sous">'+d.nom+(d.ville?(' · '+d.ville):'')+' · '+(fr?'code ':'code ')+d.code+'</div>'
+    +'<div class="rel-sous">'+(fr?'Du ':'From ')+_dateLongue(d.debut)+(fr?' au ':' to ')+_dateLongue(d.fin)+'</div>'
+    +'<div class="rel-num">'+(fr?'N° ':'No. ')+d.numero+'</div>'
+    +'</div>';
+  if(nbBout>1)h+='<div class="rel-note">ℹ️ '+(fr
+      ?('Ce relevé ne concerne que <b>'+d.nom+'</b>. Tu as '+nbBout+' boutiques : change de boutique pour faire le relevé d’une autre.')
+      :('This statement covers <b>'+d.nom+'</b> only.'))+'</div>';
+  h+='<div class="rel-phare">'
+    +'<div class="rel-gros">'+d.jours+' <small>'+(fr?('jour'+(d.jours>1?'s':'')+' sur '+d.calend):('of '+d.calend))+'</small></div>'
+    +'<div class="rel-phare-txt">'+(fr
+       ?('Tu as enregistré des ventes <b>'+d.jours+' journées différentes</b> sur les '+d.calend
+         +' que compte la période, soit <b>'+d.regularite+' %</b> des jours.')
+       :(d.regularite+'% of days with recorded sales.'))+'</div></div>';
+  h+='<div class="rel-lig"><span>'+(fr?'Transactions':'Transactions')+'</span><b>'+fmtQ(d.transactions)+'</b></div>'
+    +'<div class="rel-lig"><span>'+(fr?'Encaissé sur la période':'Collected')+'</span><b>'+fmt(d.encaisse)+'</b></div>'
+    +'<div class="rel-lig"><span>'+(fr?'Panier moyen':'Average basket')+'</span><b>'+fmt(d.panier)+'</b></div>'
+    +'<div class="rel-lig"><span>'+(fr?'Réglé en Mobile Money':'Paid by Mobile Money')+'</span><b>'+d.pctMobile+' %</b></div>';
+  h+='<div class="rel-sect">'+(fr?'Mois par mois':'Month by month')+'</div>';
+  h+='<div class="rel-tbl"><table><thead><tr><th>'+(fr?'Mois':'Month')+'</th><th>'+(fr?'Jours':'Days')+'</th><th>'+(fr?'Trans.':'Tx')+'</th><th>'+(fr?'Encaissé':'Collected')+'</th></tr></thead><tbody>';
+  d.mois.forEach(function(m){
+    h+='<tr><td>'+_moisLisible(m.mois)+'</td><td>'+m.jours+'</td><td>'+m.tr+'</td><td>'+fmt(m.enc)+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<div class="rel-sect">'+(fr?'Marge commerciale':'Trading margin')+'</div>';
+  h+='<div class="rel-lig"><span>'+(fr?'Lignes de vente exploitables':'Usable sale lines')+'</span><b>'+d.ligSaines+' / '+d.ligTot+'</b></div>'
+    +'<div class="rel-lig"><span>'+(fr?'Ventes sur ces lignes':'Sales on those lines')+'</span><b>'+fmt(d.caSain)+'</b></div>'
+    +'<div class="rel-lig"><span>'+(fr?'Marge dégagée':'Margin')+'</span><b>'+fmt(d.marge)+'</b></div>'
+    +'<div class="rel-lig"><span>'+(fr?'Taux de marge':'Margin rate')+'</span><b>'+String(d.tauxMarge).replace('.',',')+' %</b></div>';
+  if(d.ligEcartees>0)h+='<div class="rel-note">⚠️ <b>'+d.ligEcartees+' '+(fr?'lignes écartées':'lines excluded')+'</b> '+(fr
+      ?('du calcul de marge : '+d.ligSansCout+' sans prix d’achat, '+d.ligImpossibles
+        +' avec un prix d’achat supérieur au prix de vente. Elles n’entrent dans aucun chiffre ci-dessus.')
+      :'from the margin.')+'</div>';
+  if(d.top.length){
+    h+='<div class="rel-sect">'+(fr?'Ce qui fait le chiffre':'Top items')+'</div>';
+    h+='<div class="rel-tbl"><table><thead><tr><th>'+(fr?'Article':'Item')+'</th><th>'+(fr?'Quantité':'Qty')+'</th><th>'+(fr?'Ventes':'Sales')+'</th></tr></thead><tbody>';
+    d.top.forEach(function(t){h+='<tr><td>'+t.nm+'</td><td>'+fmtQ(t.q)+'</td><td>'+fmt(t.ca)+'</td></tr>';});
+    h+='</tbody></table></div>';
+  }
+  h+='<div class="rel-reserve"><b>'+(fr?'Ce que ce relevé ne prouve pas':'What this does not prove')+'</b>'
+    +'<ul>'
+    +'<li>'+(fr?'Les ventes sont saisies par le commerçant. MyBoutiQ atteste qu’elles ont été <b>enregistrées aux dates indiquées</b>, pas qu’elles ont eu lieu.':'Sales are entered by the shopkeeper.')+'</li>'
+    +'<li>'+(fr?'Les montants ne sont rapprochés d’aucun compte bancaire. Seule la part Mobile Money peut être recoupée auprès de l’opérateur.':'Amounts are not reconciled with a bank account.')+'</li>'
+    +'<li>'+(fr?'Il ne dit rien des charges du commerçant, ni de ses engagements ailleurs.':'It says nothing about costs or other commitments.')+'</li>'
+    +'</ul></div>';
+  h+='<div class="rel-pied">'+(fr?'Édité le ':'Issued ')+_dateLongue(d.editeLe)
+    +' · '+(fr?'N° ':'No. ')+d.numero+' · myboutiq.online<br>'
+    +'<span style="opacity:.75">'+(fr?'Le numéro est calculé sur les chiffres eux-mêmes : deux relevés qui ne disent pas la même chose ne portent pas le même numéro. Demande au commerçant de le régénérer devant toi et compare.'
+        :'The number is computed from the figures themselves.')+'</span></div>';
+  c.innerHTML=h;
+}
+// Un prêteur veut un document, pas un message. L’impression du navigateur
+// donne un PDF sur Android comme sur iPhone.
+function imprimerReleve(){
+  try{
+    document.body.classList.add('impr-releve');
+    setTimeout(function(){
+      try{window.print();}catch(e){}
+      setTimeout(function(){document.body.classList.remove('impr-releve');},600);
+    },120);
+  }catch(e){document.body.classList.remove('impr-releve');}
+}
+function partagerReleve(){
+  var fr=(lang!=='en'),d=_relDonnees;
+  if(!d||!d.ok)return;
+  var t=(fr?'RELEVÉ D’ACTIVITÉ — ':'ACTIVITY STATEMENT — ')+d.nom+'\n'
+    +(fr?'Code boutique : ':'Shop code: ')+d.code+'\n'
+    +(fr?'Période : du ':'Period: ')+_dateLongue(d.debut)+(fr?' au ':' to ')+_dateLongue(d.fin)+'\n\n'
+    +'• '+(fr?'Journées d’activité : ':'Active days: ')+d.jours+' / '+d.calend+' ('+d.regularite+' %)\n'
+    +'• '+(fr?'Transactions : ':'Transactions: ')+fmtQ(d.transactions)+'\n'
+    +'• '+(fr?'Encaissé : ':'Collected: ')+fmt(d.encaisse)+'\n'
+    +'• '+(fr?'Panier moyen : ':'Average basket: ')+fmt(d.panier)+'\n'
+    +'• '+(fr?'Mobile Money : ':'Mobile Money: ')+d.pctMobile+' %\n'
+    +'• '+(fr?'Marge : ':'Margin: ')+fmt(d.marge)+' ('+String(d.tauxMarge).replace('.',',')+' %) '
+      +(fr?'sur ':'on ')+d.ligSaines+'/'+d.ligTot+(fr?' lignes':' lines')+'\n\n'
+    +(fr?'N° ':'No. ')+d.numero+' · '+(fr?'édité le ':'issued ')+_dateLongue(d.editeLe)+'\n'
+    +(fr?'MyBoutiQ atteste que ces ventes ont été enregistrées aux dates indiquées.':'MyBoutiQ certifies these sales were recorded on those dates.');
+  try{ if(navigator.share){navigator.share({text:t});return;} }catch(e){}
+  try{ navigator.clipboard.writeText(t);
+       showToast('\U0001F4CB '+(fr?'Relevé copié — colle-le dans WhatsApp':'Statement copied')); return; }catch(e){}
+  try{ window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank'); }catch(e){}
 }
 var _annCible='tous',_annNiveau='info';
 function selAnnCible(c,btn){_annCible=c;(btn.parentNode||document).querySelectorAll('.cbtn').forEach(function(x){x.classList.remove('on');});btn.classList.add('on');}
