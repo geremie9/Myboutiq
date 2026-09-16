@@ -4529,7 +4529,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.27'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.28'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -8169,14 +8169,64 @@ function appliquerOrdrePrio(lst){
 // CE téléphone a touché récemment ne regarde pas les autres, et n'a rien
 // à faire dans les données partagées.
 var _CLE_RECENTS='myboutiq_recents';
-try{var _r=JSON.parse(localStorage.getItem(_CLE_RECENTS)||'[]');if(Array.isArray(_r))ordrePrio=_r;}catch(e){}
+// ⚠️ SA CORRECTION : « je me suis trompé. Ce que je voulais dire :
+//    l'article qui a reçu PLUS DE TOUCHER, c'est lui qui reste en première
+//    position. Et ainsi de suite. »
+// Ce n'est pas la même chose que ce qui était codé. Avant, le DERNIER
+// touché passait devant : un article ouvert une seule fois par erreur
+// délogeait le plus vendu de la boutique, et il fallait retoucher celui-ci
+// pour le récupérer. Ce n'est plus la récence qui classe, c'est le NOMBRE.
+// On compte donc, et on trie sur le compte. La récence ne sert plus qu'à
+// départager deux articles à égalité — sinon l'ordre sauterait au hasard
+// entre deux rendus.
+var _CLE_TOUCHES='myboutiq_touches';
+var _touches={},_dernierTouche={},_horlogeTouche=0;
+try{
+  var _t=JSON.parse(localStorage.getItem(_CLE_TOUCHES)||'null');
+  if(_t&&typeof _t==='object'&&_t.n)_touches=_t.n||{},_dernierTouche=_t.d||{};
+}catch(e){}
+try{
+  var _r=JSON.parse(localStorage.getItem(_CLE_RECENTS)||'[]');
+  if(Array.isArray(_r))ordrePrio=_r;
+  // Reprise de l'ancien classement par récence : sans ça, l'ordre du
+  // commerçant serait remis à plat le jour de la mise à jour. Les anciens
+  // premiers gardent une avance, que l'usage réel corrigera ensuite.
+  if(!Object.keys(_touches).length&&_r&&_r.length){
+    _r.forEach(function(id,i){_touches[Number(id)]=_r.length-i;_dernierTouche[Number(id)]=_r.length-i;});
+    _horlogeTouche=_r.length;
+  }
+}catch(e){}
+function _recalculerOrdrePrio(){
+  ordrePrio=Object.keys(_touches)
+    .map(Number)
+    .filter(function(id){return (_touches[id]||0)>0;})
+    .sort(function(a,b){
+      var d=(_touches[b]||0)-(_touches[a]||0);
+      if(d)return d;
+      return (_dernierTouche[b]||0)-(_dernierTouche[a]||0);   // égalité : le plus récent
+    });
+  if(ordrePrio.length>12)ordrePrio.length=12;
+}
+_recalculerOrdrePrio();
 function mettreEnAvant(pid){
   if(pid==null)return;
   pid=Number(pid);
-  ordrePrio=ordrePrio.filter(function(id){return Number(id)!==pid;});
-  ordrePrio.unshift(pid);
-  if(ordrePrio.length>12)ordrePrio.length=12;
-  try{localStorage.setItem(_CLE_RECENTS,JSON.stringify(ordrePrio));}catch(e){}
+  if(!isFinite(pid))return;
+  _touches[pid]=(_touches[pid]||0)+1;
+  _dernierTouche[pid]=++_horlogeTouche;
+  // On ne garde pas un compteur pour un article disparu depuis longtemps :
+  // la mémoire de l'appareil n'est pas un journal.
+  var ids=Object.keys(_touches);
+  if(ids.length>200){
+    ids.sort(function(a,b){return (_touches[b]||0)-(_touches[a]||0);}).slice(60).forEach(function(k){
+      delete _touches[k];delete _dernierTouche[k];
+    });
+  }
+  _recalculerOrdrePrio();
+  try{
+    localStorage.setItem(_CLE_TOUCHES,JSON.stringify({n:_touches,d:_dernierTouche}));
+    localStorage.setItem(_CLE_RECENTS,JSON.stringify(ordrePrio));
+  }catch(e){}
 }
 // Un seul point d'entrée pour « on vient d'y toucher », appelé partout.
 function toucheArticle(pid){
