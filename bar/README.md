@@ -39,6 +39,60 @@ installation, aucun serveur. Tout vit dans le téléphone.
   ardoises, pourboires, fond de caisse du lendemain, vidanges à rendre.
 - **Équipe & clients** — serveurs avec leur propre code (ils ne voient ni
   prix d'achat, ni marge, ni clôture), ardoises clients et relance WhatsApp.
+- **Vente au comptoir** — la carte, sans table à ouvrir : on tape, on
+  encaisse, l'écran est déjà prêt pour le client suivant. C'est l'écran
+  d'accueil d'une cave, d'un kiosque, ou du téléphone posé au comptoir
+  (voir plus bas).
+
+## Un bar n'est pas l'autre — forme et poste
+
+> « Dans certains petits bars, une personne au comptoir, une personne au
+> stock, ou même la même personne gère. Il y a autant de réalités. »
+
+L'application partait d'UNE forme : douze tables, des serveurs, des
+vidanges, une cuisine. Une cave à boissons devait ouvrir une table avant
+de vendre deux bières ; une patronne seule avait un écran « Équipe » pour
+elle toute seule ; un bar qui ne vend qu'en canettes comptait des
+consignes qui n'existent pas.
+
+Deux choses varient, et **elles ne se rangent pas au même endroit** :
+
+| | Où ça vit | Qui ça concerne |
+|---|---|---|
+| **La forme du bar** — tables, vidanges, cuisine, plusieurs personnes | `cfg.forme`, dans la base | Tout le bar. Partagé, sauvegardé. |
+| **Le poste du téléphone** — tout / comptoir / stock | `localStorage`, clé `mybar_poste` | **Ce téléphone seul.** Jamais dans la sauvegarde. |
+
+C'est cette séparation qui permet au téléphone du comptoir de s'ouvrir sur
+la carte pendant que celui de la cave s'ouvre sur le stock — le même bar,
+les mêmes chiffres, deux métiers ce soir-là. Mettre le poste dans la base
+l'aurait imposé à tout le monde à la première synchronisation ; le
+restaurer depuis une sauvegarde aurait changé le métier du téléphone qui
+restaure.
+
+**Les onglets du bas ne sont plus écrits en dur.** `onglets()` les
+calcule, `majNavs()` les pose sur toutes les barres à la fois :
+
+| Situation | Onglets |
+|---|---|
+| Bar à tables, poste « tout le bar » | Service · Stock · Rapports · Équipe |
+| Bar à tables, poste « comptoir » | Comptoir · Service · Stock · Équipe |
+| Bar à tables, poste « stock » | Stock · Service · Rapports · Équipe |
+| Sans tables (cave, kiosque) | Comptoir · Stock · Rapports · Équipe |
+| Tenu seul | …et *Équipe* devient **Clients** |
+
+**Le comptoir est une table, pas un deuxième circuit de vente.** L'écran
+« Vente au comptoir » est la carte, ouverte sur une table dédiée
+(`cptr:1`) qu'on vide à chaque encaissement : « ✓ Encaisser » à la place
+de « ✓ Terminé », et « ➕ Vente suivante » sur le reçu. Le stock, les
+marges, la part du serveur et les rapports continuent de compter
+exactement comme pour une table — un circuit parallèle aurait doublé
+chaque règle métier, et la deuxième copie aurait fini par mentir.
+
+Une cave à boissons est créée directement sans tables, et un
+établissement dont la carte de départ n'a pas de cuisine est créé sans
+cuisine : c'est un point de départ, pas une contrainte. Tout se change
+dans **Paramètres → Comment marche ton bar** (le bar) et **Ce téléphone
+sert à…** (le téléphone).
 
 ## Français et anglais
 
@@ -111,7 +165,21 @@ déjà coûté un défaut visible :
    `/bar` n'en fait pas partie : la page n'était contrôlée par personne,
    donc pas disponible hors ligne. On ne redirige **pas** vers `/bar/` —
    `trailingSlash:false` renverrait aussitôt sur `/bar`, en boucle.
-3. **`vercel.json` n'accepte aucun commentaire.** Ni `//`, ni une clé
+3. **`/bar` prévient au lieu de rediriger.** Les données d'une
+   application vivent **par adresse** : un bar saisi sur
+   `myboutiq.online/bar` n'existe pas sur `bar.myboutiq.online`, ce ne
+   sont pas les mêmes tiroirs. Rediriger, c'est ouvrir un bar **vide** à
+   quelqu'un qui a déjà travaillé ici et lui laisser croire qu'il a tout
+   perdu — alors que ses données sont toujours là, derrière une porte
+   qu'on vient de fermer. Donc : sur l'ancienne adresse, la vitrine dit
+   où aller, un bar déjà ouvert reçoit un bandeau « Déménager »
+   (sauvegarde → nouvelle adresse → restauration), et « Installer »
+   **disparaît** — poser l'application depuis là installerait la copie
+   qu'on retire, et le patron se retrouverait avec deux MyBar sur son
+   écran d'accueil, dont une vide, sans rien pour les distinguer.
+   `ancienneAdresse()` teste l'hôte, pas le chemin : un banc en local ne
+   déclenche rien.
+4. **`vercel.json` n'accepte aucun commentaire.** Ni `//`, ni une clé
    `"//"` : le schéma est fermé, et une propriété inconnue fait échouer
    le déploiement *avant* le build, sans un seul log. C'est pour ça que
    ces explications sont ici et pas là-bas.

@@ -22,6 +22,13 @@
     var h=document.documentElement;
     var db=null;try{db=localStorage.getItem('mybar_v1')||localStorage.getItem('mybarq_v1');}catch(x){}
     h.className+=(db?' porte-login':' porte-vitrine');
+    /* ⚠️ LE THÈME SE POSE ICI, AVANT TOUT LE RESTE. Décidé plus bas, dans
+       le mégaoctet de script, l'écran serait peint en BLANC une demi-
+       seconde avant de basculer au sombre — un éclair en pleine figure
+       à 23 h, exactement ce que le mode nuit est censé éviter. */
+    var t='auto';try{t=localStorage.getItem('mybar_theme')||'auto';}catch(x){}
+    var hh=new Date().getHours();
+    if(t==='nuit'||(t==='auto'&&(hh>=18||hh<6)))h.className+=' nuit';
   }catch(x){}
 })();
 window._pwaInvite=null;
@@ -93,7 +100,63 @@ window.addEventListener('beforeinstallprompt',function(e){
 <noscript><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet"></noscript>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{--P:#0E2A26;--P2:#14403A;--A:#F6B93B;--G:#00C853;--R:#FF3D00;--B:#1B7F6E;--PU:#6E5A82;--O:#FF6D00;--BG:#F1F3F2;--C:#FFF;--T:#132029;--M:#94A3A0;--BD:#E6E9E8}
+/* ══════════════════════════════════════════════════════════════════
+   LE JOUR ET LA NUIT
+
+   ⚠️ UN BAR TRAVAILLE LA NUIT. À 23 h, un plan de salle blanc est
+   l'objet le plus lumineux de la table : il éblouit le serveur, se voit
+   depuis la rue, efface l'écran dès qu'on lève les yeux vers la salle —
+   et sur un écran OLED il vide la batterie du seul téléphone qui tient
+   la caisse. Une application de bar qui n'est claire QUE le jour, ce
+   n'est pas une coquetterie de dessinateur : c'est la différence entre
+   un logiciel de bureau et un outil de salle.
+
+   Tout l'écran est peint à partir de ces jetons. `html.nuit` les
+   remplace, et rien d'autre ne change — ni une balise, ni une classe.
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --P:#0E2A26;--P2:#14403A;--A:#F6B93B;--G:#00C853;--R:#FF3D00;--B:#1B7F6E;--PU:#6E5A82;--O:#FF6D00;
+  --BG:#F1F3F2;--C:#FFF;--T:#132029;--M:#94A3A0;--BD:#E6E9E8;
+  --VERT:#1B7A3A;--OMBRE:rgba(16,24,40,.05);--OMBRE2:rgba(180,120,10,.16);
+  /* ⚠️ `--P` FAISAIT DEUX MÉTIERS : la couleur sombre de la marque (fonds
+     d'en-tête, pastilles ambre) ET la couleur du texte fort posé sur une
+     carte claire. Le jour, les deux coïncident ; la nuit, non — la carte
+     devient sombre, et un texte « sombre de marque » dessus disparaît.
+     Mesuré avant correction : le montant d'une table occupée tombait à
+     1,27 de contraste, l'onglet actif aussi. Invisibles, tous les deux.
+     `--TF` est le texte fort, et lui seul. */
+  --TF:#0E2A26;
+  --LIB-BD:#D7DEDC;--LIB-T:#6F807C;--LIB-Z:#98A5A2;
+  /* Les quatre familles de blocs teintés : fond, cadre, texte. */
+  --Na:#FFF8E6;--NaD:#F3CE72;--NaT:#8A6100;
+  --Nr:#FFEDE8;--NrD:#FFB59B;--NrT:#A33000;
+  --Nv:#E7F8EE;--NvD:#8FDCAE;--NvT:#136B36;
+  --Nb:#E8F4F2;--NbD:#8FC9BF;--NbT:#0E5A4E;
+  --Bof:#EDE7F6;--BofT:#5E35B1;--Bfr:#E3F2FD;--BfrT:#1565C0;
+  --Bch:#FFF3E0;--BchT:#E65100;--Bba:#FFF3E0;--BbaT:#B45309;
+  --Bou:#FFEBEE;--BouT:#C62828;--Bok:#E8F5E9;--BokT:#2E7D32;
+}
+/* ⚠️ La nuit n'est pas « le jour avec du noir ». On ne descend pas à
+   #000 : un noir pur sur un écran OLED fait baver les bords du texte et
+   fatigue plus qu'il ne repose. Le fond garde le vert de la marque,
+   très sombre — la salle reste reconnaissable. Et les blocs teintés
+   s'inversent : fond sombre, texte clair, jamais du pastel sur du noir
+   (illisible) ni du texte sombre sur sombre (invisible). */
+html.nuit{
+  --BG:#0A1917;--C:#132C28;--T:#E8F1EF;--M:#7F918D;--BD:#22403A;
+  --P:#071411;--P2:#0E2A26;
+  --VERT:#5CE08A;--OMBRE:rgba(0,0,0,.35);--OMBRE2:rgba(0,0,0,.45);
+  --TF:#EAF5F2;
+  --LIB-BD:#26443E;--LIB-T:#809894;--LIB-Z:#6B7F7B;
+  --Na:#2A2416;--NaD:#5A4A1E;--NaT:#F3CE72;
+  --Nr:#2E1A15;--NrD:#5E2E22;--NrT:#FFB59B;
+  --Nv:#12291F;--NvD:#2A5A3E;--NvT:#8FDCAE;
+  --Nb:#0F2A26;--NbD:#2A5A52;--NbT:#8FC9BF;
+  --Bof:#241E33;--BofT:#C2B0E8;--Bfr:#12293A;--BfrT:#8FC4EE;
+  --Bch:#2E2113;--BchT:#F0A860;--Bba:#2E2113;--BbaT:#E8B770;
+  --Bou:#2E1517;--BouT:#F09393;--Bok:#12291C;--BokT:#7FD49A;
+}
+html.nuit body{background:var(--BG)}
 body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden;color:var(--T)}
 .scr{display:none;flex-direction:column;min-height:100vh}
 .scr.on{display:flex}
@@ -105,7 +168,10 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 
 /* ── SPLASH ── */
 #s-splash{background:linear-gradient(165deg,#06231F 0%,#0E3A31 45%,#1B5E52 100%);align-items:center;justify-content:center;gap:10px}
-.splash-logo{font-size:70px;animation:pulse 1.5s ease-in-out infinite}
+.splash-logo,.ob-logo,.login-logo,.vit-logo{line-height:0}
+.splash-logo{animation:pulse 1.5s ease-in-out infinite;filter:drop-shadow(0 10px 22px rgba(0,0,0,.35))}
+.login-logo,.ob-logo{animation:float 3s ease-in-out infinite;filter:drop-shadow(0 8px 18px rgba(0,0,0,.3))}
+.vit-logo{margin-bottom:10px;position:relative;filter:drop-shadow(0 8px 18px rgba(0,0,0,.3))}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 .splash-title{font-family:'Nunito',sans-serif;font-size:40px;font-weight:900;color:#fff}
 .splash-title span{color:var(--A)}
@@ -116,7 +182,7 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 
 /* ── VITRINE ── */
 #s-vitrine{background:var(--BG);align-items:stretch;padding:0}
-.vit-hero{background:linear-gradient(165deg,#06231F 0%,#0E3A31 50%,#1B5E52 100%);padding:34px 22px 30px;color:#fff;position:relative;overflow:hidden}
+.vit-hero{background:linear-gradient(165deg,#06231F 0%,#0E3A31 50%,#1B5E52 100%);padding:52px 22px 32px;color:#fff;position:relative;overflow:hidden;border-radius:0 0 34px 34px}
 /* ⚠️⚠️ CE HALO MANGEAIT LES TOUCHES, ET C'ÉTAIT INVISIBLE À L'ŒIL.
    Le cercle doré du coin haut-droit est purement décoratif — mais il est
    posé PAR-DESSUS le contenu, et un pseudo-élément reçoit les clics comme
@@ -131,10 +197,69 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .vit-hero::before{content:'';position:absolute;width:300px;height:300px;background:radial-gradient(circle,rgba(246,185,59,.18),transparent 70%);top:-80px;right:-90px;border-radius:50%;pointer-events:none}
 .vit-brand{font-family:'Nunito',sans-serif;font-size:34px;font-weight:900;position:relative}
 .vit-brand span{color:var(--A)}
-.vit-tag{font-size:15px;font-weight:700;margin-top:10px;line-height:1.45;position:relative}
+.vit-tag{font-size:27px;font-weight:800;margin-top:12px;line-height:1.2;position:relative;letter-spacing:-.6px}
+.vit-tag b{color:var(--A);font-weight:900}
 .vit-sub{font-size:13px;font-weight:600;color:rgba(255,255,255,.66);margin-top:8px;line-height:1.5;position:relative}
-.vit-cta{display:block;width:100%;background:var(--A);color:#06231F;border:none;border-radius:13px;padding:15px;font-size:16px;font-weight:900;margin-top:20px;cursor:pointer;position:relative}
-.vit-cta2{display:block;width:100%;background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.22);border-radius:13px;padding:13px;font-size:14px;font-weight:800;margin-top:10px;cursor:pointer;position:relative}
+/* ⚠️ QUATRE BOUTONS IDENTIQUES EMPILÉS, C'EST ZÉRO BOUTON. Ils avaient
+   tous la même forme et presque le même poids : l'œil ne savait pas où
+   appuyer, et la page ressemblait à un menu d'administration. Il y a
+   maintenant UNE action principale, une secondaire, et deux discrètes. */
+.vit-cta{display:block;width:100%;background:var(--A);color:#06231F;border:none;border-radius:14px;padding:16px;
+  font-size:16.5px;font-weight:900;margin-top:22px;cursor:pointer;position:relative;
+  box-shadow:0 8px 22px rgba(246,185,59,.28);transition:transform .14s,box-shadow .14s}
+.vit-cta:active{transform:scale(.97);box-shadow:0 3px 10px rgba(246,185,59,.3)}
+.vit-cta2{display:block;width:100%;background:rgba(255,255,255,.10);color:#fff;border:1.5px solid rgba(255,255,255,.2);
+  border-radius:13px;padding:13px;font-size:14px;font-weight:800;margin-top:10px;cursor:pointer;position:relative;transition:background .15s}
+.vit-cta2:active{background:rgba(255,255,255,.2)}
+.vit-cta3{display:block;width:100%;background:none;border:none;color:rgba(255,255,255,.62);font-size:13px;
+  font-weight:700;padding:11px;margin-top:4px;cursor:pointer;position:relative;text-decoration:underline;text-underline-offset:3px}
+
+/* ── LA DÉMONSTRATION ────────────────────────────────────────────────
+   ⚠️ La vitrine EXPLIQUAIT le produit en quatre paragraphes. MyBoutiQ,
+   elle, le MONTRE : une vente se fait toute seule sous les yeux du
+   visiteur, en six secondes, sans rien à lire. C'est ce qui manquait le
+   plus ici — et pour un bar il fallait montrer ce qu'une boutique ne
+   sait pas faire : une addition qui reste OUVERTE et se remplit, puis
+   qu'on encaisse.
+   Tout est en CSS, sans une ligne de JavaScript et sans une image : le
+   téléphone n'anime que des `transform` et des `opacity`. */
+.vt-demo{background:#FFFDF8;border-radius:18px;padding:11px;margin-top:22px;position:relative;
+  box-shadow:0 14px 34px rgba(0,0,0,.34);overflow:hidden}
+.vt-dh{display:flex;justify-content:space-between;align-items:center;padding:2px 4px 9px;border-bottom:1px solid #EFE7D8}
+.vt-dh i{font-style:normal;font-size:9.5px;font-weight:900;color:#9AA7A4;letter-spacing:1px}
+.vt-dtot{height:1.15em;overflow:hidden;font-size:17px;font-weight:900;color:#0E2A26;font-variant-numeric:tabular-nums}
+.vt-dtot span{display:block;animation:vtTot 9s infinite}
+@keyframes vtTot{0%,12%{transform:translateY(0)}16%,25%{transform:translateY(-1.15em)}
+  29%,38%{transform:translateY(-2.3em)}42%,88%{transform:translateY(-3.45em)}92%,100%{transform:translateY(0)}}
+.vt-dl{display:flex;align-items:center;gap:9px;padding:8px 4px;opacity:0}
+.vt-dl em{font-style:normal;font-size:19px}
+.vt-dl b{flex:1;font-size:12.5px;font-weight:800;color:#132029;text-align:left}
+.vt-dl i{font-style:normal;font-size:12.5px;font-weight:900;color:#1B7F6E;font-variant-numeric:tabular-nums}
+.vt-dl:nth-of-type(1){animation:vtL1 9s infinite}
+.vt-dl:nth-of-type(2){animation:vtL2 9s infinite}
+.vt-dl:nth-of-type(3){animation:vtL3 9s infinite}
+@keyframes vtL1{0%,11%{opacity:0;transform:translateY(9px)}15%,88%{opacity:1;transform:none}93%,100%{opacity:0}}
+@keyframes vtL2{0%,24%{opacity:0;transform:translateY(9px)}28%,88%{opacity:1;transform:none}93%,100%{opacity:0}}
+@keyframes vtL3{0%,37%{opacity:0;transform:translateY(9px)}41%,88%{opacity:1;transform:none}93%,100%{opacity:0}}
+.vt-dpay{margin-top:7px;background:#0E2A26;color:var(--A);border-radius:11px;padding:11px;text-align:center;
+  font-size:12.5px;font-weight:900;letter-spacing:.6px;animation:vtPay 9s infinite}
+@keyframes vtPay{0%,56%{transform:scale(1)}61%{transform:scale(.93)}66%,100%{transform:scale(1)}}
+.vt-dok{position:absolute;inset:0;background:rgba(255,253,248,.95);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;opacity:0;animation:vtOk 9s infinite}
+.vt-dok em{font-style:normal;font-size:38px}
+.vt-dok span{font-size:13px;font-weight:900;color:#1B7F6E}
+@keyframes vtOk{0%,63%{opacity:0;transform:scale(.9)}69%,84%{opacity:1;transform:scale(1)}90%,100%{opacity:0}}
+/* Un téléphone qui économise sa batterie, ou quelqu'un que le mouvement
+   gêne : on n'impose rien. */
+@media (prefers-reduced-motion:reduce){
+  .vt-dtot span,.vt-dl,.vt-dpay,.vt-dok,.splash-logo,.login-logo,.ob-logo,.tcard.longue::before{animation:none!important}
+  .vt-dl{opacity:1}
+}
+/* La langue n'est plus la première chose qu'on voit : elle se pose dans
+   un coin, à sa vraie importance. */
+.vit-lang{position:absolute;top:14px;right:14px;z-index:2}
+.vit-lang .langsw{margin:0;gap:4px}
+.vit-lang .langp{padding:6px 10px;font-size:11.5px}
 .vit-sec{padding:20px 18px 6px}
 .vit-h2{font-size:17px;font-weight:900;margin-bottom:12px}
 .vit-card{background:var(--C);border:1px solid var(--BD);border-radius:15px;padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
@@ -145,7 +270,7 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 
 /* ── ONBOARD ── */
 #s-onboard{background:var(--P);align-items:center;padding:26px 22px 40px;overflow-y:auto;position:relative}
-.ob-logo{font-size:50px;animation:float 3s ease-in-out infinite}
+
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 .ob-brand{font-family:'Nunito',sans-serif;font-size:29px;font-weight:900;color:#fff;margin:2px 0 3px}
 .ob-brand span{color:var(--A)}
@@ -200,7 +325,7 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 /* ── LOGIN ── */
 #s-login{background:linear-gradient(165deg,#06231F 0%,#0E3A31 45%,#1B5E52 100%);align-items:center;justify-content:center;padding:38px 24px;position:relative;overflow:hidden}
 #s-login::before{content:'';position:absolute;width:330px;height:330px;background:radial-gradient(circle,rgba(246,185,59,.20),transparent 70%);top:-70px;right:-90px;border-radius:50%;pointer-events:none}
-.login-logo{font-size:58px;animation:float 3s ease-in-out infinite}
+
 .login-brand{font-family:'Nunito',sans-serif;font-size:35px;font-weight:900;color:#fff;letter-spacing:-1px}
 .login-brand span{color:var(--A)}
 .login-sub{color:rgba(255,255,255,.66);font-size:13.5px;margin-bottom:28px;font-weight:600}
@@ -217,12 +342,21 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 /* ── PROPOSER L'INSTALLATION ─────────────────────────────────────── */
 .lg-install{width:100%;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);
   color:#fff;border-radius:12px;padding:12px;font-size:13.5px;font-weight:800;cursor:pointer;margin-top:12px;position:relative}
-.inst-band{display:flex;align-items:center;gap:10px;margin:0 15px 10px;background:#E7F8EE;
-  border:1.5px solid #8FDCAE;border-radius:12px;padding:10px 12px}
-.inst-band .ib-t{flex:1;min-width:0;font-size:11.5px;font-weight:700;color:#136B36;line-height:1.4}
+.inst-band{display:flex;align-items:center;gap:10px;margin:0 15px 10px;background:var(--Nv);
+  border:1.5px solid var(--NvD);border-radius:12px;padding:10px 12px}
+.inst-band .ib-t{flex:1;min-width:0;font-size:11.5px;font-weight:700;color:var(--NvT);line-height:1.4}
 .inst-band .ib-b{flex-shrink:0;background:#1B7F6E;color:#fff;border:none;border-radius:9px;padding:10px 12px;
   font-size:11.5px;font-weight:900;cursor:pointer;white-space:nowrap}
-.inst-band .ib-x{flex-shrink:0;background:transparent;border:none;color:#136B36;font-size:15px;font-weight:900;cursor:pointer;padding:8px 4px}
+.inst-band .ib-x{flex-shrink:0;background:transparent;border:none;color:var(--NvT);font-size:15px;font-weight:900;cursor:pointer;padding:8px 4px}
+.inst-band.adr{background:var(--Na);border-color:var(--NaD)}
+.inst-band.adr .ib-t{color:var(--NaT)}
+.inst-band.adr .ib-b{background:#8A6100}
+.vit-adr{margin:0 0 14px;padding:12px 14px;border-radius:13px;background:rgba(246,185,59,.14);
+  border:1.5px solid rgba(246,185,59,.42);text-align:left}
+.vit-adr b{display:block;color:#F6B93B;font-size:12.5px;font-weight:900;letter-spacing:.2px;margin-bottom:5px}
+.vit-adr span{display:block;color:rgba(255,255,255,.80);font-size:12px;font-weight:700;line-height:1.5}
+.vit-adr button{margin-top:10px;width:100%;background:#F6B93B;color:#3A2A00;border:none;border-radius:10px;
+  padding:11px;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit}
 .login-hint{color:rgba(255,255,255,.3);font-size:11.5px;text-align:center;margin-top:14px;font-weight:600;position:relative;line-height:1.5}
 .lnk{color:var(--A);font-weight:800;cursor:pointer;text-decoration:underline}
 
@@ -246,7 +380,8 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .stats-bar{background:var(--P);padding:0 15px 12px;display:flex;gap:7px}
 .sc{flex:1;background:rgba(255,255,255,.07);border-radius:12px;padding:8px 10px;border:1px solid rgba(255,255,255,.05);min-width:0}
 .sl{font-size:9px;color:rgba(255,255,255,.4);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
-.sv{font-size:15.5px;font-weight:800;color:#fff;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sv{font-size:15.5px;font-weight:800;color:#fff;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-variant-numeric:tabular-nums}
 .sv-a{color:var(--A)}.sv-g{color:#5CE08A}
 
 /* ── CONTENU ── */
@@ -266,27 +401,50 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .vide-t{font-size:14.5px;font-weight:800;color:var(--T);margin-bottom:5px}
 .vide-s{font-size:12.5px;font-weight:600;line-height:1.55}
 .note[onclick]{cursor:pointer}
-.note{background:#FFF8E6;border:1.5px solid #F3CE72;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700;color:#8A6100;line-height:1.45;margin:0 15px 10px}
-.note.rouge{background:#FFEDE8;border-color:#FFB59B;color:#A33000}
-.note.vert{background:#E7F8EE;border-color:#8FDCAE;color:#136B36}
-.note.bleu{background:#E8F4F2;border-color:#8FC9BF;color:#0E5A4E}
+.note{background:var(--Na);border:1.5px solid var(--NaD);border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700;color:var(--NaT);line-height:1.45;margin:0 15px 10px}
+.note.rouge{background:var(--Nr);border-color:var(--NrD);color:var(--NrT)}
+.note.vert{background:var(--Nv);border-color:var(--NvD);color:var(--NvT)}
+.note.bleu{background:var(--Nb);border-color:var(--NbD);color:var(--NbT)}
 
 /* ── TABLES (SERVICE) ── */
 .tgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 15px}
-.tcard{background:var(--C);border:1.5px solid var(--BD);border-radius:16px;padding:13px 12px;cursor:pointer;position:relative;box-shadow:0 1px 3px rgba(16,24,40,.06);min-height:96px;display:flex;flex-direction:column;justify-content:space-between}
-.tcard:active{transform:scale(.97)}
-.tcard.occ{border-color:var(--A);background:#FFFBF0}
-.tcard.longue{border-color:var(--O);background:#FFF6EE}
+/* ── LE PLAN DE SALLE ────────────────────────────────────────────────
+   ⚠️ Toutes les tables se ressemblaient : même carte blanche, même
+   cadre, et treize fois la phrase « Libre — toucher pour ouvrir » en
+   vert. Dans une salle de quinze tables, les DEUX qui doivent de
+   l'argent se noyaient dans le vert des treize autres. Un plan de salle
+   sert à voir en une seconde où est l'argent ; celui-ci demandait de
+   lire.
+   Maintenant : une table libre RECULE (fond de page, cadre en
+   pointillé, un seul mot), une table occupée AVANCE (blanche, posée,
+   ombrée, le montant en grand), et une table qui traîne depuis plus de
+   trois heures respire lentement. La hiérarchie se voit les yeux
+   plissés, au soleil, à bout de bras. */
+.tcard{background:var(--C);border:1.5px solid var(--BD);border-radius:18px;padding:13px 12px;cursor:pointer;
+  position:relative;min-height:98px;display:flex;flex-direction:column;justify-content:space-between;
+  transition:transform .16s cubic-bezier(.34,1.4,.64,1),box-shadow .16s,border-color .16s,background .16s;
+  box-shadow:0 1px 2px var(--OMBRE)}
+.tcard:active{transform:scale(.955)}
+.tcard.libre{background:transparent;border-style:dashed;border-color:var(--LIB-BD);box-shadow:none;min-height:78px}
+.tcard.libre .tc-nm{color:var(--LIB-T);font-weight:800}
+.tcard.libre .tc-zone{color:var(--LIB-Z)}
+.tcard.occ{border-color:rgba(246,185,59,.55);background:var(--C);box-shadow:0 5px 16px var(--OMBRE2)}
+/* Le trait d'ambre sur la tranche : on le voit avant de lire le nom. */
+.tcard.occ::before{content:'';position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;background:var(--A)}
+.tcard.longue{border-color:rgba(255,109,0,.5);box-shadow:0 5px 18px rgba(255,109,0,.2)}
+.tcard.longue::before{background:var(--O);animation:respire 2.6s ease-in-out infinite}
+@keyframes respire{0%,100%{opacity:1}50%{opacity:.35}}
 .tc-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .tc-nm{font-size:15px;font-weight:900;display:flex;align-items:center;gap:5px;min-width:0}
 .tc-nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tc-zone{font-size:9.5px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.4px}
-.tc-mt{font-size:18px;font-weight:900;color:var(--P);margin-top:6px}
-.tc-lb{font-size:11px;font-weight:700;color:var(--M);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tc-libre{font-size:12.5px;font-weight:800;color:var(--G)}
-.tc-dot{width:9px;height:9px;border-radius:50%;background:var(--BD);flex-shrink:0}
-.tc-dot.on{background:var(--A)}
-.tc-dot.long{background:var(--O)}
+.tc-mt{font-size:21px;font-weight:900;color:var(--TF);margin-top:6px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.tc-lb{font-size:11px;font-weight:700;color:var(--M);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+.tc-libre{font-size:11.5px;font-weight:800;color:var(--LIB-T);letter-spacing:.3px}
+.tc-dot{width:9px;height:9px;border-radius:50%;background:var(--BD);flex-shrink:0;transition:background .2s}
+.tc-dot.on{background:var(--A);box-shadow:0 0 0 4px rgba(246,185,59,.18)}
+.tc-dot.long{background:var(--O);box-shadow:0 0 0 4px rgba(255,109,0,.18)}
 .tc-srv{position:absolute;right:10px;bottom:10px;font-size:9.5px;font-weight:900;background:var(--BG);color:var(--B);border-radius:8px;padding:3px 7px;max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── LIGNES ── */
@@ -297,7 +455,7 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .row-t{font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row-s{font-size:11.5px;font-weight:600;color:var(--M);margin-top:2px;line-height:1.4}
 .row-r{text-align:right;flex-shrink:0}
-.row-p{font-size:14px;font-weight:900;color:var(--P)}
+.row-p{font-size:14px;font-weight:900;color:var(--TF)}
 .row-x{font-size:11px;font-weight:700;color:var(--M);margin-top:2px}
 .qbox{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .qb{width:32px;height:32px;border-radius:9px;border:none;background:var(--BG);color:var(--T);font-size:17px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center}
@@ -305,13 +463,13 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .qb.moins{background:#FFEDE8;color:var(--R)}
 .qn{font-size:15px;font-weight:900;min-width:20px;text-align:center}
 .badge{display:inline-block;font-size:9.5px;font-weight:900;padding:2px 7px;border-radius:20px;margin-left:5px;vertical-align:middle}
-.bg-off{background:#EDE7F6;color:#5E35B1}
-.bg-frais{background:#E3F2FD;color:#1565C0}
-.bg-chaud{background:#FFF3E0;color:#E65100}
-.bg-bas{background:#FFF3E0;color:#B45309}
-.bg-out{background:#FFEBEE;color:#C62828}
-.bg-ok{background:#E8F5E9;color:#2E7D32}
-.bg-dette{background:#FFEBEE;color:#C62828}
+.bg-off{background:var(--Bof);color:var(--BofT)}
+.bg-frais{background:var(--Bfr);color:var(--BfrT)}
+.bg-chaud{background:var(--Bch);color:var(--BchT)}
+.bg-bas{background:var(--Bba);color:var(--BbaT)}
+.bg-out{background:var(--Bou);color:var(--BouT)}
+.bg-ok{background:var(--Bok);color:var(--BokT)}
+.bg-dette{background:var(--Bou);color:var(--BouT)}
 
 /* ── GRILLE PRODUITS ── */
 .pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px 9px;padding:0 15px}
@@ -325,8 +483,8 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .qbdg{position:absolute;top:-8px;right:-6px;background:var(--G);color:#fff;border-radius:50%;min-width:23px;height:23px;padding:0 5px;font-size:11.5px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid var(--C)}
 .fbdg{position:absolute;top:7px;left:8px;font-size:12px;opacity:.85}
 .sbdg{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:900;padding:2px 7px;border-radius:20px;white-space:nowrap}
-.sbdg.bas{background:#FFF3E0;color:#B45309;border:1px solid #F3CE72}
-.sbdg.out{background:#FFEBEE;color:#C62828;border:1px solid #FFB59B}
+.sbdg.bas{background:var(--Bba);color:var(--BbaT);border:1px solid var(--NaD)}
+.sbdg.out{background:var(--Bou);color:var(--BouT);border:1px solid var(--NrD)}
 
 /* ── BOUTONS ── */
 .bpr{width:100%;background:var(--P);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14.5px;font-weight:800;cursor:pointer;margin-bottom:9px}
@@ -354,7 +512,7 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .ne{font-size:20px;filter:grayscale(1);opacity:.5}
 .nl{font-size:10px;font-weight:800}
 .ni.on .ne{filter:none;opacity:1}
-.ni.on .nl{color:var(--P)}
+.ni.on .nl{color:var(--TF)}
 
 /* ── MODAL ── */
 .ov{position:fixed;inset:0;background:rgba(8,24,21,.55);z-index:200;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
@@ -381,7 +539,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .kv:last-child{border-bottom:none}
 .kv-l{font-weight:700;color:var(--M);min-width:0}
 .kv-v{font-weight:900;text-align:right;white-space:nowrap}
-.kv.big .kv-v{font-size:17px;color:var(--P)}
+.kv.big .kv-v{font-size:17px;color:var(--TF)}
 .toast{position:fixed;bottom:150px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--P);color:#fff;padding:12px 18px;border-radius:13px;font-size:13px;font-weight:700;z-index:400;opacity:0;pointer-events:none;transition:all .25s;max-width:92vw;text-align:center;line-height:1.45;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -392,7 +550,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .rtile{background:var(--BG);border-radius:13px;padding:11px}
 .rtl{font-size:10px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.4px}
 .rtv{font-size:18px;font-weight:900;margin-top:3px}
-.rtv.g{color:#1B7A3A}.rtv.r{color:var(--R)}.rtv.a{color:#B45309}
+.rtv.g{color:var(--VERT)}.rtv.r{color:var(--R)}.rtv.a{color:var(--BbaT)}
 .bar-l{margin-bottom:9px}
 .bar-h{display:flex;justify-content:space-between;font-size:12px;font-weight:800;margin-bottom:4px;gap:9px}
 .bar-h span:last-child{white-space:nowrap;color:var(--B)}
@@ -413,7 +571,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 
 <!-- ══════════ SPLASH ══════════ -->
 <div id="s-splash" class="scr on">
-  <div class="splash-logo">🍻</div>
+  <div class="splash-logo" id="splash-logo"></div>
   <div class="splash-title">My<span>Bar</span></div>
   <div class="splash-sub" data-fr="Ma buvette dans la poche" data-en="My bar in my pocket">Ma buvette dans la poche</div>
   <div class="splash-bar"><div class="splash-fill"></div></div>
@@ -429,7 +587,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 
 <!-- ══════════ ONBOARD ══════════ -->
 <div id="s-onboard" class="scr">
-  <div class="ob-logo">🍻</div>
+  <div class="ob-logo" id="ob-logo"></div>
   <div class="ob-brand">My<span>Bar</span></div>
   <div class="ob-langsw" id="ob-langsw"></div>
   <div class="ob-tagline" data-fr="Ouvrons ton bar en 4 étapes" data-en="Let's open your bar in 4 steps">Ouvrons ton bar en 4 étapes</div>
@@ -482,7 +640,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 
 <!-- ══════════ LOGIN ══════════ -->
 <div id="s-login" class="scr">
-  <div class="login-logo">🍻</div>
+  <div class="login-logo" id="login-logo"></div>
   <div class="login-brand">My<span>Bar</span></div>
   <div class="login-sub" id="login-sub" data-fr="Ma buvette dans la poche" data-en="My bar in my pocket">Ma buvette dans la poche</div>
   <div style="width:100%;position:relative">
@@ -499,6 +657,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
       <div class="fg"><label class="fl" data-fr="Ton code" data-en="Your code">Ton code</label><input class="fi" id="v-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div>
       <button class="btn-login" onclick="loginServeur()" data-fr="Connexion 🧑‍🍳" data-en="Sign in 🧑‍🍳">Connexion 🧑‍🍳</button>
     </div>
+    <div id="lg-adresse"></div>
     <button class="lg-install" id="lg-install" style="display:none" onclick="installerApp()">📲 Installer</button>
     <div class="login-hint" id="login-hint"></div>
   </div>
@@ -509,6 +668,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
   <div class="mhdr">
     <div><div class="hg" id="hdr-bonjour">Service</div><div class="hn"><span id="u-nm">Patron</span><span class="rbdg rb-p" id="u-role">Patron</span></div></div>
     <div class="hrgt">
+      <button class="hbtn" id="btn-nuit" onclick="tournerTheme()" title="Affichage" data-title-en="Display">🌙</button>
       <button class="hbtn" id="btn-happy" onclick="toggleHappy()" title="Happy hour" data-title-en="Happy hour">🕕</button>
       <button class="hbtn" id="btn-dep" onclick="ouvrirDepense()" title="Dépense" data-title-en="Expense">💸</button>
       <button class="hbtn" onclick="ouvrirAlertes()" title="Alertes" data-title-en="Alerts"><span>🔔</span><div class="hbtn-badge" id="alert-badge">0</div></button>
@@ -522,6 +682,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     <div class="sc" id="sc-ben"><div class="sl" data-fr="Net du soir" data-en="Tonight's net">Net du soir</div><div class="sv sv-g" id="sv-ben">0</div></div>
   </div>
   <div class="mcont">
+    <div id="svc-adresse"></div>
     <div id="svc-install" style="display:none"></div>
     <div id="svc-alertes"></div>
     <div class="ssec"><div class="tscr" id="svc-zones" style="padding-top:0"></div></div>
@@ -529,12 +690,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     <div class="tgrid" id="svc-grid"></div>
     <div style="height:16px"></div>
   </div>
-  <div class="bnav">
-    <button class="ni on" onclick="navTo('service',this)"><span class="ne">🍻</span><span class="nl" data-fr="Service" data-en="Service">Service</span></button>
-    <button class="ni" onclick="navTo('stock',this)"><span class="ne">📦</span><span class="nl" data-fr="Stock" data-en="Stock">Stock</span></button>
-    <button class="ni" onclick="navTo('rapports',this)"><span class="ne">📈</span><span class="nl" data-fr="Rapports" data-en="Reports">Rapports</span></button>
-    <button class="ni" onclick="navTo('equipe',this)"><span class="ne">👥</span><span class="nl" data-fr="Équipe" data-en="Team">Équipe</span></button>
-  </div>
+  <div class="bnav" data-nav></div>
 </div>
 
 <!-- ══════════ ADDITION (une table) ══════════ -->
@@ -572,10 +728,10 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 <div id="s-menu" class="scr">
   <div class="mhdr">
     <div style="display:flex;align-items:center;gap:9px;flex:1;min-width:0">
-      <button class="hbtn hback" onclick="fermerMenu()">←<span class="hbl" data-fr="Addition" data-en="Bill">Addition</span></button>
-      <div style="min-width:0"><div class="hg" data-fr="La carte" data-en="The menu">La carte</div><div class="hn"><span id="menu-tit">Table 1</span></div></div>
+      <button class="hbtn hback" id="menu-back" onclick="fermerMenu()">←<span class="hbl" data-fr="Addition" data-en="Bill">Addition</span></button>
+      <div style="min-width:0"><div class="hg" id="menu-hg">La carte</div><div class="hn"><span id="menu-tit">Table 1</span></div></div>
     </div>
-    <div class="hrgt"><button class="hbtn" id="btn-add-prod" onclick="ouvrirProduit(null)" title="Nouveau produit" data-title-en="New product">➕</button></div>
+    <div class="hrgt"><button class="hbtn" id="btn-add-prod" onclick="ouvrirProduit(null)" title="Nouveau produit" data-title-en="New product">➕</button><button class="hbtn" id="menu-st" onclick="goSt()" style="display:none">⚙️</button></div>
   </div>
   <div class="mcont" style="padding-bottom:170px">
     <div class="ssec">
@@ -586,10 +742,11 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     <div class="pgrid" id="menu-grid"></div>
     <div style="height:16px"></div>
   </div>
+  <div class="bnav" data-nav id="menu-nav" style="display:none"></div>
   <div class="fbar" id="menu-bar">
-    <button class="cpill" onclick="fermerMenu()">
-      <div style="display:flex;align-items:center;min-width:0"><div class="cbub" id="menu-cbub">0</div><div class="csum"><div class="csub" data-fr="Total table" data-en="Table total">Total table</div><div class="ctot" id="menu-ctot">0</div></div></div>
-      <div class="benc" data-fr="✓ Terminé" data-en="✓ Done">✓ Terminé</div>
+    <button class="cpill" onclick="finMenu()">
+      <div style="display:flex;align-items:center;min-width:0"><div class="cbub" id="menu-cbub">0</div><div class="csum"><div class="csub" id="menu-csub">Total table</div><div class="ctot" id="menu-ctot">0</div></div></div>
+      <div class="benc" id="menu-benc">✓ Terminé</div>
     </button>
   </div>
 </div>
@@ -600,7 +757,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     <div><div class="hg" data-fr="Cave & frigo" data-en="Cellar & fridge">Cave &amp; frigo</div><div class="hn"><span data-fr="📦 Stock" data-en="📦 Stock">📦 Stock</span></div></div>
     <div class="hrgt">
       <button class="hbtn" onclick="ouvrirAppro()" title="Approvisionnement" data-title-en="Stock purchase">🚚</button>
-      <button class="hbtn" onclick="ouvrirVidanges()" title="Vidanges" data-title-en="Empties">♻️</button>
+      <button class="hbtn" id="stk-vid" onclick="ouvrirVidanges()" title="Vidanges" data-title-en="Empties">♻️</button>
       <button class="hbtn" onclick="ouvrirProduit(null)" title="Nouveau produit" data-title-en="New product">➕</button>
       <button class="hbtn" onclick="goSt()">⚙️</button>
     </div>
@@ -614,12 +771,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     <div class="lst" id="stk-lst"></div>
     <div style="height:16px"></div>
   </div>
-  <div class="bnav">
-    <button class="ni" onclick="navTo('service',this)"><span class="ne">🍻</span><span class="nl" data-fr="Service" data-en="Service">Service</span></button>
-    <button class="ni on" onclick="navTo('stock',this)"><span class="ne">📦</span><span class="nl" data-fr="Stock" data-en="Stock">Stock</span></button>
-    <button class="ni" onclick="navTo('rapports',this)"><span class="ne">📈</span><span class="nl" data-fr="Rapports" data-en="Reports">Rapports</span></button>
-    <button class="ni" onclick="navTo('equipe',this)"><span class="ne">👥</span><span class="nl" data-fr="Équipe" data-en="Team">Équipe</span></button>
-  </div>
+  <div class="bnav" data-nav></div>
 </div>
 
 <!-- ══════════ RAPPORTS ══════════ -->
@@ -636,30 +788,20 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     <div class="ssec"><div class="tscr" id="rpt-periodes" style="padding-top:0"></div></div>
     <div style="padding:8px 15px 0" id="rpt-cont"></div>
   </div>
-  <div class="bnav">
-    <button class="ni" onclick="navTo('service',this)"><span class="ne">🍻</span><span class="nl" data-fr="Service" data-en="Service">Service</span></button>
-    <button class="ni" onclick="navTo('stock',this)"><span class="ne">📦</span><span class="nl" data-fr="Stock" data-en="Stock">Stock</span></button>
-    <button class="ni on" onclick="navTo('rapports',this)"><span class="ne">📈</span><span class="nl" data-fr="Rapports" data-en="Reports">Rapports</span></button>
-    <button class="ni" onclick="navTo('equipe',this)"><span class="ne">👥</span><span class="nl" data-fr="Équipe" data-en="Team">Équipe</span></button>
-  </div>
+  <div class="bnav" data-nav></div>
 </div>
 
 <!-- ══════════ ÉQUIPE & CLIENTS ══════════ -->
 <div id="s-equipe" class="scr">
   <div class="mhdr">
-    <div><div class="hg" data-fr="Gestion" data-en="Management">Gestion</div><div class="hn"><span data-fr="👥 Équipe" data-en="👥 Team">👥 Équipe</span></div></div>
+    <div><div class="hg" data-fr="Gestion" data-en="Management">Gestion</div><div class="hn"><span id="eq-hn">👥 Équipe</span></div></div>
     <div class="hrgt"><button class="hbtn" id="eq-add" onclick="ouvrirAjoutEquipe()">➕</button><button class="hbtn" onclick="goSt()">⚙️</button></div>
   </div>
   <div class="mcont" style="padding-bottom:96px">
     <div class="ssec"><div class="tscr" id="eq-onglets" style="padding-top:0"></div></div>
     <div style="padding:6px 0 0" id="eq-cont"></div>
   </div>
-  <div class="bnav">
-    <button class="ni" onclick="navTo('service',this)"><span class="ne">🍻</span><span class="nl" data-fr="Service" data-en="Service">Service</span></button>
-    <button class="ni" onclick="navTo('stock',this)"><span class="ne">📦</span><span class="nl" data-fr="Stock" data-en="Stock">Stock</span></button>
-    <button class="ni" onclick="navTo('rapports',this)"><span class="ne">📈</span><span class="nl" data-fr="Rapports" data-en="Reports">Rapports</span></button>
-    <button class="ni on" onclick="navTo('equipe',this)"><span class="ne">👥</span><span class="nl" data-fr="Équipe" data-en="Team">Équipe</span></button>
-  </div>
+  <div class="bnav" data-nav></div>
 </div>
 
 <!-- ══════════ PARAMÈTRES ══════════ -->
@@ -698,7 +840,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
      déchet.
    • on achète en casiers, on vend à la bouteille.
    ══════════════════════════════════════════════════════════════════ */
-var BUILD='1.1';
+var BUILD='1.3';
 
 /* ══════════════════════════════════════════════════════════════════
    LA LANGUE
@@ -888,6 +1030,159 @@ var ZONES=[
  {c:'comptoir',nm:'Comptoir',ne:'Counter'},
  {c:'emporter',nm:'À emporter',ne:'Takeaway'}
 ];
+/* ══════════════════════════════════════════════════════════════════
+   LA FORME DU BAR, ET LE POSTE DU TÉLÉPHONE
+
+   « Dans certains petits bars, une personne au comptoir, une personne
+   au stock, ou même la même personne gère. Il y a autant de réalités. »
+
+   MyBar imposait UNE forme : douze tables, des serveurs, des vidanges,
+   une cuisine. Une cave à boissons n'a pas de tables — et on lui
+   demandait quand même d'en ouvrir une avant de vendre deux bières.
+   Une patronne seule voyait un écran « Équipe » pour une personne. Un
+   bar qui ne vend qu'en canettes comptait des consignes qui n'existent
+   pas. Chaque fois, l'application avait raison sur le papier et tort
+   dans la salle.
+
+   Deux choses varient, et elles ne se rangent pas au même endroit :
+
+   • LA FORME DU BAR appartient au BAR. Elle est dans `cfg.forme`, donc
+     partagée par tous les téléphones et sauvegardée avec le reste.
+   • LE POSTE appartient au TÉLÉPHONE. Celui du comptoir et celui de la
+     cave n'ont pas le même métier ce soir, et c'est le même bar. Il vit
+     donc dans le stockage local, jamais dans la sauvegarde.
+   ══════════════════════════════════════════════════════════════════ */
+var FORMES=[
+ {c:'tables',  e:'🪑',nm:'Service à table',        ne:'Table service',
+  d:'Des tables, des additions qui restent ouvertes. Décoche pour un comptoir ou une cave où tout se paye tout de suite.',
+  de:'Tables, with tabs that stay open. Uncheck for a counter or a shop where everything is paid at once.'},
+ {c:'vidanges',e:'♻️',nm:'Vidanges consignées',    ne:'Deposit empties',
+  d:"Les bouteilles vides valent de l'argent au dépôt. Décoche si tu vends en canettes, ou si le dépôt ne reprend rien.",
+  de:'Empty bottles are worth money at the depot. Uncheck for cans, or if your depot takes nothing back.'},
+ {c:'cuisine', e:'🍢',nm:'Cuisine',                ne:'Kitchen',
+  d:'Brochettes, poisson, plantain. Décoche si tu ne sers que des boissons.',
+  de:'Brochettes, fish, plantain. Uncheck if you only serve drinks.'},
+ {c:'equipe',  e:'👥',nm:'Plusieurs personnes',    ne:'More than one person',
+  d:"Des serveurs avec leur propre code, et qui a servi quoi. Décoche si tu tiens le bar seul : l'écran Équipe devient tes clients.",
+  de:'Servers with their own code, and who served what. Uncheck if you run the bar alone: the Team screen becomes your customers.'}
+];
+function forme(c){
+  if(!DB||!DB.cfg)return true;
+  var f=DB.cfg.forme;
+  if(!f||f[c]===undefined)return true;      // par défaut, tout est allumé
+  return !!f[c];
+}
+function poserForme(c,v){
+  /* Éteindre les vidanges ne rend pas les bouteilles : si le dépôt doit
+     encore de l'argent, on le dit avant de faire disparaître l'écran qui
+     le compte. */
+  if(c==='vidanges'&&!v){
+    var d=valeurVidanges();
+    if(d>0)toast('♻️ '+L('Il te reste ','You still have ')+fmt(d)+L(' de consigne au dépôt. Rends-les avant.',' of deposit at the depot. Claim it back first.'));
+  }
+  DB.cfg.forme=DB.cfg.forme||{};
+  DB.cfg.forme[c]=v?1:0;
+  save();
+  /* Éteindre les tables depuis le plan de salle laisserait le patron sur
+     un écran qui n'a plus d'onglet. On le ramène sur le premier. */
+  if(onglets().indexOf(ongletCourant)<0)ongletCourant=onglets()[0];
+  majNavs();
+  var on=document.querySelector('.scr.on');
+  if(on&&on.id!=='s-settings')rendreEcran(on.id);
+  rendreSettings();
+}
+
+var POSTES=[
+ {c:'tout',    e:'🍻',nm:'Tout le bar',ne:'The whole bar',
+  d:'Une seule personne, ou un seul téléphone pour tout.',de:'One person, or one phone for everything.'},
+ {c:'comptoir',e:'🍺',nm:'Le comptoir',ne:'The counter',
+  d:"Ce téléphone sert et encaisse. Il s'ouvre sur la carte, pas sur le plan de salle.",
+  de:'This phone serves and takes payment. It opens on the menu, not the floor plan.'},
+ {c:'stock',   e:'📦',nm:'Le stock',   ne:'The store room',
+  d:"Ce téléphone tient la cave et le frigo. Il s'ouvre sur le stock.",
+  de:'This phone keeps the cellar and the fridge. It opens on the stock.'}
+];
+var POSTEKEY='mybar_poste';
+function poste(){
+  try{var p=localStorage.getItem(POSTEKEY);if(p==='comptoir'||p==='stock')return p;}catch(e){}
+  return 'tout';
+}
+function poserPoste(p){
+  try{localStorage.setItem(POSTEKEY,p);}catch(e){}
+  if(onglets().indexOf(ongletCourant)<0)ongletCourant=onglets()[0];
+  majNavs();rendreSettings();
+  var x=POSTES.filter(function(z){return z.c===p;})[0]||POSTES[0];
+  toast(x.e+' '+L('Ce téléphone : ','This phone: ')+L(x.nm,x.ne).toLowerCase());
+}
+
+/* Les onglets du bas ne sont plus écrits en dur : ils dépendent de la
+   forme du bar et du poste. Un bar sans tables n'a pas de plan de
+   salle ; un téléphone de cave s'ouvre sur le stock. */
+var ONGL={
+  comptoir:{e:'🍺',nm:'Comptoir',ne:'Counter'},
+  service: {e:'🍻',nm:'Service', ne:'Service'},
+  stock:   {e:'📦',nm:'Stock',   ne:'Stock'},
+  rapports:{e:'📈',nm:'Rapports',ne:'Reports'},
+  equipe:  {e:'👥',nm:'Équipe',  ne:'Team'},
+  clients: {e:'📒',nm:'Clients', ne:'Customers'}
+};
+function onglets(){
+  var eq=forme('equipe')?'equipe':'clients';
+  if(!forme('tables'))return ['comptoir','stock','rapports',eq];
+  var p=poste();
+  /* Le téléphone du comptoir garde le stock : c'est lui qui voit le
+     casier se vider. Ce sont les rapports qu'il perd — la recette du
+     mois et la clôture regardent le patron, pas le comptoir. */
+  if(p==='comptoir')return ['comptoir','service','stock',eq];
+  if(p==='stock')   return ['stock','service','rapports',eq];
+  return ['service','stock','rapports',eq];
+}
+/* Un onglet et un écran ne sont pas la même chose : « Comptoir » ouvre
+   la carte sur une addition qui ne quitte jamais le comptoir, et
+   « Clients » ouvre l'écran Équipe sur son deuxième volet. */
+function ecranDOnglet(o){return o==='comptoir'?'s-menu':(o==='clients'?'s-equipe':'s-'+o);}
+function ecranDeDepart(){return ecranDOnglet(onglets()[0]);}
+var ongletCourant='service';
+function majNavs(){
+  if(!DB)return;
+  var o=onglets(),cur=ongletCourant;
+  var h=o.map(function(c){
+    var x=ONGL[c];
+    return '<button class="ni'+(c===cur?' on':'')+'" onclick="navTo(\''+c+'\')">'+
+      '<span class="ne">'+x.e+'</span><span class="nl">'+esc(L(x.nm,x.ne))+'</span></button>';
+  }).join('');
+  var b=document.querySelectorAll('.bnav[data-nav]');
+  for(var i=0;i<b.length;i++)b[i].innerHTML=h;
+}
+function ouvrirDepart(){ongletCourant=onglets()[0];navTo(ongletCourant);}
+
+/* ══════════════════════════════════════════════════════════════════
+   LE COMPTOIR — vendre sans ouvrir de table
+
+   Dans une cave, à un kiosque, ou simplement au comptoir d'un bar à
+   tables, personne ne s'assoit : on demande, on paye, on part. Une
+   addition qui reste ouverte n'a alors aucun sens. Le comptoir est donc
+   UNE table, toujours la même, qu'on vide à chaque encaissement — le
+   reste de l'app (stock, marges, rapports, part du serveur) continue de
+   compter exactement comme pour une table, ce qui évite un deuxième
+   circuit de vente à tenir à jour.
+   ══════════════════════════════════════════════════════════════════ */
+var modeComptoir=0;
+function tableComptoir(){
+  var i,t=null;
+  for(i=0;i<DB.tables.length;i++)if(DB.tables[i].cptr){t=DB.tables[i];break;}
+  if(!t)for(i=0;i<DB.tables.length;i++)if(DB.tables[i].zone==='comptoir'&&!(DB.tables[i].lignes&&DB.tables[i].lignes.length)){t=DB.tables[i];t.cptr=1;break;}
+  if(!t){t={id:uid(),nm:L('Comptoir','Counter'),zone:'comptoir',ouv:null,srv:null,lignes:[],note:'',cptr:1};DB.tables.push(t);}
+  save();
+  return t;
+}
+function ouvrirComptoir(){
+  var t=tableComptoir();
+  modeComptoir=1;tableCourante=t.id;
+  qMenu='';var e=$('menu-src');if(e)e.value='';
+  goScreen('s-menu');majNavs();rendreMenu();
+}
+function finMenu(){if(modeComptoir)ouvrirPaiement();else fermerMenu();}
 function zoneNm(z){for(var i=0;i<ZONES.length;i++)if(ZONES[i].c===z)return L(ZONES[i].nm,ZONES[i].ne);return z;}
 
 /* ── La carte de départ ────────────────────────────────────────────
@@ -985,6 +1280,7 @@ var obPays=PAYS[0],obType=TYPES[0],obEtape=1;
    où un libellé peut rester dans l'autre langue parce qu'on a oublié
    de l'ajouter à une liste. */
 function appliquerLangue(){
+  try{poserLogos();appliquerTheme();}catch(e){}
   try{document.documentElement.setAttribute('lang',lang);}catch(e){}
   try{
     document.title=L("MyBar — Gestion de bar et buvette pour l'Afrique",'MyBar — Bar & pub management for Africa');
@@ -1012,6 +1308,7 @@ function appliquerLangue(){
     '<br><span class="lnk" onclick="allerInscription()">'+L('Ouvrir un autre bar','Open another bar')+'</span>';
   var sw=$('ob-langsw');
   if(sw)sw.innerHTML=boutonsLangue();
+  try{majNavs();}catch(e){}
   rendreVitrine();
 }
 function boutonsLangue(){
@@ -1037,22 +1334,43 @@ function rendreVitrine(){
     ['👥',L('Qui a servi quoi','Who served what'),
          L("Chaque serveur a son code. À la clôture, chacun rend ce qu'il a encaissé — et l'écart se voit.",
            'Each server has their own code. At closing, each hands back what they took — and the gap shows.')],
+    ['⚙️',L("Ton bar n'est pas celui d'à côté",'Your bar is not the one next door'),
+         L("Avec ou sans tables, avec ou sans cuisine, seul ou à six. Et chaque téléphone a son poste : celui du comptoir s'ouvre sur la carte, celui de la cave sur le stock.",
+           'With or without tables, with or without a kitchen, alone or six-handed. And each phone has its post: the counter one opens on the menu, the store-room one on the stock.')],
     ['🌙',L('La clôture du soir','Closing the night'),
          L("Recette, dépenses, ardoises, espèces comptées, vidanges à rendre. Une page, à la fermeture.",
            'Takings, expenses, tabs, cash counted, empties to return. One page, at closing time.')]
   ];
   v.innerHTML=
-   '<div class="vit-hero">'+boutonsLangue()+
-     '<div class="vit-brand">🍻 My<span>Bar</span></div>'+
-     '<div class="vit-tag">'+L("Le bar tient sur des additions ouvertes, des casiers et des vidanges. Pas sur un cahier.",
-        "A bar runs on open tabs, crates and empties. Not on a notebook.")+'</div>'+
-     '<div class="vit-sub">'+L("Tables et ardoises, casiers et bouteilles, consignes à rendre, serveurs, clôture du soir. Ça marche sans réseau — parce qu'à 22 h, le réseau, on ne l'a pas.",
-        "Tables and tabs, crates and bottles, deposits to claim back, servers, nightly closing. It works with no network — because at 10 pm, there is no network.")+'</div>'+
-     '<button class="vit-cta" onclick="allerInscription()">'+L('🆕 Ouvrir mon bar','🆕 Open my bar')+'</button>'+
-     '<button class="vit-cta2" onclick="goScreen(\'s-login\')">'+L("J'ai déjà un compte",'I already have an account')+'</button>'+
-     '<button class="vit-cta2" id="vit-install" style="display:'+(_dejaInstallee()?'none':'')+'" onclick="installerApp()">'+
-        L("📲 Installer l'application",'📲 Install the app')+'</button>'+
+   '<div class="vit-hero">'+
+     '<div class="vit-lang">'+boutonsLangue()+'</div>'+
+     '<div class="vit-logo">'+logoMyBar(58,'vitl')+'</div>'+
+     '<div class="vit-brand">My<span>Bar</span></div>'+
+     '<div class="vit-tag">'+L('La salle est pleine.<br><b>Les comptes suivent.</b>',
+                               'The room is full.<br><b>The books keep up.</b>')+'</div>'+
+     '<div class="vit-sub">'+L("Une boutique compte des articles. Un bar compte des tables ouvertes, des casiers et des vidanges consignées. Ça marche sans réseau — parce qu'à 22 h, le réseau, on ne l'a pas.",
+        "A shop counts items. A bar counts open tables, crates and deposit empties. It works with no network — because at 10 pm, there is no network.")+'</div>'+
+     /* Ce qu'une boutique ne sait pas faire, montré en six secondes. */
+     '<div class="vt-demo" aria-hidden="true">'+
+       '<div class="vt-dh"><i>'+L('TABLE 3 · SALLE','TABLE 3 · INDOOR')+'</i>'+
+         '<div class="vt-dtot"><span>F 0<br>F 2 000<br>F 3 000<br>F 4 500</span></div></div>'+
+       '<div class="vt-dl"><em>🍺</em><b>33 Export ×2</b><i>F 2 000</i></div>'+
+       '<div class="vt-dl"><em>🍺</em><b>Castel ×1</b><i>F 1 000</i></div>'+
+       '<div class="vt-dl"><em>🍢</em><b>'+L('Brochettes ×3','Brochettes ×3')+'</b><i>F 1 500</i></div>'+
+       '<div class="vt-dpay">'+L('ENCAISSER','CASH IN')+'</div>'+
+       '<div class="vt-dok"><em>✅</em><span>'+L('Encaissé · monnaie F 500','Paid · change F 500')+'</span></div>'+
+     '</div>'+
+     (ancienneAdresse()
+       ?'<div class="vit-adr"><b>'+L("ℹ️ TU ES SUR L'ANCIENNE ADRESSE",'ℹ️ YOU ARE ON THE OLD ADDRESS')+'</b>'+
+         '<span>'+L("MyBar habite maintenant bar.myboutiq.online. Ouvre ton bar là-bas plutôt qu'ici : les données d'une application restent à l'adresse où elles ont été saisies, et celle-ci finira par fermer.",
+                     'MyBar now lives at bar.myboutiq.online. Open your bar over there rather than here: an app\'s data stays at the address it was entered at, and this one will close in the end.')+'</span>'+
+         '<button onclick="allerNouvelleAdresse()">'+L('🍻 Aller à la bonne adresse','🍻 Go to the right address')+'</button></div>'
+       :'')+
+     '<button class="vit-cta" onclick="allerInscription()">'+L('Ouvrir mon bar — c\'est gratuit','Open my bar — it is free')+'</button>'+
      '<button class="vit-cta2" onclick="chargerDemo()">'+L("👀 Voir une soirée d'exemple",'👀 See a sample night')+'</button>'+
+     '<button class="vit-cta3" onclick="goScreen(\'s-login\')">'+L("J'ai déjà un bar",'I already have a bar')+'</button>'+
+     '<button class="vit-cta3" id="vit-install" style="display:'+(_dejaInstallee()?'none':'')+'" onclick="installerApp()">'+
+        L("📲 Installer l'application",'📲 Install the app')+'</button>'+
    '</div>'+
    '<div class="vit-sec"><div class="vit-h2">'+L("Ce qu'un bar perd sans ça",'What a bar loses without this')+'</div>'+
      cartes.map(function(c){
@@ -1062,6 +1380,138 @@ function rendreVitrine(){
    '<div class="vit-foot">'+L('MyBar — bars, buvettes, snacks, caves et terrasses.','MyBar — bars, pubs, snack bars, drinks shops and terraces.')+'<br>'+
      L('Fonctionne hors-ligne. Vos données restent sur votre téléphone.','Works offline. Your data stays on your phone.')+'</div>';
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   LA MARQUE
+
+   ⚠️ Le logo était l'emoji 🍻. Un emoji n'est pas une marque : c'est le
+   dessin d'un autre, différent sur chaque téléphone, et il se lit comme
+   un caractère de remplacement qu'on n'a pas eu le temps de changer.
+   C'est la première raison pour laquelle l'application avait l'air d'un
+   gabarit. Celui-ci est dessiné, il est le MÊME partout, il pèse 600
+   octets, et c'est exactement le dessin de l'icône installée — on
+   reconnaît l'app sur l'écran d'accueil et dans l'app.
+   ══════════════════════════════════════════════════════════════════ */
+function logoMyBar(px,id){
+  id=id||('mb'+Math.random().toString(36).slice(2,7));
+  return '<svg viewBox="0 0 120 120" width="'+px+'" height="'+px+'" role="img" aria-label="MyBar" class="mb-logo">'+
+    '<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0" stop-color="#FFD489"/><stop offset="1" stop-color="#EE9B12"/></linearGradient></defs>'+
+    '<path d="M84 54h9a15 15 0 0 1 0 30h-9" fill="none" stroke="url(#'+id+')" stroke-width="12" stroke-linecap="round"/>'+
+    '<rect x="27" y="45" width="58" height="63" rx="11" fill="url(#'+id+')"/>'+
+    '<rect x="23" y="26" width="66" height="25" rx="12.5" fill="#FFF8EC"/>'+
+    '<circle cx="36" cy="20" r="6.5" fill="#FFF8EC"/>'+
+    '<circle cx="58" cy="14" r="9" fill="#FFF8EC"/>'+
+    '<circle cx="78" cy="20" r="6" fill="#FFF8EC"/>'+
+    '<rect x="43" y="62" width="4.5" height="34" rx="2.2" fill="#0E2A26" opacity=".17"/>'+
+    '<rect x="63" y="62" width="4.5" height="34" rx="2.2" fill="#0E2A26" opacity=".17"/>'+
+  '</svg>';
+}
+/* ══════════════════════════════════════════════════════════════════
+   LE JOUR ET LA NUIT — la règle
+
+   `auto` par défaut : sombre de 18 h à 6 h. Ce n'est pas un goût, c'est
+   l'horaire d'un bar. Celui qui veut choisir choisit, et son choix est
+   gardé sur CE téléphone — un serveur peut vouloir le sombre quand le
+   patron veut le clair, et ils n'ont pas le même appareil en main.
+   ══════════════════════════════════════════════════════════════════ */
+var THEMES=[{c:'auto',nm:'Automatique',ne:'Automatic',e:'🕓'},
+            {c:'jour',nm:'Jour',ne:'Day',e:'☀️'},
+            {c:'nuit',nm:'Nuit',ne:'Night',e:'🌙'}];
+function themeChoisi(){try{return localStorage.getItem('mybar_theme')||'auto';}catch(e){return 'auto';}}
+function estNuit(){
+  var t=themeChoisi();
+  if(t==='nuit')return true;
+  if(t==='jour')return false;
+  var h=new Date().getHours();
+  return h>=18||h<6;
+}
+function appliquerTheme(){
+  var nuit=estNuit();
+  try{document.documentElement.classList.toggle('nuit',nuit);}catch(e){}
+  /* La barre du téléphone suit : sinon on a une bande blanche au-dessus
+     d'un écran sombre, et ça se voit plus que tout le reste. */
+  try{var m=document.querySelector('meta[name="theme-color"]');
+    if(m)m.setAttribute('content',nuit?'#071411':'#0E2A26');}catch(e){}
+  var b=$('btn-nuit');
+  if(b){
+    b.textContent=nuit?'🌙':'☀️';
+    b.setAttribute('title',L('Affichage : ','Display: ')+(themeChoisi()==='auto'?L('automatique','automatic'):(nuit?L('nuit','night'):L('jour','day'))));
+  }
+}
+function poserTheme(t){
+  try{localStorage.setItem('mybar_theme',t);}catch(e){}
+  appliquerTheme();
+  var on=document.querySelector('.scr.on');
+  if(on&&typeof rendreEcran==='function')rendreEcran(on.id);
+  var x=THEMES.filter(function(z){return z.c===t;})[0]||THEMES[0];
+  toast(x.e+' '+L('Affichage : ','Display: ')+L(x.nm,x.ne).toLowerCase());
+}
+/* Un appui sur la lune fait le tour des trois réglages : c'est le geste
+   qu'on fait d'une main, un plateau dans l'autre. Le détail est dans les
+   Paramètres pour qui veut lire. */
+function tournerTheme(){
+  var i=0;THEMES.forEach(function(z,k){if(z.c===themeChoisi())i=k;});
+  poserTheme(THEMES[(i+1)%THEMES.length].c);
+}
+function poserLogos(){
+  [['splash-logo',72],['ob-logo',54],['login-logo',64]].forEach(function(x){
+    var e=$(x[0]);if(e&&!e.querySelector('svg'))e.innerHTML=logoMyBar(x[1],x[0]);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   LE MOUVEMENT
+
+   Sur un téléphone d'entrée de gamme, à 23 h, avec 14 % de batterie,
+   « moderne » ne peut pas vouloir dire « ça bouge beaucoup ». Tout ce
+   qui suit ne coûte que des `transform` et des `opacity` — les deux
+   seules propriétés que le téléphone confie à sa puce graphique — et
+   rien ne tourne quand l'écran n'est pas regardé.
+   ══════════════════════════════════════════════════════════════════ */
+/* Un montant qui SAUTE d'une valeur à l'autre ne se remarque pas. Un
+   montant qui monte se regarde — et c'est le seul chiffre que le patron
+   surveille de la soirée. */
+function nombreAnime(el,val,fmtf){
+  if(!el)return;
+  var de=+el.getAttribute('data-v')||0;
+  el.setAttribute('data-v',val);
+  if(de===val){el.textContent=fmtf(val);return;}
+  if(Math.abs(val-de)<1||!window.requestAnimationFrame){el.textContent=fmtf(val);return;}
+  var t0=0,d=520;
+  function pas(t){
+    if(!t0)t0=t;
+    var k=Math.min(1,(t-t0)/d);
+    k=1-Math.pow(1-k,3);                       // freine à l'arrivée
+    el.textContent=fmtf(de+(val-de)*k);
+    if(k<1)requestAnimationFrame(pas);
+  }
+  requestAnimationFrame(pas);
+}
+/* Les durées d'occupation avancent toutes seules : une table « ouverte
+   depuis 1 h 10 » qui affiche encore 1 h 10 vingt minutes plus tard est
+   un écran mort, et le patron cesse de le croire. Une seule horloge
+   pour toute la salle, et seulement quand la salle est à l'écran. */
+var _horloge=null;
+function horlogeSalle(on){
+  if(_horloge){clearInterval(_horloge);_horloge=null;}
+  if(!on)return;
+  _horloge=setInterval(function(){
+    var sc=$('s-service');
+    if(!sc||!sc.classList.contains('on')||document.hidden)return;
+    /* 18 h passe pendant le service : l'écran bascule tout seul, sans
+       qu'on ait à y penser ni à quitter la salle. */
+    if(themeChoisi()==='auto'&&estNuit()!==document.documentElement.classList.contains('nuit'))appliquerTheme();
+    var l=document.querySelectorAll('#svc-grid .tc-dur');
+    for(var i=0;i<l.length;i++){
+      var ts=+l[i].getAttribute('data-ouv');
+      if(ts)l[i].textContent=duree(now()-ts);
+    }
+  },20000);
+}
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&$('s-service')&&$('s-service').classList.contains('on'))rendreService();
+});
 
 /* ── Utilitaires ──────────────────────────────────────────────────── */
 function $(id){return document.getElementById(id);}
@@ -1149,27 +1599,27 @@ function goScreen(id){
 }
 function goBack(){
   hist.pop();
-  var p=hist.pop()||(DB?'s-service':'s-vitrine');
+  var p=hist.pop()||(DB?ecranDeDepart():'s-vitrine');
   goScreen(p);rendreEcran(p);
 }
 function goSt(){goScreen('s-settings');rendreSettings();}
-var ONGLETS=['service','stock','rapports','equipe'];
-function navTo(tab,btn){
-  goScreen('s-'+tab);
-  /* ⚠️ Une alerte qui renvoie vers le stock appelle navTo SANS bouton :
-     l'écran changeait, mais la barre du bas continuait d'éclairer
-     « Service ». On repose donc la surbrillance depuis le nom de
-     l'onglet, et le bouton touché n'est plus qu'un raccourci. */
-  var i=ONGLETS.indexOf(tab);
-  if(i>=0){
-    var nav=document.querySelector('#s-'+tab+' .bnav');
-    if(nav)for(var j=0;j<nav.children.length;j++)nav.children[j].classList.toggle('on',j===i);
-  }else if(btn){
-    var p=btn.parentNode.children;for(var k=0;k<p.length;k++)p[k].classList.remove('on');btn.classList.add('on');
-  }
-  rendreEcran('s-'+tab);
+/* ⚠️ Une alerte qui renvoie vers le stock appelle navTo SANS bouton :
+   l'écran changeait, mais la barre du bas continuait d'éclairer
+   « Service ». La surbrillance ne vient donc plus du bouton touché mais
+   du nom de l'onglet, que majNavs() repose sur toutes les barres. */
+function navTo(tab){
+  if(tab==='equipe'&&!forme('equipe'))tab='clients';
+  if(tab==='service'&&!forme('tables'))tab='comptoir';
+  if(tab==='clients'){vueEq='clients';tab='equipe';ongletCourant='clients';}
+  else ongletCourant=tab;
+  if(tab==='comptoir'){ouvrirComptoir();return;}
+  modeComptoir=0;
+  goScreen('s-'+tab);majNavs();rendreEcran('s-'+tab);
 }
 function rendreEcran(id){
+  horlogeSalle(id==='s-service');
+  if(DB)majNavs();
+  majBandeauxAdresse();
   if(id==='s-service')rendreService();
   else if(id==='s-stock')rendreStock();
   else if(id==='s-rapports')rendreRapports();
@@ -1305,6 +1755,11 @@ function creerEtablissement(){
     cfg:{nom:nm,tel:tel,pin:pin,lang:lang,pays:obPays.c,s:obPays.s,d:obPays.d,k:k,
          type:obType.c,code:genCode(),plan:'gratuit',cree:now(),
          happy:{on:false,debut:'17:00',fin:'19:00',remise:15},
+         /* Une cave à boissons n'a pas de tables : on la pose au
+            comptoir dès le premier écran plutôt que de lui faire
+            trouver le réglage. Le patron corrige en deux touches. */
+         forme:{tables:(obType.c==='cave'?0:1),vidanges:1,
+                cuisine:(obType.fams.indexOf('cuis')>=0?1:0),equipe:1},
          fondCaisse:0,veille:false,pourboire:1,build:BUILD},
     produits:produits,
     tables:creerTables(nbt),
@@ -1315,7 +1770,7 @@ function creerEtablissement(){
   save();
   moi=DB.equipe[0];
   toast('🍻 '+nm+L(' est ouvert. Bon service !',' is open. Have a good service!'));
-  goScreen('s-service');rendreService();
+  ouvrirDepart();
 }
 
 /* ── Connexion ────────────────────────────────────────────────────── */
@@ -1338,7 +1793,7 @@ function loginPatron(){
   if(p!==DB.cfg.pin){toast(L('🔐 Code patron incorrect.','🔐 Wrong owner code.'));return;}
   moi=DB.equipe.filter(function(m){return m.role==='patron';})[0]||DB.equipe[0];
   $('p-pin').value='';
-  goScreen('s-service');rendreService();
+  ouvrirDepart();
 }
 function loginServeur(){
   if(!DB)return;
@@ -1347,7 +1802,7 @@ function loginServeur(){
   if(!m){toast(L('Choisis ton nom dans la liste.','Pick your name from the list.'));return;}
   if(String(m.pin||'')!==p){toast(L('🔐 Code incorrect. Demande au patron.','🔐 Wrong code. Ask the owner.'));return;}
   moi=m;$('v-pin').value='';
-  goScreen('s-service');rendreService();
+  ouvrirDepart();
 }
 function logout(){
   moi=null;tableCourante=null;hist=[];
@@ -1359,6 +1814,8 @@ function estPatron(){return moi&&(moi.role==='patron'||moi.role==='gerant');}
 
 /* ── Démarrage ────────────────────────────────────────────────────── */
 function demarrer(){
+  appliquerTheme();
+  poserLogos();
   DB=loadDB();
   /* Le bar a une langue à lui : celle dans laquelle son patron l'a
      ouvert. Elle l'emporte sur le dernier réglage de ce téléphone —
@@ -1396,6 +1853,62 @@ function _estIOS(){
     return /Macintosh/.test(u)&&navigator.maxTouchPoints>1;   // iPad récent
   }catch(e){return false;}
 }
+/* ╔═ L'ANCIENNE ADRESSE ═══════════════════════════════════════════
+   MyBar a deux portes : bar.myboutiq.online, et myboutiq.online/bar,
+   celle d'avant, restée ouverte pour les liens et les raccourcis déjà
+   posés. Les données d'une application vivent PAR ADRESSE : un bar saisi
+   sur l'une n'existe pas sur l'autre — ce ne sont pas les mêmes tiroirs,
+   et aucun réglage n'y change rien.
+
+   ⚠️ ON NE REDIRIGE PAS. Une redirection ouvrirait un bar VIDE à
+   quiconque a déjà travaillé ici, et lui laisserait croire qu'il a tout
+   perdu — or ses données seraient toujours là, de l'autre côté d'une
+   porte qu'on vient de fermer. On prévient, et on donne le chemin.
+
+   ⚠️ ET ON N'INSTALLE PAS DEPUIS ICI. Poser l'application depuis cette
+   adresse-ci installé la copie qu'on veut retirer, avec SON tiroir à
+   elle : le patron se retrouverait avec deux MyBar sur son écran
+   d'accueil, dont une vide, sans rien pour les distinguer.
+   ╚════════════════════════════════════════════════════════════════ */
+var MYBAR_URL='https://bar.myboutiq.online/';
+function ancienneAdresse(){
+  try{
+    var h=(location.hostname||'').toLowerCase();
+    return /(^|\.)myboutiq\.online$/.test(h)&&h!=='bar.myboutiq.online';
+  }catch(e){return false;}
+}
+function allerNouvelleAdresse(){
+  try{location.href=MYBAR_URL;}catch(e){}
+}
+function majBandeauxAdresse(){
+  if(!ancienneAdresse())return;
+  var lg=$('lg-adresse'),sv=$('svc-adresse');
+  var h='<div class="inst-band adr"><span style="font-size:18px;flex-shrink:0">🚚</span>'+
+    '<div class="ib-t">'+L("Ton bar est à l'ancienne adresse. MyBar habite maintenant bar.myboutiq.online — les deux ne partagent pas les mêmes données.",
+                           'Your bar is at the old address. MyBar now lives at bar.myboutiq.online — the two do not share the same data.')+'</div>'+
+    '<button class="ib-b" onclick="ouvrirDemenagement()">'+L("Déménager",'Move it')+'</button></div>';
+  if(lg)lg.innerHTML=DB?h:'';
+  if(sv)sv.innerHTML=DB?h:'';
+}
+function ouvrirDemenagement(){
+  modal(mhead('🚚 '+L('Emmener ton bar','Take your bar with you'),
+              L('Trois gestes, et rien ne se perd','Three moves, and nothing is lost'))+
+   '<div class="ovc">'+
+   '<div class="note">'+L(
+     "Un bar vit dans le téléphone, sous l'adresse où il a été ouvert. Celui-ci est rangé sous myboutiq.online, pas sous bar.myboutiq.online : la nouvelle adresse ne le verra pas toute seule. La sauvegarde est le déménageur.",
+     "A bar lives in the phone, filed under the address it was opened at. This one is filed under myboutiq.online, not bar.myboutiq.online: the new address will not see it on its own. The backup is the removal van.")+'</div>'+
+   '<div class="kv"><span class="kv-l"><b>1.</b> '+L('Télécharge la sauvegarde','Download the backup')+'</span></div>'+
+   '<button class="bpr" onclick="sauvegarder()">'+L('💾 Sauvegarder maintenant','💾 Back up now')+'</button>'+
+   '<div style="height:12px"></div>'+
+   '<div class="kv"><span class="kv-l"><b>2.</b> '+L('Ouvre la nouvelle adresse','Open the new address')+'</span></div>'+
+   '<button class="bse" onclick="allerNouvelleAdresse()">🍻 bar.myboutiq.online</button>'+
+   '<div style="height:12px"></div>'+
+   '<div class="kv"><span class="kv-l"><b>3.</b> '+L('Là-bas : Paramètres → Restaurer une sauvegarde','There: Settings → Restore a backup')+'</span></div>'+
+   '<div class="note bleu" style="margin-top:12px">'+L(
+     "Garde ce téléphone-ci tant que tu n'as pas vérifié là-bas que tout y est — la carte, le stock, les ardoises. Rien n'est effacé ici tant que tu ne l'effaces pas.",
+     "Keep this one until you have checked over there that everything is in — the menu, the stock, the tabs. Nothing is deleted here until you delete it.")+'</div>'+
+   '</div>');
+}
 function _instFerme(){try{return localStorage.getItem('mybar_install_ferme')==='1';}catch(e){return false;}}
 function fermerBandeauInstall(){
   try{localStorage.setItem('mybar_install_ferme','1');}catch(e){}
@@ -1420,7 +1933,10 @@ function _attendreInvitation(ms){
   });
 }
 function majBoutonsInstaller(){
-  var montrer=!_dejaInstallee();
+  majBandeauxAdresse();
+  /* Depuis l'ancienne adresse, « Installer » poserait la copie qu'on
+     retire. Le seul geste utile ici, c'est d'aller à la bonne porte. */
+  var montrer=!_dejaInstallee()&&!ancienneAdresse();
   var v=$('vit-install');
   if(v){v.style.display=montrer?'':'none';v.textContent=L("📲 Installer l'application",'📲 Install the app');}
   var lg=$('lg-install');
@@ -1632,7 +2148,7 @@ function alertes(){
       froid.slice(0,3).map(function(p){return p.nm;}).join(', ')+(froid.length>3?'…':''),go:"navTo('stock')"});
   var bas=DB.produits.filter(function(p){return p.actif&&p.suivi&&stockTotal(p)<=(p.seuil||0);});
   if(bas.length)a.push({e:'📦',cls:'rouge',txt:bas.length+L(' produit'+(bas.length>1?'s':'')+' à recommander au dépôt.',' product'+(bas.length>1?'s':'')+' to reorder at the depot.'),go:"navTo('stock')"});
-  var v=DB.produits.reduce(function(s,p){return s+(p.vides||0);},0);
+  var v=forme('vidanges')?DB.produits.reduce(function(s,p){return s+(p.vides||0);},0):0;
   if(v>=24)a.push({e:'♻️',cls:'vert',txt:v+L(' vidanges consignées à rendre — ',' empties to return — ')+fmt(valeurVidanges())+L(' immobilisés.',' tied up.'),go:'ouvrirVidanges()'});
   var det=DB.clients.reduce(function(s,c){return s+(c.ardoise||0);},0);
   if(det>0)a.push({e:'📒',cls:'',txt:fmt(det)+L(" d'ardoises non réglées.",' of unpaid tabs.'),go:"navTo('equipe');vueEq='clients';rendreEquipe()"});
@@ -1657,10 +2173,10 @@ function rendreService(){
   var marge=vs.reduce(function(s,v){return s+(v.total-(v.cout||0));},0)
             -depExploitation(depensesDuSoir()).reduce(function(s,d){return s+d.montant;},0);
   var ouv=tablesOuvertes().reduce(function(s,t){return s+totalTable(t);},0);
-  $('sv-ca').textContent=fmt(ca);
-  $('sv-ouv').textContent=fmt(ouv);
+  nombreAnime($('sv-ca'),ca,fmt);
+  nombreAnime($('sv-ouv'),ouv,fmt);
   $('sc-ben').style.display=estPatron()?'':'none';
-  $('sv-ben').textContent=fmt(marge);
+  nombreAnime($('sv-ben'),marge,fmt);
 
   majBoutonsInstaller();
   var al=alertes();
@@ -1683,12 +2199,13 @@ function rendreService(){
     var occ=t.lignes&&t.lignes.length,tot=totalTable(t);
     var lng=occ&&t.ouv&&(now()-t.ouv)>3*3600000;
     var srv=t.srv?membre(t.srv):null;
-    return '<div class="tcard'+(occ?(lng?' longue':' occ'):'')+'" onclick="ouvrirTable('+t.id+')">'+
+    return '<div class="tcard'+(occ?(lng?' longue':' occ'):' libre')+'" onclick="ouvrirTable('+t.id+')">'+
       '<div><div class="tc-top"><div class="tc-nm"><span>'+esc(t.nm)+'</span></div>'+
         '<div class="tc-dot'+(occ?(lng?' long':' on'):'')+'"></div></div>'+
       '<div class="tc-zone">'+esc(zoneNm(t.zone))+'</div></div>'+
-      (occ?'<div><div class="tc-mt">'+fmt(tot)+'</div><div class="tc-lb">'+nbArticles(t)+L(' art. · ',' items · ')+(t.ouv?duree(now()-t.ouv):'—')+'</div></div>'
-          :'<div class="tc-libre">'+L('Libre — toucher pour ouvrir','Free — tap to open')+'</div>')+
+      (occ?'<div><div class="tc-mt">'+fmt(tot)+'</div><div class="tc-lb">'+nbArticles(t)+L(' art. · ',' items · ')+
+           '<span class="tc-dur" data-ouv="'+(t.ouv||0)+'">'+(t.ouv?duree(now()-t.ouv):'—')+'</span></div></div>'
+          :'<div class="tc-libre">'+L('Libre','Free')+'</div>')+
       (srv?'<div class="tc-srv">'+esc(srv.nm)+'</div>':'')+'</div>';
   }).join('')||'<div class="vide"><div class="vide-e">🪑</div><div class="vide-t">'+L('Aucune table ici','No table here')+'</div></div>';
 }
@@ -1779,10 +2296,19 @@ function fermerMenu(){goScreen('s-addition');rendreAddition();}
 function chercherMenu(q){qMenu=(q||'').toLowerCase();rendreMenu();}
 function filtreFam(f){vueFam=f;rendreMenu();}
 function rendreMenu(){
-  var t=table(tableCourante);if(!t){retourService();return;}
-  $('menu-tit').textContent=t.nm;
+  var t=table(tableCourante);
+  if(!t){if(modeComptoir)t=tableComptoir(),tableCourante=t.id;else{retourService();return;}}
+  var cp=!!modeComptoir;
+  $('menu-tit').textContent=cp?L('Vente au comptoir','Counter sale'):t.nm;
+  $('menu-hg').textContent=cp?L('Encaissement direct','Pay as you go'):L('La carte','The menu');
+  $('menu-back').style.display=cp?'none':'';
+  $('menu-nav').style.display=cp?'':'none';
+  $('menu-st').style.display=cp?'':'none';
+  $('menu-csub').textContent=cp?L('À encaisser','To cash in'):L('Total table','Table total');
+  $('menu-benc').textContent=cp?L('✓ Encaisser','✓ Cash in'):L('✓ Terminé','✓ Done');
   $('btn-add-prod').style.display=estPatron()?'':'none';
   var fams=['*'].concat(FAMS.filter(function(f){
+    if(f.c==='cuis'&&!forme('cuisine'))return false;
     return DB.produits.some(function(p){return p.actif&&p.fam===f.c;});
   }).map(function(f){return f.c;}));
   $('menu-fams').innerHTML=fams.map(function(f){
@@ -1795,6 +2321,7 @@ function rendreMenu(){
   var cptr={};(t.lignes||[]).forEach(function(l){cptr[l.pid]=(cptr[l.pid]||0)+l.q;});
   var lst=DB.produits.filter(function(p){
     if(!p.actif)return false;
+    if(p.fam==='cuis'&&!forme('cuisine'))return false;
     if(vueFam!=='*'&&p.fam!==vueFam)return false;
     if(qMenu&&p.nm.toLowerCase().indexOf(qMenu)<0&&famNm(p.fam).toLowerCase().indexOf(qMenu)<0)return false;
     return true;
@@ -2135,7 +2662,7 @@ function confirmerPaiement(){
   var vides=0;
   t.lignes.forEach(function(l){
     var p=prod(l.pid);if(!p)return;
-    if((p.consigne||0)>0&&t.zone!=='emporter'){p.vides=(p.vides||0)+l.q;vides+=l.q;}
+    if(forme('vidanges')&&(p.consigne||0)>0&&t.zone!=='emporter'){p.vides=(p.vides||0)+l.q;vides+=l.q;}
   });
   var vente={
     id:uid(),ts:now(),jour:jourService(),tableId:t.id,tableNm:t.nm,zone:zoneNm(t.zone),
@@ -2162,9 +2689,10 @@ function ticket(v,rendu,nmT){
    (v.mode==='ardoise'?'<div class="note" style="margin:0 0 12px">'+L("📒 Porté sur l'ardoise de ",'📒 Put on the tab of ')+esc(v.clientNm)+'.</div>':'')+
    (v.vides?'<div class="kv"><span class="kv-l">'+L('Vidanges récupérées','Empties collected')+'</span><span class="kv-v">+'+v.vides+'</span></div>':'')+
    '<div class="kv"><span class="kv-l">'+L('Servi par','Served by')+'</span><span class="kv-v">'+esc(v.srvNm)+'</span></div>'+
-   '<div class="kv"><span class="kv-l">'+L('Table occupée','Table occupied')+'</span><span class="kv-v">'+(v.duree?duree(v.duree):'—')+'</span></div>'+
+   (modeComptoir?'':'<div class="kv"><span class="kv-l">'+L('Table occupée','Table occupied')+'</span><span class="kv-v">'+(v.duree?duree(v.duree):'—')+'</span></div>')+
    '<div style="height:12px"></div>'+
-   '<button class="bpr" onclick="fermerModal();retourService()">'+L('Retour aux tables','Back to the tables')+'</button>'+
+   '<button class="bpr" onclick="fermerModal();'+(modeComptoir?'ouvrirComptoir()':'retourService()')+'">'+
+     (modeComptoir?L('➕ Vente suivante','➕ Next sale'):L('Retour aux tables','Back to the tables'))+'</button>'+
    '<button class="bse" onclick="partagerVente('+v.id+')">'+L('📱 Envoyer le reçu','📱 Send the receipt')+'</button>'+
    '</div>');
 }
@@ -2232,6 +2760,7 @@ function detailStock(p){
 }
 function rendreStock(){
   if(!DB)return;
+  $('stk-vid').style.display=forme('vidanges')?'':'none';
   var vStock=0,vVente=0,vCons=0,nbBas=0;
   DB.produits.forEach(function(p){
     if(!p.actif||!p.suivi)return;
@@ -2239,7 +2768,9 @@ function rendreStock(){
     vStock+=st*(p.pa||0);vVente+=st*(p.pv||0);vCons+=(p.vides||0)*(p.consigne||0);
     if(st<=(p.seuil||0))nbBas++;
   });
-  $('stk-filtres').innerHTML=STK_FILTRES.map(function(f){
+  $('stk-filtres').innerHTML=STK_FILTRES.filter(function(f){
+    return f.c!=='vid'||forme('vidanges');
+  }).map(function(f){
     return '<button class="tpil'+(vueStk===f.c?' on':'')+'" onclick="filtreStock(\''+f.c+'\')">'+L(f.nm,f.ne)+'</button>';
   }).join('');
   var vierge=DB.produits.every(function(p){return !p.suivi||stockTotal(p)<=0;});
@@ -2250,7 +2781,9 @@ function rendreStock(){
     '<div style="padding:4px 15px 8px"><div class="rgrid">'+
     '<div class="rtile"><div class="rtl">'+L('Valeur du stock','Stock value')+'</div><div class="rtv">'+fmt(vStock)+'</div></div>'+
     '<div class="rtile"><div class="rtl">'+L('Vaut à la vente','Worth at sale')+'</div><div class="rtv g">'+fmt(vVente)+'</div></div>'+
-    '<div class="rtile"><div class="rtl">'+L('Consignes en attente','Deposits pending')+'</div><div class="rtv a">'+fmt(vCons)+'</div></div>'+
+    (forme('vidanges')
+      ?'<div class="rtile"><div class="rtl">'+L('Consignes en attente','Deposits pending')+'</div><div class="rtv a">'+fmt(vCons)+'</div></div>'
+      :'<div class="rtile"><div class="rtl">'+L('Produits suivis','Tracked products')+'</div><div class="rtv">'+DB.produits.filter(function(p){return p.actif&&p.suivi;}).length+'</div></div>')+
     '<div class="rtile"><div class="rtl">'+L('À recommander','To reorder')+'</div><div class="rtv'+(nbBas?' r':'')+'">'+nbBas+'</div></div>'+
     '</div></div>';
 
@@ -2278,7 +2811,7 @@ function rendreStock(){
     return '<div class="row" onclick="ficheProduit('+p.id+')">'+
       '<div class="row-e">'+(p.e||'🥤')+'</div>'+
       '<div class="row-b"><div class="row-t">'+esc(p.nm)+bdg+'</div>'+
-      '<div class="row-s">'+esc(detailStock(p))+((p.vides||0)?' · ♻️ '+p.vides+L(' vides',' empties'):'')+'</div></div>'+
+      '<div class="row-s">'+esc(detailStock(p))+((forme('vidanges')&&(p.vides||0))?' · ♻️ '+p.vides+L(' vides',' empties'):'')+'</div></div>'+
       '<div class="row-r"><div class="row-p">'+fmt(p.pv)+'</div>'+
       '<div class="row-x">'+(p.suivi?st+L(' dispo',' left'):esc(p.cont||''))+'</div></div></div>';
   }).join('')||'<div class="vide"><div class="vide-e">📦</div><div class="vide-t">'+L('Rien dans ce filtre','Nothing in this filter')+'</div>'+
@@ -2295,7 +2828,7 @@ function ficheProduit(id){
    (p.suivi?'<div class="kv"><span class="kv-l">'+L('Au dépôt','In the store room')+'</span><span class="kv-v">'+(p.casiers||0)+L(' casier(s) + ',' crate(s) + ')+(p.bouteilles||0)+'</span></div>'+
      '<div class="kv"><span class="kv-l">'+L('Au frais 🧊','Cold 🧊')+'</span><span class="kv-v">'+(p.frais||0)+'</span></div>'+
      '<div class="kv"><span class="kv-l">'+L('Total disponible','Total available')+'</span><span class="kv-v">'+st+'</span></div>'+
-     ((p.consigne||0)?'<div class="kv"><span class="kv-l">'+L('Vidanges gardées','Empties held')+'</span><span class="kv-v">'+(p.vides||0)+' · '+fmt((p.vides||0)*p.consigne)+'</span></div>':'')
+     ((forme('vidanges')&&(p.consigne||0))?'<div class="kv"><span class="kv-l">'+L('Vidanges gardées','Empties held')+'</span><span class="kv-v">'+(p.vides||0)+' · '+fmt((p.vides||0)*p.consigne)+'</span></div>':'')
      :'<div class="kv"><span class="kv-l">'+L('Stock','Stock')+'</span><span class="kv-v">'+L('non suivi','not tracked')+'</span></div>')+
    '<div class="kv"><span class="kv-l">'+L('Vendu (cumul)','Sold (total)')+'</span><span class="kv-v">'+(p.vendu||0)+'</span></div>'+
    '<div style="height:14px"></div>'+
@@ -2358,7 +2891,7 @@ function ouvrirInventaire(id){
    '<div class="f2"><div class="fld"><label class="lbl">'+L('Casiers pleins','Full crates')+'</label><input class="inp" id="iv-c" inputmode="numeric" value="'+(p.casiers||0)+'"></div>'+
    '<div class="fld"><label class="lbl">'+L('Bouteilles seules','Loose bottles')+'</label><input class="inp" id="iv-b" inputmode="numeric" value="'+(p.bouteilles||0)+'"></div></div>'+
    '<div class="f2"><div class="fld"><label class="lbl">'+L('Au frais 🧊','Cold 🧊')+'</label><input class="inp" id="iv-f" inputmode="numeric" value="'+(p.frais||0)+'"></div>'+
-   '<div class="fld"><label class="lbl">'+L('Vidanges ♻️','Empties ♻️')+'</label><input class="inp" id="iv-v" inputmode="numeric" value="'+(p.vides||0)+'"></div></div>'+
+   (forme('vidanges')?'<div class="fld"><label class="lbl">'+L('Vidanges ♻️','Empties ♻️')+'</label><input class="inp" id="iv-v" inputmode="numeric" value="'+(p.vides||0)+'"></div>':'')+'</div>'+
    '<div class="note">'+L("L'écart entre le compté et le théorique n'est pas corrigé en silence : il est enregistré en perte si tu comptes moins.",
      'The gap between counted and expected is not fixed in silence: if you count less, it is recorded as a loss.')+'</div>'+
    '<button class="bpr" onclick="validerInventaire('+id+')">'+L("Enregistrer l'inventaire",'Save the count')+'</button></div>');
@@ -2368,7 +2901,7 @@ function validerInventaire(id){
   p.casiers=Math.max(0,Math.round(num($('iv-c').value)));
   p.bouteilles=Math.max(0,Math.round(num($('iv-b').value)));
   p.frais=Math.max(0,Math.round(num($('iv-f').value)));
-  p.vides=Math.max(0,Math.round(num($('iv-v').value)));
+  if($('iv-v'))p.vides=Math.max(0,Math.round(num($('iv-v').value)));
   var ap=stockTotal(p),d=ap-av;
   if(d<0)DB.depenses.push({id:uid(),ts:now(),cat:'ecart',lbl:L('Inventaire ','Count ')+p.nm+' : '+d+L(' unité(s)',' unit(s)'),montant:(-d)*(p.pa||0),par:moi?moi.id:null});
   save();fermerModal();rendreStock();
@@ -2398,7 +2931,7 @@ function rendreAppro(presel){
    '<div class="f2"><div class="fld"><label class="lbl">'+L('Casiers','Crates')+'</label><input class="inp" id="ap-c" inputmode="numeric" value="1"></div>'+
    '<div class="fld"><label class="lbl">'+L('Prix du casier','Crate price')+'</label><input class="inp" id="ap-pc" inputmode="decimal" placeholder="0"></div></div>'+
    '<div class="f2"><div class="fld"><label class="lbl">'+L('Bouteilles seules','Loose bottles')+'</label><input class="inp" id="ap-b" inputmode="numeric" value="0"></div>'+
-   '<div class="fld"><label class="lbl">'+L('Vidanges rendues','Empties returned')+'</label><input class="inp" id="ap-v" inputmode="numeric" value="0"></div></div>'+
+   (forme('vidanges')?'<div class="fld"><label class="lbl">'+L('Vidanges rendues','Empties returned')+'</label><input class="inp" id="ap-v" inputmode="numeric" value="0"></div>':'')+'</div>'+
    '<button class="bse" onclick="ajouterAuBon()">'+L('+ Ajouter au bon','+ Add to the note')+'</button>'+
    (bonAppro.length?'<div style="height:6px"></div>'+bonAppro.map(function(l,i){
       return '<div class="row" style="margin-bottom:7px"><div class="row-e">📦</div><div class="row-b">'+
@@ -2422,7 +2955,7 @@ function rendreAppro(presel){
 function ajouterAuBon(){
   var p=prod(parseInt($('ap-p').value,10));if(!p)return;
   var c=Math.max(0,Math.round(num($('ap-c').value))),b=Math.max(0,Math.round(num($('ap-b').value)));
-  var pc=num($('ap-pc').value),v=Math.max(0,Math.round(num($('ap-v').value)));
+  var pc=num($('ap-pc').value),v=$('ap-v')?Math.max(0,Math.round(num($('ap-v').value))):0;
   if(c<=0&&b<=0&&v<=0){toast(L('Rien à ajouter sur cette ligne.','Nothing to add on this line.'));return;}
   if(v>(p.vides||0)){toast(L("♻️ Tu n'as que ",'♻️ You only have ')+(p.vides||0)+L(' vidanges de ',' empties of ')+p.nm+'.');return;}
   bonAppro.push({pid:p.id,nm:p.nm,casiers:c,bouteilles:b,puCasier:pc,
@@ -2750,10 +3283,15 @@ function exporterCSV(){
    ══════════════════════════════════════════════════════════════════ */
 function rendreEquipe(){
   if(!DB)return;
-  $('eq-onglets').innerHTML=
+  /* Un bar tenu seul n'a pas d'équipe à gérer : le deuxième volet est
+     le seul qui lui parle, et l'onglet du bas s'appelle déjà Clients. */
+  var eq=forme('equipe');
+  if(!eq)vueEq='clients';
+  $('eq-hn').textContent=eq?L('👥 Équipe','👥 Team'):L('📒 Clients','📒 Customers');
+  $('eq-onglets').innerHTML=!eq?'':
     '<button class="tpil'+(vueEq==='equipe'?' on':'')+'" onclick="vueEq=\'equipe\';rendreEquipe()">'+L('👥 Équipe','👥 Team')+' ('+DB.equipe.filter(function(m){return m.actif;}).length+')</button>'+
     '<button class="tpil'+(vueEq==='clients'?' on':'')+'" onclick="vueEq=\'clients\';rendreEquipe()">'+L('📒 Clients','📒 Customers')+' ('+DB.clients.length+')</button>';
-  $('eq-add').style.display=estPatron()?'':'none';
+  $('eq-add').style.display=(estPatron()&&vueEq==='equipe')?'':'none';
   if(vueEq==='equipe')rendreListeEquipe();else rendreListeClients();
 }
 function rendreListeEquipe(){
@@ -2918,6 +3456,13 @@ function rendreSettings(){
      '</div>';
   /* La langue se change ici comme à l'inscription — et le serveur y a
      droit aussi : c'est LUI qui lit l'écran toute la soirée. */
+  c+='<div class="rcard"><div class="rct">'+L('🌗 Affichage','🌗 Display')+'</div>'+
+     '<div class="chips">'+THEMES.map(function(t){
+       return '<div class="chip'+(themeChoisi()===t.c?' on':'')+'" onclick="poserTheme(\''+t.c+'\')">'+t.e+' '+L(t.nm,t.ne)+'</div>';
+     }).join('')+'</div>'+
+     '<div class="note" style="margin:10px 0 0">'+L(
+       "En automatique, l'écran passe au sombre de 18 h à 6 h. Un bar travaille la nuit : un plan de salle blanc éblouit le serveur, se voit depuis la rue, et vide la batterie du seul téléphone qui tient la caisse.",
+       'On automatic, the screen goes dark from 6 pm to 6 am. A bar works at night: a white floor plan dazzles the server, is visible from the street, and drains the battery of the one phone holding the till.')+'</div></div>';
   c+='<div class="rcard"><div class="rct">'+L('🌍 Langue','🌍 Language')+'</div>'+
      '<div class="chips">'+
      '<div class="chip'+(lang==='fr'?' on':'')+'" onclick="setLang(\'fr\')">🇫🇷 Français</div>'+
@@ -2939,7 +3484,7 @@ function rendreSettings(){
      '<div class="note">'+L("Le fond de caisse est l'argent laissé pour rendre la monnaie. La clôture le déduit avant de calculer l'écart.",
        'The float is the money left in the till to give change. Closing deducts it before working out the difference.')+'</div>'+
      '<button class="bse" onclick="sauverFond()">'+L('Enregistrer','Save')+'</button></div>';
-    c+='<div class="rcard"><div class="rct">'+L('🪑 Les tables (','🪑 Tables (')+DB.tables.length+')</div>'+
+    if(forme('tables'))c+='<div class="rcard"><div class="rct">'+L('🪑 Les tables (','🪑 Tables (')+DB.tables.length+')</div>'+
      DB.tables.map(function(t){
        return '<div class="kv"><span class="kv-l">'+esc(t.nm)+' — '+esc(zoneNm(t.zone))+(t.lignes.length?L(' · occupée',' · busy'):'')+'</span>'+
          '<span class="kv-v"><span class="lnk" style="color:var(--R)" onclick="supprimerTable('+t.id+')">'+L('retirer','remove')+'</span></span></div>';
@@ -2949,6 +3494,36 @@ function rendreSettings(){
      '<div class="f2"><div class="fld"><label class="lbl">'+L('Nouveau code patron','New owner code')+'</label><input class="inp" id="se-pin" inputmode="numeric" maxlength="4" placeholder="••••"></div>'+
      '<div class="fld"><label class="lbl">'+L('Confirmer','Confirm')+'</label><input class="inp" id="se-pin2" inputmode="numeric" maxlength="4" placeholder="••••"></div></div>'+
      '<button class="bse" onclick="changerPin()">'+L('Changer le code','Change the code')+'</button></div>';
+  }
+  /* ╔══ LE MODE EXPERT ═════════════════════════════════════════
+     Deux réglages, et il faut bien voir qu'ils ne se ressemblent pas :
+     la FORME est celle du bar (elle suit la sauvegarde, elle vaut pour
+     tous les téléphones) ; le POSTE est celui de CE téléphone-ci, et il
+     ne part jamais dans la sauvegarde. C'est ce qui permet au comptoir
+     et à la cave d'ouvrir sur deux écrans différents le même soir.
+     ╚════════════════════════════════════════════════════════════ */
+  if(estPatron()){
+    c+='<div class="rcard"><div class="rct">'+L('🍻 Comment marche ton bar','🍻 How your bar works')+'</div>'+
+     '<div class="note" style="margin:0 0 12px">'+L(
+       "Aucun bar ne ressemble au voisin. Éteins ce que tu ne fais pas : l'app cesse d'en parler, et les écrans s'allègent d'autant. Ce réglage est celui du BAR — il vaut pour tous les téléphones, et il part avec la sauvegarde.",
+       'No two bars are alike. Switch off what you do not do: the app stops bringing it up, and the screens get lighter for it. This setting belongs to the BAR — it holds for every phone, and it travels with the backup.')+'</div>'+
+     FORMES.map(function(x){
+       var on=forme(x.c);
+       return '<div class="strow" style="margin:0 0 10px"><div class="row-b"><div class="row-t">'+x.e+' '+L(x.nm,x.ne)+'</div>'+
+         '<div class="row-s">'+esc(L(x.d,x.de))+'</div></div>'+
+         '<div class="tog '+(on?'on':'off')+'" onclick="poserForme(\''+x.c+'\','+(on?0:1)+')"></div></div>';
+     }).join('')+'</div>';
+  }
+  if(forme('tables')){
+    var pc=POSTES.filter(function(z){return z.c===poste();})[0]||POSTES[0];
+    c+='<div class="rcard"><div class="rct">'+L('📱 Ce téléphone sert à…','📱 What this phone is for…')+'</div>'+
+     '<div class="chips">'+POSTES.map(function(x){
+       return '<div class="chip'+(poste()===x.c?' on':'')+'" onclick="poserPoste(\''+x.c+'\')">'+x.e+' '+L(x.nm,x.ne)+'</div>';
+     }).join('')+'</div>'+
+     '<div class="note bleu" style="margin:12px 0 0">'+esc(L(pc.d,pc.de))+'</div>'+
+     '<div class="note" style="margin:8px 0 0">'+L(
+       "Ce réglage-ci n'appartient qu'à CE téléphone : il n'est pas dans la sauvegarde, et il ne change rien chez tes serveurs. Celui du comptoir peut s'ouvrir sur la carte pendant que celui de la cave s'ouvre sur le stock — c'est le même bar, les mêmes chiffres.",
+       "This one belongs to THIS phone only: it is not in the backup, and it changes nothing for your servers. The counter phone can open on the menu while the store-room phone opens on the stock — same bar, same figures.")+'</div></div>';
   }
   c+='<div class="rcard"><div class="rct">'+L('📦 Données','📦 Data')+'</div>'+
      '<div class="kv"><span class="kv-l">'+L('Produits sur la carte','Products on the menu')+'</span><span class="kv-v">'+DB.produits.filter(function(p){return p.actif;}).length+'</span></div>'+
@@ -3045,7 +3620,7 @@ function restaurer(input){
       moi=DB.equipe.filter(function(m){return m.role==='patron';})[0]||DB.equipe[0];
       if(DB.cfg.lang&&DB.cfg.lang!==lang)setLang(DB.cfg.lang,true);
       fermerModal();
-      goScreen('s-service');rendreService();
+      ouvrirDepart();
       toast('✅ '+(DB.cfg.nom||'')+L(' restauré. Vérifie ton stock et tes ardoises.',' restored. Check your stock and tabs.'));
     }catch(e){
       toast(L('📂 Sauvegarde illisible — rien n\'a été remplacé.','📂 Unreadable backup — nothing was replaced.'));
@@ -3112,7 +3687,7 @@ function chargerDemo(){
   DB.depenses.push({id:3002,ts:now()-4*3600000,cat:'carburant',lbl:'Groupe électrogène — 5 L',montant:4500,par:1});
   save();
   moi=DB.equipe[0];
-  goScreen('s-service');rendreService();
+  ouvrirDepart();
   toast(L("👀 Soirée d'exemple chargée. Code patron : 1234",'👀 Sample night loaded. Owner code: 1234'));
 }
 </script>
