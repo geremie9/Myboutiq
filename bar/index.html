@@ -22,6 +22,13 @@
     var h=document.documentElement;
     var db=null;try{db=localStorage.getItem('mybar_v1')||localStorage.getItem('mybarq_v1');}catch(x){}
     h.className+=(db?' porte-login':' porte-vitrine');
+    /* ⚠️ LE THÈME SE POSE ICI, AVANT TOUT LE RESTE. Décidé plus bas, dans
+       le mégaoctet de script, l'écran serait peint en BLANC une demi-
+       seconde avant de basculer au sombre — un éclair en pleine figure
+       à 23 h, exactement ce que le mode nuit est censé éviter. */
+    var t='auto';try{t=localStorage.getItem('mybar_theme')||'auto';}catch(x){}
+    var hh=new Date().getHours();
+    if(t==='nuit'||(t==='auto'&&(hh>=18||hh<6)))h.className+=' nuit';
   }catch(x){}
 })();
 window._pwaInvite=null;
@@ -93,7 +100,63 @@ window.addEventListener('beforeinstallprompt',function(e){
 <noscript><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet"></noscript>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{--P:#0E2A26;--P2:#14403A;--A:#F6B93B;--G:#00C853;--R:#FF3D00;--B:#1B7F6E;--PU:#6E5A82;--O:#FF6D00;--BG:#F1F3F2;--C:#FFF;--T:#132029;--M:#94A3A0;--BD:#E6E9E8}
+/* ══════════════════════════════════════════════════════════════════
+   LE JOUR ET LA NUIT
+
+   ⚠️ UN BAR TRAVAILLE LA NUIT. À 23 h, un plan de salle blanc est
+   l'objet le plus lumineux de la table : il éblouit le serveur, se voit
+   depuis la rue, efface l'écran dès qu'on lève les yeux vers la salle —
+   et sur un écran OLED il vide la batterie du seul téléphone qui tient
+   la caisse. Une application de bar qui n'est claire QUE le jour, ce
+   n'est pas une coquetterie de dessinateur : c'est la différence entre
+   un logiciel de bureau et un outil de salle.
+
+   Tout l'écran est peint à partir de ces jetons. `html.nuit` les
+   remplace, et rien d'autre ne change — ni une balise, ni une classe.
+   ══════════════════════════════════════════════════════════════════ */
+:root{
+  --P:#0E2A26;--P2:#14403A;--A:#F6B93B;--G:#00C853;--R:#FF3D00;--B:#1B7F6E;--PU:#6E5A82;--O:#FF6D00;
+  --BG:#F1F3F2;--C:#FFF;--T:#132029;--M:#94A3A0;--BD:#E6E9E8;
+  --VERT:#1B7A3A;--OMBRE:rgba(16,24,40,.05);--OMBRE2:rgba(180,120,10,.16);
+  /* ⚠️ `--P` FAISAIT DEUX MÉTIERS : la couleur sombre de la marque (fonds
+     d'en-tête, pastilles ambre) ET la couleur du texte fort posé sur une
+     carte claire. Le jour, les deux coïncident ; la nuit, non — la carte
+     devient sombre, et un texte « sombre de marque » dessus disparaît.
+     Mesuré avant correction : le montant d'une table occupée tombait à
+     1,27 de contraste, l'onglet actif aussi. Invisibles, tous les deux.
+     `--TF` est le texte fort, et lui seul. */
+  --TF:#0E2A26;
+  --LIB-BD:#D7DEDC;--LIB-T:#6F807C;--LIB-Z:#98A5A2;
+  /* Les quatre familles de blocs teintés : fond, cadre, texte. */
+  --Na:#FFF8E6;--NaD:#F3CE72;--NaT:#8A6100;
+  --Nr:#FFEDE8;--NrD:#FFB59B;--NrT:#A33000;
+  --Nv:#E7F8EE;--NvD:#8FDCAE;--NvT:#136B36;
+  --Nb:#E8F4F2;--NbD:#8FC9BF;--NbT:#0E5A4E;
+  --Bof:#EDE7F6;--BofT:#5E35B1;--Bfr:#E3F2FD;--BfrT:#1565C0;
+  --Bch:#FFF3E0;--BchT:#E65100;--Bba:#FFF3E0;--BbaT:#B45309;
+  --Bou:#FFEBEE;--BouT:#C62828;--Bok:#E8F5E9;--BokT:#2E7D32;
+}
+/* ⚠️ La nuit n'est pas « le jour avec du noir ». On ne descend pas à
+   #000 : un noir pur sur un écran OLED fait baver les bords du texte et
+   fatigue plus qu'il ne repose. Le fond garde le vert de la marque,
+   très sombre — la salle reste reconnaissable. Et les blocs teintés
+   s'inversent : fond sombre, texte clair, jamais du pastel sur du noir
+   (illisible) ni du texte sombre sur sombre (invisible). */
+html.nuit{
+  --BG:#0A1917;--C:#132C28;--T:#E8F1EF;--M:#7F918D;--BD:#22403A;
+  --P:#071411;--P2:#0E2A26;
+  --VERT:#5CE08A;--OMBRE:rgba(0,0,0,.35);--OMBRE2:rgba(0,0,0,.45);
+  --TF:#EAF5F2;
+  --LIB-BD:#26443E;--LIB-T:#809894;--LIB-Z:#6B7F7B;
+  --Na:#2A2416;--NaD:#5A4A1E;--NaT:#F3CE72;
+  --Nr:#2E1A15;--NrD:#5E2E22;--NrT:#FFB59B;
+  --Nv:#12291F;--NvD:#2A5A3E;--NvT:#8FDCAE;
+  --Nb:#0F2A26;--NbD:#2A5A52;--NbT:#8FC9BF;
+  --Bof:#241E33;--BofT:#C2B0E8;--Bfr:#12293A;--BfrT:#8FC4EE;
+  --Bch:#2E2113;--BchT:#F0A860;--Bba:#2E2113;--BbaT:#E8B770;
+  --Bou:#2E1517;--BouT:#F09393;--Bok:#12291C;--BokT:#7FD49A;
+}
+html.nuit body{background:var(--BG)}
 body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden;color:var(--T)}
 .scr{display:none;flex-direction:column;min-height:100vh}
 .scr.on{display:flex}
@@ -279,12 +342,12 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 /* ── PROPOSER L'INSTALLATION ─────────────────────────────────────── */
 .lg-install{width:100%;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);
   color:#fff;border-radius:12px;padding:12px;font-size:13.5px;font-weight:800;cursor:pointer;margin-top:12px;position:relative}
-.inst-band{display:flex;align-items:center;gap:10px;margin:0 15px 10px;background:#E7F8EE;
-  border:1.5px solid #8FDCAE;border-radius:12px;padding:10px 12px}
-.inst-band .ib-t{flex:1;min-width:0;font-size:11.5px;font-weight:700;color:#136B36;line-height:1.4}
+.inst-band{display:flex;align-items:center;gap:10px;margin:0 15px 10px;background:var(--Nv);
+  border:1.5px solid var(--NvD);border-radius:12px;padding:10px 12px}
+.inst-band .ib-t{flex:1;min-width:0;font-size:11.5px;font-weight:700;color:var(--NvT);line-height:1.4}
 .inst-band .ib-b{flex-shrink:0;background:#1B7F6E;color:#fff;border:none;border-radius:9px;padding:10px 12px;
   font-size:11.5px;font-weight:900;cursor:pointer;white-space:nowrap}
-.inst-band .ib-x{flex-shrink:0;background:transparent;border:none;color:#136B36;font-size:15px;font-weight:900;cursor:pointer;padding:8px 4px}
+.inst-band .ib-x{flex-shrink:0;background:transparent;border:none;color:var(--NvT);font-size:15px;font-weight:900;cursor:pointer;padding:8px 4px}
 .login-hint{color:rgba(255,255,255,.3);font-size:11.5px;text-align:center;margin-top:14px;font-weight:600;position:relative;line-height:1.5}
 .lnk{color:var(--A);font-weight:800;cursor:pointer;text-decoration:underline}
 
@@ -329,10 +392,10 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .vide-t{font-size:14.5px;font-weight:800;color:var(--T);margin-bottom:5px}
 .vide-s{font-size:12.5px;font-weight:600;line-height:1.55}
 .note[onclick]{cursor:pointer}
-.note{background:#FFF8E6;border:1.5px solid #F3CE72;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700;color:#8A6100;line-height:1.45;margin:0 15px 10px}
-.note.rouge{background:#FFEDE8;border-color:#FFB59B;color:#A33000}
-.note.vert{background:#E7F8EE;border-color:#8FDCAE;color:#136B36}
-.note.bleu{background:#E8F4F2;border-color:#8FC9BF;color:#0E5A4E}
+.note{background:var(--Na);border:1.5px solid var(--NaD);border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700;color:var(--NaT);line-height:1.45;margin:0 15px 10px}
+.note.rouge{background:var(--Nr);border-color:var(--NrD);color:var(--NrT)}
+.note.vert{background:var(--Nv);border-color:var(--NvD);color:var(--NvT)}
+.note.bleu{background:var(--Nb);border-color:var(--NbD);color:var(--NbT)}
 
 /* ── TABLES (SERVICE) ── */
 .tgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 15px}
@@ -351,12 +414,12 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .tcard{background:var(--C);border:1.5px solid var(--BD);border-radius:18px;padding:13px 12px;cursor:pointer;
   position:relative;min-height:98px;display:flex;flex-direction:column;justify-content:space-between;
   transition:transform .16s cubic-bezier(.34,1.4,.64,1),box-shadow .16s,border-color .16s,background .16s;
-  box-shadow:0 1px 2px rgba(16,24,40,.05)}
+  box-shadow:0 1px 2px var(--OMBRE)}
 .tcard:active{transform:scale(.955)}
-.tcard.libre{background:transparent;border-style:dashed;border-color:#D7DEDC;box-shadow:none;min-height:78px}
-.tcard.libre .tc-nm{color:#8C9A97;font-weight:800}
-.tcard.libre .tc-zone{color:#AEB9B6}
-.tcard.occ{border-color:rgba(246,185,59,.55);background:var(--C);box-shadow:0 5px 16px rgba(180,120,10,.16)}
+.tcard.libre{background:transparent;border-style:dashed;border-color:var(--LIB-BD);box-shadow:none;min-height:78px}
+.tcard.libre .tc-nm{color:var(--LIB-T);font-weight:800}
+.tcard.libre .tc-zone{color:var(--LIB-Z)}
+.tcard.occ{border-color:rgba(246,185,59,.55);background:var(--C);box-shadow:0 5px 16px var(--OMBRE2)}
 /* Le trait d'ambre sur la tranche : on le voit avant de lire le nom. */
 .tcard.occ::before{content:'';position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;background:var(--A)}
 .tcard.longue{border-color:rgba(255,109,0,.5);box-shadow:0 5px 18px rgba(255,109,0,.2)}
@@ -366,11 +429,11 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .tc-nm{font-size:15px;font-weight:900;display:flex;align-items:center;gap:5px;min-width:0}
 .tc-nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tc-zone{font-size:9.5px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.4px}
-.tc-mt{font-size:21px;font-weight:900;color:var(--P);margin-top:6px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.tc-mt{font-size:21px;font-weight:900;color:var(--TF);margin-top:6px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
 .tc-lb{font-size:11px;font-weight:700;color:var(--M);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-variant-numeric:tabular-nums}
-.tc-libre{font-size:11.5px;font-weight:800;color:#9AA7A4;letter-spacing:.3px}
-.tc-dot{width:9px;height:9px;border-radius:50%;background:#DDE3E1;flex-shrink:0;transition:background .2s}
+.tc-libre{font-size:11.5px;font-weight:800;color:var(--LIB-T);letter-spacing:.3px}
+.tc-dot{width:9px;height:9px;border-radius:50%;background:var(--BD);flex-shrink:0;transition:background .2s}
 .tc-dot.on{background:var(--A);box-shadow:0 0 0 4px rgba(246,185,59,.18)}
 .tc-dot.long{background:var(--O);box-shadow:0 0 0 4px rgba(255,109,0,.18)}
 .tc-srv{position:absolute;right:10px;bottom:10px;font-size:9.5px;font-weight:900;background:var(--BG);color:var(--B);border-radius:8px;padding:3px 7px;max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -383,7 +446,7 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .row-t{font-size:13.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row-s{font-size:11.5px;font-weight:600;color:var(--M);margin-top:2px;line-height:1.4}
 .row-r{text-align:right;flex-shrink:0}
-.row-p{font-size:14px;font-weight:900;color:var(--P)}
+.row-p{font-size:14px;font-weight:900;color:var(--TF)}
 .row-x{font-size:11px;font-weight:700;color:var(--M);margin-top:2px}
 .qbox{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .qb{width:32px;height:32px;border-radius:9px;border:none;background:var(--BG);color:var(--T);font-size:17px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center}
@@ -391,13 +454,13 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .qb.moins{background:#FFEDE8;color:var(--R)}
 .qn{font-size:15px;font-weight:900;min-width:20px;text-align:center}
 .badge{display:inline-block;font-size:9.5px;font-weight:900;padding:2px 7px;border-radius:20px;margin-left:5px;vertical-align:middle}
-.bg-off{background:#EDE7F6;color:#5E35B1}
-.bg-frais{background:#E3F2FD;color:#1565C0}
-.bg-chaud{background:#FFF3E0;color:#E65100}
-.bg-bas{background:#FFF3E0;color:#B45309}
-.bg-out{background:#FFEBEE;color:#C62828}
-.bg-ok{background:#E8F5E9;color:#2E7D32}
-.bg-dette{background:#FFEBEE;color:#C62828}
+.bg-off{background:var(--Bof);color:var(--BofT)}
+.bg-frais{background:var(--Bfr);color:var(--BfrT)}
+.bg-chaud{background:var(--Bch);color:var(--BchT)}
+.bg-bas{background:var(--Bba);color:var(--BbaT)}
+.bg-out{background:var(--Bou);color:var(--BouT)}
+.bg-ok{background:var(--Bok);color:var(--BokT)}
+.bg-dette{background:var(--Bou);color:var(--BouT)}
 
 /* ── GRILLE PRODUITS ── */
 .pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px 9px;padding:0 15px}
@@ -411,8 +474,8 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .qbdg{position:absolute;top:-8px;right:-6px;background:var(--G);color:#fff;border-radius:50%;min-width:23px;height:23px;padding:0 5px;font-size:11.5px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid var(--C)}
 .fbdg{position:absolute;top:7px;left:8px;font-size:12px;opacity:.85}
 .sbdg{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:900;padding:2px 7px;border-radius:20px;white-space:nowrap}
-.sbdg.bas{background:#FFF3E0;color:#B45309;border:1px solid #F3CE72}
-.sbdg.out{background:#FFEBEE;color:#C62828;border:1px solid #FFB59B}
+.sbdg.bas{background:var(--Bba);color:var(--BbaT);border:1px solid var(--NaD)}
+.sbdg.out{background:var(--Bou);color:var(--BouT);border:1px solid var(--NrD)}
 
 /* ── BOUTONS ── */
 .bpr{width:100%;background:var(--P);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14.5px;font-weight:800;cursor:pointer;margin-bottom:9px}
@@ -440,7 +503,7 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .ne{font-size:20px;filter:grayscale(1);opacity:.5}
 .nl{font-size:10px;font-weight:800}
 .ni.on .ne{filter:none;opacity:1}
-.ni.on .nl{color:var(--P)}
+.ni.on .nl{color:var(--TF)}
 
 /* ── MODAL ── */
 .ov{position:fixed;inset:0;background:rgba(8,24,21,.55);z-index:200;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
@@ -467,7 +530,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .kv:last-child{border-bottom:none}
 .kv-l{font-weight:700;color:var(--M);min-width:0}
 .kv-v{font-weight:900;text-align:right;white-space:nowrap}
-.kv.big .kv-v{font-size:17px;color:var(--P)}
+.kv.big .kv-v{font-size:17px;color:var(--TF)}
 .toast{position:fixed;bottom:150px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--P);color:#fff;padding:12px 18px;border-radius:13px;font-size:13px;font-weight:700;z-index:400;opacity:0;pointer-events:none;transition:all .25s;max-width:92vw;text-align:center;line-height:1.45;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -478,7 +541,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .rtile{background:var(--BG);border-radius:13px;padding:11px}
 .rtl{font-size:10px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.4px}
 .rtv{font-size:18px;font-weight:900;margin-top:3px}
-.rtv.g{color:#1B7A3A}.rtv.r{color:var(--R)}.rtv.a{color:#B45309}
+.rtv.g{color:var(--VERT)}.rtv.r{color:var(--R)}.rtv.a{color:var(--BbaT)}
 .bar-l{margin-bottom:9px}
 .bar-h{display:flex;justify-content:space-between;font-size:12px;font-weight:800;margin-bottom:4px;gap:9px}
 .bar-h span:last-child{white-space:nowrap;color:var(--B)}
@@ -595,6 +658,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
   <div class="mhdr">
     <div><div class="hg" id="hdr-bonjour">Service</div><div class="hn"><span id="u-nm">Patron</span><span class="rbdg rb-p" id="u-role">Patron</span></div></div>
     <div class="hrgt">
+      <button class="hbtn" id="btn-nuit" onclick="tournerTheme()" title="Affichage" data-title-en="Display">🌙</button>
       <button class="hbtn" id="btn-happy" onclick="toggleHappy()" title="Happy hour" data-title-en="Happy hour">🕕</button>
       <button class="hbtn" id="btn-dep" onclick="ouvrirDepense()" title="Dépense" data-title-en="Expense">💸</button>
       <button class="hbtn" onclick="ouvrirAlertes()" title="Alertes" data-title-en="Alerts"><span>🔔</span><div class="hbtn-badge" id="alert-badge">0</div></button>
@@ -1071,7 +1135,7 @@ var obPays=PAYS[0],obType=TYPES[0],obEtape=1;
    où un libellé peut rester dans l'autre langue parce qu'on a oublié
    de l'ajouter à une liste. */
 function appliquerLangue(){
-  try{poserLogos();}catch(e){}
+  try{poserLogos();appliquerTheme();}catch(e){}
   try{document.documentElement.setAttribute('lang',lang);}catch(e){}
   try{
     document.title=L("MyBar — Gestion de bar et buvette pour l'Afrique",'MyBar — Bar & pub management for Africa');
@@ -1188,6 +1252,53 @@ function logoMyBar(px,id){
     '<rect x="63" y="62" width="4.5" height="34" rx="2.2" fill="#0E2A26" opacity=".17"/>'+
   '</svg>';
 }
+/* ══════════════════════════════════════════════════════════════════
+   LE JOUR ET LA NUIT — la règle
+
+   `auto` par défaut : sombre de 18 h à 6 h. Ce n'est pas un goût, c'est
+   l'horaire d'un bar. Celui qui veut choisir choisit, et son choix est
+   gardé sur CE téléphone — un serveur peut vouloir le sombre quand le
+   patron veut le clair, et ils n'ont pas le même appareil en main.
+   ══════════════════════════════════════════════════════════════════ */
+var THEMES=[{c:'auto',nm:'Automatique',ne:'Automatic',e:'🕓'},
+            {c:'jour',nm:'Jour',ne:'Day',e:'☀️'},
+            {c:'nuit',nm:'Nuit',ne:'Night',e:'🌙'}];
+function themeChoisi(){try{return localStorage.getItem('mybar_theme')||'auto';}catch(e){return 'auto';}}
+function estNuit(){
+  var t=themeChoisi();
+  if(t==='nuit')return true;
+  if(t==='jour')return false;
+  var h=new Date().getHours();
+  return h>=18||h<6;
+}
+function appliquerTheme(){
+  var nuit=estNuit();
+  try{document.documentElement.classList.toggle('nuit',nuit);}catch(e){}
+  /* La barre du téléphone suit : sinon on a une bande blanche au-dessus
+     d'un écran sombre, et ça se voit plus que tout le reste. */
+  try{var m=document.querySelector('meta[name="theme-color"]');
+    if(m)m.setAttribute('content',nuit?'#071411':'#0E2A26');}catch(e){}
+  var b=$('btn-nuit');
+  if(b){
+    b.textContent=nuit?'🌙':'☀️';
+    b.setAttribute('title',L('Affichage : ','Display: ')+(themeChoisi()==='auto'?L('automatique','automatic'):(nuit?L('nuit','night'):L('jour','day'))));
+  }
+}
+function poserTheme(t){
+  try{localStorage.setItem('mybar_theme',t);}catch(e){}
+  appliquerTheme();
+  var on=document.querySelector('.scr.on');
+  if(on&&typeof rendreEcran==='function')rendreEcran(on.id);
+  var x=THEMES.filter(function(z){return z.c===t;})[0]||THEMES[0];
+  toast(x.e+' '+L('Affichage : ','Display: ')+L(x.nm,x.ne).toLowerCase());
+}
+/* Un appui sur la lune fait le tour des trois réglages : c'est le geste
+   qu'on fait d'une main, un plateau dans l'autre. Le détail est dans les
+   Paramètres pour qui veut lire. */
+function tournerTheme(){
+  var i=0;THEMES.forEach(function(z,k){if(z.c===themeChoisi())i=k;});
+  poserTheme(THEMES[(i+1)%THEMES.length].c);
+}
 function poserLogos(){
   [['splash-logo',72],['ob-logo',54],['login-logo',64]].forEach(function(x){
     var e=$(x[0]);if(e&&!e.querySelector('svg'))e.innerHTML=logoMyBar(x[1],x[0]);
@@ -1233,6 +1344,9 @@ function horlogeSalle(on){
   _horloge=setInterval(function(){
     var sc=$('s-service');
     if(!sc||!sc.classList.contains('on')||document.hidden)return;
+    /* 18 h passe pendant le service : l'écran bascule tout seul, sans
+       qu'on ait à y penser ni à quitter la salle. */
+    if(themeChoisi()==='auto'&&estNuit()!==document.documentElement.classList.contains('nuit'))appliquerTheme();
     var l=document.querySelectorAll('#svc-grid .tc-dur');
     for(var i=0;i<l.length;i++){
       var ts=+l[i].getAttribute('data-ouv');
@@ -1541,6 +1655,7 @@ function estPatron(){return moi&&(moi.role==='patron'||moi.role==='gerant');}
 
 /* ── Démarrage ────────────────────────────────────────────────────── */
 function demarrer(){
+  appliquerTheme();
   poserLogos();
   DB=loadDB();
   /* Le bar a une langue à lui : celle dans laquelle son patron l'a
@@ -3102,6 +3217,13 @@ function rendreSettings(){
      '</div>';
   /* La langue se change ici comme à l'inscription — et le serveur y a
      droit aussi : c'est LUI qui lit l'écran toute la soirée. */
+  c+='<div class="rcard"><div class="rct">'+L('🌗 Affichage','🌗 Display')+'</div>'+
+     '<div class="chips">'+THEMES.map(function(t){
+       return '<div class="chip'+(themeChoisi()===t.c?' on':'')+'" onclick="poserTheme(\''+t.c+'\')">'+t.e+' '+L(t.nm,t.ne)+'</div>';
+     }).join('')+'</div>'+
+     '<div class="note" style="margin:10px 0 0">'+L(
+       "En automatique, l'écran passe au sombre de 18 h à 6 h. Un bar travaille la nuit : un plan de salle blanc éblouit le serveur, se voit depuis la rue, et vide la batterie du seul téléphone qui tient la caisse.",
+       'On automatic, the screen goes dark from 6 pm to 6 am. A bar works at night: a white floor plan dazzles the server, is visible from the street, and drains the battery of the one phone holding the till.')+'</div></div>';
   c+='<div class="rcard"><div class="rct">'+L('🌍 Langue','🌍 Language')+'</div>'+
      '<div class="chips">'+
      '<div class="chip'+(lang==='fr'?' on':'')+'" onclick="setLang(\'fr\')">🇫🇷 Français</div>'+
