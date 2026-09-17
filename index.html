@@ -3242,6 +3242,10 @@ body{max-width:min(100%,1200px)}
       <textarea id="col-txt" style="width:100%;min-height:150px;border:1.5px solid var(--BD);border-radius:12px;padding:11px;font-family:Outfit,sans-serif;font-size:14px;color:var(--T);background:var(--C);outline:none" placeholder="Colle ta liste ici…"></textarea>
       <div id="col-apercu" style="font-size:12px;font-weight:800;margin:9px 0;min-height:17px"></div>
       <button class="bnxt" onclick="analyserCollage()">🔎 <span id="col-ok">Analyser la liste</span></button>
+      <!-- Une liste de cent articles ne se colle pas dans une zone de texte
+           sur un téléphone : on ouvre le fichier reçu par WhatsApp. -->
+      <button class="bvid" style="margin-top:8px;width:100%" onclick="document.getElementById('inp-modele-fichier').click()">📄 <span id="col-fic">Ouvrir un fichier reçu</span></button>
+      <input type="file" id="inp-modele-fichier" accept=".txt,.csv,.mbq,text/plain,text/csv" style="display:none" onchange="ouvrirFichierModele(this.files[0]);this.value=''">
     </div>
   </div>
 </div>
@@ -4575,7 +4579,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.32'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.33'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -16515,7 +16519,11 @@ function expRender(){
            +'onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{style:\'width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--BG)\',textContent:\'📦\'}))">')
         : ('<span style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</span>'))+
       '<div style="flex:1;min-width:0;cursor:pointer" onclick="expBasculeDetail('+i+')">'+
-        '<div style="font-size:12.5px;font-weight:800;color:var(--T)">'+a.nm+'</div>'+
+        '<div style="font-size:12.5px;font-weight:800;color:var(--T)">'+a.nm
+          +((a._vr&&a._vr.length)
+            ?(' <span style="font-size:10px;font-weight:800;color:var(--B)">· '+a._vr.length+' '
+              +(fr?('variante'+(a._vr.length>1?'s':'')):'variants')+'</span>')
+            :'')+'</div>'+
         // ⚠️⚠️ « ON MET LE STOCK, TOUS LES DÉTAILS, ÇA RESTE TOUJOURS ROUGE.
         //        ÇA TE DIT MÊME LE PRIX DE VENTE ZÉRO ALORS QU'ON A DÉJÀ
         //        CONFIGURÉ. »
@@ -16645,8 +16653,26 @@ function expCreerTous(){
     if(a._e)art.e=a._e;
     if(a._cat)art.cat=a._cat;
     appliquerPhotosCatalogue([art]);appliquerConditionnementCatalogue([art],true);   // photo + conditionnement connus du catalogue
+    // ⚠️ Les VARIANTES arrivent avec le modèle. Sans ce bloc, un import de
+    // « Sucreries » avec ses quatre parfums créait un article vide : les
+    // prix et les stocks de chaque parfum étaient lus, puis jetés ici.
+    if(a._vr&&a._vr.length){
+      art.vr=a._vr.map(function(v,k){
+        return {id:k+1,nm:String(v.nm||'').trim()||('#'+(k+1)),
+                px:Number(v.px)||0,pa:Number(v.pa)||0,stk:0,stk0:0};
+      });
+      art.px=0;art.pa=0;                 // le prix appartient aux variantes
+    }
     DB.articles.push(art);
-    if(a.stk>0)definirStock(art,null,a.stk);
+    if(art.vr&&art.vr.length){
+      // Le stock passe par definirStock : il écrit un MOUVEMENT, c'est ce qui
+      // permet aux deux téléphones de la boutique de s'accorder ensuite.
+      art.vr.forEach(function(v,k){
+        var q=Number((a._vr[k]||{}).stk)||0;
+        if(q>0)definirStock(art,v,q);
+      });
+    }
+    else if(a.stk>0)definirStock(art,null,a.stk);
     if(!(paU>0))sansPa++;
   });
   var n=_expListe.length;_expListe=[];
@@ -17115,39 +17141,84 @@ function majPorteArticles(){
 //     MBQ1 · Nom du modèle
 //     nom|prix de vente|prix d'achat|unités par contenant|nom du contenant
 // ══════════════════════════════════════════════════════════════════
-var MODELE_MARQUE='MBQ1';
+// MBQ1 : nom|vente|achat|parContenant|contenant
+// MBQ2 : nom|vente|achat|STOCK|parContenant|contenant
+//        une ligne commençant par « > » est une VARIANTE de l'article du
+//        dessus : > nom|vente|achat|stock
+// Les deux versions se lisent ; on n'écrit plus que la seconde.
+var MODELE_MARQUE='MBQ';
+function _nb(x){var n=parseFloat(String(x||'').replace(',','.'));return isFinite(n)&&n>0?n:0;}
 function _modeleEcrire(nom,articles){
-  var l=[MODELE_MARQUE+' · '+String(nom||'Modèle').replace(/[|\n]/g,' ').trim()];
+  var l=['MBQ2 · '+String(nom||'Modèle').replace(/[|\n]/g,' ').trim()];
+  function propre(x){return String(x||'').replace(/[|\n]/g,' ').trim();}
   (articles||[]).forEach(function(a){
     if(!a||!a.nm)return;
-    l.push([String(a.nm).replace(/[|\n]/g,' ').trim(),
+    var stk=0; try{stk=Math.round((getStk?getStk(a):(a.stk||0))*100)/100;}catch(e){stk=Number(a.stk)||0;}
+    l.push([propre(a.nm),
             Number(a.px)>0?Math.round(a.px):'',
             Number(a.pa)>0?Math.round(a.pa):'',
+            stk>0?stk:'',
             Number(a.umSac)>1?Math.round(a.umSac):'',
-            a.umCont?String(a.umCont).replace(/[|\n]/g,' ').trim():''].join('|'));
+            a.umCont?propre(a.umCont):''].join('|'));
+    (a.vr||[]).forEach(function(v){
+      var vs=0; try{vs=Math.round(stockVarDispo(a,v)*100)/100;}catch(e){vs=Number(v.stk)||0;}
+      l.push('> '+[propre(v.nm),
+                   Number(v.px)>0?Math.round(v.px):'',
+                   Number(v.pa)>0?Math.round(v.pa):'',
+                   vs>0?vs:''].join('|'));
+    });
   });
   return l.join('\n');
 }
 function _modeleLire(txt){
   var lignes=String(txt||'').split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean);
   if(!lignes.length)return null;
-  var tete=lignes[0].replace(/\s+/g,' ');
-  if(tete.toUpperCase().indexOf(MODELE_MARQUE)!==0)return null;
-  var nom=tete.slice(MODELE_MARQUE.length).replace(/^[\s·:.-]+/,'').trim();
-  var arts=[];
+  var tete=lignes[0].replace(/\s+/g,' ').toUpperCase();
+  if(tete.indexOf(MODELE_MARQUE)!==0)return null;
+  var v2=(tete.indexOf('MBQ2')===0);
+  var nom=lignes[0].replace(/\s+/g,' ').slice(4).replace(/^[\s·:.-]+/,'').trim();
+  var arts=[],dernier=null;
   lignes.slice(1).forEach(function(L){
+    // Une variante : elle a besoin d'un article au-dessus, sinon on l'écarte
+    // plutôt que de l'accrocher au hasard.
+    if(/^[>\-+]\s*/.test(L)){
+      if(!dernier)return;
+      var w=L.replace(/^[>\-+]\s*/,'').split('|');
+      var vn=(w[0]||'').trim(); if(vn.length<1)return;
+      (dernier._vr=dernier._vr||[]).push({nm:vn,px:_nb(w[1]),pa:_nb(w[2]),stk:_nb(w[3])});
+      return;
+    }
     if(L.indexOf('|')<0)return;
     var c=L.split('|');
     var nm=(c[0]||'').trim();
     if(nm.length<2)return;
-    var px=parseFloat(String(c[1]||'').replace(',','.'))||0;
-    var pa=parseFloat(String(c[2]||'').replace(',','.'))||0;
-    var sac=parseInt(c[3]||'',10)||0;
-    var cont=(c[4]||'').trim();
-    arts.push({nm:nm,px:px>0?px:0,pa:pa>0?pa:0,stk:0,paUnitaire:true,
-               umSac:sac>1?sac:null,umCont:sac>1?(cont||null):null});
+    var stk=v2?_nb(c[3]):0;
+    var sac=parseInt((v2?c[4]:c[3])||'',10)||0;
+    var cont=String((v2?c[5]:c[4])||'').trim();
+    dernier={nm:nm,px:_nb(c[1]),pa:_nb(c[2]),stk:stk,paUnitaire:true,
+             umSac:sac>1?sac:null,umCont:sac>1?(cont||null):null};
+    arts.push(dernier);
   });
+  // Un article à variantes ne porte pas de prix à lui : ce sont ses
+  // variantes qui en ont. Sinon la tuile afficherait un prix qui n'existe pas.
+  arts.forEach(function(a){ if(a._vr&&a._vr.length){a.px=0;a.pa=0;a.stk=0;} });
   return arts.length?{nom:nom,articles:arts}:null;
+}
+// Ouvrir un fichier plutôt que coller : une liste de cent articles ne se
+// colle pas dans une zone de texte sur un téléphone.
+function ouvrirFichierModele(f){
+  if(!f)return;
+  var fr=(lang==='fr');
+  if(f.size>400000){showToast('⚠️ '+(fr?'Fichier trop gros (400 Ko maximum)':'File too large'));return;}
+  var r=new FileReader();
+  r.onload=function(){
+    var z=document.getElementById('col-txt');
+    if(z)z.value=String(r.result||'');
+    showToast('📄 '+(fr?'Fichier ouvert — touche « Analyser »':'File loaded — tap Analyse'));
+    try{analyserCollage();}catch(e){}
+  };
+  r.onerror=function(){showToast('⚠️ '+(fr?'Impossible de lire ce fichier':'Cannot read this file'));};
+  r.readAsText(f);
 }
 // On ne crée rien tout de suite : le modèle rejoint la liste de l'écran
 // express, où il VOIT ce qui va entrer et peut corriger chaque prix avant
@@ -17181,7 +17252,7 @@ function ouvrirModele(){
     showToast('📦 '+(fr?'Cette boutique n\'a pas encore d\'articles à partager':'No items yet'));return;
   }
   _modSel={};
-  (DB.articles||[]).forEach(function(a){ if(a&&a.nm&&!(a.vr&&a.vr.length))_modSel[a.id]=1; });
+  (DB.articles||[]).forEach(function(a){ if(a&&a.nm)_modSel[a.id]=1; });
   renderModele();
   document.getElementById('ov-modele').classList.add('show');
 }
@@ -17189,23 +17260,24 @@ var _modSel={};
 function modBasculer(id){ if(_modSel[id])delete _modSel[id]; else _modSel[id]=1; renderModele(); }
 function modTous(v){
   _modSel={};
-  if(v)(DB.articles||[]).forEach(function(a){ if(a&&!(a.vr&&a.vr.length))_modSel[a.id]=1; });
+  if(v)(DB.articles||[]).forEach(function(a){ if(a)_modSel[a.id]=1; });
   renderModele();
 }
 function _modArticles(){
-  return (DB.articles||[]).filter(function(a){return a&&_modSel[a.id]&&!(a.vr&&a.vr.length);});
+  return (DB.articles||[]).filter(function(a){return a&&_modSel[a.id];});
 }
 function renderModele(){
   var fr=(lang==='fr'),b=document.getElementById('mod-lst');if(!b)return;
-  var libres=(DB.articles||[]).filter(function(a){return a&&!(a.vr&&a.vr.length);});
+  var libres=(DB.articles||[]).filter(function(a){return !!a;});
   b.innerHTML=libres.map(function(a){
     var pris=!!_modSel[a.id];
     return '<div onclick="modBasculer('+a.id+')" style="display:flex;align-items:center;gap:9px;padding:9px 4px;border-bottom:1px solid var(--BD);cursor:pointer">'
       +'<span style="font-size:17px">'+(pris?'✅':'⬜')+'</span>'
-      +'<span style="flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--T);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+a.nm+'</span>'
-      +'<span style="font-size:12px;font-weight:800;color:var(--M)">'+(a.px>0?fmt(a.px):'—')+'</span></div>';
+      +'<span style="flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--T);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+a.nm
+      +((a.vr&&a.vr.length)?(' <span style="font-size:10px;color:var(--B);font-weight:800">· '+a.vr.length+'</span>'):'')+'</span>'
+      +'<span style="font-size:12px;font-weight:800;color:var(--M)">'+((a.vr&&a.vr.length)?prixCarte(a):(a.px>0?fmt(a.px):'—'))+'</span></div>';
   }).join('')||('<div style="padding:12px;font-size:12.5px;color:var(--M);font-weight:700">'
-    +(fr?'Aucun article simple à partager (les familles ne passent pas dans un modèle).':'Nothing to share.')+'</div>');
+    +(fr?'Aucun article à partager.':'Nothing to share.')+'</div>');
   var n=_modArticles().length;
   var t=document.getElementById('mod-cpt');
   if(t)t.textContent=n+' '+(fr?('article'+(n>1?'s':'')+' dans le modèle'):('item'+(n>1?'s':'')));
