@@ -2555,6 +2555,7 @@ body{max-width:min(100%,1200px)}
         <!-- Caché à tout le monde sauf aux administrateurs de MyBoutiQ.
              Le serveur décide (table app_admins) : cacher l'entrée n'est que du
              confort, c'est la règle RLS qui protège vraiment. -->
+        <div class="stit2" id="row-modele" style="display:none" onclick="ouvrirModele()"><div class="stico" style="background:#E8F5E9">📋</div><div class="stii"><div class="stitl">Préparer un modèle de boutique</div><div class="stisub">Envoyer tes articles et leurs prix à un commerçant, par WhatsApp</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-annonce" style="display:none" onclick="ouvrirEcrireAnnonce()"><div class="stico" style="background:#E8EAF6">📣</div><div class="stii"><div class="stitl">Écrire une annonce</div><div class="stisub">Un message à tous les commerçants</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-abonnes" style="display:none" onclick="ouvrirAbonnes()"><div class="stico" style="background:#FFF8E1">🗂️</div><div class="stii"><div class="stitl">Abonnements</div><div class="stisub">Qui a payé, jusqu'à quand — et rouvrir d'une tape</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-photos-prop" style="display:none" onclick="ouvrirPhotosProposees()"><div class="stico" style="background:#E0F2F1">📷</div><div class="stii"><div class="stitl">Photos proposées</div><div class="stisub" id="pp-sub">Ce que les commerçants offrent à tous</div></div><span class="starr">›</span></div>
@@ -3877,6 +3878,28 @@ body{max-width:min(100%,1200px)}
      et chacun devient sa propre ligne, avec son stock en bouteilles, ses
      prix et son casier ou sa palette. Sa règle, qu'il a tranchée lui-même :
      chaque contenance a son propre stock, aucune conversion entre elles. -->
+<div class="ov" id="ov-modele" onclick="closeOv(event,'ov-modele')">
+  <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">📋 <span id="mod-tit">Préparer un modèle</span></div><button class="bcl" onclick="closeSheet('ov-modele')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div id="mod-aide" style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.6;margin-bottom:12px">
+        Envoie tes articles et leurs prix à un commerçant par WhatsApp. Il colle le message
+        dans son application et tout arrive d'un coup. <b>Rien n'est écrasé chez lui</b> :
+        il voit la liste et vérifie les prix avant de valider.
+      </div>
+      <div class="pig"><label class="pl" id="mod-nm-l">Nom du modèle</label>
+        <input class="pi" type="text" id="mod-nm" maxlength="40" placeholder="ex : Boutique de quartier" autocomplete="off"></div>
+      <div style="display:flex;gap:8px;margin:2px 0 8px">
+        <button class="shct" onclick="modTous(true)" id="mod-tout">Tout cocher</button>
+        <button class="shct" onclick="modTous(false)" id="mod-rien">Tout décocher</button>
+        <span style="flex:1"></span>
+        <span id="mod-cpt" style="font-size:11.5px;font-weight:800;color:var(--B);align-self:center"></span>
+      </div>
+      <div id="mod-lst" style="max-height:44vh;overflow-y:auto;margin-bottom:15px"></div>
+      <button class="bt" style="width:100%" id="mod-envoi" onclick="partagerModele()">📱 <span id="mod-envoi-l">Envoyer par WhatsApp</span></button>
+    </div>
+  </div>
+</div>
 <div class="ov" id="ov-format" onclick="closeOv(event,'ov-format')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">🥤 <span id="fmt-tit">Quelles contenances&nbsp;?</span></div><button class="bcl" onclick="closeSheet('ov-format')">✕</button></div>
@@ -4552,7 +4575,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.31'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.32'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -17081,6 +17104,130 @@ function majPorteArticles(){
                             :'Take whichever suits you — you can mix them.'));
   pose('porte-autres',fr?'Autres façons':'Other ways');
 }
+// ══════════════════════════════════════════════════════════════════
+//  MODÈLE DE BOUTIQUE — préparé par l'administrateur, appliqué par le patron
+//
+//  Format volontairement pauvre : une ligne d'en-tête, puis une ligne par
+//  article, séparées par des barres verticales. Pas de JSON — WhatsApp coupe
+//  les longues lignes, remplace les guillemets par des guillemets courbes et
+//  fait des liens avec tout ce qui ressemble à une adresse. Des barres et des
+//  retours à la ligne survivent à tout ça.
+//     MBQ1 · Nom du modèle
+//     nom|prix de vente|prix d'achat|unités par contenant|nom du contenant
+// ══════════════════════════════════════════════════════════════════
+var MODELE_MARQUE='MBQ1';
+function _modeleEcrire(nom,articles){
+  var l=[MODELE_MARQUE+' · '+String(nom||'Modèle').replace(/[|\n]/g,' ').trim()];
+  (articles||[]).forEach(function(a){
+    if(!a||!a.nm)return;
+    l.push([String(a.nm).replace(/[|\n]/g,' ').trim(),
+            Number(a.px)>0?Math.round(a.px):'',
+            Number(a.pa)>0?Math.round(a.pa):'',
+            Number(a.umSac)>1?Math.round(a.umSac):'',
+            a.umCont?String(a.umCont).replace(/[|\n]/g,' ').trim():''].join('|'));
+  });
+  return l.join('\n');
+}
+function _modeleLire(txt){
+  var lignes=String(txt||'').split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean);
+  if(!lignes.length)return null;
+  var tete=lignes[0].replace(/\s+/g,' ');
+  if(tete.toUpperCase().indexOf(MODELE_MARQUE)!==0)return null;
+  var nom=tete.slice(MODELE_MARQUE.length).replace(/^[\s·:.-]+/,'').trim();
+  var arts=[];
+  lignes.slice(1).forEach(function(L){
+    if(L.indexOf('|')<0)return;
+    var c=L.split('|');
+    var nm=(c[0]||'').trim();
+    if(nm.length<2)return;
+    var px=parseFloat(String(c[1]||'').replace(',','.'))||0;
+    var pa=parseFloat(String(c[2]||'').replace(',','.'))||0;
+    var sac=parseInt(c[3]||'',10)||0;
+    var cont=(c[4]||'').trim();
+    arts.push({nm:nm,px:px>0?px:0,pa:pa>0?pa:0,stk:0,paUnitaire:true,
+               umSac:sac>1?sac:null,umCont:sac>1?(cont||null):null});
+  });
+  return arts.length?{nom:nom,articles:arts}:null;
+}
+// On ne crée rien tout de suite : le modèle rejoint la liste de l'écran
+// express, où il VOIT ce qui va entrer et peut corriger chaque prix avant
+// de valider. Un modèle qui créerait 40 articles sans un regard serait la
+// même faute que l'analyseur qui devinait.
+function _verserModele(mod){
+  var fr=(lang==='fr');
+  if(!Array.isArray(_expListe))_expListe=[];
+  var neufs=0,deja=0;
+  mod.articles.forEach(function(a){
+    if(_articleExistant(a.nm)){deja++;return;}
+    if(_expListe.some(function(x){return txtNorm(x.nm)===txtNorm(a.nm);})){deja++;return;}
+    _expListe.push(a);neufs++;
+  });
+  closeSheet('ov-collage');
+  if(!neufs){
+    showToast('ℹ️ '+(fr?'Tout ce modèle est déjà chez toi':'You already have all of it'));
+    return;
+  }
+  ouvrirAjoutExpress(true);
+  try{expRender();}catch(e){}
+  showToast('📋 '+(mod.nom?('« '+mod.nom+' » — '):'')+neufs+' '
+    +(fr?('article'+(neufs>1?'s':'')+' prêt'+(neufs>1?'s':'')):'items')
+    +(deja?(fr?(' · '+deja+' déjà chez toi'):(' · '+deja+' already yours')):'')
+    +(fr?' — vérifie les prix':' — check the prices'));
+}
+// Côté administrateur : fabriquer le modèle à partir de SA propre boutique.
+function ouvrirModele(){
+  var fr=(lang==='fr');
+  if(!DB||!DB.articles||!DB.articles.length){
+    showToast('📦 '+(fr?'Cette boutique n\'a pas encore d\'articles à partager':'No items yet'));return;
+  }
+  _modSel={};
+  (DB.articles||[]).forEach(function(a){ if(a&&a.nm&&!(a.vr&&a.vr.length))_modSel[a.id]=1; });
+  renderModele();
+  document.getElementById('ov-modele').classList.add('show');
+}
+var _modSel={};
+function modBasculer(id){ if(_modSel[id])delete _modSel[id]; else _modSel[id]=1; renderModele(); }
+function modTous(v){
+  _modSel={};
+  if(v)(DB.articles||[]).forEach(function(a){ if(a&&!(a.vr&&a.vr.length))_modSel[a.id]=1; });
+  renderModele();
+}
+function _modArticles(){
+  return (DB.articles||[]).filter(function(a){return a&&_modSel[a.id]&&!(a.vr&&a.vr.length);});
+}
+function renderModele(){
+  var fr=(lang==='fr'),b=document.getElementById('mod-lst');if(!b)return;
+  var libres=(DB.articles||[]).filter(function(a){return a&&!(a.vr&&a.vr.length);});
+  b.innerHTML=libres.map(function(a){
+    var pris=!!_modSel[a.id];
+    return '<div onclick="modBasculer('+a.id+')" style="display:flex;align-items:center;gap:9px;padding:9px 4px;border-bottom:1px solid var(--BD);cursor:pointer">'
+      +'<span style="font-size:17px">'+(pris?'✅':'⬜')+'</span>'
+      +'<span style="flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--T);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+a.nm+'</span>'
+      +'<span style="font-size:12px;font-weight:800;color:var(--M)">'+(a.px>0?fmt(a.px):'—')+'</span></div>';
+  }).join('')||('<div style="padding:12px;font-size:12.5px;color:var(--M);font-weight:700">'
+    +(fr?'Aucun article simple à partager (les familles ne passent pas dans un modèle).':'Nothing to share.')+'</div>');
+  var n=_modArticles().length;
+  var t=document.getElementById('mod-cpt');
+  if(t)t.textContent=n+' '+(fr?('article'+(n>1?'s':'')+' dans le modèle'):('item'+(n>1?'s':'')));
+  var bt=document.getElementById('mod-envoi');
+  if(bt){bt.disabled=!n;bt.style.opacity=n?'1':'.5';}
+}
+function partagerModele(){
+  var fr=(lang==='fr'),arts=_modArticles();
+  if(!arts.length)return;
+  var nom=String((document.getElementById('mod-nm')||{}).value||'').trim()||(DB.cfg&&DB.cfg.nom)||'Modèle';
+  var txt=_modeleEcrire(nom,arts);
+  var msg=(fr?'📋 Modèle MyBoutiQ : ':'📋 MyBoutiQ template: ')+nom+'\n\n'
+    +(fr?'Ouvre MyBoutiQ → ➕ Ajouter → « Coller une liste » → colle ceci :':'Open MyBoutiQ → Add → Paste a list:')
+    +'\n\n'+txt;
+  try{
+    if(navigator.share){navigator.share({text:msg});}
+    else{ navigator.clipboard.writeText(msg);
+          showToast('📋 '+(fr?'Modèle copié — colle-le dans WhatsApp':'Copied')); }
+  }catch(e){
+    try{navigator.clipboard.writeText(msg);showToast('📋 '+(fr?'Modèle copié':'Copied'));}catch(x){}
+  }
+}
 function ouvrirCollageListe(){
   document.getElementById('col-txt').value='';
   document.getElementById('col-apercu').textContent='';
@@ -17538,7 +17685,24 @@ function _verserDansListe(res){
 }
 function analyserCollage(){
   var fr=lang==='fr';
-  var res=analyserListe(document.getElementById('col-txt').value||'');
+  // ══════════════════════════════════════════════════════════════════
+  //  UN MODÈLE DE BOUTIQUE N'EST PAS UNE LISTE À DEVINER
+  //
+  //  Sa demande : configurer une boutique à distance. Un administrateur qui
+  //  pourrait ÉCRIRE dans une boutique pourrait écraser ses ventes, son
+  //  stock et ses clients — le blob `data` les contient tous. On ne touche
+  //  donc à aucune règle serveur : le modèle voyage comme un TEXTE, par
+  //  WhatsApp, et c'est le commerçant qui l'applique sur son téléphone.
+  //  Il garde la main de bout en bout, et rien ne s'écrase.
+  //
+  //  Il entre par la porte qu'il connaît déjà — « Coller une liste » — mais
+  //  il porte un marqueur : on le lit EXACTEMENT, sans le faire passer par
+  //  l'analyseur qui devine. Deviner sur 43 lignes, c'était 58 % de réussite.
+  //  Ici il n'y a rien à deviner.
+  var _brutColle=document.getElementById('col-txt').value||'';
+  var _mod=_modeleLire(_brutColle);
+  if(_mod){ _verserModele(_mod); return; }
+  var res=analyserListe(_brutColle);
   if(!res.articles.length){
     var ap=document.getElementById('col-apercu');
     ap.style.color='var(--R)';
@@ -24010,6 +24174,11 @@ async function verifierAdmin(){
     if(rowP)rowP.style.display=ok?'':'none';
     var rowA=document.getElementById('row-abonnes');
     if(rowA)rowA.style.display=ok?'':'none';
+    // Le modèle part de la boutique OUVERTE : il faut être patron ici, en
+    // plus d'être administrateur — on n'envoie pas les prix d'une boutique
+    // depuis le compte d'un vendeur.
+    var rowM=document.getElementById('row-modele');
+    if(rowM)rowM.style.display=(ok&&role==='patron')?'':'none';
     // ⚠️ Réservée au patron ET administrateur : c'est la boutique OUVERTE
     // dont on certifie les photos, pas une boutique choisie dans une liste.
     var rowE=document.getElementById('row-equiper');
