@@ -4579,7 +4579,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.33'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.34'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -16431,6 +16431,9 @@ function expSetGros(i,v){
 // ══════════════════════════════════════════════════════════════════
 function _expChipsFormats(a,i){
   if(!a)return '';
+  // Une famille porte déjà ses contenances dans ses variantes : lui proposer
+  // « + 25 cl » fabriquerait un article frère au lieu d'une variante.
+  if(a._vr&&a._vr.length)return '';
   var faux={nm:a.nm,cat:(typeof a._cat==='number')?a._cat:categorieDepuisNomProduit(a.nm)};
   if(!_venduParFormat(faux))return '';
   var fr=(lang==='fr');
@@ -16534,7 +16537,14 @@ function expRender(){
         // Le prix de vente est la SEULE chose qu'un article exige. Quand il
         // manque, ce n'est plus un texte à deviner : c'est un champ, sur la
         // ligne, sous ses yeux.
-        (!(a.px>0)
+        // ⚠️ VU EN FILMANT : une famille réclamait un prix de vente en champ
+        // rouge. Elle n'en a pas — ce sont ses variantes qui en ont. On dit
+        // donc ce qu'elle porte, au lieu d'exiger un nombre qui n'existe pas.
+        ((a._vr&&a._vr.length)
+          ? ('<div style="font-size:10.5px;font-weight:700;color:var(--B)">'
+             +a._vr.length+' '+(fr?('contenance'+(a._vr.length>1?'s':'')+', chacune son prix et son stock')
+                                  :'sizes, each with its own price and stock')+'</div>')
+          : !(a.px>0)
           ? ('<input class="pi sm" type="number" inputmode="numeric" value="" '
              +'placeholder="'+(fr?'Prix de vente':'Sell price')+'" '
              +'onclick="event.stopPropagation()" oninput="expPrixDirect('+i+',this.value)" '
@@ -16575,11 +16585,16 @@ function expRender(){
   var tg=document.getElementById('exp-tout-gros');
   if(tg){
     var aConvertir=_expListe.filter(function(a){
+      if(a._vr&&a._vr.length)return false;
       return Number(a.pa)>0 && !(typeof a.gros==='number'&&a.gros>0);
     }).length;
     tg.style.display=(aConvertir>=2)?'block':'none';
-    tg.textContent=fr?('📦 Ces '+aConvertir+' prix d\'achat sont des prix de carton')
-                     :('📦 These '+aConvertir+' costs are pack prices');
+    // ⚠️ VU EN FILMANT : le bandeau AFFIRMAIT « ces 8 prix d'achat sont des
+    // prix de carton » alors qu'il n'en sait rien — c'est une proposition
+    // qu'on lui fait, pas un constat. Affirmé, il fait douter un commerçant
+    // qui vient justement de saisir des prix unitaires justes.
+    tg.textContent=fr?('📦 Ces '+aConvertir+' prix d\'achat sont-ils des prix de carton ?')
+                     :('📦 Are these '+aConvertir+' costs pack prices?');
   }
 }
 function expCreerTous(){
@@ -16603,7 +16618,14 @@ function expCreerTous(){
   // bouton dit exactement ce qu'il fera au coup suivant. Refuser tout net
   // bloquerait celui qui veut vraiment finir plus tard — il lui reste donc
   // une deuxième tape, mais elle est délibérée, pas distraite.
-  var _sansPx=_expListe.filter(function(a){return !(a.px>0);});
+  // ⚠️ VU EN FILMANT : « Sucreries · 3 variantes » réclamait un prix de vente
+  // en champ rouge. Une famille n'a PAS de prix à elle — ce sont ses
+  // variantes qui en ont. On lui en réclamait donc un qui n'existe pas, et
+  // l'écran refusait d'avancer tant qu'il n'était pas écrit.
+  var _sansPx=_expListe.filter(function(a){
+    if(a._vr&&a._vr.length)return (a._vr||[]).some(function(v){return !(Number(v.px)>0);});
+    return !(a.px>0);
+  });
   if(_sansPx.length&&_expForcer!==_sansPx.length){
     _expForcer=_sansPx.length;
     try{
