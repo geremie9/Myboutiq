@@ -4552,7 +4552,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.30'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.31'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -16752,17 +16752,46 @@ function _familleBoissonDe(nom){
     return trouve;
   }catch(e){return null;}
 }
-// La contenance déjà écrite dans le nom (« Coca Cola 1.5L » -> « 1.5L »).
+// ⚠️ J'AVAIS ÉCRIT UN SECOND MÉCANISME DE CONTENANCES.
+// FORMATS_BOISSON, _nomSansFormat() et _echelleFormats() existaient déjà et
+// portaient l'orthographe de l'application : « 33 cl », « 1,5 L » — espace,
+// virgule. Le mien écrivait « 33cl » et « 1.5L ». Deux orthographes pour la
+// même bouteille, donc DEUX ARTICLES pour le même Coca dès qu'il passait par
+// l'autre chemin, et un stock coupé en deux sans que rien ne le signale.
+// Sa question — « un commerçant peut-il s'en sortir avec ça ? » — appelait
+// non. On ne garde qu'une seule écriture, la sienne.
+// La contenance déjà écrite dans le nom (« Coca Cola 1,5 L » -> « 1,5 L »).
 function _contenanceDe(nom){
-  var m=String(nom||'').match(/(\d+(?:[.,]\d+)?)\s*(cl|ml|l|L)\b\s*$/);
-  if(m)return (m[1]+m[2]).replace(',','.');
+  var m=String(nom||'').match(/(\d+[.,]?\d*)\s*(cl|CL|ml|ML|l|L)\b\.?\s*$/);
+  if(m)return _fmtCanon(m[1]+' '+m[2]);
   if(/\bsachet\b/i.test(nom||''))return 'sachet';
   return '';
 }
-// Le nom SANS sa contenance — c'est lui qu'on redécline.
+// Deux écritures d'un même format doivent se reconnaître : « 33cl », « 33 CL »
+// et « 33 cl » sont la même bouteille. La comparaison passe TOUJOURS par ici.
+function _fmtCle(f){
+  return String(f||'').toLowerCase().replace(',','.').replace(/\s+/g,'').replace(/\.$/,'');
+}
+// L'écriture officielle. On passe d'abord par les échelles connues, puis —
+// pour un format qu'elles ne contiennent pas, comme le bidon d'eau de 10 L —
+// on applique la MÊME convention : un espace avant l'unité, une virgule pour
+// la décimale, « cl » et « ml » en minuscules, « L » en capitale.
+// Sans ce dernier passage, un format hors échelle gardait son écriture
+// d'origine et rouvrait la porte au doublon qu'on vient de fermer.
+function _fmtCanon(f){
+  var k=_fmtCle(f);
+  if(!k)return '';
+  var tous=(typeof FORMATS_BOISSON!=='undefined'?FORMATS_BOISSON:[])
+    .concat(typeof FORMATS_PETITS!=='undefined'?FORMATS_PETITS:[]);
+  for(var i=0;i<tous.length;i++){ if(_fmtCle(tous[i])===k)return tous[i]; }
+  var m=k.match(/^(\d+(?:\.\d+)?)(cl|ml|l)$/);
+  if(m)return m[1].replace('.',',')+' '+(m[2]==='l'?'L':m[2]);
+  return String(f||'').trim();
+}
+// On réutilise _nomSansFormat, qui existait déjà.
 function _nomSansContenance(nom){
-  return String(nom||'').replace(/\s*\d+(?:[.,]\d+)?\s*(cl|ml|l|L)\s*$/,'')
-                        .replace(/\s+sachet\s*$/i,'').trim();
+  var s=_nomSansFormat(nom);
+  return String(s||'').replace(/\s+sachet\s*$/i,'').trim();
 }
 function _formatsDe(nomFamille){
   try{
@@ -16784,6 +16813,7 @@ function chaFormats(cle,base,famille,img,emo,cat,sac,cont){
   _fmtChoix={};
   // Ce qui est déjà dans le panier reste coché : on ne fait pas retaper.
   l.forEach(function(f){ if(_chaSel[cle+'#'+f])_fmtChoix[f]=1; });
+  _fmtCible.formats=l.map(_fmtCanon);
   var t=document.getElementById('fmt-tit');
   if(t)t.textContent=fr?'Quelles contenances ?':'Which sizes?';
   var sub=document.getElementById('fmt-sub');
@@ -16797,7 +16827,7 @@ function renderFormats(){
   var b=document.getElementById('fmt-chips');if(!b||!_fmtCible)return;
   var deja=_fmtCible.deja||{};
   b.innerHTML=_fmtCible.formats.map(function(f){
-    if(deja[f])return '<button type="button" class="fmt-chip on" disabled '
+    if(deja[_fmtCle(f)])return '<button type="button" class="fmt-chip on" disabled '
       +'style="opacity:.55;cursor:default" title="'+(lang==='fr'?'déjà chez toi':'already yours')+'">✓ '+f+'</button>';
     return '<button type="button" class="fmt-chip'+(_fmtChoix[f]?' on':'')+'" onclick="fmtBasculer(\''+f+'\')">'
       +(_fmtChoix[f]?'✓ ':'')+f+'</button>';
@@ -16832,7 +16862,7 @@ function ctxContenance(){
   var deja={};
   (DB.articles||[]).forEach(function(a){
     if(txtNorm(_nomSansContenance(a.nm))!==txtNorm(base))return;
-    var c=_contenanceDe(a.nm); if(c)deja[c]=1;
+    var c=_contenanceDe(a.nm); if(c)deja[_fmtCle(c)]=1;
   });
   _fmtMode='article';
   _fmtCible={cle:'art'+p.id,base:base,img:p.img||'',e:p.e||'🥤',cat:p.cat||'Boissons',
@@ -16856,7 +16886,7 @@ function validerFormats(){
     if(!Array.isArray(_expListe))_expListe=[];
     var n=0;
     c.formats.forEach(function(f){
-      if(!_fmtChoix[f]||(c.deja&&c.deja[f]))return;
+      if(!_fmtChoix[f]||(c.deja&&c.deja[_fmtCle(f)]))return;
       var nm=c.base+' '+f;
       if((DB.articles||[]).some(function(a){return txtNorm(a.nm)===txtNorm(nm);}))return;
       if(_expListe.some(function(x){return txtNorm(x.nm)===txtNorm(nm);}))return;
@@ -18148,6 +18178,26 @@ function toggleCatStock(cat){
   _catsRepliees[cat]=!_catsRepliees[cat];
   appliquerFiltreStock();
 }
+// ⚠️ « QUAND ON VEUT AJOUTER UN STOCK ON VALIDE UN À UN, ON SORT ET PUIS ON
+// RENTRE À CHAQUE FOIS. »
+// C'était exact, et ce n'était pas un détail : la fiche se FERMAIT après
+// chaque mouvement. Pour trois contenances de la même boisson, il fallait
+// donc trois fois — rouvrir, rechercher l'article, choisir la variante,
+// saisir, valider. Neuf gestes au lieu de trois.
+// La fiche reste maintenant ouverte et revient à la liste, prête pour le
+// suivant. Elle se ferme quand LUI le décide : la croix, ou un doigt à côté.
+function _apresMouvementStock(){
+  try{renderStock(DB.articles);renderProd(DB.articles);renderAgstk();}catch(e){}
+  // On repart de la liste, pas du formulaire rempli : sinon la quantité
+  // précédente resterait à l'écran et serait resaisie sans y penser.
+  try{
+    var f=document.getElementById('stk-form'); if(f)f.style.display='none';
+    artStkCours=null; artStkVarCours=null;
+    var q=document.getElementById('inp-sqte'); if(q)q.value='';
+    var m=document.getElementById('inp-motif'); if(m)m.value='';
+    var r=document.getElementById('ov-stk'); if(r){var c=r.querySelector('.bsht'); if(c)c.scrollTop=0;}
+  }catch(e){}
+}
 function ouvrirStk(p){if(!(role==='patron'||hasPerm('stock')))return;document.getElementById('stk-form').style.display='none';renderAgstk();if(p)selArtStk(p);document.getElementById('ov-stk').classList.add('show');}
 function renderAgstk(){var g=document.getElementById('agstk');if(!g)return;g.innerHTML='';DB.articles.forEach(function(p){var ts=getStk(p),d=document.createElement('div');d.className='apcd';d.innerHTML=_vignettePicker(p)+'<div style="font-size:10px;font-weight:700;color:var(--T);margin-bottom:2px">'+p.nm+'</div><div style="font-size:10px;font-weight:800;color:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'">'+fmtQ(ts)+'</div>';d.onclick=function(){selArtStk(p);};g.appendChild(d);});}
 var artStkVarCours=null;
@@ -18514,7 +18564,7 @@ function saveStk(){
     if(sortie<=0){showToast('⚠️ '+(fr?'Stock déjà à zéro':'Stock already zero'));return;}
     ajouterAppro(a.id,vid,-sortie);
     journalAjouter('stock',a.nm+(parVariante?(' — '+(artStkVarCours.nm||'')):'')+' ('+motif+')',fmtQ(dispo)+' '+uniteArt(a),fmtQ(dispo-sortie)+' '+uniteArt(a));
-    save();renderStock(DB.articles);renderProd(DB.articles);renderAgstk();closeSheet('ov-stk');
+    save();_apresMouvementStock();
     showToast('📤 '+(fr?'Sortie enregistrée':'Removal saved')+' : −'+fmtQ(sortie)+' '+uniteArt(a)+' ('+motif+')');
     updateNotifBadge();return;
   }
@@ -18578,7 +18628,7 @@ function saveStk(){
     paMsg=' · '+(fr?'achat':'cost')+' '+fmt(paU)+'/'+uniteArt(a);
   }
   ajouterAppro(a.id,vid,q);
-  save();renderStock(DB.articles);renderProd(DB.articles);renderAgstk();closeSheet('ov-stk');
+  save();_apresMouvementStock();
   showToast(t('stockAjoute')+paMsg);updateNotifBadge();
 }
 
