@@ -4579,7 +4579,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.34'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.35'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -17947,6 +17947,26 @@ function majEnteteCaisse(){
     // 1. Le badge de rôle ne sert qu'à celui qui pourrait en douter.
     var rb=document.getElementById('u-role');
     if(rb)rb.style.display=patron?'none':'';
+    // 1 bis. ⚠️ LE NOM DE LA BOUTIQUE ÉTAIT COUPÉ.
+    // Mesuré : « BOUTIQUE DE MAMA NGO » sur un écran de 360 px — la largeur
+    // la plus répandue ici — n'affichait que ONZE lettres sur vingt. Or c'est
+    // exactement ce qui dit à un commerçant à plusieurs boutiques dans quelle
+    // caisse il encaisse. Élargir la colonne est impossible sans rendre
+    // l'en-tête à deux lignes, qu'il a fait retirer en 22.14 (« une espace
+    // gaspillée »). On rétrécit donc l'ÉCRITURE au lieu de couper le nom :
+    // un nom long se lit en plus petit, mais il se lit en entier.
+    var un=document.getElementById('u-nm');
+    if(un){
+      un.style.fontSize='';
+      var dispo=un.clientWidth;
+      if(dispo>0){
+        var t=[15,14,13,12,11,10];
+        for(var i=0;i<t.length;i++){
+          un.style.fontSize=t[i]+'px';
+          if(un.scrollWidth<=un.clientWidth+1)break;
+        }
+      }
+    }
     // 2. Ce que le patron a déjà dans ses Réglages sort de sa barre.
     var bv=document.getElementById('btn-veille');
     if(bv)bv.style.display=patron?'none':'flex';
