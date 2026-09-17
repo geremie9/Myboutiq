@@ -1761,6 +1761,7 @@ body{max-width:min(100%,1200px)}
        Une seule entrée : « Prix ». Le calculateur reste à UNE tape de là,
        dans la fiche, sous un nom qui dit à quoi il sert. -->
   <div class="ctxi" onclick="ctxNom()">🔤 <span id="cx9">Renommer</span></div>
+  <div class="ctxi" id="ctxi-cont2" onclick="ctxContenance()">🥤 <span id="cx10">Ajouter une contenance</span></div>
   <div class="ctxi" onclick="ctxPV()">💰 <span id="cx1">Prix</span></div>
   <div class="ctxi" onclick="ctxAV()">🔀 <span id="cx3">Ajouter variante</span></div>
   <div class="ctxi" id="ctxi-gros" onclick="ctxGros()"><span class="ctxi-emo">📦</span> <span id="cx3b">Vendre par carton</span></div>
@@ -4551,7 +4552,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.29'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.30'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -10084,6 +10085,17 @@ function showCtx(e,p){
   document.getElementById('cx7').textContent=(lang==='fr'?'Vente en rupture':'Sell when out of stock')+' : '+(p.rt?(lang==='fr'?'✅ Activée':'✅ On'):(lang==='fr'?'⛔ Désactivée':'⛔ Off'));
   document.getElementById('cx8').textContent=lang==='fr'?'Mettre dans une famille':'Put into a family';
   var _cf=document.getElementById('ctxi-fam');if(_cf)_cf.style.display=(p.vr.length||estMesure(p))?'none':'flex';
+  // « Ajouter une contenance » n'a de sens que pour une boisson que le
+  // catalogue sait décliner. Partout ailleurs, ce serait une ligne de bruit
+  // dans un menu qui en a déjà dix.
+  var _cc=document.getElementById('ctxi-cont2');
+  if(_cc){
+    var _fb=null;try{_fb=_familleBoissonDe(p.nm);}catch(e){}
+    var _fl=null;try{_fl=_fb?_formatsDe(_fb):null;}catch(e){}
+    _cc.style.display=(_fl&&!p.vr.length)?'flex':'none';
+    var _l10=document.getElementById('cx10');
+    if(_l10)_l10.textContent=(lang==='fr')?'Ajouter une contenance':'Add a size';
+  }
   // ⚠️⚠️ SA RÈGLE, L'AUTRE MOITIÉ : « quand on dit activation de
   // modification, LE CARTON AUSSI est modifiable — même le conditionnement,
   // que ce soit carton, sac ou quoi. Modifiable aussi concernant le prix,
@@ -16710,7 +16722,48 @@ function chaBasculer(cle,nm,img,emo,cat,sac,cont){
 //  on ne verse pas une 1,5 L dans des 50 cl, et une conversion silencieuse
 //  est le meilleur moyen de fausser un stock sans que personne ne le voie.
 // ══════════════════════════════════════════════════════════════════
-var _fmtCible=null,_fmtChoix={};
+var _fmtCible=null,_fmtChoix={},_fmtMode='catalogue';
+// De quelle famille de boissons cet article relève-t-il ?
+// ⚠️ LE PIÈGE, ATTRAPÉ AU BANC : un simple préfixe faisait de « Eau de
+// Javel » une EAU. On aurait proposé au commerçant de la vendre en sachet
+// de 50 cl. Un rapprochement approximatif sur un nom de produit ne se
+// rattrape pas en aval : il faut refuser plutôt que deviner.
+// La règle est donc stricte. On retire d'abord la contenance, puis :
+//   1) le nom restant est EXACTEMENT une famille  (« Coca Cola », « Eau ») ;
+//   2) ou bien il vaut famille + une variante que le catalogue connaît
+//      (« Fanta orange », « Bière Castel »).
+// Tout le reste n'est pas une boisson.
+function _cleBoisson(t){return txtNorm(t||'').replace(/[^a-z0-9]+/g,'');}
+function _familleBoissonDe(nom){
+  try{
+    var t=(_cat600&&_cat600.formats)||null; if(!t)return null;
+    var k=_cleBoisson(_nomSansContenance(nom));
+    if(!k)return null;
+    if(t[k])return k;                                   // 1) la famille elle-même
+    var trouve=null;                                    // 2) famille + variante connue
+    ((_cat600&&_cat600.entrees)||[]).forEach(function(e){
+      if(trouve||e[1]!==0)return;                       // catégorie 0 = boissons
+      var f=_cleBoisson(e[0]);
+      if(!t[f]||k.indexOf(f)!==0)return;
+      (e[6]||[]).forEach(function(v){
+        if(!trouve&&_cleBoisson(e[0]+' '+v[0])===k)trouve=f;
+      });
+    });
+    return trouve;
+  }catch(e){return null;}
+}
+// La contenance déjà écrite dans le nom (« Coca Cola 1.5L » -> « 1.5L »).
+function _contenanceDe(nom){
+  var m=String(nom||'').match(/(\d+(?:[.,]\d+)?)\s*(cl|ml|l|L)\b\s*$/);
+  if(m)return (m[1]+m[2]).replace(',','.');
+  if(/\bsachet\b/i.test(nom||''))return 'sachet';
+  return '';
+}
+// Le nom SANS sa contenance — c'est lui qu'on redécline.
+function _nomSansContenance(nom){
+  return String(nom||'').replace(/\s*\d+(?:[.,]\d+)?\s*(cl|ml|l|L)\s*$/,'')
+                        .replace(/\s+sachet\s*$/i,'').trim();
+}
 function _formatsDe(nomFamille){
   try{
     var t=_cat600&&_cat600.formats;
@@ -16726,6 +16779,7 @@ function chaFormats(cle,base,famille,img,emo,cat,sac,cont){
   var l=_formatsDe(famille);
   if(!l){chaBasculer(cle,base,img,emo,cat,sac,cont);return;}
   var fr=(lang==='fr');
+  _fmtMode='catalogue';
   _fmtCible={cle:cle,base:base,img:img,e:emo,cat:cat,sac:(+sac||0),cont:cont||'',formats:l};
   _fmtChoix={};
   // Ce qui est déjà dans le panier reste coché : on ne fait pas retaper.
@@ -16741,7 +16795,10 @@ function chaFormats(cle,base,famille,img,emo,cat,sac,cont){
 }
 function renderFormats(){
   var b=document.getElementById('fmt-chips');if(!b||!_fmtCible)return;
+  var deja=_fmtCible.deja||{};
   b.innerHTML=_fmtCible.formats.map(function(f){
+    if(deja[f])return '<button type="button" class="fmt-chip on" disabled '
+      +'style="opacity:.55;cursor:default" title="'+(lang==='fr'?'déjà chez toi':'already yours')+'">✓ '+f+'</button>';
     return '<button type="button" class="fmt-chip'+(_fmtChoix[f]?' on':'')+'" onclick="fmtBasculer(\''+f+'\')">'
       +(_fmtChoix[f]?'✓ ':'')+f+'</button>';
   }).join('');
@@ -16756,10 +16813,67 @@ function fmtBasculer(f){
   if(_fmtChoix[f])delete _fmtChoix[f];else _fmtChoix[f]=1;
   renderFormats();
 }
+// ── Depuis un article DÉJÀ en boutique ──────────────────────────────────
+// « Coca Cola 50 cl » est là ; il vend aussi la 1,5 L. Il n'a plus à
+// retourner au catalogue ni à recréer l'article à la main : on lui montre
+// les formats de la famille, ceux qu'il a déjà étant cochés ET verrouillés
+// (les décocher ne doit PAS supprimer un article qui porte du stock et des
+// ventes — ça, c'est « Supprimer », et ça se demande).
+function ctxContenance(){
+  if(!artCtx)return;
+  var m=document.getElementById('ctxm'); if(m)m.classList.remove('show');
+  var fr=(lang==='fr'),p=artCtx;
+  var fam=_familleBoissonDe(p.nm);
+  var l=fam?_formatsDe(fam):null;
+  if(!l){showToast('ℹ️ '+(fr?'Les contenances ne servent que pour les boissons'
+                           :'Sizes only apply to drinks'));return;}
+  var base=_nomSansContenance(p.nm);
+  // Ce qui existe déjà dans la boutique pour cette boisson.
+  var deja={};
+  (DB.articles||[]).forEach(function(a){
+    if(txtNorm(_nomSansContenance(a.nm))!==txtNorm(base))return;
+    var c=_contenanceDe(a.nm); if(c)deja[c]=1;
+  });
+  _fmtMode='article';
+  _fmtCible={cle:'art'+p.id,base:base,img:p.img||'',e:p.e||'🥤',cat:p.cat||'Boissons',
+             sac:(+p.umSac||0),cont:p.umCont||'',formats:l,deja:deja};
+  _fmtChoix={};
+  var t=document.getElementById('fmt-tit');
+  if(t)t.textContent=fr?'Ajouter une contenance':'Add a size';
+  var sub=document.getElementById('fmt-sub');
+  if(sub)sub.textContent=fr
+    ?(base+' — coche les contenances que tu vends aussi. Chacune aura son propre stock, son prix et son casier ou sa palette.')
+    :(base+' — tick the other sizes you sell. Each gets its own stock, price and crate or pallet.');
+  renderFormats();
+  document.getElementById('ov-format').classList.add('show');
+}
 function validerFormats(){
   if(!_fmtCible)return;
   var c=_fmtCible,pris=Object.keys(_fmtChoix);
   if(!pris.length)return;
+  if(_fmtMode==='article'){
+    var fr=(lang==='fr');
+    if(!Array.isArray(_expListe))_expListe=[];
+    var n=0;
+    c.formats.forEach(function(f){
+      if(!_fmtChoix[f]||(c.deja&&c.deja[f]))return;
+      var nm=c.base+' '+f;
+      if((DB.articles||[]).some(function(a){return txtNorm(a.nm)===txtNorm(nm);}))return;
+      if(_expListe.some(function(x){return txtNorm(x.nm)===txtNorm(nm);}))return;
+      var _l={nm:nm,px:0,pa:0,stk:0,_img600:c.img,_e:c.e,_cat:c.cat};
+      if(c.sac>0){_l.umSac=c.sac;_l.umCont=c.cont||null;}
+      _expListe.push(_l);n++;
+    });
+    closeSheet('ov-format');
+    _fmtCible=null;_fmtChoix={};_fmtMode='catalogue';
+    if(!n){showToast('ℹ️ '+(fr?'Tu les as déjà toutes':'You already have them all'));return;}
+    // Elles arrivent SANS PRIX : on l'emmène tout de suite là où il les pose,
+    // sinon il repart avec des articles invendables sans le savoir.
+    ouvrirAjoutExpress(true);
+    try{expRender();}catch(e){}
+    showToast('👍 '+n+' '+(fr?'contenance(s) — mets les prix maintenant':'size(s) — set the prices now'));
+    return;
+  }
   // On retire d'abord TOUTES les lignes de cette boisson, puis on repose ce
   // qui est coché : sans ça, décocher une contenance ne la retirerait pas.
   c.formats.forEach(function(f){ delete _chaSel[c.cle+'#'+f]; });
