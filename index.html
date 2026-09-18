@@ -794,7 +794,7 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    page entière, jamais sur un test qui ne mesurait que `display`. */
 .vt-act.install{background:#fff;color:var(--P);border:1.5px solid var(--BD);
   box-shadow:0 2px 9px rgba(0,0,0,.05);font-size:14.5px}
-.vt-neuf{margin:18px auto 0;max-width:420px;background:#FFF8EC;
+.vt-neuf{margin:18px auto 22px;max-width:420px;background:#FFF8EC;
   border:1px solid #F2DCB4;border-radius:14px;padding:13px 15px;text-align:left}
 .vt-neuf-t{font-size:12px;font-weight:600;color:#5C4B6E;line-height:1.5}
 .vt-neuf-t b{color:#B87411;font-weight:900}
@@ -1688,7 +1688,17 @@ body{max-width:min(100%,1200px)}
 .vt-nav-m span{color:var(--A)}
 /* Les liens défilent à l'horizontale : cinq sections ne tiennent pas dans
    la largeur d'un téléphone, et une barre qui déborde ne se lit plus. */
-.vt-liens{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+/* ⚠️⚠️ LE DERNIER ONGLET ÉTAIT TRANCHÉ NET PAR « Essayer ».
+   MESURÉ : 626 px d'onglets dans 289 px de large. Ils défilent, c'est
+   voulu — mais le bouton orange, opaque, coupait celui du bord en plein
+   milieu d'un mot (« Les co… »). On ne lisait pas « il y en a d'autres,
+   fais glisser » : on lisait « c'est cassé ».
+   Le bord s'estompe maintenant sur 26 px. C'est le signe universel qu'une
+   bande continue — et un mot qui s'efface ne ressemble pas à un mot
+   coupé. */
+.vt-liens{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0;
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent 100%);
+  mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent 100%)}
 .vt-liens::-webkit-scrollbar{display:none}
 .vt-l{flex:0 0 auto;background:rgba(255,255,255,.10);border:none;border-radius:11px;padding:8px 11px;
   color:rgba(255,255,255,.78);font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;
@@ -1725,9 +1735,16 @@ body{max-width:min(100%,1200px)}
 .vt-prix li::before{content:'✓';position:absolute;left:0;top:5px;color:var(--G);font-weight:900}
 .vt-prix .vt-prix-n{font-size:11.5px;font-weight:600;color:rgba(255,255,255,.72);margin-top:13px;line-height:1.5}
 /* ── ÉCRIS-MOI ── */
-.vt-wa{display:block;width:100%;background:#25D366;border:none;border-radius:14px;padding:15px;
+/* ⚠️⚠️ LE SEUL APPEL DE LA PAGE, ET IL SE LISAIT MAL.
+   Le vert vif de WhatsApp (#25D366) avec du texte blanc donne un contraste
+   de 1,98 — mesuré — là où il en faut 4. En plein soleil, devant une
+   boutique, ce bouton-là devient une tache verte sans mot dessus.
+   Le vert foncé de la même marque (#0E7A4F) monte à 5,36 : on reconnaît
+   toujours WhatsApp, et on lit ce qui est écrit. */
+.vt-wa{display:block;width:100%;background:#0E7A4F;border:none;border-radius:14px;padding:15px;
   color:#fff;font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-top:13px;
-  transition:transform .12s}
+  transition:transform .12s,background .15s}
+.vt-wa:hover{background:#0B6E45}
 .vt-wa:active{transform:scale(.97)}
 /* ── LA CARTE MYBAR ─────────────────────────────────────────────────
    ⚠️ Elle porte les couleurs de MyBar, pas celles de MyBoutiQ, et c'est
@@ -1870,10 +1887,10 @@ body{max-width:min(100%,1200px)}
     <div class="vt-liens" id="vt-liens">
       <button class="vt-l" id="nv-top"    onclick="allerSection('v-top')">Accueil</button>
       <button class="vt-l" id="nv-faire"  onclick="allerSection('v-faire')">Ce que ça fait</button>
-      <button class="vt-l" id="nv-bar"    onclick="allerSection('v-bar')">Pour les bars</button>
+      <button class="vt-l" id="nv-prix"   onclick="allerSection('v-prix')">Le prix</button>
       <button class="vt-l" id="nv-avis"   onclick="allerSection('v-avis')">Les commerçants</button>
       <button class="vt-l" id="nv-qui"    onclick="allerSection('v-qui')">Qui l'a faite</button>
-      <button class="vt-l" id="nv-prix"   onclick="allerSection('v-prix')">Le prix</button>
+      <button class="vt-l" id="nv-bar"    onclick="allerSection('v-bar')">Pour les bars</button>
       <button class="vt-l" id="nv-ecrire" onclick="allerSection('v-ecrire')">Écrire</button>
     </div>
     <button class="vt-nav-cta" id="nv-cta" onclick="allerSection('v-portes')">Essayer</button>
@@ -1922,21 +1939,13 @@ body{max-width:min(100%,1200px)}
     <button class="vt-act deja" onclick="ouvrirDepuisVitrine('old')" id="vt-b3">J'ai déjà une boutique</button>
     <button class="vt-act install" onclick="installerApp()" id="vt-install" style="display:none">📲 Installer l'application</button>
 
-    <!-- ⭐ CE QUI VIENT D'ARRIVER, et un moyen de répondre. Le visiteur du
-         site n'a pas l'app : il ne peut rien tester, mais il peut parler —
-         et personne ne le lui demandait. -->
-    <div class="vt-neuf">
-      <div class="vt-neuf-t" id="vn-txt"></div>
-      <button class="vt-neuf-b" id="vn-btn" onclick="ecrireAMyboutiq('vitrine')"></button>
-    </div>
-
     <!-- Des chiffres VRAIS et vérifiables dans le fichier, jamais de traction
          inventée : 465 articles à photo et 873 trouvables dans le catalogue
          embarqué, tous gardés sur le téléphone. -->
     <div class="vt-preuves">
       <div class="vt-p"><b>0 F</b><i id="vt-p1">pour commencer</i></div>
       <div class="vt-p"><b>873</b><i id="vt-p2">articles déjà prêts</i></div>
-      <div class="vt-p"><b>0</b><i id="vt-p3">barre de réseau nécessaire</i></div>
+      <div class="vt-p"><b>0</b><i id="vt-p3">barre de réseau</i></div>
     </div>
 
     <!-- ⚠️ AUCUNE FONCTION INVENTÉE ICI : chacune des six existe et se
@@ -1946,7 +1955,7 @@ body{max-width:min(100%,1200px)}
       <div class="vt-sous" id="vf-s">Six choses que tu fais déjà à la main. Elles prennent une tape.</div>
       <div class="vt-fg">
         <div class="vt-f"><em>🧾</em><b id="vf1-t">Vendre</b><i id="vf1-d">Tu touches l'article, le total monte, tu encaisses. Le ticket part sur WhatsApp.</i></div>
-        <div class="vt-f"><em>📦</em><b id="vf2-t">Gros et détail</b><i id="vf2-d">Pièce, paquet, carton, sac : un seul article porte tous ses prix.</i></div>
+        <div class="vt-f"><em>📦</em><b id="vf2-t">Gros et détail</b><i id="vf2-d">Pièce, carton, casier. Et la même boisson en 50 cl et en 1,5 L — chacune son prix, chacune son stock.</i></div>
         <div class="vt-f"><em>📉</em><b id="vf3-t">Le stock se tient seul</b><i id="vf3-d">Il baisse à chaque vente et te dit ce qu'il faut aller racheter.</i></div>
         <div class="vt-f"><em>👥</em><b id="vf4-t">Tes vendeurs</b><i id="vf4-d">Chacun sa caisse, chacun son code. Tu vois qui a vendu quoi.</i></div>
         <div class="vt-f"><em>📓</em><b id="vf5-t">Le carnet de crédit</b><i id="vf5-d">Qui te doit combien, depuis quand. La relance part d'un doigt.</i></div>
@@ -1954,16 +1963,53 @@ body{max-width:min(100%,1200px)}
       </div>
     </section>
 
-    <!-- ⭐ MYBAR. Un bar n'est pas une boutique : il ne compte pas des
-         articles mais des tables ouvertes, des casiers et des bouteilles
-         vides qui valent de l'argent au dépôt. Lui vendre MyBoutiQ, c'est
-         lui vendre le mauvais outil — d'où une porte, ici, vers le bon. -->
-    <section class="vt-sec" id="v-bar">
-      <div class="vt-mybar">
-        <em>🍻</em>
-        <b id="vb-t">Tu tiens un bar, une buvette&nbsp;?</b>
-        <i id="vb-d">Une boutique compte des articles. Un bar compte des tables ouvertes, des casiers, et des vidanges consignées. MyBar est faite pour ça — même maison, même simplicité, et elle marche aussi sans réseau.</i>
-        <a href="https://bar.myboutiq.online/" id="vb-b">Ouvrir MyBar →</a>
+    <!-- ═══════════════════════════════════════════════════════
+         ⭐ L'ORDRE DE LA PAGE, ET POURQUOI IL A CHANGÉ (22.44)
+         « continue sur le contenu, l'ordre des sections ».
+
+         AVANT : héros → portes → nouveautés → ce que ça fait → MYBAR →
+                 les commerçants → qui l'a faite → LE PRIX → écrire.
+         Trois choses coûtaient cher, dans cet ordre-là :
+
+         1. LE PRIX ARRIVAIT EN HUITIèME POSITION, à 2 400 px du haut d'une
+            page qui en fait 3 200. « Ça coûte combien ? » est la première
+            question d'un commerçant, et la réponse — 0 F — est la
+            meilleure nouvelle de la page. On l'enterrait. Elle passe juste
+            après « ce que ça fait » : il apprend ce que c'est, puis tout de
+            suite que ça ne lui coûte rien.
+
+         2. MYBAR ENVOYAIT DEHORS AVANT LA MOINDRE PREUVE. Le visiteur
+            n'avait encore lu ni une phrase de commerçant, ni le prix, ni
+            qui est derrière — et on lui proposait un autre site. Et celui
+            qui ne tient PAS un bar traversait un bloc entier qui ne le
+            concerne pas, au milieu de l'argumentaire. La porte reste
+            grande ouverte : l'onglet « Pour les bars » est dans la barre,
+            visible dès le début, à une tape. Le bloc, lui, descend après
+            la preuve.
+
+         3. « CETTE SEMAINE · … » parlait à quelqu'un qui a DÉJÀ l'app, et
+            se trouvait entre les boutons et la première preuve — le pire
+            endroit. Déplacé dans « Qui l'a faite », il cesse d'interrompre
+            et devient la PREUVE de ce que ce bloc affirme : « chacune a
+            changé le code dans la semaine qui a suivi ». La phrase le dit,
+            la ligne juste en dessous le montre.
+         ═══════════════════════════════════════════════════════ -->
+    <section class="vt-sec" id="v-prix">
+      <div class="vt-h"><i>💰</i><b id="vp-t">Combien ça coûte</b></div>
+      <div class="vt-prix">
+        <b id="vp-n">0 F</b>
+        <div class="vt-prix-s" id="vp-s">Aujourd'hui, et pour tous ceux qui essaient pendant qu'on la construit.</div>
+        <ul>
+          <li id="vp-l1">Pas de carte bancaire, pas d'abonnement, rien à payer pour commencer.</li>
+          <li id="vp-l2">Aucune publicité dans ta caisse.</li>
+          <li id="vp-l3">Tes données ne sont vendues à personne.</li>
+          <li id="vp-l4">Tu peux emporter tout ce que tu as saisi, ou tout effacer, toi-même, depuis les Réglages.</li>
+        </ul>
+        <!-- ⚠️ « Si un prix arrive un jour, tu le sauras avant » était un
+             ENGAGEMENT PRIS À SA PLACE, sur une page qui porte son nom. Je
+             n'ai pas à promettre l'avenir commercial de quelqu'un d'autre.
+             Ce qui reste ne promet que ce que je tiens : cette page-ci. -->
+        <div class="vt-prix-n" id="vp-note">MyBoutiQ est encore en construction, et gratuite pendant ce temps. Ce qui viendra après n'est pas encore décidé — le jour où ça le sera, ce sera écrit ici.</div>
       </div>
     </section>
 
@@ -1993,24 +2039,33 @@ body{max-width:min(100%,1200px)}
         <p id="vq-p2">Rien n'est décidé dans un bureau. Les trois phrases au-dessus viennent de commerçants, et chacune a changé le code dans la semaine qui a suivi.</p>
         <p id="vq-p3">Si quelque chose te manque ou te gêne, dis-le : c'est comme ça que l'application avance.</p>
       </div>
+    <!-- ⭐ CE QUI VIENT D'ARRIVER. Ici, et pas plus haut : au-dessus, entre
+         les boutons et la première preuve, cette ligne parlait à quelqu'un
+         qui a déjà l'app et coupait l'argumentaire de celui qui ne l'a pas.
+         Ici, elle PROUVE la phrase qui la précède. -->
+    <div class="vt-neuf">
+      <div class="vt-neuf-t" id="vn-txt"></div>
+      <!-- ⚠️ LE BOUTON D'ICI A ÉTÉ RETIRÉ (22.44). Tant que ce bandeau vivait
+           tout en haut, entre les portes et la première preuve, il lui
+           fallait sa propre porte de sortie. Maintenant qu'il est rangé
+           dans « Qui l'a faite », « Écris-moi » est à trois cents pixels
+           en dessous, avec sa phrase et son bouton vert. Deux boutons
+           WhatsApp dans le même écran, c'est un de trop. -->
+    </div>
+
+
     </section>
 
-    <section class="vt-sec" id="v-prix">
-      <div class="vt-h"><i>💰</i><b id="vp-t">Combien ça coûte</b></div>
-      <div class="vt-prix">
-        <b id="vp-n">0 F</b>
-        <div class="vt-prix-s" id="vp-s">Aujourd'hui, et pour tous ceux qui essaient pendant qu'on la construit.</div>
-        <ul>
-          <li id="vp-l1">Pas de carte bancaire, pas d'abonnement, rien à payer pour commencer.</li>
-          <li id="vp-l2">Aucune publicité dans ta caisse.</li>
-          <li id="vp-l3">Tes données ne sont vendues à personne.</li>
-          <li id="vp-l4">Tu peux emporter tout ce que tu as saisi, ou tout effacer, toi-même, depuis les Réglages.</li>
-        </ul>
-        <!-- ⚠️ « Si un prix arrive un jour, tu le sauras avant » était un
-             ENGAGEMENT PRIS À SA PLACE, sur une page qui porte son nom. Je
-             n'ai pas à promettre l'avenir commercial de quelqu'un d'autre.
-             Ce qui reste ne promet que ce que je tiens : cette page-ci. -->
-        <div class="vt-prix-n" id="vp-note">MyBoutiQ est encore en construction, et gratuite pendant ce temps. Ce qui viendra après n'est pas encore décidé — le jour où ça le sera, ce sera écrit ici.</div>
+    <!-- ⭐ MYBAR. Un bar n'est pas une boutique : il ne compte pas des
+         articles mais des tables ouvertes, des casiers et des bouteilles
+         vides qui valent de l'argent au dépôt. Lui vendre MyBoutiQ, c'est
+         lui vendre le mauvais outil — d'où une porte, ici, vers le bon. -->
+    <section class="vt-sec" id="v-bar">
+      <div class="vt-mybar">
+        <em>🍻</em>
+        <b id="vb-t">Tu tiens un bar, une buvette&nbsp;?</b>
+        <i id="vb-d">Une boutique compte des articles. Un bar compte des tables ouvertes, des casiers, et des vidanges consignées. MyBar est faite pour ça — même maison, même simplicité, et elle marche aussi sans réseau.</i>
+        <a href="https://bar.myboutiq.online/" id="vb-b">Ouvrir MyBar →</a>
       </div>
     </section>
 
@@ -4675,7 +4730,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.43'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.44'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -22393,8 +22448,11 @@ function _ventesDemo(arts){
 //  d'un écran de 640, c'est un dixième de la page mangé pour rien pendant
 //  qu'on lit le titre.
 // ══════════════════════════════════════════════════════════════════
-var _SECTIONS=[['v-top','nv-top'],['v-faire','nv-faire'],['v-bar','nv-bar'],['v-avis','nv-avis'],
-               ['v-qui','nv-qui'],['v-prix','nv-prix'],['v-ecrire','nv-ecrire']];
+// ⚠️ CETTE TABLE DOIT SUIVRE L'ORDRE RÉEL DE LA PAGE : `_majNavSite`
+// la parcourt de haut en bas pour décider quelle puce s'allume. Une table
+// désordonnée allumerait « Pour les bars » pendant qu'on lit le prix.
+var _SECTIONS=[['v-top','nv-top'],['v-faire','nv-faire'],['v-prix','nv-prix'],['v-avis','nv-avis'],
+               ['v-qui','nv-qui'],['v-bar','nv-bar'],['v-ecrire','nv-ecrire']];
 // ⚠️ EN BAS DE PAGE, LES DEUX DERNIÈRES SECTIONS NE PEUVENT PLUS MONTER :
 // la page est finie, le défilement bute. On touchait « Le prix », la page
 // bougeait bien, et c'est « Écris-moi » qui s'allumait. Pendant le temps du
@@ -22510,7 +22568,7 @@ function _vitrineLangue(){
     'vt-b3':'I already have a shop',
     'vt-p1':'to start',
     'vt-p2':'items ready to sell',
-    'vt-p3':'bars of signal needed',
+    'vt-p3':'bars of signal',
     'vt-vt':'They wrote it',
     'vt-vs':'Every line below comes from a shopkeeper, in the field. Each one changed the app.',
     'vt-q1':'A customer buys juice by the pallet, a box of oil. How do I bill that, when I sell by the piece?',
@@ -22531,7 +22589,7 @@ function _vitrineLangue(){
     'vf-t':'What it actually does',
     'vf-s':'Six things you already do by hand. Here they take one tap.',
     'vf1-t':'Sell','vf1-d':'Tap the item, the total goes up, you cash in. The receipt leaves on WhatsApp.',
-    'vf2-t':'Bulk and retail','vf2-d':'Piece, pack, box, bag: one item carries every one of its prices.',
+    'vf2-t':'Bulk and retail','vf2-d':'Piece, box, crate. And the same drink in 50 cl and 1.5 L — each its own price, each its own stock.',
     'vf3-t':'Stock keeps itself','vf3-d':'It drops with every sale and tells you what to go and buy again.',
     'vf4-t':'Your sellers','vf4-d':'Each one their own till, their own code. You see who sold what.',
     'vf5-t':'The credit book','vf5-d':'Who owes you how much, since when. The reminder leaves with one finger.',
@@ -23630,11 +23688,10 @@ function ecrireAMyboutiq(depuis){
 // La bande de la vitrine : ceux-là n'ont pas encore l'app, ils ne peuvent
 // rien tester — mais ils peuvent parler, et personne ne le leur demandait.
 function majBandeVitrine(){
-  var t=document.getElementById('vn-txt'),b=document.getElementById('vn-btn');
+  var t=document.getElementById('vn-txt');
   if(!t)return;
-  var q=_quoiDeNeuf(),en=_enVitrine();
+  var q=_quoiDeNeuf();
   t.innerHTML='<b>'+q.titre+' · </b>'+q.texte;
-  if(b)b.textContent=en?'💬 An idea? Write to me':'💬 Une idée ? Écris-moi';
 }
 // ══════════════════════════════════════════════════════════════════
 //  ⭐⭐ INSTALLER L'APPLICATION — « un peu partout »
