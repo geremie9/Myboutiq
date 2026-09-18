@@ -738,6 +738,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
       <input class="sinp" id="menu-src" oninput="chercherMenu(this.value)" placeholder="🔍 Bière, sucrerie, brochette..." data-fr="🔍 Bière, sucrerie, brochette..." data-en="🔍 Beer, soda, brochette..." data-ph>
       <div class="tscr" id="menu-fams"></div>
     </div>
+    <div id="menu-alertes"></div>
     <div id="menu-happy"></div>
     <div class="pgrid" id="menu-grid"></div>
     <div style="height:16px"></div>
@@ -840,7 +841,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
      déchet.
    • on achète en casiers, on vend à la bouteille.
    ══════════════════════════════════════════════════════════════════ */
-var BUILD='1.3';
+var BUILD='1.4';
 
 /* ══════════════════════════════════════════════════════════════════
    LA LANGUE
@@ -2293,7 +2294,23 @@ function rendreAddition(){
 }
 function ouvrirMenu(){goScreen('s-menu');qMenu='';var s=$('menu-src');if(s)s.value='';rendreMenu();}
 function fermerMenu(){goScreen('s-addition');rendreAddition();}
-function chercherMenu(q){qMenu=(q||'').toLowerCase();rendreMenu();}
+/* ⚠️ « BIERE » NE TROUVAIT PAS « BIÈRES ».
+   La recherche comparait lettre pour lettre. Or personne ne pose les
+   accents sur un clavier de téléphone en plein service — et l'invite
+   du champ disait elle-même « Bière, sucrerie, brochette… » : on
+   demandait un mot que le serveur allait taper sans accent, et on ne
+   lui rendait rien. « energisant », « eaux minérale », même silence.
+   MyBoutiQ avait déjà payé ce défaut (`txtNorm`) ; MyBar ne l'avait
+   pas repris. On compare désormais des textes mis à plat des deux
+   côtés — ce que le patron a écrit ne change pas, seule la
+   comparaison est aveugle aux accents. */
+function txtNorm(x){
+  return String(x||'').toLowerCase()
+    .replace(/\u0153/g,'oe').replace(/\u00e6/g,'ae')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ').trim();
+}
+function chercherMenu(q){qMenu=txtNorm(q);rendreMenu();}
 function filtreFam(f){vueFam=f;rendreMenu();}
 function rendreMenu(){
   var t=table(tableCourante);
@@ -2315,6 +2332,15 @@ function rendreMenu(){
     return '<button class="tpil'+(vueFam===f?' on':'')+'" onclick="filtreFam(\''+f+'\')">'+
       (f==='*'?L('⭐ Tout','⭐ All'):famE(f)+' '+famNm(f))+'</button>';
   }).join('');
+  /* ⚠️ LE COMPTOIR NE VOYAIT RIEN VENIR. Les alertes — plus rien au
+     frais, un casier à recommander, une ardoise qui traîne — ne vivaient
+     que sur le plan de salle. Or une cave, un kiosque, ou le téléphone
+     posé au comptoir n'ouvrent JAMAIS ce plan : je leur avais donné un
+     écran d'accueil, et retiré du même geste le seul endroit où l'app
+     leur parlait. Elles reviennent ici, en tête de la carte. */
+  $('menu-alertes').innerHTML=!cp?'':alertes().slice(0,2).map(function(x){
+    return '<div class="note '+x.cls+'" style="margin:0 15px 9px"'+(x.go?' onclick="'+x.go+'"':'')+'>'+x.e+' '+esc(x.txt)+'</div>';
+  }).join('');
   $('menu-happy').innerHTML=happyActif()
     ?'<div class="note vert" style="margin-bottom:10px">'+L('🕕 Happy hour en cours — les prix affichés sont déjà réduits de ','🕕 Happy hour is on — the prices shown are already cut by ')+(DB.cfg.happy.remise||0)+' %.</div>':'';
 
@@ -2323,7 +2349,7 @@ function rendreMenu(){
     if(!p.actif)return false;
     if(p.fam==='cuis'&&!forme('cuisine'))return false;
     if(vueFam!=='*'&&p.fam!==vueFam)return false;
-    if(qMenu&&p.nm.toLowerCase().indexOf(qMenu)<0&&famNm(p.fam).toLowerCase().indexOf(qMenu)<0)return false;
+    if(qMenu&&txtNorm(p.nm).indexOf(qMenu)<0&&txtNorm(famNm(p.fam)).indexOf(qMenu)<0&&txtNorm(p.cont).indexOf(qMenu)<0)return false;
     return true;
   });
   $('menu-grid').innerHTML=lst.map(function(p){
@@ -2748,7 +2774,7 @@ var STK_FILTRES=[
  {c:'tout',nm:'Tout',ne:'All'},{c:'frais',nm:'🧊 Rien au frais',ne:'🧊 Nothing cold'},{c:'bas',nm:'⚠️ À recommander',ne:'⚠️ To reorder'},
  {c:'out',nm:'⛔ Épuisés',ne:'⛔ Sold out'},{c:'vid',nm:'♻️ Vidanges',ne:'♻️ Empties'},{c:'top',nm:'🔥 Qui tournent',ne:'🔥 Movers'}
 ];
-function chercherStock(q){qStock=(q||'').toLowerCase();rendreStock();}
+function chercherStock(q){qStock=txtNorm(q);rendreStock();}
 function filtreStock(f){vueStk=f;rendreStock();}
 function detailStock(p){
   if(!p.suivi)return L('Sans suivi de stock','No stock tracking');
@@ -2789,7 +2815,7 @@ function rendreStock(){
 
   var lst=DB.produits.filter(function(p){
     if(!p.actif)return false;
-    if(qStock&&p.nm.toLowerCase().indexOf(qStock)<0&&famNm(p.fam).toLowerCase().indexOf(qStock)<0)return false;
+    if(qStock&&txtNorm(p.nm).indexOf(qStock)<0&&txtNorm(famNm(p.fam)).indexOf(qStock)<0&&txtNorm(p.cont).indexOf(qStock)<0)return false;
     var st=stockTotal(p);
     if(vueStk==='frais')return p.suivi&&(p.frais||0)===0&&st>0;
     if(vueStk==='bas')return p.suivi&&st<=(p.seuil||0)&&st>0;

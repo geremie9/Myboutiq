@@ -146,6 +146,22 @@ chaîne libre, affichée telle qu'il l'a écrite.
    vitrine tombait entièrement dedans et ne répondait pas, sans le moindre
    message. `pointer-events:none` sur tous les halos.
 
+7. **On cherche sans accents.** Le champ disait « Bière, sucrerie,
+   brochette… » et ne rendait rien à qui tapait « biere » : personne ne
+   pose les accents sur un clavier de téléphone en plein service.
+   Vérifié sur la carte de départ : « biere » rendait **0** produit,
+   « energisant » **0**. `txtNorm()` met les deux côtés à plat (accents,
+   œ/æ, espaces) — 12 et 3 désormais. Ce que le patron a écrit ne
+   change pas ; seule la comparaison est aveugle.
+8. **Un écran d'accueil doit porter les alertes.** Les alertes — rien au
+   frais, un casier à recommander, une ardoise qui traîne — ne vivaient
+   que sur le plan de salle. En donnant au comptoir son propre écran
+   d'accueil, on lui avait retiré du même geste le seul endroit où l'app
+   lui parlait : une cave ou un kiosque n'ouvre jamais le plan de salle.
+   Elles s'affichent donc aussi en tête de la carte, **en mode comptoir
+   seulement** — la carte ouverte depuis une table reste un outil de
+   service, pas un tableau de bord.
+
 ## Les deux adresses, et ce que ça coûte
 
 MyBar est servie à deux endroits : la racine de son sous-domaine, et le
