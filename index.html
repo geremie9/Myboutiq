@@ -139,12 +139,43 @@ window.addEventListener('appinstalled',function(){
   try{if(typeof majBoutonsInstaller==='function')majBoutonsInstaller();}catch(x){}
 });
 </script>
-<title>MyBoutiQ — Gestion de boutique pour l'Afrique</title>
-<meta name="description" content="MyBoutiQ : application de gestion de boutique et petit commerce. Ventes, stock, clients, rapports — simple, hors-ligne, sans complications. Faite pour l'Afrique francophone.">
-<meta property="og:title" content="MyBoutiQ — Gestion de boutique">
-<meta property="og:description" content="Ventes, stock, clients, rapports. Simple et hors-ligne, faite pour les commerçants africains.">
+<title>MyBoutiQ — La caisse de ta boutique, même sans réseau</title>
+<meta name="description" content="MyBoutiQ : la caisse du petit commerce. Tu vends, elle compte. Le stock, le bénéfice et le carnet de crédit se tiennent tout seuls — même quand il n'y a pas de réseau. Gratuite, 873 articles déjà prêts.">
+<!-- ═════════════════════════════════════════════════════════
+     ⚠️⚠️ LA CARTE QUE VOIT CELUI QUI REÇOIT LE LIEN SUR WHATSAPP.
+     « professionnalise mon site, mon marketing commence là-bas » — et son
+     marketing commence EXACTEMENT ici : il colle myboutiq.online dans sa
+     communauté, et cette carte est la première chose que trois cents
+     commerçants voient de lui.
+
+     TROIS DÉFAUTS, MESURÉS DANS CE FICHIER :
+       1. `og:image` était une adresse RELATIVE (« icon-512.png »). WhatsApp,
+          Facebook et LinkedIn exigent une adresse absolue : la plupart du
+          temps ils ne montraient donc AUCUNE image.
+       2. C'était l'icône carrée de l'app, 512×512. Ces services attendent
+          1200×630 : un carré est rogné ou réduit à une vignette.
+       3. Ni `og:url`, ni `og:site_name`, ni carte Twitter — sur X et dans
+          plusieurs applications, l'aperçu restait nu.
+
+     La carte (partage.png) montre la VRAIE caisse : vrais articles, vrais
+     montants, vraies contenances. Rien n'y est dessiné.
+     ════════════════════════════════════════════════════════ -->
+<meta property="og:title" content="MyBoutiQ — Ta boutique dans ta poche">
+<meta property="og:description" content="Tu vends, elle compte. Le stock, le bénéfice et le carnet de crédit se tiennent tout seuls — même sans réseau. Gratuite.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="icon-512.png">
+<meta property="og:url" content="https://myboutiq.online/">
+<meta property="og:site_name" content="MyBoutiQ">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:image" content="https://myboutiq.online/partage.jpg">
+<meta property="og:image:secure_url" content="https://myboutiq.online/partage.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="La caisse MyBoutiQ sur un téléphone : ventes du jour, bénéfice, et les articles d'une boutique de quartier.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MyBoutiQ — Ta boutique dans ta poche">
+<meta name="twitter:description" content="La caisse du petit commerce. Elle compte pendant que tu vends, même sans réseau.">
+<meta name="twitter:image" content="https://myboutiq.online/partage.jpg">
 <!-- ⚠️ « SUR GOOGLE JE VOIS LES DEUX. »
      Chaque livraison Vercel cree une adresse en .vercel.app qui sert la MEME
      page. Sans adresse canonique, Google les indexe comme des sites
@@ -1588,8 +1619,19 @@ body{max-width:min(100%,1200px)}
 .vt-doigt{position:absolute;width:19px;height:19px;border-radius:50%;background:rgba(34,31,43,.30);
   border:2px solid rgba(255,255,255,.85);left:28px;top:76px;opacity:0;animation:vtDoigt 7s infinite}
 @keyframes vtTap{0%,11%{transform:scale(1)}14%{transform:scale(.86)}18%,100%{transform:scale(1)}}
-@keyframes vtTot{0%,12%{transform:translateY(0)}16%,29%{transform:translateY(-17px)}
-  33%,46%{transform:translateY(-34px)}50%,100%{transform:translateY(-51px)}}
+/* ⚠️ LE PREMIER CHIFFRE QUE VOIT UN VISITEUR ÉTAIT COUPÉ EN DEUX.
+   Le total roule dans une fenêtre de 17 px ; la glissade durait 4 % du
+   cycle, soit une image sur six, et sur cette image on lit « F 1 300 » et
+   « F 1 600 » écrasés l'un sur l'autre. C'est la première chose de la
+   page : elle ne doit jamais avoir l'air cassée.
+   La glissade passe de 4 % à 1,5 % du cycle : le chiffre saute au lieu de
+   se traîner.
+   ⚠️ LES DÉPARTS NE BOUGENT PAS (12 %, 29 %, 46 %). Trois autres
+   animations sont réglées dessus — le doigt tape à 12 %, 27 % et 42 %, le
+   bouton vert s'allume à 58 %. Décaler les départs aurait fait monter le
+   total avant que le doigt touche l'article. */
+@keyframes vtTot{0%,12%{transform:translateY(0)}13.5%,29%{transform:translateY(-17px)}
+  30.5%,46%{transform:translateY(-34px)}47.5%,100%{transform:translateY(-51px)}}
 @keyframes vtPay{0%,52%{transform:scale(1);box-shadow:none}
   58%{transform:scale(1.06);box-shadow:0 0 0 6px rgba(0,200,83,.18)}64%,100%{transform:scale(1)}}
 @keyframes vtOk{0%,66%{opacity:0}71%,88%{opacity:1}95%,100%{opacity:0}}
@@ -1598,6 +1640,15 @@ body{max-width:min(100%,1200px)}
   27%,32%{opacity:1;transform:translate(56px,0)}
   42%,47%{opacity:1;transform:translate(112px,0)}
   57%,63%{opacity:1;transform:translate(56px,58px)}66%,100%{opacity:0;transform:translate(56px,58px)}}
+/* ⚠️⚠️ LA BARRE DE NAVIGATION MANGEAIT LE TITRE DE CHAQUE SECTION.
+   `allerSection` utilise scrollIntoView({block:'start'}), qui pose le haut
+   de la section au haut de l'écran — c'est-à-dire DERRIÈRE la barre fixe de
+   52 px. On cliquait « Pour les bars » et on atterrissait sur un titre
+   coupé en deux. (Le repli du catch soustrayait bien 62 px ; le chemin
+   normal, lui, ne soustrayait rien.)
+   Une ligne de CSS, que scrollIntoView respecte, et les sept ancres
+   atterrissent juste sous la barre. */
+#v-top,#v-faire,#v-bar,#v-avis,#v-qui,#v-prix,#v-ecrire{scroll-margin-top:64px}
 /* ── LE CORPS DE LA PAGE ── */
 .vt-corps{padding:24px 20px 30px}
 .vt-act{display:block;width:100%;border:none;border-radius:14px;padding:15px;font-family:'Outfit',sans-serif;
@@ -4624,7 +4675,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.42'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.43'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -24457,8 +24508,22 @@ function trancherErreur(eid,annuler){
   var fr=(lang!=='en');
   if(!annuler)showToast('✅ '+(fr?'Vente gardée — le vendeur le verra':'Sale kept — the seller will see it'));
 }
+// ⚠️⚠️ DU FRANÇAIS DANS UNE PAGE ANGLAISE.
+// MESURÉ sur un téléphone réglé en anglais, aux trois largeurs : toute la
+// vitrine était en anglais, et un seul bouton restait en français —
+// « 📲 Installer l'application ». Sur une page qui sert de vitrine, une
+// faute pareille se voit avant le contenu.
+// LA CAUSE : `_vitrineLangue()` traduit le TEXTE de la page mais ne touche
+// pas à `lang`, et ce bouton-ci lit `lang`. Sur la vitrine il n'y a pas
+// encore de boutique, donc pas encore de langue choisie : c'est le
+// téléphone qui décide, exactement comme pour le reste de la page.
+function _vitrineEnAnglais(){
+  if(lang==='en')return true;
+  try{ if(!(DB&&DB.cfg)&&/^en/i.test(navigator.language||(navigator.languages||[])[0]||''))return true; }catch(e){}
+  return false;
+}
 function majBoutonsInstaller(){
-  var montrer=_peutInstaller(),fr=(lang!=='en');
+  var montrer=_peutInstaller(),fr=!_vitrineEnAnglais();
   var txt=fr?'📲 Installer l\'application':'📲 Install the app';
   var v=document.getElementById('vt-install');
   if(v){v.style.display=montrer?'':'none';v.textContent=txt;}
