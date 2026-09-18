@@ -4579,7 +4579,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.35'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.36'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -24696,7 +24696,19 @@ function _numeroReleve(r){
     for(var i=0;i<base.length;i++){h=((h<<5)-h+base.charCodeAt(i))|0;}
     var clef=Math.abs(h).toString(36).toUpperCase();
     while(clef.length<6)clef='0'+clef;
-    return 'MBQ-'+normalizeShopCode(r.code).slice(0,5)+'-'+clef.slice(0,6);
+    // ⚠️ VU SUR UNE IMAGE DE PRÉSENTATION : le numéro sortait « MBQ--M2MY9Z »,
+    // avec un tiret sur du vide. normalizeShopCode() ne garde que les
+    // CHIFFRES, et un code de boutique qui en contient moins de cinq laissait
+    // le segment creux. Sur un document qu'on pose devant une banque, un
+    // numéro malformé suffit à faire douter du reste.
+    // On complète donc avec les lettres du code, puis avec l'empreinte.
+    var seg=normalizeShopCode(r.code);
+    if(seg.length<5){
+      seg+=String(r.code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+      seg+=clef;
+    }
+    seg=(seg+'00000').slice(0,5);
+    return 'MBQ-'+seg+'-'+clef.slice(0,6);
   }catch(e){return 'MBQ-000000';}
 }
 function _dateLongue(d){
