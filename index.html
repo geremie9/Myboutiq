@@ -2555,6 +2555,7 @@ body{max-width:min(100%,1200px)}
         <!-- Caché à tout le monde sauf aux administrateurs de MyBoutiQ.
              Le serveur décide (table app_admins) : cacher l'entrée n'est que du
              confort, c'est la règle RLS qui protège vraiment. -->
+        <div class="stit2" id="row-repin" style="display:none" onclick="ouvrirReinitPin()"><div class="stico" style="background:#FFEBEE">🔑</div><div class="stii"><div class="stitl">Réinitialiser le PIN d'un commerçant</div><div class="stisub">Quand il t'écrit depuis son numéro — sa boutique ne bouge pas</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-modele" style="display:none" onclick="ouvrirModele()"><div class="stico" style="background:#E8F5E9">📋</div><div class="stii"><div class="stitl">Préparer un modèle de boutique</div><div class="stisub">Envoyer tes articles et leurs prix à un commerçant, par WhatsApp</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-annonce" style="display:none" onclick="ouvrirEcrireAnnonce()"><div class="stico" style="background:#E8EAF6">📣</div><div class="stii"><div class="stitl">Écrire une annonce</div><div class="stisub">Un message à tous les commerçants</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-abonnes" style="display:none" onclick="ouvrirAbonnes()"><div class="stico" style="background:#FFF8E1">🗂️</div><div class="stii"><div class="stitl">Abonnements</div><div class="stisub">Qui a payé, jusqu'à quand — et rouvrir d'une tape</div></div><span class="starr">›</span></div>
@@ -3882,6 +3883,35 @@ body{max-width:min(100%,1200px)}
      et chacun devient sa propre ligne, avec son stock en bouteilles, ses
      prix et son casier ou sa palette. Sa règle, qu'il a tranchée lui-même :
      chaque contenance a son propre stock, aucune conversion entre elles. -->
+<!-- ⚠️ RÉSERVÉ À L'ADMINISTRATEUR. Un commerçant ne voit jamais cette
+     entrée : l'application ne s'alourdit pas d'un gramme pour lui.
+     « PIN oublié ? » a été retiré à raison — il fabriquait le code de
+     vérification DANS le téléphone et l'affichait. Depuis, un commerçant
+     qui oublie son code est dehors pour toujours : 32 comptes, 21 jamais
+     revenus après le jour de leur inscription.
+     Sans SMS, on ne peut pas prouver la possession d'un numéro depuis
+     l'application. Mais WhatsApp le prouve déjà : quand le commerçant
+     écrit, son numéro s'affiche. La preuve existait ; il manquait le moyen
+     d'agir dessus. C'est ici, et chaque geste laisse une trace. -->
+<div class="ov" id="ov-repin" onclick="closeOv(event,'ov-repin')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🔑 <span id="rp2-tit">Réinitialiser un PIN</span></div><button class="bcl" onclick="closeSheet('ov-repin')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.6;margin-bottom:13px">
+        À n'utiliser que si le commerçant t'a écrit <b>depuis son propre numéro</b> —
+        c'est ça, la preuve. Ses ventes, son stock et ses clients ne bougent pas :
+        seul le code d'entrée change. Chaque réinitialisation est inscrite au journal.
+      </div>
+      <div class="pig"><label class="pl">Son numéro de téléphone</label>
+        <input class="pi" type="tel" id="rp2-tel" inputmode="tel" placeholder="ex : 6 93 93 06 88" autocomplete="off"></div>
+      <div class="pig"><label class="pl">Nouveau PIN (4 chiffres)</label>
+        <input class="pi" type="text" id="rp2-pin" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="off"></div>
+      <div id="rp2-res" style="display:none;font-size:12px;font-weight:700;line-height:1.55;
+           background:var(--BG);border-radius:11px;padding:11px 12px;margin-bottom:13px"></div>
+      <button class="bt" style="width:100%" id="rp2-ok" onclick="lancerReinitPin()">🔑 <span>Réinitialiser</span></button>
+    </div>
+  </div>
+</div>
 <div class="ov" id="ov-modele" onclick="closeOv(event,'ov-modele')">
   <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">📋 <span id="mod-tit">Préparer un modèle</span></div><button class="bcl" onclick="closeSheet('ov-modele')">✕</button></div>
@@ -4579,7 +4609,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.36'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.37'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -17268,6 +17298,65 @@ function _verserModele(mod){
     +(fr?' — vérifie les prix':' — check the prices'));
 }
 // Côté administrateur : fabriquer le modèle à partir de SA propre boutique.
+// ══════════════════════════════════════════════════════════════════
+//  RÉINITIALISER LE PIN D'UN COMMERÇANT — côté administrateur
+//
+//  Le serveur fait tout le travail (admin_reinitialiser_pin) : il vérifie
+//  lui-même que l'appelant est administrateur, essaie les quatre écritures
+//  possibles du numéro — avec indicatif, sans, avec un zéro initial — et
+//  n'écrit QUE le mot de passe et l'empreinte. `data` n'est jamais touchée :
+//  ni les ventes, ni le stock, ni les clients.
+//  Ici, on ne fait que demander, confirmer, et rapporter fidèlement.
+// ══════════════════════════════════════════════════════════════════
+function ouvrirReinitPin(){
+  var e1=document.getElementById('rp2-tel'),e2=document.getElementById('rp2-pin');
+  if(e1)e1.value=''; if(e2)e2.value='';
+  var r=document.getElementById('rp2-res'); if(r){r.style.display='none';r.textContent='';}
+  document.getElementById('ov-repin').classList.add('show');
+}
+function _rp2Dire(txt,bon){
+  var r=document.getElementById('rp2-res'); if(!r)return;
+  r.style.display='block';
+  r.style.color=bon?'#1B5E20':'var(--R)';
+  r.textContent=txt;
+}
+async function lancerReinitPin(){
+  var fr=(lang==='fr');
+  var tel=String((document.getElementById('rp2-tel')||{}).value||'').trim();
+  var pin=String((document.getElementById('rp2-pin')||{}).value||'').trim();
+  if(tel.replace(/\D/g,'').length<6){_rp2Dire(fr?'Numéro trop court.':'Number too short',false);return;}
+  if(!/^\d{4,6}$/.test(pin)){_rp2Dire(fr?'Le PIN doit faire 4 à 6 chiffres.':'PIN must be 4 to 6 digits',false);return;}
+  // ⚠️ On confirme AVANT d'écrire : ce geste met quelqu'un dehors si on se
+  // trompe de numéro, et il n'y a pas de marche arrière.
+  if(!confirm((fr?'Réinitialiser le PIN du ':'Reset the PIN of ')+tel+' ?\n\n'
+    +(fr?'Son ancien code ne marchera plus. Ses ventes et son stock ne bougent pas.'
+        :'The old code will stop working. Sales and stock are untouched.')))return;
+  var b=document.getElementById('rp2-ok'); if(b){b.disabled=true;b.style.opacity='.5';}
+  _rp2Dire(fr?'Je demande au serveur…':'Asking the server…',true);
+  try{
+    if(typeof assurerConnexionSupa==='function')assurerConnexionSupa();
+    if(!supa||!navigator.onLine){_rp2Dire(fr?'Pas de réseau — réessaie une fois connecté.':'No network',false);return;}
+    var r=await supa.rpc('admin_reinitialiser_pin',{p_tel:tel,p_nouveau:pin});
+    if(r.error){
+      var m=String(r.error.message||'');
+      _rp2Dire(/aucun compte/i.test(m)?(fr?'Aucun compte pour ce numéro. Vérifie le numéro qu\'il t\'a écrit.':'No account for this number')
+              :/non autorise/i.test(m)?(fr?'Refusé : ce compte n\'est pas administrateur.':'Refused: not an administrator')
+              :m,false);
+      return;
+    }
+    var n=(r.data&&r.data.length)||0;
+    var nbB=(r.data&&r.data[0]&&r.data[0].boutiques)||0;
+    _rp2Dire('✅ '+(fr
+      ?('Fait. '+n+' compte'+(n>1?'s':'')+' · '+nbB+' boutique'+(nbB>1?'s':'')
+        +'. Dis-lui son nouveau code de vive voix, pas par écrit.')
+      :('Done. '+n+' account(s), '+nbB+' shop(s).')),true);
+    try{journalAjouter('code patron',tel,(fr?'oublié':'forgotten'),(fr?'réinitialisé par le support':'reset by support'));}catch(e){}
+  }catch(e){
+    _rp2Dire((fr?'Échec : ':'Failed: ')+(e&&e.message||e),false);
+  }finally{
+    var b2=document.getElementById('rp2-ok'); if(b2){b2.disabled=false;b2.style.opacity='1';}
+  }
+}
 function ouvrirModele(){
   var fr=(lang==='fr');
   if(!DB||!DB.articles||!DB.articles.length){
@@ -24293,6 +24382,8 @@ async function verifierAdmin(){
     // depuis le compte d'un vendeur.
     var rowM=document.getElementById('row-modele');
     if(rowM)rowM.style.display=(ok&&role==='patron')?'':'none';
+    var rowR=document.getElementById('row-repin');
+    if(rowR)rowR.style.display=ok?'':'none';
     // ⚠️ Réservée au patron ET administrateur : c'est la boutique OUVERTE
     // dont on certifie les photos, pas une boutique choisie dans une liste.
     var rowE=document.getElementById('row-equiper');
