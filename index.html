@@ -1556,6 +1556,42 @@ body{max-width:min(100%,1200px)}
 /* Le nombre de colonnes s'ajuste tout seul : la carte grandit avec l'écran,
    entre 104px (petit téléphone) et 168px (grand écran). */
 .pgrid{grid-template-columns:repeat(auto-fill,minmax(clamp(104px,21vw,168px),1fr));padding:0 clamp(12px,3vw,22px)}
+/* ══════════════════════════════════════════════════════════════
+   ⚠️⚠️ LA GRILLE S'ADAPTAIT, LE CONTENU NON.
+   « les articles se façonnent selon l'écran » — la moitié était faite.
+
+   MESURÉ sur treize largeurs, de 320 à 1600 px : le nombre de colonnes
+   suivait bien (2 → 3 → 4 → 5 → 6) et la carte passait de 106 à 189 px.
+   Mais le NOM restait à 10 px et le PRIX à 12 px à TOUTES les largeurs,
+   et la pastille de l'article à 62 px. Sur une tablette ou un PC, la carte
+   grandissait de 80 % pendant que ce qu'elle contient ne bougeait pas :
+   une grande tuile presque vide, avec un nom minuscule perdu au milieu.
+
+   Tout pousse maintenant avec l'écran, sans palier :
+     nom     10 → 13 px      prix    12 → 16 px
+     pastille 62 → 86 px     emoji   44 → 60 px
+   ⚠️ ET LES TÉLÉPHONES NE BOUGENT PAS D'UN PIXEL. Les bornes basses de
+   chaque clamp sont exactement les valeurs d'aujourd'hui, et chacune tient
+   jusqu'à 480 px pile — c'est-à-dire au-delà du plus large des téléphones
+   de ses commerçants (412 px). Vérifié largeur par largeur.
+   Ce qui change ne change que là où il y a la place. */
+.pnm,.pnm-ov{font-size:clamp(10px,0.80vw + 6px,13px)}
+.ppr,.ppr-ov{font-size:clamp(12px,1.00vw + 7.2px,16px)}
+.pmedia{width:clamp(62px,7.5vw + 26px,86px);height:clamp(62px,7.5vw + 26px,86px)}
+.pemoji{font-size:clamp(44px,5.5vw + 17.6px,60px)}
+.pcard-img{width:clamp(52px,6.2vw + 22.2px,72px);height:clamp(52px,6.2vw + 22.2px,72px)}
+/* Les contenances d'une famille s'ouvrent dans la MÊME grille, au même
+   endroit, sous le doigt : si elles gardaient leur taille fixe pendant que
+   les articles grandissent, l'écran changerait de règle à mi-chemin.
+   (`.v-liste` — la vue en liste — a ses propres tailles, plus grandes, et
+   n'a rien à voir avec la place disponible : on n'y touche pas.) */
+/* ⚠️ `:not(.v-liste)` N'EST PAS DE LA COQUETTERIE. Ces règles-ci sont
+   écrites 570 lignes PLUS BAS que celles de `.v-liste`, à specificité
+   égale : sans ce filtre, c'est la dernière écrite qui gagne, et la vue en
+   liste perdrait ses tailles à elle sans que rien ne le signale. */
+.v-grille .vtile .vt-nm,.vtile:not(.v-liste .vtile) .vt-nm{font-size:clamp(10.5px,0.80vw + 6.5px,13.5px)}
+.v-grille .vtile .vt-px,.vtile:not(.v-liste .vtile) .vt-px{font-size:clamp(12px,1.00vw + 7.2px,16px)}
+.v-grille .vtile .vt-emo,.vtile:not(.v-liste .vtile) .vt-emo{font-size:clamp(40px,5.0vw + 16px,54px)}
 .agpx,.agstk{grid-template-columns:repeat(auto-fill,minmax(clamp(100px,20vw,170px),1fr))}
 /* Au-delà de la largeur max, on encadre l'app pour qu'elle ne flotte pas seule */
 @media (min-width:1240px){ body{background:#E4E8F0;box-shadow:0 0 0 1px rgba(0,0,0,.05)} }
@@ -4730,7 +4766,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.46'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.47'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
