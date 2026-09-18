@@ -2572,7 +2572,7 @@ body{max-width:min(100%,1200px)}
       <div class="stcd">
         <div class="stit2" style="cursor:default">
           <div class="stico" style="background:#FFF3E0">🔆</div>
-          <div class="stii"><div class="stitl" id="st-veille">Garder l'écran allumé</div><div class="stisub" id="st-veille-s">Évite le verrouillage pendant les ventes</div></div>
+          <div class="stii"><div class="stitl" id="st-veille">Garder l'écran allumé</div><div class="stisub" id="st-veille-s">Pendant que MyBoutiQ est à l'écran. Si tu ouvres une autre application, c'est elle qui décide — et ça revient tout seul.</div></div>
           <button class="tog off" id="tog-veille" onclick="toggleVeille()"></button>
         </div>
         <div class="stit2" data-exp="1" style="cursor:default">
@@ -4730,7 +4730,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.45'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.46'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7277,7 +7277,11 @@ function appliquerLang(){
   // Mode veille
   document.getElementById('lbl-veille').textContent=lang==='fr'?'🔆 Affichage':'🔆 Display';
   document.getElementById('st-veille').textContent=lang==='fr'?"Garder l'écran allumé":'Keep screen on';
-  document.getElementById('st-veille-s').textContent=lang==='fr'?'Évite le verrouillage pendant les ventes':'Avoids lock screen during sales';
+  // ⚠️ Cette ligne réécrivait le sous-titre à chaque ouverture des Réglages
+  // et remettait l'ancienne demi-vérité à la place de la vraie phrase.
+  document.getElementById('st-veille-s').textContent=lang==='fr'
+    ?'Pendant que MyBoutiQ est à l\'écran. Si tu ouvres une autre application, c\'est elle qui décide — et ça revient tout seul.'
+    :'While MyBoutiQ is on screen. If you open another app, that app decides — and it comes back on its own.';
   document.getElementById('tog-veille').className='tog '+(DB.cfg.veille?'on':'off');
   var _tne2=document.getElementById('tog-noemoji');if(_tne2)_tne2.className='tog '+(DB.cfg.noEmoji?'on':'off');
   var _tra=document.getElementById('tog-recuauto');if(_tra)_tra.className='tog '+(DB.cfg.recuAuto?'on':'off');
@@ -18244,15 +18248,42 @@ function calcBenA(){var pv=parseFloat(document.getElementById('ainp-pv').value)|
 function setAS(n){document.getElementById('ainp-stk').value=n;}
 function toggleRupt(){ruptSel=!ruptSel;document.getElementById('tog-rupt').className='tog '+(ruptSel?'on':'off');}
 
-// ── MODE VEILLE (garder l'écran allumé) ──
-var wakeLock=null;
+// ═════════════════════════════════════════════════════════════════
+//  MODE VEILLE — « l'app ne respecte pas l'écran allumé »
+//
+//  ⚠️⚠️ CE QU'AUCUNE APPLICATION NE PEUT FAIRE, ET IL FAUT LE DIRE.
+//  « même s'il entre dans une autre application, l'écran doit rester
+//  allumé » : c'est impossible, et pas seulement pour une app web. Le
+//  système n'accorde le maintien de l'écran qu'à l'application qui est
+//  DEVANT. Dès que WhatsApp passe au premier plan, c'est WhatsApp qui
+//  décide, et le navigateur relâche notre verrou de lui-même. Aucune ligne
+//  de code ne change ça ; seul un réglage du téléphone le peut.
+//
+//  CE QUI ÉTAIT VRAIMENT CASSÉ, MESURÉ AU BANC :
+//    · au démarrage, DEUX verrous demandés, ZERO relâché (`lancerApp` et le
+//      démarrage en appelaient chacun un). La variable `wakeLock` ne
+//      pointait que sur le dernier : couper le mode n'en relâchait qu'un,
+//      et l'écran restait allumé alors qu'il venait de dire non ;
+//    · à chaque retour dans l'app, DEUX de plus — deux écouteurs
+//      `visibilitychange` faisaient le même travail. Quatre demandes,
+//      trois verrous vivants après un seul aller-retour.
+//  Un seul verrou à la fois, maintenant, et un seul écouteur.
+// ═════════════════════════════════════════════════════════════════
+var wakeLock=null,_veilleEnCours=false;
 async function activerVeille(){
   try{
     if('wakeLock' in navigator){
-      wakeLock=await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release',function(){
-        if(DB&&DB.cfg&&DB.cfg.veille)document.addEventListener('visibilitychange',reacquireVeille);
-      });
+      // Déjà un verrou vivant, ou une demande en vol : on n'en empile pas un
+      // de plus. C'est exactement ce qui rendait le bouton « éteindre » muet.
+      if(_veilleEnCours)return;
+      if(wakeLock&&!wakeLock.released)return;
+      _veilleEnCours=true;
+      try{ wakeLock=await navigator.wakeLock.request('screen'); }
+      finally{ _veilleEnCours=false; }
+      // Le navigateur le relâche tout seul dès que la page passe en fond :
+      // on note simplement qu'il n'y en a plus. La reprise au retour est
+      // faite par l'écouteur unique de `visibilitychange`, plus bas.
+      wakeLock.addEventListener('release',function(){wakeLock=null;});
     }else{
       // Fallback pour navigateurs sans Wake Lock API (vieux Android/iOS) : vidéo invisible en boucle
       var v=document.getElementById('veille-fallback-vid');
@@ -18269,15 +18300,74 @@ async function activerVeille(){
   }catch(e){console.log('Wake Lock indisponible :',e);}
 }
 function reacquireVeille(){
-  if(document.visibilityState==='visible'&&DB&&DB.cfg&&DB.cfg.veille){
-    activerVeille();
-    document.removeEventListener('visibilitychange',reacquireVeille);
-  }
+  if(document.visibilityState==='visible'&&DB&&DB.cfg&&DB.cfg.veille)activerVeille();
 }
 function desactiverVeille(){
-  if(wakeLock){wakeLock.release().catch(function(){});wakeLock=null;}
+  if(wakeLock){try{wakeLock.release();}catch(e){}wakeLock=null;}
   var v=document.getElementById('veille-fallback-vid');if(v)v.pause();
 }
+// ═════════════════════════════════════════════════════════════════
+//  ⭐⭐ LA VENTE EN COURS SURVIT À UN ALLER-RETOUR
+//
+//  « même s'il entre dans une autre application, il faudrait que l'app
+//   reste là. Parce que c'est entre ses mains. »
+//
+//  Le maintien de l'écran, personne ne peut le garantir en arrière-plan.
+//  Mais la vraie perte était ailleurs, et celle-là se répare : MESURÉ au
+//  banc — trois pains dans le panier, 600 F ; le téléphone relâche l'app
+//  pendant qu'il répond à un message ; au retour le panier est VIDE. Il
+//  recommence sa vente devant le client.
+//  `panier` ne vivait qu'en mémoire. Il est maintenant posé sur le
+//  téléphone au moment même où l'app passe en fond, et repris au retour.
+//
+//  ⚠️ TROIS GARDE-FOUS, parce qu'un panier qui reâpparaît au mauvais
+//  endroit est pire que pas de panier du tout :
+//    · même BOUTIQUE (le code), sinon c'est la vente de quelqu'un d'autre ;
+//    · même VENDEUR, sinon Junior retrouve le panier d'Aïcha ;
+//    · moins de DOUZE HEURES — au-delà, ce n'est plus une vente
+//      interrompue, c'est un oubli d'hier.
+//  Et on le DIT quand on le rend : un panier surprise ne s'explique pas.
+// ═════════════════════════════════════════════════════════════════
+var _CLE_PANIER='myboutiq_panier';
+function _panierSauver(){
+  try{
+    if(!DB||!DB.cfg||!DB.cfg.code)return;
+    if(!panier||!Object.keys(panier).length){localStorage.removeItem(_CLE_PANIER);return;}
+    localStorage.setItem(_CLE_PANIER,JSON.stringify({
+      c:String(DB.cfg.code),r:role,v:(role==='vendeur'?(nomVendeur||''):''),t:Date.now(),
+      p:panier,g:_grosPanier||{},n:_negoLigne||{}
+    }));
+  }catch(e){}
+}
+function _panierOublier(){try{localStorage.removeItem(_CLE_PANIER);}catch(e){}}
+function _panierRestaurer(){
+  try{
+    if(!DB||!DB.cfg||!DB.cfg.code)return 0;
+    if(panier&&Object.keys(panier).length)return 0;      // il a déjà commencé
+    var brut=localStorage.getItem(_CLE_PANIER);if(!brut)return 0;
+    var o=JSON.parse(brut);if(!o||!o.p)return 0;
+    if(String(o.c)!==String(DB.cfg.code)){_panierOublier();return 0;}
+    if((o.r||'')==='vendeur'&&String(o.v||'')!==String(nomVendeur||''))return 0;
+    if((o.r||'')!=='vendeur'&&role==='vendeur')return 0;
+    if(Date.now()-(Number(o.t)||0)>12*3600*1000){_panierOublier();return 0;}
+    // Un article supprimé entre-temps ne doit pas ressusciter une ligne morte.
+    var net={},n=0;
+    Object.keys(o.p).forEach(function(k){
+      var pid=String(k).split('-')[0];
+      if((DB.articles||[]).some(function(a){return String(a.id)===pid;})){net[k]=o.p[k];n++;}
+    });
+    if(!n){_panierOublier();return 0;}
+    panier=net;
+    if(o.g)_grosPanier=o.g;
+    if(o.n)_negoLigne=o.n;
+    return n;
+  }catch(e){return 0;}
+}
+// Le moment qui compte : celui où le téléphone passe à autre chose.
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState!=='visible')_panierSauver();
+});
+window.addEventListener('pagehide',_panierSauver);
 function toggleVeille(){
   if(!DB)return;
   DB.cfg.veille=!DB.cfg.veille;
@@ -18286,7 +18376,7 @@ function toggleVeille(){
   save();
   majBoutonVeille();
   try{majEnteteCaisse();}catch(e){}
-  if(DB.cfg.veille){activerVeille();showToast(lang==='fr'?'🔆 Écran maintenu allumé':'🔆 Screen kept on');}
+  if(DB.cfg.veille){activerVeille();showToast(lang==='fr'?'🔆 Écran maintenu allumé tant que MyBoutiQ est devant':'🔆 Screen kept on while MyBoutiQ is in front');}
   else{desactiverVeille();showToast(lang==='fr'?'🌙 Veille normale rétablie':'🌙 Normal sleep restored');}
 }
 // ═══ Verrou de vente ═══
@@ -23314,7 +23404,20 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneGrille();}catch(e){}try{majLigneReleve();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneGrille();}catch(e){}try{majLigneReleve();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}
+// ⭐ LA VENTE INTERROMPUE REVIENT AVEC LUI. Posée sur le téléphone quand
+// l'app est passée en fond, reprise ici — et annoncée, parce qu'un panier
+// qui reâpparaît sans un mot ne s'explique pas.
+try{
+  var _np=_panierRestaurer();
+  if(_np>0){
+    renderProd(DB.articles);
+    try{updatePUI((Object.keys(panier)[0]||'0-0').split('-')[0]);}catch(e){}
+    showToast('🛒 '+(lang==='fr'
+      ?('Ta vente en cours t\'attendait — '+_np+' ligne'+(_np>1?'s':''))
+      :('Your sale was waiting — '+_np+' line'+(_np>1?'s':''))));
+  }
+}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
