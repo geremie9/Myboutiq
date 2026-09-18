@@ -616,6 +616,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     <div class="ob-tel-rang"><span class="ob-cc" id="ob-cc">+237</span>
       <input class="ob-inp" id="ob-tel" placeholder="Numéro du bar" data-fr="Numéro du bar" data-en="Bar's phone" data-ph inputmode="tel" maxlength="20" autocomplete="off" oninput="apercuTel()"></div>
     <div class="ob-tel-apercu" id="ob-tel-apercu"></div>
+    <div id="ob-tbloc">
     <select class="reg-sel" id="ob-tables">
       <option value="8" data-fr="8 tables" data-en="8 tables">8 tables</option>
       <option value="12" selected data-fr="12 tables" data-en="12 tables">12 tables</option>
@@ -624,6 +625,8 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
       <option value="30" data-fr="30 tables" data-en="30 tables">30 tables</option>
     </select>
     <div class="ob-notice" data-fr="Les tables sont créées automatiquement (Salle, Terrasse, Comptoir). Tu peux les renommer, en ajouter ou en retirer dans les Paramètres." data-en="Tables are created for you (Indoor, Terrace, Counter). You can rename, add or remove them in Settings.">Les tables sont créées automatiquement.</div>
+    </div>
+    <div class="ob-notice" id="ob-tsans" style="display:none"></div>
     <button class="btn-ob" onclick="obNext(3)" data-fr="Continuer →" data-en="Continue →">Continuer →</button>
   </div>
 
@@ -841,7 +844,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
      déchet.
    • on achète en casiers, on vend à la bouteille.
    ══════════════════════════════════════════════════════════════════ */
-var BUILD='1.4';
+var BUILD='1.5';
 
 /* ══════════════════════════════════════════════════════════════════
    LA LANGUE
@@ -877,7 +880,7 @@ function setLang(x,silencieux){
   appliquerLangue();
   var on=document.querySelector('.scr.on');
   if(on&&typeof rendreEcran==='function')rendreEcran(on.id);
-  if(on&&on.id==='s-onboard'){rendrePays(($('ob-pays-srch')||{}).value||'');rendreTypes();majRecap();}
+  if(on&&on.id==='s-onboard'){rendrePays(($('ob-pays-srch')||{}).value||'');rendreTypes();majTablesOb();majRecap();}
   if(!silencieux)toast(L('🇫🇷 Français','🇬🇧 English'));
 }
 var DBKEY='mybar_v1';
@@ -1141,6 +1144,20 @@ function onglets(){
 /* Un onglet et un écran ne sont pas la même chose : « Comptoir » ouvre
    la carte sur une addition qui ne quitte jamais le comptoir, et
    « Clients » ouvre l'écran Équipe sur son deuxième volet. */
+/* ╔═ LE MOT JUSTE ════════════════════════════════════════════════
+   On avait retiré les tables à une cave à boissons, mais on continuait
+   de lui parler d'elles : « 2 tables encore ouvertes » à la clôture,
+   « rien à encaisser sur cette table » au comptoir, une colonne
+   « Table » dans l'export. Un mot faux est une petite trahison : il dit
+   au patron que l'application a été écrite pour quelqu'un d'autre.
+
+   Un bar à tables tient des ADDITIONS sur des TABLES ; une cave, un
+   kiosque, un comptoir font des VENTES sur des TICKETS. Même objet dans
+   le code, deux mots dans la salle. */
+function motTable(maj){var m=forme('tables')?L('table','table'):L('ticket','ticket');return maj?m.charAt(0).toUpperCase()+m.slice(1):m;}
+function motTables(){return forme('tables')?L('tables','tables'):L('tickets','tickets');}
+function motAddition(maj){var m=forme('tables')?L('addition','bill'):L('vente','sale');return maj?m.charAt(0).toUpperCase()+m.slice(1):m;}
+function motAdditions(){return forme('tables')?L('additions','bills'):L('ventes','sales');}
 function ecranDOnglet(o){return o==='comptoir'?'s-menu':(o==='clients'?'s-equipe':'s-'+o);}
 function ecranDeDepart(){return ecranDOnglet(onglets()[0]);}
 var ongletCourant='service';
@@ -1642,7 +1659,7 @@ function mhead(titre,sous){
    OUVERTURE DU BAR — inscription, connexion, démarrage
    ══════════════════════════════════════════════════════════════════ */
 function allerInscription(){
-  obEtape=1;obPays=PAYS[0];obType=TYPES[0];
+  obEtape=1;obPays=PAYS[0];obType=TYPES[0];majTablesOb();
   rendrePays('');rendreTypes();majDots();majIndicatif();
   ['obs1','obs2','obs3','obs4'].forEach(function(s,i){$(s).classList.toggle('on',i===0);});
   goScreen('s-onboard');
@@ -1669,7 +1686,23 @@ function rendreTypes(){
   });
   $('ob-type-grid').innerHTML=h;
 }
-function choisirType(i){obType=TYPES[i];rendreTypes();}
+/* ⚠️ ON DEMANDAIT « COMBIEN DE TABLES ? » À UNE CAVE À BOISSONS.
+   La question arrivait APRÈS le choix du type, et l'ignorait : une cave
+   est créée sans service à table, donc on lui prenait une réponse qu'on
+   jetait — en lui apprenant au passage que l'app avait été pensée pour
+   le bar d'à côté. On ne pose plus la question à qui n'a pas de tables ;
+   on dit ce qu'on a compris, et où le changer. */
+function typeATables(ty){return (ty||obType).c!=='cave';}
+function majTablesOb(){
+  var oui=typeATables(obType),b=$('ob-tbloc'),n=$('ob-tsans');
+  if(b)b.style.display=oui?'':'none';
+  if(n){
+    n.style.display=oui?'none':'';
+    n.textContent=L("Une cave à boissons vend au comptoir : pas de plan de salle, tout se paye tout de suite. Tu pourras activer le service à table dans les Paramètres si tu ajoutes des places.",
+                    'A drinks shop sells over the counter: no floor plan, everything is paid at once. You can switch table service on in Settings if you add seating.');
+  }
+}
+function choisirType(i){obType=TYPES[i];rendreTypes();majTablesOb();}
 function majDots(){
   for(var i=1;i<=4;i++){
     var d=$('od'+i);if(!d)continue;
@@ -1717,7 +1750,9 @@ function majRecap(){
     '<div class="ob-cr"><span class="ob-cl">'+L('Type','Type')+'</span><span class="ob-cv">'+obType.e+' '+esc(typeNm(obType))+'</span></div>'+
     '<div class="ob-cr"><span class="ob-cl">'+L('Pays','Country')+'</span><span class="ob-cv">'+obPays.f+' '+esc(paysNm(obPays))+'</span></div>'+
     '<div class="ob-cr"><span class="ob-cl">'+L('Monnaie','Currency')+'</span><span class="ob-cv">'+obPays.d+' ('+obPays.s+')</span></div>'+
-    '<div class="ob-cr"><span class="ob-cl">Tables</span><span class="ob-cv">'+nbt+L(' + comptoir',' + counter')+'</span></div>'+
+    (typeATables(obType)
+      ?'<div class="ob-cr"><span class="ob-cl">'+L('Tables','Tables')+'</span><span class="ob-cv">'+nbt+L(' + comptoir',' + counter')+'</span></div>'
+      :'<div class="ob-cr"><span class="ob-cl">'+L('Vente','Selling')+'</span><span class="ob-cv">'+L('🍺 au comptoir','🍺 over the counter')+'</span></div>')+
     '<div class="ob-cr"><span class="ob-cl">'+L('Carte de départ','Starting menu')+'</span><span class="ob-cv">'+carteDuType(obType).length+L(' produits',' products')+'</span></div>';
 }
 function carteDuType(ty){
@@ -1759,7 +1794,7 @@ function creerEtablissement(){
          /* Une cave à boissons n'a pas de tables : on la pose au
             comptoir dès le premier écran plutôt que de lui faire
             trouver le réglage. Le patron corrige en deux touches. */
-         forme:{tables:(obType.c==='cave'?0:1),vidanges:1,
+         forme:{tables:(typeATables(obType)?1:0),vidanges:1,
                 cuisine:(obType.fams.indexOf('cuis')>=0?1:0),equipe:1},
          fondCaisse:0,veille:false,pourboire:1,build:BUILD},
     produits:produits,
@@ -2154,7 +2189,8 @@ function alertes(){
   var det=DB.clients.reduce(function(s,c){return s+(c.ardoise||0);},0);
   if(det>0)a.push({e:'📒',cls:'',txt:fmt(det)+L(" d'ardoises non réglées.",' of unpaid tabs.'),go:"navTo('equipe');vueEq='clients';rendreEquipe()"});
   var lg=tablesOuvertes().filter(function(t){return t.ouv&&(now()-t.ouv)>3*3600000;});
-  if(lg.length)a.push({e:'⏰',cls:'',txt:lg.length+L(' table'+(lg.length>1?'s':'')+' ouverte'+(lg.length>1?'s':'')+' depuis plus de 3 h.',' table'+(lg.length>1?'s':'')+' open for more than 3 hours.'),go:''});
+  if(lg.length)a.push({e:'⏰',cls:'',txt:lg.length+' '+(lg.length>1?motTables():motTable())+
+      L(' ouvert'+(forme('tables')?'e':'')+(lg.length>1?'s':'')+' depuis plus de 3 h.',' open for more than 3 hours.'),go:''});
   return a;
 }
 function valeurVidanges(){return DB.produits.reduce(function(s,p){return s+(p.vides||0)*(p.consigne||0);},0);}
@@ -2602,7 +2638,8 @@ function annulerTable(){
    ══════════════════════════════════════════════════════════════════ */
 var payMode='espece',payClient=null;
 function ouvrirPaiement(){
-  var t=table(tableCourante);if(!t||!t.lignes.length){toast(L('Rien à encaisser sur cette table.','Nothing to cash in on this table.'));return;}
+  var t=table(tableCourante);
+  if(!t||!t.lignes.length){toast(L('Rien à encaisser sur ce '+motTable()+'.','Nothing to cash in on this '+motTable()+'.'));return;}
   payMode='espece';payClient=null;
   var tot=totalTable(t);
   modal(mhead(L('💵 Encaisser ','💵 Cash in ')+esc(t.nm),nbArticles(t)+L(' article(s)',' item(s)'))+
@@ -3213,7 +3250,10 @@ function ouvrirCloture(){
   var vid=DB.produits.reduce(function(s,p){return s+(p.vides||0);},0);
   modal(mhead(L('🌙 Clôture du service','🌙 Closing the service'),jourService()+' · '+vs.length+L(' addition(s)',' bill(s)'))+
    '<div class="ovc">'+
-   (ouvertes.length?'<div class="note rouge" style="margin:0 0 12px">⚠️ '+ouvertes.length+L(' table(s) encore ouverte(s) pour ',' table(s) still open for ')+
+   (ouvertes.length?'<div class="note rouge" style="margin:0 0 12px">⚠️ '+
+     /* « table » est féminin, « ticket » ne l'est pas : le mot change, l'accord suit. */
+     L(ouvertes.length+' '+motTable()+(ouvertes.length>1?'s':'')+' encore ouvert'+(forme('tables')?'e':'')+(ouvertes.length>1?'s':'')+' pour ',
+       ouvertes.length+' '+motTable()+(ouvertes.length>1?'s':'')+' still open for ')+
       fmt(ouvertes.reduce(function(s,t){return s+totalTable(t);},0))+L('. Encaisse-les avant de clôturer, sinon elles basculeront sur demain.',
       '. Cash them in before closing, or they roll over to tomorrow.')+'</div>':'')+
    '<div class="kv"><span class="kv-l">'+L('Recette totale','Total takings')+'</span><span class="kv-v">'+fmt(ca)+'</span></div>'+
@@ -3284,8 +3324,8 @@ function partagerCloture(att){
 }
 function exporterCSV(){
   if(!DB.ventes.length){toast(L('Aucune vente à exporter.','No sales to export.'));return;}
-  var l=[L('Date;Heure;Table;Zone;Serveur;Produit;Quantite;PrixUnitaire;Total;Mode;Client',
-           'Date;Time;Table;Area;Server;Product;Quantity;UnitPrice;Total;Method;Customer')];
+  var l=[L('Date;Heure;'+motTable(1)+';Zone;Serveur;Produit;Quantite;PrixUnitaire;Total;Mode;Client',
+           'Date;Time;'+motTable(1)+';Area;Server;Product;Quantity;UnitPrice;Total;Method;Customer')];
   DB.ventes.forEach(function(v){
     v.lignes.forEach(function(x){
       l.push([jour(v.ts),heure(v.ts),v.tableNm,v.zone,v.srvNm,x.nm,x.q,x.pu,(x.offert?0:x.pu*x.q),v.mode,v.clientNm||''].join(';'));

@@ -94,6 +94,24 @@ cuisine : c'est un point de départ, pas une contrainte. Tout se change
 dans **Paramètres → Comment marche ton bar** (le bar) et **Ce téléphone
 sert à…** (le téléphone).
 
+**Et le vocabulaire suit.** On avait retiré les tables à une cave, mais on
+continuait de lui parler d'elles : « 2 tables encore ouvertes » à la
+clôture, « rien à encaisser sur cette table », une colonne « Table » dans
+l'export, et l'inscription qui demandait « combien de tables ? » pour
+jeter la réponse. Un mot faux est une petite trahison : il dit au patron
+que l'application a été écrite pour quelqu'un d'autre.
+
+| | Avec tables | Sans tables |
+|---|---|---|
+| `motTable()` | table | ticket |
+| `motAddition()` | addition | vente |
+| À l'inscription | « 12 tables » | la question n'est pas posée |
+| Au récapitulatif | Tables : 12 + comptoir | Vente : 🍺 au comptoir |
+
+L'accord suit le mot : « table » est féminin, « ticket » ne l'est pas, et
+« 1 tickets encore ouvert(s) » n'est pas une phrase qu'on montre à
+quelqu'un. `typeATables()` décide au moment du choix du type, pas après.
+
 ## Français et anglais
 
 L'application se parle entièrement dans les deux langues : vitrine,
