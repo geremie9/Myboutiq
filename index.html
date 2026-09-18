@@ -4624,7 +4624,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.38'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.39'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4898,6 +4898,31 @@ function normalizePhone(t){
   if(!digits)return '';
   var country=(DB&&DB.cfg&&DB.cfg.pays)||((typeof obPays!=='undefined')?obPays:null);
   var cc=country&&country.cc;
+  // ⚠️⚠️ DEUX INDICATIFS COLLÉS L'UN DEVANT L'AUTRE.
+  //
+  // On ne reconnaissait QUE l'indicatif du pays réglé. Un commerçant ivoirien
+  // ou gabonais qui tape son numéro avec le sien, mais sans le « + » — c'est
+  // ainsi qu'il est écrit sur une carte de visite — sur un téléphone réglé
+  // sur le Cameroun obtenait :
+  //     225689335380  →  +237225689335380   (compte qui n'existe nulle part)
+  //     241689610066  →  +237241689610066
+  // MESURÉ : ces deux numéros ont chacun DEUX comptes dans la base, et
+  // l'écriture à deux indicatifs n'en atteint aucun. Pire, chaque essai raté
+  // compte dans le blocage du serveur pour excès de tentatives : on brûlait
+  // ses essais sur un compte fantôme.
+  //
+  // `altPhoneDigits` avait déjà ce garde-fou ; la normalisation, non.
+  //
+  // ⚠️ LA LONGUEUR FAIT PARTIE DU TEST. Sans elle, un fixe de Douala
+  // « 233 42 xx xx » passerait pour un numéro ghanéen (indicatif 233) et
+  // perdrait son 237. Un indicatif suivi d'un vrai numéro local fait au
+  // moins huit chiffres de plus ; un numéro camerounais entier en fait neuf.
+  try{
+    for(var _i=0;_i<PAYS.length;_i++){
+      var _c=PAYS[_i]&&PAYS[_i].cc;
+      if(_c&&digits.indexOf(_c)===0&&digits.length>=_c.length+8)return '+'+digits;
+    }
+  }catch(e){}
   if(cc){
     if(digits.indexOf(cc)===0)return '+'+digits;
     if(digits[0]==='0')digits=digits.slice(1);
@@ -7603,7 +7628,11 @@ function altPhoneDigits(tel){
   }
   // Variantes liees au pays courant (comportement d'origine)
   if(cc&&digits.indexOf(cc)===0&&digits.length>cc.length)out.push(digits.slice(cc.length));
-  if(cc&&digits.indexOf(cc)!==0&&digits[0]!=='0')out.push(cc+digits);
+  // ⚠️ MÊME GARDE-FOU QU'AU-DESSUS, ET IL MANQUAIT ICI : cette ligne
+  // fabriquait « 237225689335380 » — l'indicatif camerounais devant
+  // l'indicatif ivoirien. Un essai de connexion brûlé sur un compte qui
+  // n'existe nulle part, et un pas de plus vers le blocage du serveur.
+  if(cc&&digits.indexOf(cc)!==0&&digits[0]!=='0'&&!_aDejaUnIndicatif)out.push(cc+digits);
   if(digits[0]==='0')out.push(digits.slice(1));
   // Robustesse : essayer tout indicatif connu, meme si le pays n'est pas connu a la connexion
   // (ex: compte cree en "677..." puis connexion en "+237677...", ou l'inverse)
