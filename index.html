@@ -139,12 +139,43 @@ window.addEventListener('appinstalled',function(){
   try{if(typeof majBoutonsInstaller==='function')majBoutonsInstaller();}catch(x){}
 });
 </script>
-<title>MyBoutiQ — Gestion de boutique pour l'Afrique</title>
-<meta name="description" content="MyBoutiQ : application de gestion de boutique et petit commerce. Ventes, stock, clients, rapports — simple, hors-ligne, sans complications. Faite pour l'Afrique francophone.">
-<meta property="og:title" content="MyBoutiQ — Gestion de boutique">
-<meta property="og:description" content="Ventes, stock, clients, rapports. Simple et hors-ligne, faite pour les commerçants africains.">
+<title>MyBoutiQ — La caisse de ta boutique, même sans réseau</title>
+<meta name="description" content="MyBoutiQ : la caisse du petit commerce. Tu vends, elle compte. Le stock, le bénéfice et le carnet de crédit se tiennent tout seuls — même quand il n'y a pas de réseau. Gratuite, 873 articles déjà prêts.">
+<!-- ═════════════════════════════════════════════════════════
+     ⚠️⚠️ LA CARTE QUE VOIT CELUI QUI REÇOIT LE LIEN SUR WHATSAPP.
+     « professionnalise mon site, mon marketing commence là-bas » — et son
+     marketing commence EXACTEMENT ici : il colle myboutiq.online dans sa
+     communauté, et cette carte est la première chose que trois cents
+     commerçants voient de lui.
+
+     TROIS DÉFAUTS, MESURÉS DANS CE FICHIER :
+       1. `og:image` était une adresse RELATIVE (« icon-512.png »). WhatsApp,
+          Facebook et LinkedIn exigent une adresse absolue : la plupart du
+          temps ils ne montraient donc AUCUNE image.
+       2. C'était l'icône carrée de l'app, 512×512. Ces services attendent
+          1200×630 : un carré est rogné ou réduit à une vignette.
+       3. Ni `og:url`, ni `og:site_name`, ni carte Twitter — sur X et dans
+          plusieurs applications, l'aperçu restait nu.
+
+     La carte (partage.png) montre la VRAIE caisse : vrais articles, vrais
+     montants, vraies contenances. Rien n'y est dessiné.
+     ════════════════════════════════════════════════════════ -->
+<meta property="og:title" content="MyBoutiQ — Ta boutique dans ta poche">
+<meta property="og:description" content="Tu vends, elle compte. Le stock, le bénéfice et le carnet de crédit se tiennent tout seuls — même sans réseau. Gratuite.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="icon-512.png">
+<meta property="og:url" content="https://myboutiq.online/">
+<meta property="og:site_name" content="MyBoutiQ">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:image" content="https://myboutiq.online/partage.jpg">
+<meta property="og:image:secure_url" content="https://myboutiq.online/partage.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="La caisse MyBoutiQ sur un téléphone : ventes du jour, bénéfice, et les articles d'une boutique de quartier.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MyBoutiQ — Ta boutique dans ta poche">
+<meta name="twitter:description" content="La caisse du petit commerce. Elle compte pendant que tu vends, même sans réseau.">
+<meta name="twitter:image" content="https://myboutiq.online/partage.jpg">
 <!-- ⚠️ « SUR GOOGLE JE VOIS LES DEUX. »
      Chaque livraison Vercel cree une adresse en .vercel.app qui sert la MEME
      page. Sans adresse canonique, Google les indexe comme des sites
@@ -177,7 +208,10 @@ window.addEventListener('appinstalled',function(){
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "MyBoutiQ",
+  "url": "https://myboutiq.online/",
+  "image": "https://myboutiq.online/partage.jpg",
   "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Point of Sale",
   "operatingSystem": "Android, iOS, Web",
   "description": "Application de gestion de boutique, bar et petit commerce : ventes, stock, clients, rapports. Fonctionne hors-ligne, faite pour les commerçants africains.",
   "offers": {
@@ -185,7 +219,17 @@ window.addEventListener('appinstalled',function(){
     "price": "0",
     "priceCurrency": "XAF"
   },
-  "inLanguage": "fr"
+  "inLanguage": ["fr", "en"],
+  "isAccessibleForFree": true,
+  "featureList": [
+    "Caisse tactile : toucher l'article, encaisser, envoyer le ticket sur WhatsApp",
+    "Vente au détail et en gros : pièce, carton, casier, sac, palette",
+    "Une boisson en plusieurs contenances, chacune son prix et son stock",
+    "Stock qui baisse à chaque vente et liste de ce qu'il faut racheter",
+    "Carnet de crédit : qui doit combien, depuis quand",
+    "Plusieurs vendeurs, chacun son code et sa caisse",
+    "Fonctionne entièrement sans réseau"
+  ]
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -589,6 +633,21 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 .pedit{position:absolute;top:6px;left:6px;width:22px;height:22px;border-radius:7px;border:none;background:rgba(26,26,46,.06);color:var(--M);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;z-index:2;transition:all .15s}
 .pedit:hover{background:rgba(41,121,255,.12);color:var(--B)}
 .pcard.has-photo .pedit{top:7px;left:7px}
+/* ⚠️⚠️ « LE BOUTON MODIFICATION EST INVISIBLE » — il l'était, littéralement.
+   Le crayon gardait sur une PHOTO le fond qu'on lui avait donné pour une
+   tuile blanche : rgba(26,26,46,.06), soit 6 % de noir, et une encre grise
+   (--M, #9E9E9E). Sur la photo sombre d'une bouteille, c'est du gris sur du
+   gris : rien à voir, rien à toucher. Le repaire de prix juste à côté
+   (.pvbdg) avait reçu sa pastille blanche il y a longtemps ; le crayon, qui
+   ouvre TOUTES les modifications de l'article, avait été oublié.
+   Il prend la même pastille blanche, donc le même contraste garanti quelle
+   que soit la photo. */
+.pcard.has-photo .pedit{background:rgba(255,255,255,.94);color:#1B4FA8;
+  box-shadow:0 1px 4px rgba(0,0,0,.28)}
+.pcard.has-photo .pedit:hover{background:#fff;color:var(--B)}
+/* Sur une tuile sans photo il restait gris pâle sur blanc — présent, mais
+   personne ne le voyait. Même encre que partout ailleurs dans l'app. */
+.pcard:not(.has-photo) .pedit{background:rgba(41,121,255,.10);color:var(--B)}
 .pedit:active{transform:scale(.92)}
 /* ── VENDRE PAR CARTON / CASIER / SAC ────────────────────────────────
    Une tape sur la tuile = UNE unité. Vendre un casier de 12 réclamait
@@ -748,7 +807,7 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    page entière, jamais sur un test qui ne mesurait que `display`. */
 .vt-act.install{background:#fff;color:var(--P);border:1.5px solid var(--BD);
   box-shadow:0 2px 9px rgba(0,0,0,.05);font-size:14.5px}
-.vt-neuf{margin:18px auto 0;max-width:420px;background:#FFF8EC;
+.vt-neuf{margin:18px auto 22px;max-width:420px;background:#FFF8EC;
   border:1px solid #F2DCB4;border-radius:14px;padding:13px 15px;text-align:left}
 .vt-neuf-t{font-size:12px;font-weight:600;color:#5C4B6E;line-height:1.5}
 .vt-neuf-t b{color:#B87411;font-weight:900}
@@ -1510,6 +1569,42 @@ body{max-width:min(100%,1200px)}
 /* Le nombre de colonnes s'ajuste tout seul : la carte grandit avec l'écran,
    entre 104px (petit téléphone) et 168px (grand écran). */
 .pgrid{grid-template-columns:repeat(auto-fill,minmax(clamp(104px,21vw,168px),1fr));padding:0 clamp(12px,3vw,22px)}
+/* ══════════════════════════════════════════════════════════════
+   ⚠️⚠️ LA GRILLE S'ADAPTAIT, LE CONTENU NON.
+   « les articles se façonnent selon l'écran » — la moitié était faite.
+
+   MESURÉ sur treize largeurs, de 320 à 1600 px : le nombre de colonnes
+   suivait bien (2 → 3 → 4 → 5 → 6) et la carte passait de 106 à 189 px.
+   Mais le NOM restait à 10 px et le PRIX à 12 px à TOUTES les largeurs,
+   et la pastille de l'article à 62 px. Sur une tablette ou un PC, la carte
+   grandissait de 80 % pendant que ce qu'elle contient ne bougeait pas :
+   une grande tuile presque vide, avec un nom minuscule perdu au milieu.
+
+   Tout pousse maintenant avec l'écran, sans palier :
+     nom     10 → 13 px      prix    12 → 16 px
+     pastille 62 → 86 px     emoji   44 → 60 px
+   ⚠️ ET LES TÉLÉPHONES NE BOUGENT PAS D'UN PIXEL. Les bornes basses de
+   chaque clamp sont exactement les valeurs d'aujourd'hui, et chacune tient
+   jusqu'à 480 px pile — c'est-à-dire au-delà du plus large des téléphones
+   de ses commerçants (412 px). Vérifié largeur par largeur.
+   Ce qui change ne change que là où il y a la place. */
+.pnm,.pnm-ov{font-size:clamp(10px,0.80vw + 6px,13px)}
+.ppr,.ppr-ov{font-size:clamp(12px,1.00vw + 7.2px,16px)}
+.pmedia{width:clamp(62px,7.5vw + 26px,86px);height:clamp(62px,7.5vw + 26px,86px)}
+.pemoji{font-size:clamp(44px,5.5vw + 17.6px,60px)}
+.pcard-img{width:clamp(52px,6.2vw + 22.2px,72px);height:clamp(52px,6.2vw + 22.2px,72px)}
+/* Les contenances d'une famille s'ouvrent dans la MÊME grille, au même
+   endroit, sous le doigt : si elles gardaient leur taille fixe pendant que
+   les articles grandissent, l'écran changerait de règle à mi-chemin.
+   (`.v-liste` — la vue en liste — a ses propres tailles, plus grandes, et
+   n'a rien à voir avec la place disponible : on n'y touche pas.) */
+/* ⚠️ `:not(.v-liste)` N'EST PAS DE LA COQUETTERIE. Ces règles-ci sont
+   écrites 570 lignes PLUS BAS que celles de `.v-liste`, à specificité
+   égale : sans ce filtre, c'est la dernière écrite qui gagne, et la vue en
+   liste perdrait ses tailles à elle sans que rien ne le signale. */
+.v-grille .vtile .vt-nm,.vtile:not(.v-liste .vtile) .vt-nm{font-size:clamp(10.5px,0.80vw + 6.5px,13.5px)}
+.v-grille .vtile .vt-px,.vtile:not(.v-liste .vtile) .vt-px{font-size:clamp(12px,1.00vw + 7.2px,16px)}
+.v-grille .vtile .vt-emo,.vtile:not(.v-liste .vtile) .vt-emo{font-size:clamp(40px,5.0vw + 16px,54px)}
 .agpx,.agstk{grid-template-columns:repeat(auto-fill,minmax(clamp(100px,20vw,170px),1fr))}
 /* Au-delà de la largeur max, on encadre l'app pour qu'elle ne flotte pas seule */
 @media (min-width:1240px){ body{background:#E4E8F0;box-shadow:0 0 0 1px rgba(0,0,0,.05)} }
@@ -1573,8 +1668,19 @@ body{max-width:min(100%,1200px)}
 .vt-doigt{position:absolute;width:19px;height:19px;border-radius:50%;background:rgba(34,31,43,.30);
   border:2px solid rgba(255,255,255,.85);left:28px;top:76px;opacity:0;animation:vtDoigt 7s infinite}
 @keyframes vtTap{0%,11%{transform:scale(1)}14%{transform:scale(.86)}18%,100%{transform:scale(1)}}
-@keyframes vtTot{0%,12%{transform:translateY(0)}16%,29%{transform:translateY(-17px)}
-  33%,46%{transform:translateY(-34px)}50%,100%{transform:translateY(-51px)}}
+/* ⚠️ LE PREMIER CHIFFRE QUE VOIT UN VISITEUR ÉTAIT COUPÉ EN DEUX.
+   Le total roule dans une fenêtre de 17 px ; la glissade durait 4 % du
+   cycle, soit une image sur six, et sur cette image on lit « F 1 300 » et
+   « F 1 600 » écrasés l'un sur l'autre. C'est la première chose de la
+   page : elle ne doit jamais avoir l'air cassée.
+   La glissade passe de 4 % à 1,5 % du cycle : le chiffre saute au lieu de
+   se traîner.
+   ⚠️ LES DÉPARTS NE BOUGENT PAS (12 %, 29 %, 46 %). Trois autres
+   animations sont réglées dessus — le doigt tape à 12 %, 27 % et 42 %, le
+   bouton vert s'allume à 58 %. Décaler les départs aurait fait monter le
+   total avant que le doigt touche l'article. */
+@keyframes vtTot{0%,12%{transform:translateY(0)}13.5%,29%{transform:translateY(-17px)}
+  30.5%,46%{transform:translateY(-34px)}47.5%,100%{transform:translateY(-51px)}}
 @keyframes vtPay{0%,52%{transform:scale(1);box-shadow:none}
   58%{transform:scale(1.06);box-shadow:0 0 0 6px rgba(0,200,83,.18)}64%,100%{transform:scale(1)}}
 @keyframes vtOk{0%,66%{opacity:0}71%,88%{opacity:1}95%,100%{opacity:0}}
@@ -1583,6 +1689,15 @@ body{max-width:min(100%,1200px)}
   27%,32%{opacity:1;transform:translate(56px,0)}
   42%,47%{opacity:1;transform:translate(112px,0)}
   57%,63%{opacity:1;transform:translate(56px,58px)}66%,100%{opacity:0;transform:translate(56px,58px)}}
+/* ⚠️⚠️ LA BARRE DE NAVIGATION MANGEAIT LE TITRE DE CHAQUE SECTION.
+   `allerSection` utilise scrollIntoView({block:'start'}), qui pose le haut
+   de la section au haut de l'écran — c'est-à-dire DERRIÈRE la barre fixe de
+   52 px. On cliquait « Pour les bars » et on atterrissait sur un titre
+   coupé en deux. (Le repli du catch soustrayait bien 62 px ; le chemin
+   normal, lui, ne soustrayait rien.)
+   Une ligne de CSS, que scrollIntoView respecte, et les sept ancres
+   atterrissent juste sous la barre. */
+#v-top,#v-faire,#v-bar,#v-avis,#v-qui,#v-prix,#v-ecrire{scroll-margin-top:64px}
 /* ── LE CORPS DE LA PAGE ── */
 .vt-corps{padding:24px 20px 30px}
 .vt-act{display:block;width:100%;border:none;border-radius:14px;padding:15px;font-family:'Outfit',sans-serif;
@@ -1622,7 +1737,17 @@ body{max-width:min(100%,1200px)}
 .vt-nav-m span{color:var(--A)}
 /* Les liens défilent à l'horizontale : cinq sections ne tiennent pas dans
    la largeur d'un téléphone, et une barre qui déborde ne se lit plus. */
-.vt-liens{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+/* ⚠️⚠️ LE DERNIER ONGLET ÉTAIT TRANCHÉ NET PAR « Essayer ».
+   MESURÉ : 626 px d'onglets dans 289 px de large. Ils défilent, c'est
+   voulu — mais le bouton orange, opaque, coupait celui du bord en plein
+   milieu d'un mot (« Les co… »). On ne lisait pas « il y en a d'autres,
+   fais glisser » : on lisait « c'est cassé ».
+   Le bord s'estompe maintenant sur 26 px. C'est le signe universel qu'une
+   bande continue — et un mot qui s'efface ne ressemble pas à un mot
+   coupé. */
+.vt-liens{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0;
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent 100%);
+  mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent 100%)}
 .vt-liens::-webkit-scrollbar{display:none}
 .vt-l{flex:0 0 auto;background:rgba(255,255,255,.10);border:none;border-radius:11px;padding:8px 11px;
   color:rgba(255,255,255,.78);font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;
@@ -1659,9 +1784,16 @@ body{max-width:min(100%,1200px)}
 .vt-prix li::before{content:'✓';position:absolute;left:0;top:5px;color:var(--G);font-weight:900}
 .vt-prix .vt-prix-n{font-size:11.5px;font-weight:600;color:rgba(255,255,255,.72);margin-top:13px;line-height:1.5}
 /* ── ÉCRIS-MOI ── */
-.vt-wa{display:block;width:100%;background:#25D366;border:none;border-radius:14px;padding:15px;
+/* ⚠️⚠️ LE SEUL APPEL DE LA PAGE, ET IL SE LISAIT MAL.
+   Le vert vif de WhatsApp (#25D366) avec du texte blanc donne un contraste
+   de 1,98 — mesuré — là où il en faut 4. En plein soleil, devant une
+   boutique, ce bouton-là devient une tache verte sans mot dessus.
+   Le vert foncé de la même marque (#0E7A4F) monte à 5,36 : on reconnaît
+   toujours WhatsApp, et on lit ce qui est écrit. */
+.vt-wa{display:block;width:100%;background:#0E7A4F;border:none;border-radius:14px;padding:15px;
   color:#fff;font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-top:13px;
-  transition:transform .12s}
+  transition:transform .12s,background .15s}
+.vt-wa:hover{background:#0B6E45}
 .vt-wa:active{transform:scale(.97)}
 /* ── LA CARTE MYBAR ─────────────────────────────────────────────────
    ⚠️ Elle porte les couleurs de MyBar, pas celles de MyBoutiQ, et c'est
@@ -1804,10 +1936,10 @@ body{max-width:min(100%,1200px)}
     <div class="vt-liens" id="vt-liens">
       <button class="vt-l" id="nv-top"    onclick="allerSection('v-top')">Accueil</button>
       <button class="vt-l" id="nv-faire"  onclick="allerSection('v-faire')">Ce que ça fait</button>
-      <button class="vt-l" id="nv-bar"    onclick="allerSection('v-bar')">Pour les bars</button>
+      <button class="vt-l" id="nv-prix"   onclick="allerSection('v-prix')">Le prix</button>
       <button class="vt-l" id="nv-avis"   onclick="allerSection('v-avis')">Les commerçants</button>
       <button class="vt-l" id="nv-qui"    onclick="allerSection('v-qui')">Qui l'a faite</button>
-      <button class="vt-l" id="nv-prix"   onclick="allerSection('v-prix')">Le prix</button>
+      <button class="vt-l" id="nv-bar"    onclick="allerSection('v-bar')">Pour les bars</button>
       <button class="vt-l" id="nv-ecrire" onclick="allerSection('v-ecrire')">Écrire</button>
     </div>
     <button class="vt-nav-cta" id="nv-cta" onclick="allerSection('v-portes')">Essayer</button>
@@ -1826,7 +1958,7 @@ body{max-width:min(100%,1200px)}
     <!-- ⚠️ ON LUI PARLE, ON NE PARLE PLUS DE LUI. « L'application pensée pour
          les commerçants africains » le désignait à la troisième personne,
          comme une étude. Ici c'est SA boutique, et c'est lui qui vend. -->
-    <div class="vt-t" id="vt-titre">Ta boutique<br><b>dans ta poche</b></div>
+    <h1 class="vt-t" id="vt-titre">Ta boutique<br><b>dans ta poche</b></h1>
     <div class="vt-s" id="vt-sous">Tu vends, elle compte.<br>Même quand il n'y a pas de réseau.</div>
     <!-- LA VENTE SE FAIT TOUTE SEULE, SOUS SES YEUX : trois articles touchés,
          le total qui monte, l'encaissement. Six secondes, rien à lire. -->
@@ -1856,31 +1988,23 @@ body{max-width:min(100%,1200px)}
     <button class="vt-act deja" onclick="ouvrirDepuisVitrine('old')" id="vt-b3">J'ai déjà une boutique</button>
     <button class="vt-act install" onclick="installerApp()" id="vt-install" style="display:none">📲 Installer l'application</button>
 
-    <!-- ⭐ CE QUI VIENT D'ARRIVER, et un moyen de répondre. Le visiteur du
-         site n'a pas l'app : il ne peut rien tester, mais il peut parler —
-         et personne ne le lui demandait. -->
-    <div class="vt-neuf">
-      <div class="vt-neuf-t" id="vn-txt"></div>
-      <button class="vt-neuf-b" id="vn-btn" onclick="ecrireAMyboutiq('vitrine')"></button>
-    </div>
-
     <!-- Des chiffres VRAIS et vérifiables dans le fichier, jamais de traction
          inventée : 465 articles à photo et 873 trouvables dans le catalogue
          embarqué, tous gardés sur le téléphone. -->
     <div class="vt-preuves">
       <div class="vt-p"><b>0 F</b><i id="vt-p1">pour commencer</i></div>
       <div class="vt-p"><b>873</b><i id="vt-p2">articles déjà prêts</i></div>
-      <div class="vt-p"><b>0</b><i id="vt-p3">barre de réseau nécessaire</i></div>
+      <div class="vt-p"><b>0</b><i id="vt-p3">barre de réseau</i></div>
     </div>
 
     <!-- ⚠️ AUCUNE FONCTION INVENTÉE ICI : chacune des six existe et se
          touche dans la boutique d'exemple, à un bouton d'ici. -->
     <section class="vt-sec" id="v-faire">
-      <div class="vt-h"><i>🧰</i><b id="vf-t">Ce que ça fait, concrètement</b></div>
+      <h2 class="vt-h"><i>🧰</i><b id="vf-t">Ce que ça fait, concrètement</b></h2>
       <div class="vt-sous" id="vf-s">Six choses que tu fais déjà à la main. Elles prennent une tape.</div>
       <div class="vt-fg">
         <div class="vt-f"><em>🧾</em><b id="vf1-t">Vendre</b><i id="vf1-d">Tu touches l'article, le total monte, tu encaisses. Le ticket part sur WhatsApp.</i></div>
-        <div class="vt-f"><em>📦</em><b id="vf2-t">Gros et détail</b><i id="vf2-d">Pièce, paquet, carton, sac : un seul article porte tous ses prix.</i></div>
+        <div class="vt-f"><em>📦</em><b id="vf2-t">Gros et détail</b><i id="vf2-d">Pièce, carton, casier. Et la même boisson en 50 cl et en 1,5 L — chacune son prix, chacune son stock.</i></div>
         <div class="vt-f"><em>📉</em><b id="vf3-t">Le stock se tient seul</b><i id="vf3-d">Il baisse à chaque vente et te dit ce qu'il faut aller racheter.</i></div>
         <div class="vt-f"><em>👥</em><b id="vf4-t">Tes vendeurs</b><i id="vf4-d">Chacun sa caisse, chacun son code. Tu vois qui a vendu quoi.</i></div>
         <div class="vt-f"><em>📓</em><b id="vf5-t">Le carnet de crédit</b><i id="vf5-d">Qui te doit combien, depuis quand. La relance part d'un doigt.</i></div>
@@ -1888,49 +2012,39 @@ body{max-width:min(100%,1200px)}
       </div>
     </section>
 
-    <!-- ⭐ MYBAR. Un bar n'est pas une boutique : il ne compte pas des
-         articles mais des tables ouvertes, des casiers et des bouteilles
-         vides qui valent de l'argent au dépôt. Lui vendre MyBoutiQ, c'est
-         lui vendre le mauvais outil — d'où une porte, ici, vers le bon. -->
-    <section class="vt-sec" id="v-bar">
-      <div class="vt-mybar">
-        <em>🍻</em>
-        <b id="vb-t">Tu tiens un bar, une buvette&nbsp;?</b>
-        <i id="vb-d">Une boutique compte des articles. Un bar compte des tables ouvertes, des casiers, et des vidanges consignées. MyBar est faite pour ça — même maison, même simplicité, et elle marche aussi sans réseau.</i>
-        <a href="https://bar.myboutiq.online/" id="vb-b">Ouvrir MyBar →</a>
-      </div>
-    </section>
+    <!-- ═══════════════════════════════════════════════════════
+         ⭐ L'ORDRE DE LA PAGE, ET POURQUOI IL A CHANGÉ (22.44)
+         « continue sur le contenu, l'ordre des sections ».
 
-    <div class="vt-sec" id="v-avis"></div>
-    <div class="vt-h"><i>🗣️</i><b id="vt-vt">Ce sont eux qui l'ont écrite</b></div>
-    <div class="vt-sous" id="vt-vs">Chaque phrase ci-dessous vient d'un commerçant, sur le terrain. Chacune a changé l'application.</div>
-    <div class="vt-voix"><q id="vt-q1">Un client vient acheter les jus en palettes, un carton d'huile. Comment on va le facturer, étant donné qu'on vend en détail ?</q><cite id="vt-c1">→ la vente en gros, à son prix, en une tape</cite></div>
-    <div class="vt-voix"><q id="vt-q2">Si un article se mesure en kg, un sac de 50 c'est 50 kg, pas 50 pièces.</q><cite id="vt-c2">→ l'app écrit le mot, plus jamais un nombre nu</cite></div>
-    <div class="vt-voix"><q id="vt-q3">Le retour est un peu complexe dans l'app, un petit bouton en haut qu'on trouve à peine.</q><cite id="vt-c3">→ le bouton du téléphone ramène en arrière</cite></div>
+         AVANT : héros → portes → nouveautés → ce que ça fait → MYBAR →
+                 les commerçants → qui l'a faite → LE PRIX → écrire.
+         Trois choses coûtaient cher, dans cet ordre-là :
 
-    <!-- ══════════════════════════════════════════════════════════════
-         QUI EST DERRIÈRE — ⚠️ RIEN N'EST INVENTÉ DANS CE BLOC.
-         Tant que `AUTEUR.nom` est vide, la page ne dit que ce que je sais
-         et qui est vrai : une personne, au Cameroun, qui répond elle-même.
-         Le nom, le rôle et le visage n'apparaissent que le jour où c'est
-         LUI qui les écrit dans AUTEUR — publier l'identité de quelqu'un
-         n'est pas une décision de développeur.
-         ══════════════════════════════════════════════════════════════ -->
-    <section class="vt-sec" id="v-qui">
-      <div class="vt-h"><i>🙋</i><b id="vq-t">Qui l'a faite</b></div>
-      <div class="vt-qui">
-        <div class="vt-qui-h" id="vq-tete" style="display:none">
-          <div class="vt-vis" id="vq-vis"></div>
-          <div><div class="vt-qui-n" id="vq-nom"></div><div class="vt-qui-r" id="vq-role"></div></div>
-        </div>
-        <p id="vq-p1">Derrière MyBoutiQ, il n'y a pas une société. Il y a une personne, au Cameroun, qui écrit l'application et qui répond elle-même à ceux qui écrivent.</p>
-        <p id="vq-p2">Rien n'est décidé dans un bureau. Les trois phrases au-dessus viennent de commerçants, et chacune a changé le code dans la semaine qui a suivi.</p>
-        <p id="vq-p3">Si quelque chose te manque ou te gêne, dis-le : c'est comme ça que l'application avance.</p>
-      </div>
-    </section>
+         1. LE PRIX ARRIVAIT EN HUITIèME POSITION, à 2 400 px du haut d'une
+            page qui en fait 3 200. « Ça coûte combien ? » est la première
+            question d'un commerçant, et la réponse — 0 F — est la
+            meilleure nouvelle de la page. On l'enterrait. Elle passe juste
+            après « ce que ça fait » : il apprend ce que c'est, puis tout de
+            suite que ça ne lui coûte rien.
 
+         2. MYBAR ENVOYAIT DEHORS AVANT LA MOINDRE PREUVE. Le visiteur
+            n'avait encore lu ni une phrase de commerçant, ni le prix, ni
+            qui est derrière — et on lui proposait un autre site. Et celui
+            qui ne tient PAS un bar traversait un bloc entier qui ne le
+            concerne pas, au milieu de l'argumentaire. La porte reste
+            grande ouverte : l'onglet « Pour les bars » est dans la barre,
+            visible dès le début, à une tape. Le bloc, lui, descend après
+            la preuve.
+
+         3. « CETTE SEMAINE · … » parlait à quelqu'un qui a DÉJÀ l'app, et
+            se trouvait entre les boutons et la première preuve — le pire
+            endroit. Déplacé dans « Qui l'a faite », il cesse d'interrompre
+            et devient la PREUVE de ce que ce bloc affirme : « chacune a
+            changé le code dans la semaine qui a suivi ». La phrase le dit,
+            la ligne juste en dessous le montre.
+         ═══════════════════════════════════════════════════════ -->
     <section class="vt-sec" id="v-prix">
-      <div class="vt-h"><i>💰</i><b id="vp-t">Combien ça coûte</b></div>
+      <h2 class="vt-h"><i>💰</i><b id="vp-t">Combien ça coûte</b></h2>
       <div class="vt-prix">
         <b id="vp-n">0 F</b>
         <div class="vt-prix-s" id="vp-s">Aujourd'hui, et pour tous ceux qui essaient pendant qu'on la construit.</div>
@@ -1948,8 +2062,64 @@ body{max-width:min(100%,1200px)}
       </div>
     </section>
 
+    <div class="vt-sec" id="v-avis"></div>
+    <h2 class="vt-h"><i>🗣️</i><b id="vt-vt">Ce sont eux qui l'ont écrite</b></h2>
+    <div class="vt-sous" id="vt-vs">Chaque phrase ci-dessous vient d'un commerçant, sur le terrain. Chacune a changé l'application.</div>
+    <div class="vt-voix"><q id="vt-q1">Un client vient acheter les jus en palettes, un carton d'huile. Comment on va le facturer, étant donné qu'on vend en détail ?</q><cite id="vt-c1">→ la vente en gros, à son prix, en une tape</cite></div>
+    <div class="vt-voix"><q id="vt-q2">Si un article se mesure en kg, un sac de 50 c'est 50 kg, pas 50 pièces.</q><cite id="vt-c2">→ l'app écrit le mot, plus jamais un nombre nu</cite></div>
+    <div class="vt-voix"><q id="vt-q3">Le retour est un peu complexe dans l'app, un petit bouton en haut qu'on trouve à peine.</q><cite id="vt-c3">→ le bouton du téléphone ramène en arrière</cite></div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         QUI EST DERRIÈRE — ⚠️ RIEN N'EST INVENTÉ DANS CE BLOC.
+         Tant que `AUTEUR.nom` est vide, la page ne dit que ce que je sais
+         et qui est vrai : une personne, au Cameroun, qui répond elle-même.
+         Le nom, le rôle et le visage n'apparaissent que le jour où c'est
+         LUI qui les écrit dans AUTEUR — publier l'identité de quelqu'un
+         n'est pas une décision de développeur.
+         ══════════════════════════════════════════════════════════════ -->
+    <section class="vt-sec" id="v-qui">
+      <h2 class="vt-h"><i>🙋</i><b id="vq-t">Qui l'a faite</b></h2>
+      <div class="vt-qui">
+        <div class="vt-qui-h" id="vq-tete" style="display:none">
+          <div class="vt-vis" id="vq-vis"></div>
+          <div><div class="vt-qui-n" id="vq-nom"></div><div class="vt-qui-r" id="vq-role"></div></div>
+        </div>
+        <p id="vq-p1">Derrière MyBoutiQ, il n'y a pas une société. Il y a une personne, au Cameroun, qui écrit l'application et qui répond elle-même à ceux qui écrivent.</p>
+        <p id="vq-p2">Rien n'est décidé dans un bureau. Les trois phrases au-dessus viennent de commerçants, et chacune a changé le code dans la semaine qui a suivi.</p>
+        <p id="vq-p3">Si quelque chose te manque ou te gêne, dis-le : c'est comme ça que l'application avance.</p>
+      </div>
+    <!-- ⭐ CE QUI VIENT D'ARRIVER. Ici, et pas plus haut : au-dessus, entre
+         les boutons et la première preuve, cette ligne parlait à quelqu'un
+         qui a déjà l'app et coupait l'argumentaire de celui qui ne l'a pas.
+         Ici, elle PROUVE la phrase qui la précède. -->
+    <div class="vt-neuf">
+      <div class="vt-neuf-t" id="vn-txt"></div>
+      <!-- ⚠️ LE BOUTON D'ICI A ÉTÉ RETIRÉ (22.44). Tant que ce bandeau vivait
+           tout en haut, entre les portes et la première preuve, il lui
+           fallait sa propre porte de sortie. Maintenant qu'il est rangé
+           dans « Qui l'a faite », « Écris-moi » est à trois cents pixels
+           en dessous, avec sa phrase et son bouton vert. Deux boutons
+           WhatsApp dans le même écran, c'est un de trop. -->
+    </div>
+
+
+    </section>
+
+    <!-- ⭐ MYBAR. Un bar n'est pas une boutique : il ne compte pas des
+         articles mais des tables ouvertes, des casiers et des bouteilles
+         vides qui valent de l'argent au dépôt. Lui vendre MyBoutiQ, c'est
+         lui vendre le mauvais outil — d'où une porte, ici, vers le bon. -->
+    <section class="vt-sec" id="v-bar">
+      <div class="vt-mybar">
+        <em>🍻</em>
+        <b id="vb-t">Tu tiens un bar, une buvette&nbsp;?</b>
+        <i id="vb-d">Une boutique compte des articles. Un bar compte des tables ouvertes, des casiers, et des vidanges consignées. MyBar est faite pour ça — même maison, même simplicité, et elle marche aussi sans réseau.</i>
+        <a href="https://bar.myboutiq.online/" id="vb-b">Ouvrir MyBar →</a>
+      </div>
+    </section>
+
     <section class="vt-sec" id="v-ecrire">
-      <div class="vt-h"><i>✍️</i><b id="ve-t">Écris-moi</b></div>
+      <h2 class="vt-h"><i>✍️</i><b id="ve-t">Écris-moi</b></h2>
       <div class="vt-sous" id="ve-s">Une question, un défaut, une idée, un besoin que l'app ne couvre pas encore. Le message arrive sur WhatsApp, et c'est moi qui réponds.</div>
       <button class="vt-wa" id="ve-b" onclick="ecrireAMyboutiq('site')">💬 Écrire sur WhatsApp</button>
     </section>
@@ -2027,7 +2197,7 @@ body{max-width:min(100%,1200px)}
     <div style="position:relative"><input class="ob-inp" type="text" id="ob-nom" placeholder="Nom de ta boutique..."><button type="button" id="mic-obnom" onclick="dicterDans('ob-nom','mic-obnom')" title="Dicter" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--BG);border:none;border-radius:9px;width:38px;height:38px;font-size:17px;cursor:pointer;font-family:Outfit,sans-serif;z-index:2">🎤</button></div>
     <input class="ob-inp" type="tel" id="ob-tel" placeholder="📱 Ton numéro de téléphone" inputmode="tel" oninput="apercuTelOb()" autocomplete="off">
     <div id="ob-tel-apercu" style="font-size:12.5px;font-weight:800;color:rgba(255,255,255,.85);margin:-6px 0 10px;min-height:16px"></div>
-    <input class="ob-inp" type="password" id="ob-pin" placeholder="🔐 Code PIN (4 chiffres)" maxlength="6" inputmode="numeric" autocomplete="new-password">
+    <input class="ob-inp" type="password" id="ob-pin" placeholder="🔐 Code PIN (6 chiffres)" maxlength="6" inputmode="numeric" autocomplete="new-password">
     <div style="font-size:11.5px;color:rgba(255,255,255,.6);font-weight:600;margin:-6px 0 10px;line-height:1.4" id="ob-pin-aide">Ce numéro et ce PIN sont ta clé pour revenir dans ta boutique. Note-les.</div>
     <button class="btn-ob" id="ob5-btn" onclick="validerEtapeBoutique()">Continuer →</button>
   </div>
@@ -2451,7 +2621,7 @@ body{max-width:min(100%,1200px)}
       <div class="stcd">
         <div class="stit2" style="cursor:default">
           <div class="stico" style="background:#FFF3E0">🔆</div>
-          <div class="stii"><div class="stitl" id="st-veille">Garder l'écran allumé</div><div class="stisub" id="st-veille-s">Évite le verrouillage pendant les ventes</div></div>
+          <div class="stii"><div class="stitl" id="st-veille">Garder l'écran allumé</div><div class="stisub" id="st-veille-s">Pendant que MyBoutiQ est à l'écran. Si tu ouvres une autre application, c'est elle qui décide — et ça revient tout seul.</div></div>
           <button class="tog off" id="tog-veille" onclick="toggleVeille()"></button>
         </div>
         <div class="stit2" data-exp="1" style="cursor:default">
@@ -2555,6 +2725,7 @@ body{max-width:min(100%,1200px)}
         <!-- Caché à tout le monde sauf aux administrateurs de MyBoutiQ.
              Le serveur décide (table app_admins) : cacher l'entrée n'est que du
              confort, c'est la règle RLS qui protège vraiment. -->
+        <div class="stit2" id="row-repin" style="display:none" onclick="ouvrirReinitPin()"><div class="stico" style="background:#FFEBEE">🔑</div><div class="stii"><div class="stitl">Réinitialiser le PIN d'un commerçant</div><div class="stisub">Quand il t'écrit depuis son numéro — sa boutique ne bouge pas</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-modele" style="display:none" onclick="ouvrirModele()"><div class="stico" style="background:#E8F5E9">📋</div><div class="stii"><div class="stitl">Préparer un modèle de boutique</div><div class="stisub">Envoyer tes articles et leurs prix à un commerçant, par WhatsApp</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-annonce" style="display:none" onclick="ouvrirEcrireAnnonce()"><div class="stico" style="background:#E8EAF6">📣</div><div class="stii"><div class="stitl">Écrire une annonce</div><div class="stisub">Un message à tous les commerçants</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-abonnes" style="display:none" onclick="ouvrirAbonnes()"><div class="stico" style="background:#FFF8E1">🗂️</div><div class="stii"><div class="stitl">Abonnements</div><div class="stisub">Qui a payé, jusqu'à quand — et rouvrir d'une tape</div></div><span class="starr">›</span></div>
@@ -3597,8 +3768,8 @@ body{max-width:min(100%,1200px)}
       <div class="pstps">
         <div style="background:#FFF8E1;border:1.4px solid #FFD79A;border-radius:10px;padding:10px 12px;font-size:11.5px;font-weight:700;color:#B45309;margin-bottom:13px;line-height:1.5" id="cp-note">Ton PIN ouvre ta caisse et tes bénéfices. Ne le dis à personne, et n'utilise pas ta date de naissance.</div>
         <div class="pig"><label class="pl" id="cp-l1">PIN actuel</label><input class="pi" type="password" id="cp-actuel" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
-        <div class="pig"><label class="pl" id="cp-l2">Nouveau PIN (4 chiffres)</label><input class="pi" type="password" id="cp-new" maxlength="6" inputmode="numeric" placeholder="••••"></div>
-        <div class="pig"><label class="pl" id="cp-l3">Répète le nouveau PIN</label><input class="pi" type="password" id="cp-new2" maxlength="6" inputmode="numeric" placeholder="••••"></div>
+        <div class="pig"><label class="pl" id="cp-l2">Nouveau PIN (6 chiffres)</label><input class="pi" type="password" id="cp-new" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
+        <div class="pig"><label class="pl" id="cp-l3">Répète le nouveau PIN</label><input class="pi" type="password" id="cp-new2" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
         <button class="bnxt" onclick="validerChangerPin()"><span id="cp-btn">Changer mon PIN</span></button>
       </div>
     </div>
@@ -3882,6 +4053,35 @@ body{max-width:min(100%,1200px)}
      et chacun devient sa propre ligne, avec son stock en bouteilles, ses
      prix et son casier ou sa palette. Sa règle, qu'il a tranchée lui-même :
      chaque contenance a son propre stock, aucune conversion entre elles. -->
+<!-- ⚠️ RÉSERVÉ À L'ADMINISTRATEUR. Un commerçant ne voit jamais cette
+     entrée : l'application ne s'alourdit pas d'un gramme pour lui.
+     « PIN oublié ? » a été retiré à raison — il fabriquait le code de
+     vérification DANS le téléphone et l'affichait. Depuis, un commerçant
+     qui oublie son code est dehors pour toujours : 32 comptes, 21 jamais
+     revenus après le jour de leur inscription.
+     Sans SMS, on ne peut pas prouver la possession d'un numéro depuis
+     l'application. Mais WhatsApp le prouve déjà : quand le commerçant
+     écrit, son numéro s'affiche. La preuve existait ; il manquait le moyen
+     d'agir dessus. C'est ici, et chaque geste laisse une trace. -->
+<div class="ov" id="ov-repin" onclick="closeOv(event,'ov-repin')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🔑 <span id="rp2-tit">Réinitialiser un PIN</span></div><button class="bcl" onclick="closeSheet('ov-repin')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.6;margin-bottom:13px">
+        À n'utiliser que si le commerçant t'a écrit <b>depuis son propre numéro</b> —
+        c'est ça, la preuve. Ses ventes, son stock et ses clients ne bougent pas :
+        seul le code d'entrée change. Chaque réinitialisation est inscrite au journal.
+      </div>
+      <div class="pig"><label class="pl">Son numéro de téléphone</label>
+        <input class="pi" type="tel" id="rp2-tel" inputmode="tel" placeholder="ex : 6 93 93 06 88" autocomplete="off"></div>
+      <div class="pig"><label class="pl">Nouveau PIN (6 chiffres)</label>
+        <input class="pi" type="text" id="rp2-pin" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off"></div>
+      <div id="rp2-res" style="display:none;font-size:12px;font-weight:700;line-height:1.55;
+           background:var(--BG);border-radius:11px;padding:11px 12px;margin-bottom:13px"></div>
+      <button class="bt" style="width:100%" id="rp2-ok" onclick="lancerReinitPin()">🔑 <span>Réinitialiser</span></button>
+    </div>
+  </div>
+</div>
 <div class="ov" id="ov-modele" onclick="closeOv(event,'ov-modele')">
   <div class="bsht" style="max-height:92vh"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">📋 <span id="mod-tit">Préparer un modèle</span></div><button class="bcl" onclick="closeSheet('ov-modele')">✕</button></div>
@@ -4579,7 +4779,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.36'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.48'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4797,6 +4997,10 @@ function assurerConnexionSupa(){
 var _connTimer=null,_connEtat=null;
 function majEtatConnexion(){
   var b=document.getElementById('conn-bar');if(!b)return;
+  // ⚠️ La boutique d'exemple ne parle JAMAIS au serveur (règle 2) : une
+  // alarme de liaison n'y décrit aucun problème, elle ne fait qu'inquiéter
+  // le visiteur qui découvre l'app.
+  try{if(estDemo()){b.style.display='none';return;}}catch(e){}
   var ico=document.getElementById('conn-ico'),txt=document.getElementById('conn-txt');
   var connecte=!!supa&&navigator.onLine;
   var etat=connecte?'ok':(navigator.onLine?'srv':'off');
@@ -4822,6 +5026,41 @@ function toucherBandeauConnexion(){
 function isInvalidCredError(err){
   var msg=String(err&&err.message||'').toLowerCase();
   return msg.indexOf('invalid login credentials')!==-1||msg.indexOf('invalid credentials')!==-1;
+}
+// ═════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ L'APP PROMETTAIT 4 CHIFFRES, LE SERVEUR EN EXIGE 6.
+//
+//  « certains utilisateurs se plaignent que, bien qu'on dise à partir de
+//    4 chiffres, l'application exige souvent 6. Et aussi quand on veut
+//    changer, ça exige toujours les 6. »
+//
+//  Sa capture le montre en toutes lettres : sous le titre « NOUVEAU PIN
+//  (4 CHIFFRES) », un bandeau noir en anglais — « Password should be at
+//  least 6 characters. » Il a tapé ce qu'on lui demandait et on l'a
+//  refusé, dans une langue qu'il ne lit pas.
+//
+//  LA CAUSE N'EST PAS DANS L'APP : le PIN du patron EST le mot de passe de
+//  son compte serveur, et Supabase refuse en dessous de 6 caractères. Nos
+//  contrôles à nous acceptaient 4 — ils laissaient donc passer un code que
+//  le serveur allait refuser une seconde plus tard.
+//
+//  ⚠️ LE PIN DU VENDEUR, LUI, RESTE À 4 : il ne va jamais au serveur, il
+//  est vérifié dans le téléphone. Rien ne justifie de l'allonger.
+//
+//  Le jour où le minimum sera abaissé côté Supabase (Réglages →
+//  Authentication → « Minimum password length »), il n'y a QUE cette
+//  constante à remettre à 4.
+// ═════════════════════════════════════════════════════════════════
+var PIN_MIN_PATRON=6;
+// Vrai si ce PIN sera accepté par le serveur. On le demande AVANT d'appeler
+// le serveur, pour ne plus lui faire découvrir le refus après coup.
+function pinPatronValide(pin){
+  return new RegExp('^\\d{'+PIN_MIN_PATRON+',6}$').test(String(pin||''));
+}
+// Ce qu'on lui dit quand ça ne va pas — en français, et avec le nombre.
+function pinPatronMot(fr){
+  return fr?('Choisis un PIN de '+PIN_MIN_PATRON+' chiffres')
+           :('Choose a '+PIN_MIN_PATRON+'-digit PIN');
 }
 function authFriendlyError(err){
   // ⚠️ « Password should be at least 6 characters » arrivait tel quel, en
@@ -4849,6 +5088,31 @@ function normalizePhone(t){
   if(!digits)return '';
   var country=(DB&&DB.cfg&&DB.cfg.pays)||((typeof obPays!=='undefined')?obPays:null);
   var cc=country&&country.cc;
+  // ⚠️⚠️ DEUX INDICATIFS COLLÉS L'UN DEVANT L'AUTRE.
+  //
+  // On ne reconnaissait QUE l'indicatif du pays réglé. Un commerçant ivoirien
+  // ou gabonais qui tape son numéro avec le sien, mais sans le « + » — c'est
+  // ainsi qu'il est écrit sur une carte de visite — sur un téléphone réglé
+  // sur le Cameroun obtenait :
+  //     225689335380  →  +237225689335380   (compte qui n'existe nulle part)
+  //     241689610066  →  +237241689610066
+  // MESURÉ : ces deux numéros ont chacun DEUX comptes dans la base, et
+  // l'écriture à deux indicatifs n'en atteint aucun. Pire, chaque essai raté
+  // compte dans le blocage du serveur pour excès de tentatives : on brûlait
+  // ses essais sur un compte fantôme.
+  //
+  // `altPhoneDigits` avait déjà ce garde-fou ; la normalisation, non.
+  //
+  // ⚠️ LA LONGUEUR FAIT PARTIE DU TEST. Sans elle, un fixe de Douala
+  // « 233 42 xx xx » passerait pour un numéro ghanéen (indicatif 233) et
+  // perdrait son 237. Un indicatif suivi d'un vrai numéro local fait au
+  // moins huit chiffres de plus ; un numéro camerounais entier en fait neuf.
+  try{
+    for(var _i=0;_i<PAYS.length;_i++){
+      var _c=PAYS[_i]&&PAYS[_i].cc;
+      if(_c&&digits.indexOf(_c)===0&&digits.length>=_c.length+8)return '+'+digits;
+    }
+  }catch(e){}
   if(cc){
     if(digits.indexOf(cc)===0)return '+'+digits;
     if(digits[0]==='0')digits=digits.slice(1);
@@ -5634,6 +5898,34 @@ function _demarrerApp(){
       DB.equipe.forEach(function(m){if(m.permsAll===undefined)m.permsAll=false;});
       lang=DB.cfg.lang||'fr';
       appliquerLang();
+      // ══════════════════════════════════════════════════════════════
+      //  ⚠️⚠️ LA BOUTIQUE D'EXEMPLE SE REFERMAIT TOUTE SEULE EN UNE SECONDE.
+      //
+      //  « les visiteurs se plaignent, ça se ferme vite ». MESURÉ au banc, sur
+      //  un téléphone vierge, avec la trace de chaque goScreen :
+      //    t=0      écran d'accueil, le visiteur touche « Voir une boutique
+      //             qui tourne » ;
+      //    t=+30ms  la caisse d'exemple s'ouvre, 14 articles ;
+      //    t=+90ms  _demarrerApp — armé par setTimeout(1150) AVANT le clic —
+      //             se réveille, trouve une DB dans le téléphone (la DEMO,
+      //             qu'elle vient d'y écrire) et fait goScreen('s-login').
+      //  Le visiteur voyait donc la boutique une demi-seconde, puis un clavier
+      //  qui lui réclamait un numéro de patron et un PIN qu'il n'a pas. Aucune
+      //  sortie : la porte d'entrée d'une boutique fictive.
+      //
+      //  Le même défaut, EN PIRE, au retour : referme l'app, rouvre-la, et
+      //  _demarrerApp part droit sur ce même clavier — le bandeau orange a
+      //  disparu avec lui, donc même « Créer ma boutique » n'est plus là.
+      //
+      //  Une boutique d'exemple n'a PAS de porte : son PIN est à tout le monde
+      //  et à personne. On l'ouvre, point. Le bandeau reste, et c'est lui qui
+      //  porte la sortie.
+      // ══════════════════════════════════════════════════════════════
+      if(DB.cfg.demo){
+        try{lancerApp();}catch(e){}
+        try{majBandeauDemo();}catch(e){}
+        return;
+      }
       setModeEntree('old');
       goScreen('s-login');
       // ══════════════════════════════════════════════════════════════
@@ -6755,7 +7047,7 @@ function validerEtapeBoutique(){
   // plus rapide à taper), mais on ACCEPTE 4 à 6. Exiger exactement 4 ferme la
   // porte à quiconque a déjà un PIN plus long — et si le serveur d'auth refuse
   // un mot de passe de 4 caractères, cela laisse le commerçant SANS PIN valide.
-  if(!/^\d{4,6}$/.test(pin)){showToast('🔐 '+(fr?'Choisis un PIN de 4 chiffres':'Choose a 4-digit PIN'));document.getElementById('ob-pin').focus();return;}
+  if(!pinPatronValide(pin)){showToast('🔐 '+pinPatronMot(fr));document.getElementById('ob-pin').focus();return;}
   // ⚠️ L'écran « ✅ Tout est prêt ! » ne servait qu'à récapituler ce qu'il
   // venait de taper. Un écran de plus pour dire qu'on a fini, alors que le
   // but est de ne PAS le perdre en route. On ouvre sa boutique directement.
@@ -6924,7 +7216,7 @@ async function finaliserOb(){
   var pin=document.getElementById('ob-pin')?.value.trim()||'';
   if(!nm){showToast(t('errBoutique'));return;}
   if(!tel){showToast(t('errTel'));return;}
-  if(!pin||pin.length<4){showToast(obLang==='fr'?'⚠️ PIN minimum 4 chiffres':'⚠️ PIN minimum 4 digits');return;}
+  if(!pinPatronValide(pin)){showToast('⚠️ '+pinPatronMot(obLang==='fr'));return;}
   _obEnCours=true;
   var _btn=document.getElementById('ob7-btn');
   if(_btn){_btn.disabled=true;_btn.style.opacity='.55';_btn.textContent=(obLang==='fr'?'⏳ Création…':'⏳ Creating…');}
@@ -7034,7 +7326,11 @@ function appliquerLang(){
   // Mode veille
   document.getElementById('lbl-veille').textContent=lang==='fr'?'🔆 Affichage':'🔆 Display';
   document.getElementById('st-veille').textContent=lang==='fr'?"Garder l'écran allumé":'Keep screen on';
-  document.getElementById('st-veille-s').textContent=lang==='fr'?'Évite le verrouillage pendant les ventes':'Avoids lock screen during sales';
+  // ⚠️ Cette ligne réécrivait le sous-titre à chaque ouverture des Réglages
+  // et remettait l'ancienne demi-vérité à la place de la vraie phrase.
+  document.getElementById('st-veille-s').textContent=lang==='fr'
+    ?'Pendant que MyBoutiQ est à l\'écran. Si tu ouvres une autre application, c\'est elle qui décide — et ça revient tout seul.'
+    :'While MyBoutiQ is on screen. If you open another app, that app decides — and it comes back on its own.';
   document.getElementById('tog-veille').className='tog '+(DB.cfg.veille?'on':'off');
   var _tne2=document.getElementById('tog-noemoji');if(_tne2)_tne2.className='tog '+(DB.cfg.noEmoji?'on':'off');
   var _tra=document.getElementById('tog-recuauto');if(_tra)_tra.className='tog '+(DB.cfg.recuAuto?'on':'off');
@@ -7148,7 +7444,7 @@ async function validerChangerPin(){
   var n2=(document.getElementById('cp-new2').value||'').trim();
   if(!DB||!DB.cfg)return;
   if(act!==String(DB.cfg.pin||'')){showToast('❌ '+(fr?'PIN actuel incorrect':'Wrong current PIN'));return;}
-  if(!/^\d{4,6}$/.test(n1)){showToast('⚠️ '+(fr?'Le nouveau PIN doit faire 4 chiffres':'New PIN must be 4 digits'));return;}
+  if(!pinPatronValide(n1)){showToast('⚠️ '+pinPatronMot(fr));return;}
   if(n1!==n2){showToast('⚠️ '+(fr?'Les deux nouveaux PIN ne sont pas pareils':'The two new PINs differ'));return;}
   if(n1===act){showToast('⚠️ '+(fr?'C\'est déjà ton PIN actuel':'That is already your PIN'));return;}
   if(/^(\d)\1+$/.test(n1)||n1==='1234'||n1==='123456'){
@@ -7160,7 +7456,12 @@ async function validerChangerPin(){
   showToast('🔄 '+(fr?'Changement en cours…':'Changing…'));
   try{
     var up=await supa.auth.updateUser({password:n1});
-    if(up.error){showToast('❌ '+(up.error.message||(fr?'Changement refusé':'Change refused')));return;}
+    // ⚠️ LE MESSAGE DU SERVEUR ARRIVAIT BRUT, EN ANGLAIS. C'est le bandeau
+    // noir de sa capture : « Password should be at least 6 characters. »
+    // `authFriendlyError` existe depuis la 22.24 et traduit exactement
+    // celui-là ; cet endroit-ci ne l'appelait pas.
+    if(up.error){showToast('❌ '+((authFriendlyError(up.error)||{}).message
+                 ||(fr?'Changement refusé':'Change refused')));return;}
   }catch(e){showToast('❌ '+(fr?'Changement refusé':'Change refused'));return;}
   DB.cfg.pin=n1;_shopPin=n1;
   journalAjouter('pin',fr?'PIN patron':'Owner PIN','••••','••••');
@@ -7526,7 +7827,11 @@ function altPhoneDigits(tel){
   }
   // Variantes liees au pays courant (comportement d'origine)
   if(cc&&digits.indexOf(cc)===0&&digits.length>cc.length)out.push(digits.slice(cc.length));
-  if(cc&&digits.indexOf(cc)!==0&&digits[0]!=='0')out.push(cc+digits);
+  // ⚠️ MÊME GARDE-FOU QU'AU-DESSUS, ET IL MANQUAIT ICI : cette ligne
+  // fabriquait « 237225689335380 » — l'indicatif camerounais devant
+  // l'indicatif ivoirien. Un essai de connexion brûlé sur un compte qui
+  // n'existe nulle part, et un pas de plus vers le blocage du serveur.
+  if(cc&&digits.indexOf(cc)!==0&&digits[0]!=='0'&&!_aDejaUnIndicatif)out.push(cc+digits);
   if(digits[0]==='0')out.push(digits.slice(1));
   // Robustesse : essayer tout indicatif connu, meme si le pays n'est pas connu a la connexion
   // (ex: compte cree en "677..." puis connexion en "+237677...", ou l'inverse)
@@ -10117,9 +10422,26 @@ function showCtx(e,p){
   // dans un menu qui en a déjà dix.
   var _cc=document.getElementById('ctxi-cont2');
   if(_cc){
-    var _fb=null;try{_fb=_familleBoissonDe(p.nm);}catch(e){}
-    var _fl=null;try{_fl=_fb?_formatsDe(_fb):null;}catch(e){}
-    _cc.style.display=(_fl&&!p.vr.length)?'flex':'none';
+    // ⚠️⚠️ LA LIGNE NE S'AFFICHAIT PAS SUR LA MOITIÉ D'UN BAR.
+    // « si j'avais déjà enregistré mes articles, mes boissons, est-ce que je
+    //   peux encore éclater en sous-contenance ? »
+    // MESURÉ sur des noms réels déjà en boutique : « Coca Cola 50 cl » oui,
+    // mais « Eau Tangui 1,5 L » NON, « 33 Export 65 cl » NON, « Jus Fruitki
+    // 1 L » NON, « Whisky King Arthur » NON, « Vin rouge carton 1 L » NON.
+    // `_familleBoissonDe` ne reconnaît que deux formes : le nom EST la
+    // famille (« Coca Cola »), ou famille + variante du catalogue
+    // (« Fanta orange »). Une eau porte sa marque (« Eau Tangui »), une
+    // bière est nommée à l'envers (« 33 Export » sous la famille
+    // « Bière 65 cl », classée en alcool que la boucle ignore) : aucune ne
+    // passe.
+    // L'autre porte, elle, savait déjà : `_venduParFormat` dit oui à toutes
+    // ces boissons et non au riz, et `_echelleFormats` donne l'échelle.
+    // On prend la liste précise de la famille quand on la connaît, l'échelle
+    // générale sinon — la même que l'autre écran montre depuis toujours.
+    var _fl=null;
+    try{var _fb=_familleBoissonDe(p.nm);_fl=_fb?_formatsDe(_fb):null;}catch(e){}
+    if(!(_fl&&_fl.length)){try{if(_venduParFormat(p))_fl=_echelleFormats(p.nm);}catch(e){}}
+    _cc.style.display=((_fl&&_fl.length)&&!p.vr.length)?'flex':'none';
     var _l10=document.getElementById('cx10');
     if(_l10)_l10.textContent=(lang==='fr')?'Ajouter une contenance':'Add a size';
   }
@@ -11314,11 +11636,44 @@ function _uniteMot(p){
 }
 // Le nombre de formes, et leurs noms au survol. Le dessin porte le sens ;
 // le mot « variante » n'apparaît nulle part sur la tuile.
+// Une variante qui ne porte QU'une taille — « 50 cl », « 1,5 L »,
+// « sachet » — est une contenance, pas une marque.
+function _estContenance(nm){
+  return /^(\d+([.,]\d+)?\s*(cl|ml|l)|sachet)$/i.test(String(nm||'').trim());
+}
 function _badgeVariantes(p){
   var n=(p.vr||[]).length;
   if(!n)return '';
-  var noms=(p.vr||[]).map(function(v){return v.nm||'';}).filter(Boolean).join(' · ');
-  return '<div class="pvbdg" title="'+noms.replace(/"/g,'')+'"><i></i>'+n+'</div>';
+  var noms=(p.vr||[]).map(function(v){return v.nm||'';}).filter(Boolean);
+  var titre=noms.join(' · ').replace(/"/g,'');
+  // ⭐ DES CONTENANCES SE LISENT, ELLES NE SE COMPTENT PAS.
+  // « ≡ 2 » sur « Eau Tangui » ne disait pas DEUX QUOI. Deux parfums ?
+  // Deux fournisseurs ? C'est pourtant là, et nulle part ailleurs, que se
+  // voit ce que les contenances ont apporté : la même boisson en 50 cl et
+  // en 1,5 L, chacune son prix. La tuile le dit maintenant.
+  // Au-delà de deux, la tuile est trop étroite : les deux premières et le
+  // compte du reste.
+  //
+  // ⚠️ LA VARIANTE N'EST PAS TOUJOURS NOMMÉE PAR SA SEULE TAILLE. Quand
+  // l'app convertit une boisson en famille, elle écrit « Coca-Cola 1,5 L »
+  // sous « Coca-Cola » : la taille est là, noyée dans le nom du produit.
+  // On la lit avec `_contenanceDe`, celui-là même qui sert partout ailleurs.
+  // Les boutiques déjà converties en profitent sans rien réécrire.
+  //
+  // ⚠️ ET LES TAILLES DOIVENT ÊTRE DIFFÉRENTES. Une famille de MARQUES
+  // — « Fanta orange 60 cl », « Sprite 60 cl » — donnerait sinon
+  // « 60 cl · 60 cl » : trois fois la même bouteille, et le parfum, qui est
+  // le vrai sujet, disparu. Celle-là garde son compte.
+  var tailles=noms.map(function(x){
+    return _estContenance(x)?String(x).trim():(_contenanceDe(x)||'');
+  });
+  var distinctes={},toutes=tailles.length===n;
+  tailles.forEach(function(x){if(!x)toutes=false;else distinctes[_fmtCle(x)]=1;});
+  if(toutes&&Object.keys(distinctes).length===n){
+    var vus=tailles.slice(0,2).join(' · ')+(n>2?(' +'+(n-2)):'');
+    return '<div class="pvbdg" title="'+titre+'">'+vus+'</div>';
+  }
+  return '<div class="pvbdg" title="'+titre+'"><i></i>'+n+'</div>';
 }
 // ══════════════════════════════════════════════════════════════════
 //  LE REPÈRE DU GROS, SUR UNE VARIANTE
@@ -16924,9 +17279,12 @@ function ctxContenance(){
   if(!artCtx)return;
   var m=document.getElementById('ctxm'); if(m)m.classList.remove('show');
   var fr=(lang==='fr'),p=artCtx;
+  // Même règle qu'à la ligne du menu : la liste précise de la famille quand
+  // on la connaît, l'échelle générale pour toutes les autres boissons.
   var fam=_familleBoissonDe(p.nm);
   var l=fam?_formatsDe(fam):null;
-  if(!l){showToast('ℹ️ '+(fr?'Les contenances ne servent que pour les boissons'
+  if(!(l&&l.length)){try{if(_venduParFormat(p))l=_echelleFormats(p.nm);}catch(e){}}
+  if(!l||!l.length){showToast('ℹ️ '+(fr?'Les contenances ne servent que pour les boissons'
                            :'Sizes only apply to drinks'));return;}
   var base=_nomSansContenance(p.nm);
   // Ce qui existe déjà dans la boutique pour cette boisson.
@@ -16936,7 +17294,7 @@ function ctxContenance(){
     var c=_contenanceDe(a.nm); if(c)deja[_fmtCle(c)]=1;
   });
   _fmtMode='article';
-  _fmtCible={cle:'art'+p.id,base:base,img:p.img||'',e:p.e||'🥤',cat:p.cat||'Boissons',
+  _fmtCible={cle:'art'+p.id,art:p,base:base,img:p.img||'',e:p.e||'🥤',cat:p.cat||'Boissons',
              sac:(+p.umSac||0),cont:p.umCont||'',formats:l,deja:deja};
   _fmtChoix={};
   var t=document.getElementById('fmt-tit');
@@ -16954,25 +17312,52 @@ function validerFormats(){
   if(!pris.length)return;
   if(_fmtMode==='article'){
     var fr=(lang==='fr');
-    if(!Array.isArray(_expListe))_expListe=[];
-    var n=0;
-    c.formats.forEach(function(f){
-      if(!_fmtChoix[f]||(c.deja&&c.deja[_fmtCle(f)]))return;
-      var nm=c.base+' '+f;
-      if((DB.articles||[]).some(function(a){return txtNorm(a.nm)===txtNorm(nm);}))return;
-      if(_expListe.some(function(x){return txtNorm(x.nm)===txtNorm(nm);}))return;
-      var _l={nm:nm,px:0,pa:0,stk:0,_img600:c.img,_e:c.e,_cat:c.cat};
-      if(c.sac>0){_l.umSac=c.sac;_l.umCont=c.cont||null;}
-      _expListe.push(_l);n++;
+    // ═════════════════════════════════════════════════════════════
+    //  ⚠️⚠️ « AJOUTER UNE CONTENANCE » FABRIQUAIT DES ARTICLES FRÈRES.
+    //
+    //  « le cas des boissons n'est pas bien traité, 1 L, 1,5 L… »
+    //
+    //  MESURÉ AU BANC, le geste entier : appui long sur « Coca-Cola 60 cl »
+    //  → « 🥤 Ajouter une contenance » → cocher 1 L et 1,5 L → poser les
+    //  deux prix. Résultat : TROIS TUILES sur la caisse — « Coca-Cola
+    //  60 cl », « Coca-Cola 1 L », « Coca-Cola 1,5 L » — et le message
+    //  « ✅ 2 ARTICLES créés ». L'écran promettait pourtant, deux touches
+    //  plus haut : « chacune aura son propre stock, son prix et son casier ».
+    //  C'est exactement le mur d'articles que les contenances devaient
+    //  supprimer.
+    //
+    //  LA BONNE CONVERSION EXISTAIT DÉJÀ (21.60, `_saveVarFormats`) : elle
+    //  renomme l'article en famille, fait de son stock actuel la PREMIÈRE
+    //  contenance — avec son passé, via `reprisBase` — et ajoute les
+    //  autres en variantes. Deux portes menaient au même travail et
+    //  faisaient l'inverse l'une de l'autre. On prend maintenant la bonne :
+    //  rien de neuf n'est écrit, l'autre chemin est simplement abandonné.
+    // ═════════════════════════════════════════════════════════════
+    var art=c.art||(DB.articles||[]).find(function(a){return 'art'+a.id===c.cle;});
+    var choisis=c.formats.filter(function(f){
+      return _fmtChoix[f]&&!(c.deja&&c.deja[_fmtCle(f)]);
     });
     closeSheet('ov-format');
     _fmtCible=null;_fmtChoix={};_fmtMode='catalogue';
-    if(!n){showToast('ℹ️ '+(fr?'Tu les as déjà toutes':'You already have them all'));return;}
-    // Elles arrivent SANS PRIX : on l'emmène tout de suite là où il les pose,
-    // sinon il repart avec des articles invendables sans le savoir.
-    ouvrirAjoutExpress(true);
-    try{expRender();}catch(e){}
-    showToast('👍 '+n+' '+(fr?'contenance(s) — mets les prix maintenant':'size(s) — set the prices now'));
+    if(!art){showToast('ℹ️ '+(fr?'Article introuvable':'Item not found'));return;}
+    if(!choisis.length){showToast('ℹ️ '+(fr?'Tu les as déjà toutes':'You already have them all'));return;}
+    varArtCours=art;
+    _fmtSel=choisis.slice();
+    // Sa bouteille actuelle : « 60 cl », lue sur son nom. C'est elle qui
+    // gardera le stock et le prix de l'article.
+    _fmtActuel=_fmtDuNom(art)||'';
+    var _t=document.getElementById('addvar-t');
+    if(_t)_t.textContent=(fr?'🥤 Contenances de ':'🥤 Sizes of ')+_nomSansContenance(art.nm);
+    ['var-nm','var-pa','var-pv','var-stk','var-parc'].forEach(function(id){
+      var _e=document.getElementById(id);if(_e)_e.value='';});
+    try{varMode('u');}catch(e){}
+    var _bc=document.getElementById('var-bc');if(_bc)_bc.style.display='none';
+    var _sv=document.getElementById('sug-prix-v');if(_sv)_sv.style.display='none';
+    selVarImg=null;
+    var _vp=document.getElementById('var-photo-preview');if(_vp)_vp.style.display='none';
+    try{majFormatsVariante(art);}catch(e){}
+    document.getElementById('ov-addvar').classList.add('show');
+    showToast('👍 '+choisis.length+' '+(fr?'contenance(s) — mets les prix maintenant':'size(s) — set the prices now'));
     return;
   }
   // On retire d'abord TOUTES les lignes de cette boisson, puis on repose ce
@@ -17268,6 +17653,65 @@ function _verserModele(mod){
     +(fr?' — vérifie les prix':' — check the prices'));
 }
 // Côté administrateur : fabriquer le modèle à partir de SA propre boutique.
+// ══════════════════════════════════════════════════════════════════
+//  RÉINITIALISER LE PIN D'UN COMMERÇANT — côté administrateur
+//
+//  Le serveur fait tout le travail (admin_reinitialiser_pin) : il vérifie
+//  lui-même que l'appelant est administrateur, essaie les quatre écritures
+//  possibles du numéro — avec indicatif, sans, avec un zéro initial — et
+//  n'écrit QUE le mot de passe et l'empreinte. `data` n'est jamais touchée :
+//  ni les ventes, ni le stock, ni les clients.
+//  Ici, on ne fait que demander, confirmer, et rapporter fidèlement.
+// ══════════════════════════════════════════════════════════════════
+function ouvrirReinitPin(){
+  var e1=document.getElementById('rp2-tel'),e2=document.getElementById('rp2-pin');
+  if(e1)e1.value=''; if(e2)e2.value='';
+  var r=document.getElementById('rp2-res'); if(r){r.style.display='none';r.textContent='';}
+  document.getElementById('ov-repin').classList.add('show');
+}
+function _rp2Dire(txt,bon){
+  var r=document.getElementById('rp2-res'); if(!r)return;
+  r.style.display='block';
+  r.style.color=bon?'#1B5E20':'var(--R)';
+  r.textContent=txt;
+}
+async function lancerReinitPin(){
+  var fr=(lang==='fr');
+  var tel=String((document.getElementById('rp2-tel')||{}).value||'').trim();
+  var pin=String((document.getElementById('rp2-pin')||{}).value||'').trim();
+  if(tel.replace(/\D/g,'').length<6){_rp2Dire(fr?'Numéro trop court.':'Number too short',false);return;}
+  if(!pinPatronValide(pin)){_rp2Dire(fr?('Le PIN doit faire '+PIN_MIN_PATRON+' chiffres.'):('PIN must be '+PIN_MIN_PATRON+' digits'),false);return;}
+  // ⚠️ On confirme AVANT d'écrire : ce geste met quelqu'un dehors si on se
+  // trompe de numéro, et il n'y a pas de marche arrière.
+  if(!confirm((fr?'Réinitialiser le PIN du ':'Reset the PIN of ')+tel+' ?\n\n'
+    +(fr?'Son ancien code ne marchera plus. Ses ventes et son stock ne bougent pas.'
+        :'The old code will stop working. Sales and stock are untouched.')))return;
+  var b=document.getElementById('rp2-ok'); if(b){b.disabled=true;b.style.opacity='.5';}
+  _rp2Dire(fr?'Je demande au serveur…':'Asking the server…',true);
+  try{
+    if(typeof assurerConnexionSupa==='function')assurerConnexionSupa();
+    if(!supa||!navigator.onLine){_rp2Dire(fr?'Pas de réseau — réessaie une fois connecté.':'No network',false);return;}
+    var r=await supa.rpc('admin_reinitialiser_pin',{p_tel:tel,p_nouveau:pin});
+    if(r.error){
+      var m=String(r.error.message||'');
+      _rp2Dire(/aucun compte/i.test(m)?(fr?'Aucun compte pour ce numéro. Vérifie le numéro qu\'il t\'a écrit.':'No account for this number')
+              :/non autorise/i.test(m)?(fr?'Refusé : ce compte n\'est pas administrateur.':'Refused: not an administrator')
+              :m,false);
+      return;
+    }
+    var n=(r.data&&r.data.length)||0;
+    var nbB=(r.data&&r.data[0]&&r.data[0].boutiques)||0;
+    _rp2Dire('✅ '+(fr
+      ?('Fait. '+n+' compte'+(n>1?'s':'')+' · '+nbB+' boutique'+(nbB>1?'s':'')
+        +'. Dis-lui son nouveau code de vive voix, pas par écrit.')
+      :('Done. '+n+' account(s), '+nbB+' shop(s).')),true);
+    try{journalAjouter('code patron',tel,(fr?'oublié':'forgotten'),(fr?'réinitialisé par le support':'reset by support'));}catch(e){}
+  }catch(e){
+    _rp2Dire((fr?'Échec : ':'Failed: ')+(e&&e.message||e),false);
+  }finally{
+    var b2=document.getElementById('rp2-ok'); if(b2){b2.disabled=false;b2.style.opacity='1';}
+  }
+}
 function ouvrirModele(){
   var fr=(lang==='fr');
   if(!DB||!DB.articles||!DB.articles.length){
@@ -17853,15 +18297,42 @@ function calcBenA(){var pv=parseFloat(document.getElementById('ainp-pv').value)|
 function setAS(n){document.getElementById('ainp-stk').value=n;}
 function toggleRupt(){ruptSel=!ruptSel;document.getElementById('tog-rupt').className='tog '+(ruptSel?'on':'off');}
 
-// ── MODE VEILLE (garder l'écran allumé) ──
-var wakeLock=null;
+// ═════════════════════════════════════════════════════════════════
+//  MODE VEILLE — « l'app ne respecte pas l'écran allumé »
+//
+//  ⚠️⚠️ CE QU'AUCUNE APPLICATION NE PEUT FAIRE, ET IL FAUT LE DIRE.
+//  « même s'il entre dans une autre application, l'écran doit rester
+//  allumé » : c'est impossible, et pas seulement pour une app web. Le
+//  système n'accorde le maintien de l'écran qu'à l'application qui est
+//  DEVANT. Dès que WhatsApp passe au premier plan, c'est WhatsApp qui
+//  décide, et le navigateur relâche notre verrou de lui-même. Aucune ligne
+//  de code ne change ça ; seul un réglage du téléphone le peut.
+//
+//  CE QUI ÉTAIT VRAIMENT CASSÉ, MESURÉ AU BANC :
+//    · au démarrage, DEUX verrous demandés, ZERO relâché (`lancerApp` et le
+//      démarrage en appelaient chacun un). La variable `wakeLock` ne
+//      pointait que sur le dernier : couper le mode n'en relâchait qu'un,
+//      et l'écran restait allumé alors qu'il venait de dire non ;
+//    · à chaque retour dans l'app, DEUX de plus — deux écouteurs
+//      `visibilitychange` faisaient le même travail. Quatre demandes,
+//      trois verrous vivants après un seul aller-retour.
+//  Un seul verrou à la fois, maintenant, et un seul écouteur.
+// ═════════════════════════════════════════════════════════════════
+var wakeLock=null,_veilleEnCours=false;
 async function activerVeille(){
   try{
     if('wakeLock' in navigator){
-      wakeLock=await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release',function(){
-        if(DB&&DB.cfg&&DB.cfg.veille)document.addEventListener('visibilitychange',reacquireVeille);
-      });
+      // Déjà un verrou vivant, ou une demande en vol : on n'en empile pas un
+      // de plus. C'est exactement ce qui rendait le bouton « éteindre » muet.
+      if(_veilleEnCours)return;
+      if(wakeLock&&!wakeLock.released)return;
+      _veilleEnCours=true;
+      try{ wakeLock=await navigator.wakeLock.request('screen'); }
+      finally{ _veilleEnCours=false; }
+      // Le navigateur le relâche tout seul dès que la page passe en fond :
+      // on note simplement qu'il n'y en a plus. La reprise au retour est
+      // faite par l'écouteur unique de `visibilitychange`, plus bas.
+      wakeLock.addEventListener('release',function(){wakeLock=null;});
     }else{
       // Fallback pour navigateurs sans Wake Lock API (vieux Android/iOS) : vidéo invisible en boucle
       var v=document.getElementById('veille-fallback-vid');
@@ -17878,15 +18349,74 @@ async function activerVeille(){
   }catch(e){console.log('Wake Lock indisponible :',e);}
 }
 function reacquireVeille(){
-  if(document.visibilityState==='visible'&&DB&&DB.cfg&&DB.cfg.veille){
-    activerVeille();
-    document.removeEventListener('visibilitychange',reacquireVeille);
-  }
+  if(document.visibilityState==='visible'&&DB&&DB.cfg&&DB.cfg.veille)activerVeille();
 }
 function desactiverVeille(){
-  if(wakeLock){wakeLock.release().catch(function(){});wakeLock=null;}
+  if(wakeLock){try{wakeLock.release();}catch(e){}wakeLock=null;}
   var v=document.getElementById('veille-fallback-vid');if(v)v.pause();
 }
+// ═════════════════════════════════════════════════════════════════
+//  ⭐⭐ LA VENTE EN COURS SURVIT À UN ALLER-RETOUR
+//
+//  « même s'il entre dans une autre application, il faudrait que l'app
+//   reste là. Parce que c'est entre ses mains. »
+//
+//  Le maintien de l'écran, personne ne peut le garantir en arrière-plan.
+//  Mais la vraie perte était ailleurs, et celle-là se répare : MESURÉ au
+//  banc — trois pains dans le panier, 600 F ; le téléphone relâche l'app
+//  pendant qu'il répond à un message ; au retour le panier est VIDE. Il
+//  recommence sa vente devant le client.
+//  `panier` ne vivait qu'en mémoire. Il est maintenant posé sur le
+//  téléphone au moment même où l'app passe en fond, et repris au retour.
+//
+//  ⚠️ TROIS GARDE-FOUS, parce qu'un panier qui reâpparaît au mauvais
+//  endroit est pire que pas de panier du tout :
+//    · même BOUTIQUE (le code), sinon c'est la vente de quelqu'un d'autre ;
+//    · même VENDEUR, sinon Junior retrouve le panier d'Aïcha ;
+//    · moins de DOUZE HEURES — au-delà, ce n'est plus une vente
+//      interrompue, c'est un oubli d'hier.
+//  Et on le DIT quand on le rend : un panier surprise ne s'explique pas.
+// ═════════════════════════════════════════════════════════════════
+var _CLE_PANIER='myboutiq_panier';
+function _panierSauver(){
+  try{
+    if(!DB||!DB.cfg||!DB.cfg.code)return;
+    if(!panier||!Object.keys(panier).length){localStorage.removeItem(_CLE_PANIER);return;}
+    localStorage.setItem(_CLE_PANIER,JSON.stringify({
+      c:String(DB.cfg.code),r:role,v:(role==='vendeur'?(nomVendeur||''):''),t:Date.now(),
+      p:panier,g:_grosPanier||{},n:_negoLigne||{}
+    }));
+  }catch(e){}
+}
+function _panierOublier(){try{localStorage.removeItem(_CLE_PANIER);}catch(e){}}
+function _panierRestaurer(){
+  try{
+    if(!DB||!DB.cfg||!DB.cfg.code)return 0;
+    if(panier&&Object.keys(panier).length)return 0;      // il a déjà commencé
+    var brut=localStorage.getItem(_CLE_PANIER);if(!brut)return 0;
+    var o=JSON.parse(brut);if(!o||!o.p)return 0;
+    if(String(o.c)!==String(DB.cfg.code)){_panierOublier();return 0;}
+    if((o.r||'')==='vendeur'&&String(o.v||'')!==String(nomVendeur||''))return 0;
+    if((o.r||'')!=='vendeur'&&role==='vendeur')return 0;
+    if(Date.now()-(Number(o.t)||0)>12*3600*1000){_panierOublier();return 0;}
+    // Un article supprimé entre-temps ne doit pas ressusciter une ligne morte.
+    var net={},n=0;
+    Object.keys(o.p).forEach(function(k){
+      var pid=String(k).split('-')[0];
+      if((DB.articles||[]).some(function(a){return String(a.id)===pid;})){net[k]=o.p[k];n++;}
+    });
+    if(!n){_panierOublier();return 0;}
+    panier=net;
+    if(o.g)_grosPanier=o.g;
+    if(o.n)_negoLigne=o.n;
+    return n;
+  }catch(e){return 0;}
+}
+// Le moment qui compte : celui où le téléphone passe à autre chose.
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState!=='visible')_panierSauver();
+});
+window.addEventListener('pagehide',_panierSauver);
 function toggleVeille(){
   if(!DB)return;
   DB.cfg.veille=!DB.cfg.veille;
@@ -17895,7 +18425,7 @@ function toggleVeille(){
   save();
   majBoutonVeille();
   try{majEnteteCaisse();}catch(e){}
-  if(DB.cfg.veille){activerVeille();showToast(lang==='fr'?'🔆 Écran maintenu allumé':'🔆 Screen kept on');}
+  if(DB.cfg.veille){activerVeille();showToast(lang==='fr'?'🔆 Écran maintenu allumé tant que MyBoutiQ est devant':'🔆 Screen kept on while MyBoutiQ is in front');}
   else{desactiverVeille();showToast(lang==='fr'?'🌙 Veille normale rétablie':'🌙 Normal sleep restored');}
 }
 // ═══ Verrou de vente ═══
@@ -18246,6 +18776,42 @@ function _besoinRachatVar(p,v,q30v){
   if(besoin<=0)besoin=(v30>0?v30:Math.max(seuil,1));
   return {ts:ts,v30:v30,jours:jours,besoin:besoin};
 }
+// ═════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « LA LISTE DE COMMANDE, C'EST BIZARRE À VUE D'ŒIL. »
+//
+//  Sa capture WhatsApp, reproduite au banc mot pour mot :
+//      • Boisson predator — Boisson Predator 1,25 L : 1 palette (12 unités)
+//      • Boisson predator — Boisson Predator 1,5 L  : 1 palette (12 unités)
+//  Le nom de la famille est écrit DEUX FOIS sur chaque ligne, parce que la
+//  variante le porte déjà dans son propre nom — c'est ainsi que l'app
+//  nomme les contenances qu'elle crée. Le grossiste lit « Boisson predator
+//  — Boisson Predator » et croit à une erreur de copie.
+//
+//  On retire le préfixe quand ce qui reste tient debout tout seul. « Riz —
+//  Riz (kg) » ne devient PAS « Riz — (kg) » : un reste qui commence par une
+//  parenthèse n'est pas un nom, on garde alors la ligne entière.
+// ═════════════════════════════════════════════════════════════════
+function _nomCourtVariante(p,v){
+  var f=String((p&&p.nm)||'').trim(), n=String((v&&v.nm)||'').trim();
+  if(!f||!n)return n||'?';
+  // On découpe le nom BRUT à la longueur de la famille, et on ne compare
+  // qu'ensuite : `txtNorm` change la longueur, l'indice serait faux.
+  if(txtNorm(n.slice(0,f.length))!==txtNorm(f))return n;
+  var reste=n.slice(f.length).replace(/^[\s\-–—:,.]+/,'').trim();
+  if(!reste)return n;                                   // la variante EST la famille
+  if(!/^[0-9A-Za-zÀ-ÿ]/.test(reste))return n;             // « (kg) » : ce n'est pas un nom
+  return reste;
+}
+// « 25 cl » → 0,25 ; « 1,5 L » → 1,5 ; le reste → rien. Sert à ranger les
+// contenances d'un même produit dans l'ordre où on les sort du dépôt.
+function _litresDe(txt){
+  var m=String(txt||'').trim().match(/^(\d+(?:[.,]\d+)?)\s*(cl|ml|l)\b\.?$/i);
+  if(!m)return null;
+  var n=parseFloat(m[1].replace(',','.'));
+  if(!(n>0))return null;
+  var u=m[2].toLowerCase();
+  return u==='cl'?(n/100):(u==='ml'?(n/1000):n);
+}
 // Ce qu'il doit acheter, à plat : un article simple = une ligne ; une
 // famille = une ligne PAR variante qui en a besoin, jamais un total mélangé.
 function _lignesACommander(q30,q30v){
@@ -18256,11 +18822,13 @@ function _lignesACommander(q30,q30v){
     if(parVariante){
       (p.vr||[]).forEach(function(v){
         var b=_besoinRachatVar(p,v,q30v);
-        if(b)out.push({p:p,v:v,b:b,nm:p.nm+' — '+(v.nm||'?')});
+        if(!b)return;
+        var court=_nomCourtVariante(p,v);
+        out.push({p:p,v:v,b:b,fam:p.nm,court:court,nm:p.nm+' — '+court});
       });
     }else{
       var b2=_besoinRachat(p,q30);
-      if(b2)out.push({p:p,v:null,b:b2,nm:p.nm});
+      if(b2)out.push({p:p,v:null,b:b2,fam:p.nm,court:'',nm:p.nm});
     }
   });
   // Le plus urgent d'abord : ce qui est à zéro, puis ce qui tient le moins.
@@ -18318,13 +18886,57 @@ function renderCommande(c,q30,q30v){
   c.innerHTML=h;
 }
 // Il ne recopie pas trente lignes à la main : il l'envoie à son grossiste.
+// ⚠️⚠️ ET LE GROSSISTE, LUI, LIT PAR PRODUIT.
+// À l'écran, l'ordre est le bon : le plus urgent en haut, celui qui est à
+// zéro d'abord. Mais recopié tel quel dans WhatsApp, ça donnait le Predator
+// 1,25 L en première ligne et le Predator 25 cl en huitième, séparés par
+// l'huile, le riz et deux savons. Celui qui prépare la commande doit alors
+// relire toute la liste pour savoir combien de Predator sortir du dépôt.
+// Le message regroupe donc par produit — en gardant l'ordre d'urgence entre
+// les produits, qui reste l'information la plus utile. Un produit qui n'a
+// qu'une ligne reste une ligne : un titre pour un seul article, c'est du
+// bruit.
 function partagerCommande(){
   var fr=(lang!=='en');
   if(!_cmdLignes.length)return;
-  var txt=(fr?'Commande — ':'Order — ')+((DB&&DB.cfg&&DB.cfg.nom)||'')+'\n\n'
-    +_cmdLignes.map(function(l){
-      return '• '+l.nm+' : '+_cibleCommande(l.p,l.v,l.b.besoin);
-    }).join('\n');
+  var vus={},ordre=[];
+  _cmdLignes.forEach(function(l){
+    var k=txtNorm(l.fam||l.nm);
+    if(!vus[k]){vus[k]={nom:l.fam||l.nm,lignes:[]};ordre.push(k);}
+    vus[k].lignes.push(l);
+  });
+  var zero=_cmdLignes.filter(function(l){return l.b.ts<=0;}).length;
+  var blocs=ordre.map(function(k){
+    var g=vus[k];
+    if(g.lignes.length===1){
+      var u=g.lignes[0];
+      return {seul:true,txt:'• '+u.nm+' : '+_cibleCommande(u.p,u.v,u.b.besoin)};
+    }
+    // ⚠️ DANS UN GROUPE, LES TAILLES SE RANGENT PAR TAILLE.
+    // Elles arrivaient triées par NOM : « 1,25 L, 1,5 L, 25 cl, 50 cl ».
+    // Un magasinier qui sort des bouteilles du dépôt lit de la plus petite
+    // à la plus grande, pas dans l'ordre de l'alphabet appliqué à des
+    // chiffres. On ne trie QUE si toutes les lignes portent une taille :
+    // sinon l'urgence, qui reste l'information la plus utile, l'emporte.
+    var tailles=g.lignes.map(function(l){return _litresDe(l.court||l.nm);});
+    if(tailles.every(function(x){return x!=null;})){
+      g.lignes=g.lignes.map(function(l,i){return {l:l,t:tailles[i],i:i};})
+        .sort(function(a,b){return (a.t-b.t)||(a.i-b.i);})
+        .map(function(x){return x.l;});
+    }
+    return {seul:false,txt:g.nom+'\n'+g.lignes.map(function(l){
+      return '  • '+(l.court||l.nm)+' : '+_cibleCommande(l.p,l.v,l.b.besoin);
+    }).join('\n')};
+  });
+  // Deux lignes seules se suivent sans respirer ; un groupe en demande une.
+  var corps=blocs.map(function(b,i){
+    var sep=(i===0)?'':((b.seul&&blocs[i-1].seul)?'\n':'\n\n');
+    return sep+b.txt;
+  }).join('');
+  var txt=(fr?'Commande — ':'Order — ')+((DB&&DB.cfg&&DB.cfg.nom)||'')+'\n'
+    +_cmdLignes.length+' '+(fr?('article'+(_cmdLignes.length>1?'s':'')):('item'+(_cmdLignes.length>1?'s':'')))
+    +(zero?(' · '+zero+' '+(fr?'à zéro':'out of stock')):'')+'\n\n'
+    +corps;
   try{
     if(navigator.share){navigator.share({text:txt});return;}
   }catch(e){}
@@ -21820,13 +22432,48 @@ function estDemo(){try{return !!(DB&&DB.cfg&&DB.cfg.demo);}catch(e){return false
 //  voulait éviter. Chacun a donc le sien.
 // ══════════════════════════════════════════════════════════════════
 var DEMO_RAYON=[
-  // [nom exact dans CATALOGUE_CM, stock]
-  {nm:'Sucrerie 60 cl',e:'🥤',al:12,vr:[
+  // [nom exact dans CATALOGUE_CM, stock, étiquette de la variante]
+  //
+  // ⭐⭐ DEUX FAMILLES DE CONTENANCES EN TÊTE DE RAYON.
+  //
+  // « le cas des boissons n'est pas bien traité, 1 L, 1,5 L… ce qu'on avait
+  //   traité précisément ».
+  //
+  // Il avait raison : la boutique d'exemple ne montrait QUE des familles de
+  // MARQUES — quatre sucreries de 60 cl, trois bières de 65 cl. Une seule
+  // taille partout. Le visiteur ne voyait donc jamais ce pour quoi les
+  // contenances ont été faites : UNE boisson, PLUSIEURS tailles en même
+  // temps, chacune avec son prix, son stock en bouteilles et son casier.
+  //
+  // Les deux premières lignes le montrent maintenant, et les deux suivantes
+  // gardent l'autre sorte de variante — parce que les deux existent en
+  // boutique et qu'il faut savoir les distinguer.
+  //
+  // ⚠️ LA RÈGLE TIENT : ces deux prix sortent de CATALOGUE_CM.
+  //   Tangui  50 cl 250 F · carton de 12   |   1,5 L 500 F · carton de 12
+  //
+  // ⚠️⚠️ ET IL N'Y EN A QU'UNE SEULE, PARCE QUE LE CATALOGUE N'EN PERMET
+  // PAS DEUX. J'avais mis « Coca-Cola » en 60 cl + canette 33 cl ; t60 l'a
+  // refusé : la canette n'a pas de photo, et la règle « chaque article ET
+  // chaque variante porte sa photo » est née d'une mesure (48 articles gris
+  // sur 89 à la première ouverture). Lui prêter la photo de la bouteille de
+  // 60 cl aurait été montrer une bouteille en disant « canette » — le
+  // défaut qu'on a déjà corrigé sur « Sucrerie 60 cl ».
+  //
+  // MESURÉ sur les 1 369 entrées de l'index : AUCUNE famille de boisson n'a
+  // deux contenances portant à la fois leurs deux prix et leur photo, sauf
+  // Tangui. Le catalogue chiffre les sucreries en 60 cl et rien d'autre,
+  // alors que la table `formats` en propose quatre (33 cl, 50 cl, 1 L,
+  // 1,5 L). Le manque est dans les DONNÉES, pas dans la démonstration, et
+  // on n'invente pas un prix pour le combler.
+  {nm:'Eau Tangui',e:'💧',al:12,vr:[
+    ['Eau Tangui 50 cl',48,'50 cl'],['Eau Tangui 1,5 L',24,'1,5 L']]},
+  {nm:'Coca-Cola 60 cl', e:'🥤', stk:36, al:12},
+  {nm:'Sucrerie 60 cl',e:'🧃',al:12,vr:[
     ['Fanta orange 60 cl',24],['Sprite 60 cl',18],
     ['Top ananas 60 cl',24],['Djino cocktail 60 cl',12]]},
   {nm:'Bière 65 cl',e:'🍺',al:12,vr:[
     ['33 Export 65 cl',24],['Castel Beer 65 cl',12],['Mützig 65 cl',18]]},
-  {nm:'Eau Tangui 50 cl',   e:'💧', stk:36,  al:12},
   {nm:"Sachet d'eau 50 cl", e:'💦', stk:240, al:60},
   {nm:'Riz parfumé 1 kg',   e:'🍚', stk:80,  al:25},
   {nm:'Huile végétale 1 L', e:'🛢️', stk:24,  al:10},
@@ -21859,7 +22506,7 @@ function _articlesDemo(){
       var membres=[];
       s.vr.forEach(function(l){
         var x=parNom[txtNorm(l[0])];
-        if(x)membres.push({x:x,stk:l[1]});else manquants.push(l[0]);
+        if(x)membres.push({x:x,stk:l[1],et:l[2]||''});else manquants.push(l[0]);
       });
       if(!membres.length)return;
       var ref=membres[0].x;
@@ -21881,7 +22528,12 @@ function _articlesDemo(){
       for(var i=0;i<membres.length&&!ph;i++)ph=_photo(membres[i].x.plein);
       if(ph)a.img=ph;
       membres.forEach(function(m,n){
-        var v={id:n+1,nm:m.x.nm||m.x.plein,px:m.x.px,pa:m.x.pa,
+        // ⚠️ UNE CONTENANCE SE NOMME PAR SA TAILLE, PAS PAR LE PRODUIT.
+        // La vraie fonction « Ajouter une contenance » écrit « 1,5 L » sous
+        // « Eau Tangui ». Si l'exemple écrivait « Tangui 1,5 L » sous
+        // « Eau Tangui », il montrerait autre chose que ce que le commerçant
+        // obtiendra — et une démonstration qui ment n'en est pas une.
+        var v={id:n+1,nm:m.et||m.x.nm||m.x.plein,px:m.x.px,pa:m.x.pa,
                stk:m.stk,stk0:m.stk,qBase:1};
         if(m.x.sac>0){v.umSac=m.x.sac;v.umCont=m.x.cont||null;}
         var vp=_photo(m.x.plein);if(vp)v.img=vp;
@@ -21905,6 +22557,90 @@ function _articlesDemo(){
   // qu'un test doit pouvoir lire.
   try{window.__demoManquants=manquants;}catch(e){}
   return arts;
+}
+
+// ═════════════════════════════════════════════════════════════════
+//  ⭐ DEUX JOURNÉES DE VENTES — « la boutique d'exemple n'est pas percutant »
+//
+//  Elle ouvrait sur VENTES 0, BÉNÉFICE 0, TRANS. 0. Une caisse vide. Les
+//  Rapports n'avaient rien à montrer, la clôture du soir non plus, le
+//  « Top ventes » non plus, et « Vendu 30 j » affichait zéro sur chaque
+//  ligne de stock. On invitait un commerçant à juger une caisse sur une
+//  caisse qui n'avait jamais servi.
+//
+//  ⚠️ LA RÈGLE NE BOUGE PAS : AUCUN CHIFFRE N'EST INVENTÉ. Une vente ne
+//  porte ici qu'un ARTICLE et une QUANTITÉ ; le prix de vente, le prix
+//  d'achat et donc la marge sont relus sur l'article, c'est-à-dire dans
+//  CATALOGUE_CM. Le bénéfice affiché est une vraie soustraction entre deux
+//  vrais prix — pas une marge choisie pour faire joli.
+//
+//  ⚠️ Et le stock suit : `recomputeStock` fait stk0 − ventes. Les 48
+//  bouteilles de Tangui 50 cl descendent à mesure qu'on en vend, comme
+//  chez lui. C'est aussi ce qui donne à « À commander » de quoi parler.
+// ═════════════════════════════════════════════════════════════════
+// [heure, jour (0 = aujourd'hui, 1 = hier), [[article, contenance ou null, quantité], …]]
+var DEMO_JOURNEE=[
+  ['07:20',1,[["Sachet d'eau 50 cl",null,10],['Pain baguette',null,2]]],
+  ['08:05',1,[['Eau Tangui','50 cl',2],['Œuf',null,6]]],
+  ['09:40',1,[['Coca-Cola 60 cl',null,2],['Sucrerie 60 cl','Fanta orange',1]]],
+  ['11:15',1,[['Riz parfumé 1 kg',null,2],['Huile végétale 1 L',null,1],['Sucre en poudre 1 kg',null,1]]],
+  ['13:30',1,[["Sachet d'eau 50 cl",null,20]]],
+  ['15:10',1,[['Eau Tangui','1,5 L',3]]],
+  ['17:45',1,[['Bière 65 cl','33 Export',4],['Bière 65 cl','Castel Beer',2]]],
+  ['19:20',1,[['Coca-Cola 60 cl',null,4],['Briquet',null,1]]],
+  ['20:05',1,[['Sucrerie 60 cl','Top ananas',3],['Sucrerie 60 cl','Sprite',2]]],
+  ['07:35',0,[['Pain baguette',null,4],['Œuf',null,10]]],
+  ['08:50',0,[["Sachet d'eau 50 cl",null,15],['Eau Tangui','50 cl',3]]],
+  ['10:25',0,[['Eau Tangui','1,5 L',2],['Petits pois en boîte',null,2]]],
+  ['12:00',0,[['Riz parfumé 1 kg',null,3],['Huile végétale 1 L',null,2]]],
+  ['14:15',0,[['Coca-Cola 60 cl',null,3],['Sucrerie 60 cl','Djino cocktail',2]]],
+  ['16:40',0,[['Eau de javel 1 L',null,1],['Dentifrice Colgate 75 ml',null,1]]],
+  ['18:30',0,[['Bière 65 cl','33 Export',6],['Bière 65 cl','Mützig',3]]],
+  ['19:55',0,[['Coca-Cola 60 cl',null,2],["Sachet d'eau 50 cl",null,12]]],
+  ['20:40',0,[['Ampoule LED 9 W',null,2]]]
+];
+function _jourDemo(recul){
+  var d=new Date();d.setDate(d.getDate()-(recul||0));
+  return d.toLocaleDateString('fr-FR');
+}
+function _ventesDemo(arts){
+  var fr=(lang!=='en');
+  var parNom={};arts.forEach(function(a){parNom[txtNorm(a.nm)]=a;});
+  var ventes=[],n=0;
+  DEMO_JOURNEE.forEach(function(v){
+    var heure=v[0],jour=v[1],lignes=[],total=0,ben=0;
+    v[2].forEach(function(l){
+      var a=parNom[txtNorm(l[0])];if(!a)return;
+      var vr=null;
+      if(l[1]){vr=(a.vr||[]).find(function(x){return txtNorm(x.nm)===txtNorm(l[1]);});if(!vr)return;}
+      var qty=l[2],px=(vr?vr.px:a.px)||0,pa=(vr?vr.pa:a.pa)||0;
+      if(!(px>0))return;
+      total+=px*qty; ben+=(px-pa)*qty;
+      // ⚠️⚠️ LA FORME EXACTE D'UNE VRAIE LIGNE DE VENTE, PAS UNE APPROCHE.
+      // Premier jet : `px` mis à px×qty et pas de `pa` du tout — c'est ce
+      // qu'écrit la fonction `encaisser` du HAUT du fichier, celle qui est
+      // MORTE (redéfinie 10 000 lignes plus bas). Les Rapports lisaient donc
+      // « ⚠️ Ventes sans prix d'achat — 99 550 F » sur une journée de
+      // 25 100 F : le prix d'achat manquait, et le total était multiplié une
+      // seconde fois par la quantité. Une démonstration qui s'alarme
+      // toute seule ne démontre rien.
+      // La vraie ligne porte le prix à L'UNITÉ, son prix d'achat, et la
+      // quantité sous SES DEUX noms (`qte` et `qty`).
+      lignes.push({nm:a.nm+(vr?(' — '+vr.nm):''),px:px,pa:pa,qte:qty,qty:qty,
+                   pid:a.id,vid:vr?vr.id:null,qBase:vr?getQBase(vr):1,dep:0,gros:null});
+    });
+    if(!lignes.length)return;
+    // ⚠️ Un identifiant STABLE : deux visiteurs, deux téléphones, la même
+    // boutique. `genVenteId` y mêlerait l'heure et un tirage au sort.
+    ventes.push({id:'demo_'+(++n),total:total,totalBrut:total,benefice:ben,ben:ben,
+                 lignes:lignes,h:heure,heure:heure,date:_jourDemo(jour),
+                 vendeur:(fr?'Patron':'Owner'),clientId:null,clientNom:'',
+                 pointsGagnes:0,pointsUtilises:0,reductionPoints:0,remise:0,negocie:0,
+                 paiement:{mode:'especes'},annulee:false,
+                 consigne:0,consignePrises:0,consigneRendues:0,consigneUnit:0});
+  });
+  // Rangées dans l'ordre du temps : hier d'abord, ce soir en dernier.
+  return ventes.sort(function(a,b){return (a.date===b.date)?(a.h<b.h?-1:1):(a.date<b.date?-1:1);});
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -21933,8 +22669,11 @@ function _articlesDemo(){
 //  d'un écran de 640, c'est un dixième de la page mangé pour rien pendant
 //  qu'on lit le titre.
 // ══════════════════════════════════════════════════════════════════
-var _SECTIONS=[['v-top','nv-top'],['v-faire','nv-faire'],['v-bar','nv-bar'],['v-avis','nv-avis'],
-               ['v-qui','nv-qui'],['v-prix','nv-prix'],['v-ecrire','nv-ecrire']];
+// ⚠️ CETTE TABLE DOIT SUIVRE L'ORDRE RÉEL DE LA PAGE : `_majNavSite`
+// la parcourt de haut en bas pour décider quelle puce s'allume. Une table
+// désordonnée allumerait « Pour les bars » pendant qu'on lit le prix.
+var _SECTIONS=[['v-top','nv-top'],['v-faire','nv-faire'],['v-prix','nv-prix'],['v-avis','nv-avis'],
+               ['v-qui','nv-qui'],['v-bar','nv-bar'],['v-ecrire','nv-ecrire']];
 // ⚠️ EN BAS DE PAGE, LES DEUX DERNIÈRES SECTIONS NE PEUVENT PLUS MONTER :
 // la page est finie, le défilement bute. On touchait « Le prix », la page
 // bougeait bien, et c'est « Écris-moi » qui s'allumait. Pendant le temps du
@@ -22050,7 +22789,7 @@ function _vitrineLangue(){
     'vt-b3':'I already have a shop',
     'vt-p1':'to start',
     'vt-p2':'items ready to sell',
-    'vt-p3':'bars of signal needed',
+    'vt-p3':'bars of signal',
     'vt-vt':'They wrote it',
     'vt-vs':'Every line below comes from a shopkeeper, in the field. Each one changed the app.',
     'vt-q1':'A customer buys juice by the pallet, a box of oil. How do I bill that, when I sell by the piece?',
@@ -22071,7 +22810,7 @@ function _vitrineLangue(){
     'vf-t':'What it actually does',
     'vf-s':'Six things you already do by hand. Here they take one tap.',
     'vf1-t':'Sell','vf1-d':'Tap the item, the total goes up, you cash in. The receipt leaves on WhatsApp.',
-    'vf2-t':'Bulk and retail','vf2-d':'Piece, pack, box, bag: one item carries every one of its prices.',
+    'vf2-t':'Bulk and retail','vf2-d':'Piece, box, crate. And the same drink in 50 cl and 1.5 L — each its own price, each its own stock.',
     'vf3-t':'Stock keeps itself','vf3-d':'It drops with every sale and tells you what to go and buy again.',
     'vf4-t':'Your sellers','vf4-d':'Each one their own till, their own code. You see who sold what.',
     'vf5-t':'The credit book','vf5-d':'Who owes you how much, since when. The reminder leaves with one finger.',
@@ -22111,13 +22850,24 @@ async function entrerDemo(){
   // Sa boutique à lui est mise de côté avant tout — la règle de la 21.0.
   try{sauvegarderAvant(fr?'avant la boutique d\'exemple':'before the example shop');}catch(e){}
   var reel=null;try{reel=localStorage.getItem('myboutiq_v6');}catch(e){}
-  try{if(reel)localStorage.setItem('myboutiq_v6_avant_demo',reel);}catch(e){}
+  // ⚠️ NE JAMAIS ÉCRASER LA COPIE DE SA VRAIE BOUTIQUE AVEC LA DÉMO.
+  // Entrer deux fois dans l'exemple rangeait l'exemple à la place du vrai
+  // commerce : « Créer ma boutique » lui rendait alors 14 faux articles.
+  try{
+    var _dejaDemo=false;
+    try{var _d=JSON.parse(reel||'null');_dejaDemo=!!(_d&&_d.cfg&&_d.cfg.demo);}catch(x){}
+    if(reel&&!_dejaDemo)localStorage.setItem('myboutiq_v6_avant_demo',reel);
+  }catch(e){}
+  // ⚠️ Le démarrage différé (setTimeout 1150 ms) a pu être armé avant ce
+  // clic : sans ce drapeau il se réveille par-dessus la caisse d'exemple et
+  // la remplace par l'écran de PIN. C'est le « ça se ferme vite », mesuré.
+  _demarre=true;
   var anc=DB&&DB.cfg?DB.cfg:{};
   DB=migrateDBData({
     cfg:{nom:(fr?'Boutique d\'exemple':'Example shop'),code:DEMO_CODE,pin:'0000',
          d:anc.d||'FCFA',s:anc.s||'FCFA',pays:anc.pays||'CM',lang:anc.lang||lang,
          secteur:anc.secteur||'boutique',venteDeverrouillee:true,demo:true},
-    articles:arts,ventes:[],appros:[],depenses:[],clients:[],equipe:[],suppr:[],
+    articles:arts,ventes:_ventesDemo(arts),appros:[],depenses:[],clients:[],equipe:[],suppr:[],
     nextId:100+arts.length+1
   });
   DB=recomputeStock(DB);
@@ -22153,13 +22903,39 @@ function majBandeauDemo(){
   var fr=(lang==='fr');
   if(!estDemo()){b.style.display='none';return;}
   b.style.display='flex';
-  var t=document.getElementById('bandeau-demo-t');
-  if(t)t.textContent=fr?'BOUTIQUE D\'EXEMPLE — rien n\'est réel':'EXAMPLE SHOP — nothing is real';
+  // ⚠️ L'exemple survit maintenant à un redémarrage (c'était le défaut du
+  // jour). Donc un commerçant qui a DÉJÀ sa boutique peut s'y réveiller
+  // dedans : « Créer ma boutique » ne lui dit rien, il ne sait pas que ce
+  // bouton lui rend la sienne. On lui dit ce que le geste FAIT pour lui.
+  var _sien=false;try{_sien=!!localStorage.getItem('myboutiq_v6_avant_demo');}catch(e){}
   var q=document.getElementById('bandeau-demo-q');
-  if(q)q.textContent=fr?'Créer ma boutique':'Create my shop';
+  if(q)q.textContent=_sien?(fr?'Ma boutique':'My shop')
+                          :(fr?'Créer ma boutique':'Create my shop');
   var i=document.getElementById('bandeau-demo-i');
   if(i)i.textContent=fr?'📲 Installer':'📲 Install';
   try{majBoutonsInstaller();}catch(e){}
+  // ⚠️ TROIS LIGNES DE BANDEAU SUR UN TÉLÉPHONE DE 390 px : 57 px de caisse
+  // mangés, et la phrase illisible. Deux boutons plus un texte long ne tiennent
+  // pas sur une ligne. Quand « 📲 Installer » est là — et lui seul décide, pas
+  // nous — le mot se réduit à l'essentiel : c'est un EXEMPLE.
+  var t=document.getElementById('bandeau-demo-t');
+  if(t){
+    var serre=!!(i&&i.style.display!=='none');
+    t.textContent=serre?(fr?'EXEMPLE':'EXAMPLE')
+                       :(fr?'EXEMPLE — rien n\'est réel':'EXAMPLE — nothing is real');
+  }
+  // ⚠️ LA MOITIÉ DE L'APPLICATION MANQUAIT DANS L'EXEMPLE.
+  // entrerDemo() ouvre la caisse par lancerApp(), pas par _ouvrirCaissePatron() :
+  // les boutons que seul le patron voit restaient donc sur leur display:none
+  // d'origine. Le visiteur n'avait ni « + Ajouter », ni l'entrée de stock,
+  // ni la clôture du soir, ni l'export — exactement ce qu'il était venu voir.
+  // La boutique d'exemple EST la boutique d'un patron : elle se montre entière.
+  ['btn-st','btn-add-stk','btn-clot','btn-history'].forEach(function(id){
+    var e=document.getElementById(id);if(e)e.style.display='flex';});
+  ['btn-add','btn-exp-stk'].forEach(function(id){
+    var e=document.getElementById(id);if(e)e.style.display='block';});
+  document.querySelectorAll('.bst').forEach(function(e){e.style.display='flex';});
+  try{majEtatConnexion();}catch(e){}
 }
 
 function sauvegarderAvant(motif){
@@ -22677,7 +23453,20 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneGrille();}catch(e){}try{majLigneReleve();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}};
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneGrille();}catch(e){}try{majLigneReleve();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}
+// ⭐ LA VENTE INTERROMPUE REVIENT AVEC LUI. Posée sur le téléphone quand
+// l'app est passée en fond, reprise ici — et annoncée, parce qu'un panier
+// qui reâpparaît sans un mot ne s'explique pas.
+try{
+  var _np=_panierRestaurer();
+  if(_np>0){
+    renderProd(DB.articles);
+    try{updatePUI((Object.keys(panier)[0]||'0-0').split('-')[0]);}catch(e){}
+    showToast('🛒 '+(lang==='fr'
+      ?('Ta vente en cours t\'attendait — '+_np+' ligne'+(_np>1?'s':''))
+      :('Your sale was waiting — '+_np+' line'+(_np>1?'s':''))));
+  }
+}catch(e){}};
 // Rappel discret quand la mémoire se remplit (au plus 1×/semaine)
 function suggererArchivage(){
   if(role!=='patron'||!DB||!DB.cfg)return;
@@ -23133,11 +23922,10 @@ function ecrireAMyboutiq(depuis){
 // La bande de la vitrine : ceux-là n'ont pas encore l'app, ils ne peuvent
 // rien tester — mais ils peuvent parler, et personne ne le leur demandait.
 function majBandeVitrine(){
-  var t=document.getElementById('vn-txt'),b=document.getElementById('vn-btn');
+  var t=document.getElementById('vn-txt');
   if(!t)return;
-  var q=_quoiDeNeuf(),en=_enVitrine();
+  var q=_quoiDeNeuf();
   t.innerHTML='<b>'+q.titre+' · </b>'+q.texte;
-  if(b)b.textContent=en?'💬 An idea? Write to me':'💬 Une idée ? Écris-moi';
 }
 // ══════════════════════════════════════════════════════════════════
 //  ⭐⭐ INSTALLER L'APPLICATION — « un peu partout »
@@ -24011,8 +24799,22 @@ function trancherErreur(eid,annuler){
   var fr=(lang!=='en');
   if(!annuler)showToast('✅ '+(fr?'Vente gardée — le vendeur le verra':'Sale kept — the seller will see it'));
 }
+// ⚠️⚠️ DU FRANÇAIS DANS UNE PAGE ANGLAISE.
+// MESURÉ sur un téléphone réglé en anglais, aux trois largeurs : toute la
+// vitrine était en anglais, et un seul bouton restait en français —
+// « 📲 Installer l'application ». Sur une page qui sert de vitrine, une
+// faute pareille se voit avant le contenu.
+// LA CAUSE : `_vitrineLangue()` traduit le TEXTE de la page mais ne touche
+// pas à `lang`, et ce bouton-ci lit `lang`. Sur la vitrine il n'y a pas
+// encore de boutique, donc pas encore de langue choisie : c'est le
+// téléphone qui décide, exactement comme pour le reste de la page.
+function _vitrineEnAnglais(){
+  if(lang==='en')return true;
+  try{ if(!(DB&&DB.cfg)&&/^en/i.test(navigator.language||(navigator.languages||[])[0]||''))return true; }catch(e){}
+  return false;
+}
 function majBoutonsInstaller(){
-  var montrer=_peutInstaller(),fr=(lang!=='en');
+  var montrer=_peutInstaller(),fr=!_vitrineEnAnglais();
   var txt=fr?'📲 Installer l\'application':'📲 Install the app';
   var v=document.getElementById('vt-install');
   if(v){v.style.display=montrer?'':'none';v.textContent=txt;}
@@ -24293,6 +25095,8 @@ async function verifierAdmin(){
     // depuis le compte d'un vendeur.
     var rowM=document.getElementById('row-modele');
     if(rowM)rowM.style.display=(ok&&role==='patron')?'':'none';
+    var rowR=document.getElementById('row-repin');
+    if(rowR)rowR.style.display=ok?'':'none';
     // ⚠️ Réservée au patron ET administrateur : c'est la boutique OUVERTE
     // dont on certifie les photos, pas une boutique choisie dans une liste.
     var rowE=document.getElementById('row-equiper');
