@@ -4624,7 +4624,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.40'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.41'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -11437,8 +11437,24 @@ function _badgeVariantes(p){
   // en 1,5 L, chacune son prix. La tuile le dit maintenant.
   // Au-delà de deux, la tuile est trop étroite : les deux premières et le
   // compte du reste.
-  if(noms.length===n&&noms.every(_estContenance)){
-    var vus=noms.slice(0,2).join(' · ')+(n>2?(' +'+(n-2)):'');
+  //
+  // ⚠️ LA VARIANTE N'EST PAS TOUJOURS NOMMÉE PAR SA SEULE TAILLE. Quand
+  // l'app convertit une boisson en famille, elle écrit « Coca-Cola 1,5 L »
+  // sous « Coca-Cola » : la taille est là, noyée dans le nom du produit.
+  // On la lit avec `_contenanceDe`, celui-là même qui sert partout ailleurs.
+  // Les boutiques déjà converties en profitent sans rien réécrire.
+  //
+  // ⚠️ ET LES TAILLES DOIVENT ÊTRE DIFFÉRENTES. Une famille de MARQUES
+  // — « Fanta orange 60 cl », « Sprite 60 cl » — donnerait sinon
+  // « 60 cl · 60 cl » : trois fois la même bouteille, et le parfum, qui est
+  // le vrai sujet, disparu. Celle-là garde son compte.
+  var tailles=noms.map(function(x){
+    return _estContenance(x)?String(x).trim():(_contenanceDe(x)||'');
+  });
+  var distinctes={},toutes=tailles.length===n;
+  tailles.forEach(function(x){if(!x)toutes=false;else distinctes[_fmtCle(x)]=1;});
+  if(toutes&&Object.keys(distinctes).length===n){
+    var vus=tailles.slice(0,2).join(' · ')+(n>2?(' +'+(n-2)):'');
     return '<div class="pvbdg" title="'+titre+'">'+vus+'</div>';
   }
   return '<div class="pvbdg" title="'+titre+'"><i></i>'+n+'</div>';
@@ -17059,7 +17075,7 @@ function ctxContenance(){
     var c=_contenanceDe(a.nm); if(c)deja[_fmtCle(c)]=1;
   });
   _fmtMode='article';
-  _fmtCible={cle:'art'+p.id,base:base,img:p.img||'',e:p.e||'🥤',cat:p.cat||'Boissons',
+  _fmtCible={cle:'art'+p.id,art:p,base:base,img:p.img||'',e:p.e||'🥤',cat:p.cat||'Boissons',
              sac:(+p.umSac||0),cont:p.umCont||'',formats:l,deja:deja};
   _fmtChoix={};
   var t=document.getElementById('fmt-tit');
@@ -17077,25 +17093,52 @@ function validerFormats(){
   if(!pris.length)return;
   if(_fmtMode==='article'){
     var fr=(lang==='fr');
-    if(!Array.isArray(_expListe))_expListe=[];
-    var n=0;
-    c.formats.forEach(function(f){
-      if(!_fmtChoix[f]||(c.deja&&c.deja[_fmtCle(f)]))return;
-      var nm=c.base+' '+f;
-      if((DB.articles||[]).some(function(a){return txtNorm(a.nm)===txtNorm(nm);}))return;
-      if(_expListe.some(function(x){return txtNorm(x.nm)===txtNorm(nm);}))return;
-      var _l={nm:nm,px:0,pa:0,stk:0,_img600:c.img,_e:c.e,_cat:c.cat};
-      if(c.sac>0){_l.umSac=c.sac;_l.umCont=c.cont||null;}
-      _expListe.push(_l);n++;
+    // ═════════════════════════════════════════════════════════════
+    //  ⚠️⚠️ « AJOUTER UNE CONTENANCE » FABRIQUAIT DES ARTICLES FRÈRES.
+    //
+    //  « le cas des boissons n'est pas bien traité, 1 L, 1,5 L… »
+    //
+    //  MESURÉ AU BANC, le geste entier : appui long sur « Coca-Cola 60 cl »
+    //  → « 🥤 Ajouter une contenance » → cocher 1 L et 1,5 L → poser les
+    //  deux prix. Résultat : TROIS TUILES sur la caisse — « Coca-Cola
+    //  60 cl », « Coca-Cola 1 L », « Coca-Cola 1,5 L » — et le message
+    //  « ✅ 2 ARTICLES créés ». L'écran promettait pourtant, deux touches
+    //  plus haut : « chacune aura son propre stock, son prix et son casier ».
+    //  C'est exactement le mur d'articles que les contenances devaient
+    //  supprimer.
+    //
+    //  LA BONNE CONVERSION EXISTAIT DÉJÀ (21.60, `_saveVarFormats`) : elle
+    //  renomme l'article en famille, fait de son stock actuel la PREMIÈRE
+    //  contenance — avec son passé, via `reprisBase` — et ajoute les
+    //  autres en variantes. Deux portes menaient au même travail et
+    //  faisaient l'inverse l'une de l'autre. On prend maintenant la bonne :
+    //  rien de neuf n'est écrit, l'autre chemin est simplement abandonné.
+    // ═════════════════════════════════════════════════════════════
+    var art=c.art||(DB.articles||[]).find(function(a){return 'art'+a.id===c.cle;});
+    var choisis=c.formats.filter(function(f){
+      return _fmtChoix[f]&&!(c.deja&&c.deja[_fmtCle(f)]);
     });
     closeSheet('ov-format');
     _fmtCible=null;_fmtChoix={};_fmtMode='catalogue';
-    if(!n){showToast('ℹ️ '+(fr?'Tu les as déjà toutes':'You already have them all'));return;}
-    // Elles arrivent SANS PRIX : on l'emmène tout de suite là où il les pose,
-    // sinon il repart avec des articles invendables sans le savoir.
-    ouvrirAjoutExpress(true);
-    try{expRender();}catch(e){}
-    showToast('👍 '+n+' '+(fr?'contenance(s) — mets les prix maintenant':'size(s) — set the prices now'));
+    if(!art){showToast('ℹ️ '+(fr?'Article introuvable':'Item not found'));return;}
+    if(!choisis.length){showToast('ℹ️ '+(fr?'Tu les as déjà toutes':'You already have them all'));return;}
+    varArtCours=art;
+    _fmtSel=choisis.slice();
+    // Sa bouteille actuelle : « 60 cl », lue sur son nom. C'est elle qui
+    // gardera le stock et le prix de l'article.
+    _fmtActuel=_fmtDuNom(art)||'';
+    var _t=document.getElementById('addvar-t');
+    if(_t)_t.textContent=(fr?'🥤 Contenances de ':'🥤 Sizes of ')+_nomSansContenance(art.nm);
+    ['var-nm','var-pa','var-pv','var-stk','var-parc'].forEach(function(id){
+      var _e=document.getElementById(id);if(_e)_e.value='';});
+    try{varMode('u');}catch(e){}
+    var _bc=document.getElementById('var-bc');if(_bc)_bc.style.display='none';
+    var _sv=document.getElementById('sug-prix-v');if(_sv)_sv.style.display='none';
+    selVarImg=null;
+    var _vp=document.getElementById('var-photo-preview');if(_vp)_vp.style.display='none';
+    try{majFormatsVariante(art);}catch(e){}
+    document.getElementById('ov-addvar').classList.add('show');
+    showToast('👍 '+choisis.length+' '+(fr?'contenance(s) — mets les prix maintenant':'size(s) — set the prices now'));
     return;
   }
   // On retire d'abord TOUTES les lignes de cette boisson, puis on repose ce
