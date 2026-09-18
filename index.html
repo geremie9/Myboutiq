@@ -4730,7 +4730,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.44'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.45'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -18637,6 +18637,42 @@ function _besoinRachatVar(p,v,q30v){
   if(besoin<=0)besoin=(v30>0?v30:Math.max(seuil,1));
   return {ts:ts,v30:v30,jours:jours,besoin:besoin};
 }
+// ═════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « LA LISTE DE COMMANDE, C'EST BIZARRE À VUE D'ŒIL. »
+//
+//  Sa capture WhatsApp, reproduite au banc mot pour mot :
+//      • Boisson predator — Boisson Predator 1,25 L : 1 palette (12 unités)
+//      • Boisson predator — Boisson Predator 1,5 L  : 1 palette (12 unités)
+//  Le nom de la famille est écrit DEUX FOIS sur chaque ligne, parce que la
+//  variante le porte déjà dans son propre nom — c'est ainsi que l'app
+//  nomme les contenances qu'elle crée. Le grossiste lit « Boisson predator
+//  — Boisson Predator » et croit à une erreur de copie.
+//
+//  On retire le préfixe quand ce qui reste tient debout tout seul. « Riz —
+//  Riz (kg) » ne devient PAS « Riz — (kg) » : un reste qui commence par une
+//  parenthèse n'est pas un nom, on garde alors la ligne entière.
+// ═════════════════════════════════════════════════════════════════
+function _nomCourtVariante(p,v){
+  var f=String((p&&p.nm)||'').trim(), n=String((v&&v.nm)||'').trim();
+  if(!f||!n)return n||'?';
+  // On découpe le nom BRUT à la longueur de la famille, et on ne compare
+  // qu'ensuite : `txtNorm` change la longueur, l'indice serait faux.
+  if(txtNorm(n.slice(0,f.length))!==txtNorm(f))return n;
+  var reste=n.slice(f.length).replace(/^[\s\-–—:,.]+/,'').trim();
+  if(!reste)return n;                                   // la variante EST la famille
+  if(!/^[0-9A-Za-zÀ-ÿ]/.test(reste))return n;             // « (kg) » : ce n'est pas un nom
+  return reste;
+}
+// « 25 cl » → 0,25 ; « 1,5 L » → 1,5 ; le reste → rien. Sert à ranger les
+// contenances d'un même produit dans l'ordre où on les sort du dépôt.
+function _litresDe(txt){
+  var m=String(txt||'').trim().match(/^(\d+(?:[.,]\d+)?)\s*(cl|ml|l)\b\.?$/i);
+  if(!m)return null;
+  var n=parseFloat(m[1].replace(',','.'));
+  if(!(n>0))return null;
+  var u=m[2].toLowerCase();
+  return u==='cl'?(n/100):(u==='ml'?(n/1000):n);
+}
 // Ce qu'il doit acheter, à plat : un article simple = une ligne ; une
 // famille = une ligne PAR variante qui en a besoin, jamais un total mélangé.
 function _lignesACommander(q30,q30v){
@@ -18647,11 +18683,13 @@ function _lignesACommander(q30,q30v){
     if(parVariante){
       (p.vr||[]).forEach(function(v){
         var b=_besoinRachatVar(p,v,q30v);
-        if(b)out.push({p:p,v:v,b:b,nm:p.nm+' — '+(v.nm||'?')});
+        if(!b)return;
+        var court=_nomCourtVariante(p,v);
+        out.push({p:p,v:v,b:b,fam:p.nm,court:court,nm:p.nm+' — '+court});
       });
     }else{
       var b2=_besoinRachat(p,q30);
-      if(b2)out.push({p:p,v:null,b:b2,nm:p.nm});
+      if(b2)out.push({p:p,v:null,b:b2,fam:p.nm,court:'',nm:p.nm});
     }
   });
   // Le plus urgent d'abord : ce qui est à zéro, puis ce qui tient le moins.
@@ -18709,13 +18747,57 @@ function renderCommande(c,q30,q30v){
   c.innerHTML=h;
 }
 // Il ne recopie pas trente lignes à la main : il l'envoie à son grossiste.
+// ⚠️⚠️ ET LE GROSSISTE, LUI, LIT PAR PRODUIT.
+// À l'écran, l'ordre est le bon : le plus urgent en haut, celui qui est à
+// zéro d'abord. Mais recopié tel quel dans WhatsApp, ça donnait le Predator
+// 1,25 L en première ligne et le Predator 25 cl en huitième, séparés par
+// l'huile, le riz et deux savons. Celui qui prépare la commande doit alors
+// relire toute la liste pour savoir combien de Predator sortir du dépôt.
+// Le message regroupe donc par produit — en gardant l'ordre d'urgence entre
+// les produits, qui reste l'information la plus utile. Un produit qui n'a
+// qu'une ligne reste une ligne : un titre pour un seul article, c'est du
+// bruit.
 function partagerCommande(){
   var fr=(lang!=='en');
   if(!_cmdLignes.length)return;
-  var txt=(fr?'Commande — ':'Order — ')+((DB&&DB.cfg&&DB.cfg.nom)||'')+'\n\n'
-    +_cmdLignes.map(function(l){
-      return '• '+l.nm+' : '+_cibleCommande(l.p,l.v,l.b.besoin);
-    }).join('\n');
+  var vus={},ordre=[];
+  _cmdLignes.forEach(function(l){
+    var k=txtNorm(l.fam||l.nm);
+    if(!vus[k]){vus[k]={nom:l.fam||l.nm,lignes:[]};ordre.push(k);}
+    vus[k].lignes.push(l);
+  });
+  var zero=_cmdLignes.filter(function(l){return l.b.ts<=0;}).length;
+  var blocs=ordre.map(function(k){
+    var g=vus[k];
+    if(g.lignes.length===1){
+      var u=g.lignes[0];
+      return {seul:true,txt:'• '+u.nm+' : '+_cibleCommande(u.p,u.v,u.b.besoin)};
+    }
+    // ⚠️ DANS UN GROUPE, LES TAILLES SE RANGENT PAR TAILLE.
+    // Elles arrivaient triées par NOM : « 1,25 L, 1,5 L, 25 cl, 50 cl ».
+    // Un magasinier qui sort des bouteilles du dépôt lit de la plus petite
+    // à la plus grande, pas dans l'ordre de l'alphabet appliqué à des
+    // chiffres. On ne trie QUE si toutes les lignes portent une taille :
+    // sinon l'urgence, qui reste l'information la plus utile, l'emporte.
+    var tailles=g.lignes.map(function(l){return _litresDe(l.court||l.nm);});
+    if(tailles.every(function(x){return x!=null;})){
+      g.lignes=g.lignes.map(function(l,i){return {l:l,t:tailles[i],i:i};})
+        .sort(function(a,b){return (a.t-b.t)||(a.i-b.i);})
+        .map(function(x){return x.l;});
+    }
+    return {seul:false,txt:g.nom+'\n'+g.lignes.map(function(l){
+      return '  • '+(l.court||l.nm)+' : '+_cibleCommande(l.p,l.v,l.b.besoin);
+    }).join('\n')};
+  });
+  // Deux lignes seules se suivent sans respirer ; un groupe en demande une.
+  var corps=blocs.map(function(b,i){
+    var sep=(i===0)?'':((b.seul&&blocs[i-1].seul)?'\n':'\n\n');
+    return sep+b.txt;
+  }).join('');
+  var txt=(fr?'Commande — ':'Order — ')+((DB&&DB.cfg&&DB.cfg.nom)||'')+'\n'
+    +_cmdLignes.length+' '+(fr?('article'+(_cmdLignes.length>1?'s':'')):('item'+(_cmdLignes.length>1?'s':'')))
+    +(zero?(' · '+zero+' '+(fr?'à zéro':'out of stock')):'')+'\n\n'
+    +corps;
   try{
     if(navigator.share){navigator.share({text:txt});return;}
   }catch(e){}
