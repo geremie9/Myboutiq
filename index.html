@@ -1790,6 +1790,13 @@ body{max-width:min(100%,1200px)}
    boutique, ce bouton-là devient une tache verte sans mot dessus.
    Le vert foncé de la même marque (#0E7A4F) monte à 5,36 : on reconnaît
    toujours WhatsApp, et on lit ce qui est écrit. */
+.vt-comm{margin-top:18px;background:#FFF8EC;border:1px solid #F3DFBE;border-radius:16px;padding:16px 15px}
+.vt-comm-t{font-family:'Nunito',sans-serif;font-size:16px;font-weight:900;color:#241257;line-height:1.25}
+.vt-comm-s{font-size:13px;line-height:1.55;color:#5C4B6E;font-weight:600;margin-top:7px}
+.vt-comm-b{display:block;margin-top:13px;text-align:center;background:var(--A);color:#2E1065;
+  border-radius:13px;padding:14px;font-family:'Outfit',sans-serif;font-size:14.5px;font-weight:900;
+  text-decoration:none;transition:transform .12s}
+.vt-comm-b:active{transform:scale(.97)}
 .vt-wa{display:block;width:100%;background:#0E7A4F;border:none;border-radius:14px;padding:15px;
   color:#fff;font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-top:13px;
   transition:transform .12s,background .15s}
@@ -2122,10 +2129,25 @@ body{max-width:min(100%,1200px)}
       <h2 class="vt-h"><i>✍️</i><b id="ve-t">Écris-moi</b></h2>
       <div class="vt-sous" id="ve-s">Une question, un défaut, une idée, un besoin que l'app ne couvre pas encore. Le message arrive sur WhatsApp, et c'est moi qui réponds.</div>
       <button class="vt-wa" id="ve-b" onclick="ecrireAMyboutiq('site')">💬 Écrire sur WhatsApp</button>
+      <!-- ⭐ LA COMMUNAUTÉ — deux portes, la même section.
+           « Écris-moi » est un tête-à-tête ; la communauté, c'est voir les
+           AUTRES commerçants. Deux besoins différents chez le même visiteur :
+           celui qui hésite veut voir du monde avant de parler. Mais ça reste
+           UNE section — deux titres pour deux boutons WhatsApp, ce serait la
+           page qui bégaie.
+           ⚠️ VIDE, CE BLOC N'EXISTE PAS (même règle que le bloc AUTEUR). -->
+      <div id="ve-comm" style="display:none">
+        <div class="vt-comm">
+          <div class="vt-comm-t" id="vc-t"></div>
+          <div class="vt-comm-s" id="vc-s"></div>
+          <a class="vt-comm-b" id="vc-b" href="#" target="_blank" rel="noopener"></a>
+        </div>
+      </div>
     </section>
 
     <div class="vt-pied">
       <div id="vt-pied-l1">MyBoutiQ · Cameroun</div>
+      <div style="display:none"><a href="#" target="_blank" rel="noopener" id="vt-pied-comm">👥 Rejoindre la communauté WhatsApp</a></div>
       <div><a href="https://bar.myboutiq.online/" id="vt-pied-bar">🍻 MyBar — pour les bars et buvettes</a></div>
       <div><a href="./politique-confidentialite.html" id="vt-conf">Politique de confidentialité</a></div>
       <div id="vt-pied-v" style="color:#c4c4c4"></div>
@@ -4779,7 +4801,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.48'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.49'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5965,6 +5987,7 @@ function _demarrerApp(){
       try{majBandeVitrine();}catch(e){}
       try{majBoutonsInstaller();}catch(e){}
       try{majBlocAuteur();}catch(e){}
+      try{majCommunaute();}catch(e){}
       goScreen('s-landing');
     }
 }
@@ -6000,7 +6023,7 @@ function goScreen(id){
   if(el)el.classList.add('on');
   // La vitrine peut aussi se rouvrir autrement qu'au démarrage (boutique
   // supprimée, retour arrière). Sa barre se branche ici, une seule fois.
-  if(id==='s-landing'){try{majBlocAuteur();}catch(x){}try{_brancherNavSite();}catch(x){}}
+  if(id==='s-landing'){try{majBlocAuteur();}catch(x){}try{majCommunaute();}catch(x){}try{_brancherNavSite();}catch(x){}}
   // ⚠️ L'habitué ne passe JAMAIS par la vitrine : il tombe direct sur la
   // porte, et c'est le seul endroit du démarrage qui n'appelait pas
   // `majBoutonsInstaller()`. Son bouton d'installation n'existait donc pas.
@@ -23886,6 +23909,56 @@ var _annonceCourante=null,_annonceDerniereVerif=0;
 //  qu'il n'aura jamais.
 // ══════════════════════════════════════════════════════════════════
 var WA_MYBOUTIQ='237689335389';
+// ═══════════════════════════════════════════════════════════════
+//  LA COMMUNAUTÉ WHATSAPP — colle ton lien d'invitation ici, et il apparaît
+//  sur la vitrine ET dans le pied de page. Rien d'autre à toucher.
+//    WhatsApp → Infos du groupe → « Inviter via un lien » → Copier le lien
+//    ça donne : https://chat.whatsapp.com/XXXXXXXXXXXX
+//
+//  ⚠️ TANT QUE C'EST VIDE, LE BLOC N'EXISTE PAS. Je ne fabrique pas une
+//  adresse d'invitation : un lien mort sur une vitrine coûte plus cher que
+//  pas de lien du tout.
+//  ⚠️ ET UN LIEN D'INVITATION EST PUBLIC PAR NATURE : qui l'a, entre. Le
+//  jour où tu veux refermer la porte, c'est « Réinitialiser le lien » dans
+//  WhatsApp, PUIS cette ligne-ci — sinon la vitrine continue d'envoyer le
+//  monde sur une adresse morte.
+// ═══════════════════════════════════════════════════════════════
+var COMMUNAUTE={
+  lien:'',        // ex. 'https://chat.whatsapp.com/ABCdef123456'
+  titre:'',       // vide → le texte par défaut ci-dessous
+  mot:'',         // vide → idem
+  bouton:''       // vide → idem
+};
+function majCommunaute(){
+  var z=document.getElementById('ve-comm');if(!z)return;
+  var l=String(COMMUNAUTE.lien||'').trim();
+  // Une adresse d'invitation WhatsApp, et RIEN d'autre : un lien collé de
+  // travers enverrait ses visiteurs n'importe où, sous son nom à lui.
+  var bon=/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9_-]{6,}$/.test(l);
+  // ⚠️ LE PIED DE PAGE SE REFERME AUSSI. Trouvé par t120 : on cachait le
+  // bloc et on laissait le lien du pied allumé. Le jour où il réinitialise
+  // son invitation WhatsApp, la vitrine aurait continué d'envoyer le monde
+  // sur une adresse morte — le défaut exact contre lequel j'avais écrit un
+  // avertissement six lignes plus haut.
+  var _pi=document.getElementById('vt-pied-comm');
+  if(!bon){
+    z.style.display='none';
+    if(_pi&&_pi.parentElement){_pi.parentElement.style.display='none';_pi.removeAttribute('href');}
+    return;
+  }
+  var fr=true;try{fr=!_vitrineEnAnglais();}catch(e){}
+  z.style.display='';
+  var t=document.getElementById('vc-t');
+  if(t)t.textContent=COMMUNAUTE.titre||(fr?'👥 La communauté des commerçants MyBoutiQ'
+                                          :'👥 The MyBoutiQ shopkeepers community');
+  var sb=document.getElementById('vc-s');
+  if(sb)sb.textContent=COMMUNAUTE.mot||(fr
+    ?"Des commerçants qui tiennent une boutique comme la tienne. On y montre ce qui change dans l'app, on y pose ses questions, et les réponses servent à tout le monde. C'est aussi là que naissent la plupart des corrections."
+    :"Shopkeepers running a shop like yours. What changes in the app is shown here, questions get asked, and the answers serve everyone.");
+  var bt=document.getElementById('vc-b');
+  if(bt){bt.href=l;bt.textContent=COMMUNAUTE.bouton||(fr?'Rejoindre la communauté →':'Join the community →');}
+  if(_pi&&_pi.parentElement){_pi.href=l;_pi.parentElement.style.display='';}
+}
 // ⚠️ CE TEXTE SE MET À JOUR À CHAQUE VERSION. C'est le seul endroit :
 // la vitrine et le bandeau y puisent tous les deux.
 var QUOI_DE_NEUF={
