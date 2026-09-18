@@ -589,6 +589,21 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 .pedit{position:absolute;top:6px;left:6px;width:22px;height:22px;border-radius:7px;border:none;background:rgba(26,26,46,.06);color:var(--M);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;z-index:2;transition:all .15s}
 .pedit:hover{background:rgba(41,121,255,.12);color:var(--B)}
 .pcard.has-photo .pedit{top:7px;left:7px}
+/* ⚠️⚠️ « LE BOUTON MODIFICATION EST INVISIBLE » — il l'était, littéralement.
+   Le crayon gardait sur une PHOTO le fond qu'on lui avait donné pour une
+   tuile blanche : rgba(26,26,46,.06), soit 6 % de noir, et une encre grise
+   (--M, #9E9E9E). Sur la photo sombre d'une bouteille, c'est du gris sur du
+   gris : rien à voir, rien à toucher. Le repaire de prix juste à côté
+   (.pvbdg) avait reçu sa pastille blanche il y a longtemps ; le crayon, qui
+   ouvre TOUTES les modifications de l'article, avait été oublié.
+   Il prend la même pastille blanche, donc le même contraste garanti quelle
+   que soit la photo. */
+.pcard.has-photo .pedit{background:rgba(255,255,255,.94);color:#1B4FA8;
+  box-shadow:0 1px 4px rgba(0,0,0,.28)}
+.pcard.has-photo .pedit:hover{background:#fff;color:var(--B)}
+/* Sur une tuile sans photo il restait gris pâle sur blanc — présent, mais
+   personne ne le voyait. Même encre que partout ailleurs dans l'app. */
+.pcard:not(.has-photo) .pedit{background:rgba(41,121,255,.10);color:var(--B)}
 .pedit:active{transform:scale(.92)}
 /* ── VENDRE PAR CARTON / CASIER / SAC ────────────────────────────────
    Une tape sur la tuile = UNE unité. Vendre un casier de 12 réclamait
@@ -4609,7 +4624,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.37'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.38'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4827,6 +4842,10 @@ function assurerConnexionSupa(){
 var _connTimer=null,_connEtat=null;
 function majEtatConnexion(){
   var b=document.getElementById('conn-bar');if(!b)return;
+  // ⚠️ La boutique d'exemple ne parle JAMAIS au serveur (règle 2) : une
+  // alarme de liaison n'y décrit aucun problème, elle ne fait qu'inquiéter
+  // le visiteur qui découvre l'app.
+  try{if(estDemo()){b.style.display='none';return;}}catch(e){}
   var ico=document.getElementById('conn-ico'),txt=document.getElementById('conn-txt');
   var connecte=!!supa&&navigator.onLine;
   var etat=connecte?'ok':(navigator.onLine?'srv':'off');
@@ -5664,6 +5683,34 @@ function _demarrerApp(){
       DB.equipe.forEach(function(m){if(m.permsAll===undefined)m.permsAll=false;});
       lang=DB.cfg.lang||'fr';
       appliquerLang();
+      // ══════════════════════════════════════════════════════════════
+      //  ⚠️⚠️ LA BOUTIQUE D'EXEMPLE SE REFERMAIT TOUTE SEULE EN UNE SECONDE.
+      //
+      //  « les visiteurs se plaignent, ça se ferme vite ». MESURÉ au banc, sur
+      //  un téléphone vierge, avec la trace de chaque goScreen :
+      //    t=0      écran d'accueil, le visiteur touche « Voir une boutique
+      //             qui tourne » ;
+      //    t=+30ms  la caisse d'exemple s'ouvre, 14 articles ;
+      //    t=+90ms  _demarrerApp — armé par setTimeout(1150) AVANT le clic —
+      //             se réveille, trouve une DB dans le téléphone (la DEMO,
+      //             qu'elle vient d'y écrire) et fait goScreen('s-login').
+      //  Le visiteur voyait donc la boutique une demi-seconde, puis un clavier
+      //  qui lui réclamait un numéro de patron et un PIN qu'il n'a pas. Aucune
+      //  sortie : la porte d'entrée d'une boutique fictive.
+      //
+      //  Le même défaut, EN PIRE, au retour : referme l'app, rouvre-la, et
+      //  _demarrerApp part droit sur ce même clavier — le bandeau orange a
+      //  disparu avec lui, donc même « Créer ma boutique » n'est plus là.
+      //
+      //  Une boutique d'exemple n'a PAS de porte : son PIN est à tout le monde
+      //  et à personne. On l'ouvre, point. Le bandeau reste, et c'est lui qui
+      //  porte la sortie.
+      // ══════════════════════════════════════════════════════════════
+      if(DB.cfg.demo){
+        try{lancerApp();}catch(e){}
+        try{majBandeauDemo();}catch(e){}
+        return;
+      }
       setModeEntree('old');
       goScreen('s-login');
       // ══════════════════════════════════════════════════════════════
@@ -22200,7 +22247,18 @@ async function entrerDemo(){
   // Sa boutique à lui est mise de côté avant tout — la règle de la 21.0.
   try{sauvegarderAvant(fr?'avant la boutique d\'exemple':'before the example shop');}catch(e){}
   var reel=null;try{reel=localStorage.getItem('myboutiq_v6');}catch(e){}
-  try{if(reel)localStorage.setItem('myboutiq_v6_avant_demo',reel);}catch(e){}
+  // ⚠️ NE JAMAIS ÉCRASER LA COPIE DE SA VRAIE BOUTIQUE AVEC LA DÉMO.
+  // Entrer deux fois dans l'exemple rangeait l'exemple à la place du vrai
+  // commerce : « Créer ma boutique » lui rendait alors 14 faux articles.
+  try{
+    var _dejaDemo=false;
+    try{var _d=JSON.parse(reel||'null');_dejaDemo=!!(_d&&_d.cfg&&_d.cfg.demo);}catch(x){}
+    if(reel&&!_dejaDemo)localStorage.setItem('myboutiq_v6_avant_demo',reel);
+  }catch(e){}
+  // ⚠️ Le démarrage différé (setTimeout 1150 ms) a pu être armé avant ce
+  // clic : sans ce drapeau il se réveille par-dessus la caisse d'exemple et
+  // la remplace par l'écran de PIN. C'est le « ça se ferme vite », mesuré.
+  _demarre=true;
   var anc=DB&&DB.cfg?DB.cfg:{};
   DB=migrateDBData({
     cfg:{nom:(fr?'Boutique d\'exemple':'Example shop'),code:DEMO_CODE,pin:'0000',
@@ -22242,13 +22300,39 @@ function majBandeauDemo(){
   var fr=(lang==='fr');
   if(!estDemo()){b.style.display='none';return;}
   b.style.display='flex';
-  var t=document.getElementById('bandeau-demo-t');
-  if(t)t.textContent=fr?'BOUTIQUE D\'EXEMPLE — rien n\'est réel':'EXAMPLE SHOP — nothing is real';
+  // ⚠️ L'exemple survit maintenant à un redémarrage (c'était le défaut du
+  // jour). Donc un commerçant qui a DÉJÀ sa boutique peut s'y réveiller
+  // dedans : « Créer ma boutique » ne lui dit rien, il ne sait pas que ce
+  // bouton lui rend la sienne. On lui dit ce que le geste FAIT pour lui.
+  var _sien=false;try{_sien=!!localStorage.getItem('myboutiq_v6_avant_demo');}catch(e){}
   var q=document.getElementById('bandeau-demo-q');
-  if(q)q.textContent=fr?'Créer ma boutique':'Create my shop';
+  if(q)q.textContent=_sien?(fr?'Ma boutique':'My shop')
+                          :(fr?'Créer ma boutique':'Create my shop');
   var i=document.getElementById('bandeau-demo-i');
   if(i)i.textContent=fr?'📲 Installer':'📲 Install';
   try{majBoutonsInstaller();}catch(e){}
+  // ⚠️ TROIS LIGNES DE BANDEAU SUR UN TÉLÉPHONE DE 390 px : 57 px de caisse
+  // mangés, et la phrase illisible. Deux boutons plus un texte long ne tiennent
+  // pas sur une ligne. Quand « 📲 Installer » est là — et lui seul décide, pas
+  // nous — le mot se réduit à l'essentiel : c'est un EXEMPLE.
+  var t=document.getElementById('bandeau-demo-t');
+  if(t){
+    var serre=!!(i&&i.style.display!=='none');
+    t.textContent=serre?(fr?'EXEMPLE':'EXAMPLE')
+                       :(fr?'EXEMPLE — rien n\'est réel':'EXAMPLE — nothing is real');
+  }
+  // ⚠️ LA MOITIÉ DE L'APPLICATION MANQUAIT DANS L'EXEMPLE.
+  // entrerDemo() ouvre la caisse par lancerApp(), pas par _ouvrirCaissePatron() :
+  // les boutons que seul le patron voit restaient donc sur leur display:none
+  // d'origine. Le visiteur n'avait ni « + Ajouter », ni l'entrée de stock,
+  // ni la clôture du soir, ni l'export — exactement ce qu'il était venu voir.
+  // La boutique d'exemple EST la boutique d'un patron : elle se montre entière.
+  ['btn-st','btn-add-stk','btn-clot','btn-history'].forEach(function(id){
+    var e=document.getElementById(id);if(e)e.style.display='flex';});
+  ['btn-add','btn-exp-stk'].forEach(function(id){
+    var e=document.getElementById(id);if(e)e.style.display='block';});
+  document.querySelectorAll('.bst').forEach(function(e){e.style.display='flex';});
+  try{majEtatConnexion();}catch(e){}
 }
 
 function sauvegarderAvant(motif){
