@@ -4624,7 +4624,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.39'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.40'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -11420,11 +11420,28 @@ function _uniteMot(p){
 }
 // Le nombre de formes, et leurs noms au survol. Le dessin porte le sens ;
 // le mot « variante » n'apparaît nulle part sur la tuile.
+// Une variante qui ne porte QU'une taille — « 50 cl », « 1,5 L »,
+// « sachet » — est une contenance, pas une marque.
+function _estContenance(nm){
+  return /^(\d+([.,]\d+)?\s*(cl|ml|l)|sachet)$/i.test(String(nm||'').trim());
+}
 function _badgeVariantes(p){
   var n=(p.vr||[]).length;
   if(!n)return '';
-  var noms=(p.vr||[]).map(function(v){return v.nm||'';}).filter(Boolean).join(' · ');
-  return '<div class="pvbdg" title="'+noms.replace(/"/g,'')+'"><i></i>'+n+'</div>';
+  var noms=(p.vr||[]).map(function(v){return v.nm||'';}).filter(Boolean);
+  var titre=noms.join(' · ').replace(/"/g,'');
+  // ⭐ DES CONTENANCES SE LISENT, ELLES NE SE COMPTENT PAS.
+  // « ≡ 2 » sur « Eau Tangui » ne disait pas DEUX QUOI. Deux parfums ?
+  // Deux fournisseurs ? C'est pourtant là, et nulle part ailleurs, que se
+  // voit ce que les contenances ont apporté : la même boisson en 50 cl et
+  // en 1,5 L, chacune son prix. La tuile le dit maintenant.
+  // Au-delà de deux, la tuile est trop étroite : les deux premières et le
+  // compte du reste.
+  if(noms.length===n&&noms.every(_estContenance)){
+    var vus=noms.slice(0,2).join(' · ')+(n>2?(' +'+(n-2)):'');
+    return '<div class="pvbdg" title="'+titre+'">'+vus+'</div>';
+  }
+  return '<div class="pvbdg" title="'+titre+'"><i></i>'+n+'</div>';
 }
 // ══════════════════════════════════════════════════════════════════
 //  LE REPÈRE DU GROS, SUR UNE VARIANTE
@@ -21985,13 +22002,48 @@ function estDemo(){try{return !!(DB&&DB.cfg&&DB.cfg.demo);}catch(e){return false
 //  voulait éviter. Chacun a donc le sien.
 // ══════════════════════════════════════════════════════════════════
 var DEMO_RAYON=[
-  // [nom exact dans CATALOGUE_CM, stock]
-  {nm:'Sucrerie 60 cl',e:'🥤',al:12,vr:[
+  // [nom exact dans CATALOGUE_CM, stock, étiquette de la variante]
+  //
+  // ⭐⭐ DEUX FAMILLES DE CONTENANCES EN TÊTE DE RAYON.
+  //
+  // « le cas des boissons n'est pas bien traité, 1 L, 1,5 L… ce qu'on avait
+  //   traité précisément ».
+  //
+  // Il avait raison : la boutique d'exemple ne montrait QUE des familles de
+  // MARQUES — quatre sucreries de 60 cl, trois bières de 65 cl. Une seule
+  // taille partout. Le visiteur ne voyait donc jamais ce pour quoi les
+  // contenances ont été faites : UNE boisson, PLUSIEURS tailles en même
+  // temps, chacune avec son prix, son stock en bouteilles et son casier.
+  //
+  // Les deux premières lignes le montrent maintenant, et les deux suivantes
+  // gardent l'autre sorte de variante — parce que les deux existent en
+  // boutique et qu'il faut savoir les distinguer.
+  //
+  // ⚠️ LA RÈGLE TIENT : ces deux prix sortent de CATALOGUE_CM.
+  //   Tangui  50 cl 250 F · carton de 12   |   1,5 L 500 F · carton de 12
+  //
+  // ⚠️⚠️ ET IL N'Y EN A QU'UNE SEULE, PARCE QUE LE CATALOGUE N'EN PERMET
+  // PAS DEUX. J'avais mis « Coca-Cola » en 60 cl + canette 33 cl ; t60 l'a
+  // refusé : la canette n'a pas de photo, et la règle « chaque article ET
+  // chaque variante porte sa photo » est née d'une mesure (48 articles gris
+  // sur 89 à la première ouverture). Lui prêter la photo de la bouteille de
+  // 60 cl aurait été montrer une bouteille en disant « canette » — le
+  // défaut qu'on a déjà corrigé sur « Sucrerie 60 cl ».
+  //
+  // MESURÉ sur les 1 369 entrées de l'index : AUCUNE famille de boisson n'a
+  // deux contenances portant à la fois leurs deux prix et leur photo, sauf
+  // Tangui. Le catalogue chiffre les sucreries en 60 cl et rien d'autre,
+  // alors que la table `formats` en propose quatre (33 cl, 50 cl, 1 L,
+  // 1,5 L). Le manque est dans les DONNÉES, pas dans la démonstration, et
+  // on n'invente pas un prix pour le combler.
+  {nm:'Eau Tangui',e:'💧',al:12,vr:[
+    ['Eau Tangui 50 cl',48,'50 cl'],['Eau Tangui 1,5 L',24,'1,5 L']]},
+  {nm:'Coca-Cola 60 cl', e:'🥤', stk:36, al:12},
+  {nm:'Sucrerie 60 cl',e:'🧃',al:12,vr:[
     ['Fanta orange 60 cl',24],['Sprite 60 cl',18],
     ['Top ananas 60 cl',24],['Djino cocktail 60 cl',12]]},
   {nm:'Bière 65 cl',e:'🍺',al:12,vr:[
     ['33 Export 65 cl',24],['Castel Beer 65 cl',12],['Mützig 65 cl',18]]},
-  {nm:'Eau Tangui 50 cl',   e:'💧', stk:36,  al:12},
   {nm:"Sachet d'eau 50 cl", e:'💦', stk:240, al:60},
   {nm:'Riz parfumé 1 kg',   e:'🍚', stk:80,  al:25},
   {nm:'Huile végétale 1 L', e:'🛢️', stk:24,  al:10},
@@ -22024,7 +22076,7 @@ function _articlesDemo(){
       var membres=[];
       s.vr.forEach(function(l){
         var x=parNom[txtNorm(l[0])];
-        if(x)membres.push({x:x,stk:l[1]});else manquants.push(l[0]);
+        if(x)membres.push({x:x,stk:l[1],et:l[2]||''});else manquants.push(l[0]);
       });
       if(!membres.length)return;
       var ref=membres[0].x;
@@ -22046,7 +22098,12 @@ function _articlesDemo(){
       for(var i=0;i<membres.length&&!ph;i++)ph=_photo(membres[i].x.plein);
       if(ph)a.img=ph;
       membres.forEach(function(m,n){
-        var v={id:n+1,nm:m.x.nm||m.x.plein,px:m.x.px,pa:m.x.pa,
+        // ⚠️ UNE CONTENANCE SE NOMME PAR SA TAILLE, PAS PAR LE PRODUIT.
+        // La vraie fonction « Ajouter une contenance » écrit « 1,5 L » sous
+        // « Eau Tangui ». Si l'exemple écrivait « Tangui 1,5 L » sous
+        // « Eau Tangui », il montrerait autre chose que ce que le commerçant
+        // obtiendra — et une démonstration qui ment n'en est pas une.
+        var v={id:n+1,nm:m.et||m.x.nm||m.x.plein,px:m.x.px,pa:m.x.pa,
                stk:m.stk,stk0:m.stk,qBase:1};
         if(m.x.sac>0){v.umSac=m.x.sac;v.umCont=m.x.cont||null;}
         var vp=_photo(m.x.plein);if(vp)v.img=vp;
@@ -22070,6 +22127,90 @@ function _articlesDemo(){
   // qu'un test doit pouvoir lire.
   try{window.__demoManquants=manquants;}catch(e){}
   return arts;
+}
+
+// ═════════════════════════════════════════════════════════════════
+//  ⭐ DEUX JOURNÉES DE VENTES — « la boutique d'exemple n'est pas percutant »
+//
+//  Elle ouvrait sur VENTES 0, BÉNÉFICE 0, TRANS. 0. Une caisse vide. Les
+//  Rapports n'avaient rien à montrer, la clôture du soir non plus, le
+//  « Top ventes » non plus, et « Vendu 30 j » affichait zéro sur chaque
+//  ligne de stock. On invitait un commerçant à juger une caisse sur une
+//  caisse qui n'avait jamais servi.
+//
+//  ⚠️ LA RÈGLE NE BOUGE PAS : AUCUN CHIFFRE N'EST INVENTÉ. Une vente ne
+//  porte ici qu'un ARTICLE et une QUANTITÉ ; le prix de vente, le prix
+//  d'achat et donc la marge sont relus sur l'article, c'est-à-dire dans
+//  CATALOGUE_CM. Le bénéfice affiché est une vraie soustraction entre deux
+//  vrais prix — pas une marge choisie pour faire joli.
+//
+//  ⚠️ Et le stock suit : `recomputeStock` fait stk0 − ventes. Les 48
+//  bouteilles de Tangui 50 cl descendent à mesure qu'on en vend, comme
+//  chez lui. C'est aussi ce qui donne à « À commander » de quoi parler.
+// ═════════════════════════════════════════════════════════════════
+// [heure, jour (0 = aujourd'hui, 1 = hier), [[article, contenance ou null, quantité], …]]
+var DEMO_JOURNEE=[
+  ['07:20',1,[["Sachet d'eau 50 cl",null,10],['Pain baguette',null,2]]],
+  ['08:05',1,[['Eau Tangui','50 cl',2],['Œuf',null,6]]],
+  ['09:40',1,[['Coca-Cola 60 cl',null,2],['Sucrerie 60 cl','Fanta orange',1]]],
+  ['11:15',1,[['Riz parfumé 1 kg',null,2],['Huile végétale 1 L',null,1],['Sucre en poudre 1 kg',null,1]]],
+  ['13:30',1,[["Sachet d'eau 50 cl",null,20]]],
+  ['15:10',1,[['Eau Tangui','1,5 L',3]]],
+  ['17:45',1,[['Bière 65 cl','33 Export',4],['Bière 65 cl','Castel Beer',2]]],
+  ['19:20',1,[['Coca-Cola 60 cl',null,4],['Briquet',null,1]]],
+  ['20:05',1,[['Sucrerie 60 cl','Top ananas',3],['Sucrerie 60 cl','Sprite',2]]],
+  ['07:35',0,[['Pain baguette',null,4],['Œuf',null,10]]],
+  ['08:50',0,[["Sachet d'eau 50 cl",null,15],['Eau Tangui','50 cl',3]]],
+  ['10:25',0,[['Eau Tangui','1,5 L',2],['Petits pois en boîte',null,2]]],
+  ['12:00',0,[['Riz parfumé 1 kg',null,3],['Huile végétale 1 L',null,2]]],
+  ['14:15',0,[['Coca-Cola 60 cl',null,3],['Sucrerie 60 cl','Djino cocktail',2]]],
+  ['16:40',0,[['Eau de javel 1 L',null,1],['Dentifrice Colgate 75 ml',null,1]]],
+  ['18:30',0,[['Bière 65 cl','33 Export',6],['Bière 65 cl','Mützig',3]]],
+  ['19:55',0,[['Coca-Cola 60 cl',null,2],["Sachet d'eau 50 cl",null,12]]],
+  ['20:40',0,[['Ampoule LED 9 W',null,2]]]
+];
+function _jourDemo(recul){
+  var d=new Date();d.setDate(d.getDate()-(recul||0));
+  return d.toLocaleDateString('fr-FR');
+}
+function _ventesDemo(arts){
+  var fr=(lang!=='en');
+  var parNom={};arts.forEach(function(a){parNom[txtNorm(a.nm)]=a;});
+  var ventes=[],n=0;
+  DEMO_JOURNEE.forEach(function(v){
+    var heure=v[0],jour=v[1],lignes=[],total=0,ben=0;
+    v[2].forEach(function(l){
+      var a=parNom[txtNorm(l[0])];if(!a)return;
+      var vr=null;
+      if(l[1]){vr=(a.vr||[]).find(function(x){return txtNorm(x.nm)===txtNorm(l[1]);});if(!vr)return;}
+      var qty=l[2],px=(vr?vr.px:a.px)||0,pa=(vr?vr.pa:a.pa)||0;
+      if(!(px>0))return;
+      total+=px*qty; ben+=(px-pa)*qty;
+      // ⚠️⚠️ LA FORME EXACTE D'UNE VRAIE LIGNE DE VENTE, PAS UNE APPROCHE.
+      // Premier jet : `px` mis à px×qty et pas de `pa` du tout — c'est ce
+      // qu'écrit la fonction `encaisser` du HAUT du fichier, celle qui est
+      // MORTE (redéfinie 10 000 lignes plus bas). Les Rapports lisaient donc
+      // « ⚠️ Ventes sans prix d'achat — 99 550 F » sur une journée de
+      // 25 100 F : le prix d'achat manquait, et le total était multiplié une
+      // seconde fois par la quantité. Une démonstration qui s'alarme
+      // toute seule ne démontre rien.
+      // La vraie ligne porte le prix à L'UNITÉ, son prix d'achat, et la
+      // quantité sous SES DEUX noms (`qte` et `qty`).
+      lignes.push({nm:a.nm+(vr?(' — '+vr.nm):''),px:px,pa:pa,qte:qty,qty:qty,
+                   pid:a.id,vid:vr?vr.id:null,qBase:vr?getQBase(vr):1,dep:0,gros:null});
+    });
+    if(!lignes.length)return;
+    // ⚠️ Un identifiant STABLE : deux visiteurs, deux téléphones, la même
+    // boutique. `genVenteId` y mêlerait l'heure et un tirage au sort.
+    ventes.push({id:'demo_'+(++n),total:total,totalBrut:total,benefice:ben,ben:ben,
+                 lignes:lignes,h:heure,heure:heure,date:_jourDemo(jour),
+                 vendeur:(fr?'Patron':'Owner'),clientId:null,clientNom:'',
+                 pointsGagnes:0,pointsUtilises:0,reductionPoints:0,remise:0,negocie:0,
+                 paiement:{mode:'especes'},annulee:false,
+                 consigne:0,consignePrises:0,consigneRendues:0,consigneUnit:0});
+  });
+  // Rangées dans l'ordre du temps : hier d'abord, ce soir en dernier.
+  return ventes.sort(function(a,b){return (a.date===b.date)?(a.h<b.h?-1:1):(a.date<b.date?-1:1);});
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -22293,7 +22434,7 @@ async function entrerDemo(){
     cfg:{nom:(fr?'Boutique d\'exemple':'Example shop'),code:DEMO_CODE,pin:'0000',
          d:anc.d||'FCFA',s:anc.s||'FCFA',pays:anc.pays||'CM',lang:anc.lang||lang,
          secteur:anc.secteur||'boutique',venteDeverrouillee:true,demo:true},
-    articles:arts,ventes:[],appros:[],depenses:[],clients:[],equipe:[],suppr:[],
+    articles:arts,ventes:_ventesDemo(arts),appros:[],depenses:[],clients:[],equipe:[],suppr:[],
     nextId:100+arts.length+1
   });
   DB=recomputeStock(DB);
