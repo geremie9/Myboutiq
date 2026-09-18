@@ -2042,7 +2042,7 @@ body{max-width:min(100%,1200px)}
     <div style="position:relative"><input class="ob-inp" type="text" id="ob-nom" placeholder="Nom de ta boutique..."><button type="button" id="mic-obnom" onclick="dicterDans('ob-nom','mic-obnom')" title="Dicter" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--BG);border:none;border-radius:9px;width:38px;height:38px;font-size:17px;cursor:pointer;font-family:Outfit,sans-serif;z-index:2">🎤</button></div>
     <input class="ob-inp" type="tel" id="ob-tel" placeholder="📱 Ton numéro de téléphone" inputmode="tel" oninput="apercuTelOb()" autocomplete="off">
     <div id="ob-tel-apercu" style="font-size:12.5px;font-weight:800;color:rgba(255,255,255,.85);margin:-6px 0 10px;min-height:16px"></div>
-    <input class="ob-inp" type="password" id="ob-pin" placeholder="🔐 Code PIN (4 chiffres)" maxlength="6" inputmode="numeric" autocomplete="new-password">
+    <input class="ob-inp" type="password" id="ob-pin" placeholder="🔐 Code PIN (6 chiffres)" maxlength="6" inputmode="numeric" autocomplete="new-password">
     <div style="font-size:11.5px;color:rgba(255,255,255,.6);font-weight:600;margin:-6px 0 10px;line-height:1.4" id="ob-pin-aide">Ce numéro et ce PIN sont ta clé pour revenir dans ta boutique. Note-les.</div>
     <button class="btn-ob" id="ob5-btn" onclick="validerEtapeBoutique()">Continuer →</button>
   </div>
@@ -3613,8 +3613,8 @@ body{max-width:min(100%,1200px)}
       <div class="pstps">
         <div style="background:#FFF8E1;border:1.4px solid #FFD79A;border-radius:10px;padding:10px 12px;font-size:11.5px;font-weight:700;color:#B45309;margin-bottom:13px;line-height:1.5" id="cp-note">Ton PIN ouvre ta caisse et tes bénéfices. Ne le dis à personne, et n'utilise pas ta date de naissance.</div>
         <div class="pig"><label class="pl" id="cp-l1">PIN actuel</label><input class="pi" type="password" id="cp-actuel" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
-        <div class="pig"><label class="pl" id="cp-l2">Nouveau PIN (4 chiffres)</label><input class="pi" type="password" id="cp-new" maxlength="6" inputmode="numeric" placeholder="••••"></div>
-        <div class="pig"><label class="pl" id="cp-l3">Répète le nouveau PIN</label><input class="pi" type="password" id="cp-new2" maxlength="6" inputmode="numeric" placeholder="••••"></div>
+        <div class="pig"><label class="pl" id="cp-l2">Nouveau PIN (6 chiffres)</label><input class="pi" type="password" id="cp-new" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
+        <div class="pig"><label class="pl" id="cp-l3">Répète le nouveau PIN</label><input class="pi" type="password" id="cp-new2" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
         <button class="bnxt" onclick="validerChangerPin()"><span id="cp-btn">Changer mon PIN</span></button>
       </div>
     </div>
@@ -3919,8 +3919,8 @@ body{max-width:min(100%,1200px)}
       </div>
       <div class="pig"><label class="pl">Son numéro de téléphone</label>
         <input class="pi" type="tel" id="rp2-tel" inputmode="tel" placeholder="ex : 6 93 93 06 88" autocomplete="off"></div>
-      <div class="pig"><label class="pl">Nouveau PIN (4 chiffres)</label>
-        <input class="pi" type="text" id="rp2-pin" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="off"></div>
+      <div class="pig"><label class="pl">Nouveau PIN (6 chiffres)</label>
+        <input class="pi" type="text" id="rp2-pin" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off"></div>
       <div id="rp2-res" style="display:none;font-size:12px;font-weight:700;line-height:1.55;
            background:var(--BG);border-radius:11px;padding:11px 12px;margin-bottom:13px"></div>
       <button class="bt" style="width:100%" id="rp2-ok" onclick="lancerReinitPin()">🔑 <span>Réinitialiser</span></button>
@@ -4624,7 +4624,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.41'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.42'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4871,6 +4871,41 @@ function toucherBandeauConnexion(){
 function isInvalidCredError(err){
   var msg=String(err&&err.message||'').toLowerCase();
   return msg.indexOf('invalid login credentials')!==-1||msg.indexOf('invalid credentials')!==-1;
+}
+// ═════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ L'APP PROMETTAIT 4 CHIFFRES, LE SERVEUR EN EXIGE 6.
+//
+//  « certains utilisateurs se plaignent que, bien qu'on dise à partir de
+//    4 chiffres, l'application exige souvent 6. Et aussi quand on veut
+//    changer, ça exige toujours les 6. »
+//
+//  Sa capture le montre en toutes lettres : sous le titre « NOUVEAU PIN
+//  (4 CHIFFRES) », un bandeau noir en anglais — « Password should be at
+//  least 6 characters. » Il a tapé ce qu'on lui demandait et on l'a
+//  refusé, dans une langue qu'il ne lit pas.
+//
+//  LA CAUSE N'EST PAS DANS L'APP : le PIN du patron EST le mot de passe de
+//  son compte serveur, et Supabase refuse en dessous de 6 caractères. Nos
+//  contrôles à nous acceptaient 4 — ils laissaient donc passer un code que
+//  le serveur allait refuser une seconde plus tard.
+//
+//  ⚠️ LE PIN DU VENDEUR, LUI, RESTE À 4 : il ne va jamais au serveur, il
+//  est vérifié dans le téléphone. Rien ne justifie de l'allonger.
+//
+//  Le jour où le minimum sera abaissé côté Supabase (Réglages →
+//  Authentication → « Minimum password length »), il n'y a QUE cette
+//  constante à remettre à 4.
+// ═════════════════════════════════════════════════════════════════
+var PIN_MIN_PATRON=6;
+// Vrai si ce PIN sera accepté par le serveur. On le demande AVANT d'appeler
+// le serveur, pour ne plus lui faire découvrir le refus après coup.
+function pinPatronValide(pin){
+  return new RegExp('^\\d{'+PIN_MIN_PATRON+',6}$').test(String(pin||''));
+}
+// Ce qu'on lui dit quand ça ne va pas — en français, et avec le nombre.
+function pinPatronMot(fr){
+  return fr?('Choisis un PIN de '+PIN_MIN_PATRON+' chiffres')
+           :('Choose a '+PIN_MIN_PATRON+'-digit PIN');
 }
 function authFriendlyError(err){
   // ⚠️ « Password should be at least 6 characters » arrivait tel quel, en
@@ -6857,7 +6892,7 @@ function validerEtapeBoutique(){
   // plus rapide à taper), mais on ACCEPTE 4 à 6. Exiger exactement 4 ferme la
   // porte à quiconque a déjà un PIN plus long — et si le serveur d'auth refuse
   // un mot de passe de 4 caractères, cela laisse le commerçant SANS PIN valide.
-  if(!/^\d{4,6}$/.test(pin)){showToast('🔐 '+(fr?'Choisis un PIN de 4 chiffres':'Choose a 4-digit PIN'));document.getElementById('ob-pin').focus();return;}
+  if(!pinPatronValide(pin)){showToast('🔐 '+pinPatronMot(fr));document.getElementById('ob-pin').focus();return;}
   // ⚠️ L'écran « ✅ Tout est prêt ! » ne servait qu'à récapituler ce qu'il
   // venait de taper. Un écran de plus pour dire qu'on a fini, alors que le
   // but est de ne PAS le perdre en route. On ouvre sa boutique directement.
@@ -7026,7 +7061,7 @@ async function finaliserOb(){
   var pin=document.getElementById('ob-pin')?.value.trim()||'';
   if(!nm){showToast(t('errBoutique'));return;}
   if(!tel){showToast(t('errTel'));return;}
-  if(!pin||pin.length<4){showToast(obLang==='fr'?'⚠️ PIN minimum 4 chiffres':'⚠️ PIN minimum 4 digits');return;}
+  if(!pinPatronValide(pin)){showToast('⚠️ '+pinPatronMot(obLang==='fr'));return;}
   _obEnCours=true;
   var _btn=document.getElementById('ob7-btn');
   if(_btn){_btn.disabled=true;_btn.style.opacity='.55';_btn.textContent=(obLang==='fr'?'⏳ Création…':'⏳ Creating…');}
@@ -7250,7 +7285,7 @@ async function validerChangerPin(){
   var n2=(document.getElementById('cp-new2').value||'').trim();
   if(!DB||!DB.cfg)return;
   if(act!==String(DB.cfg.pin||'')){showToast('❌ '+(fr?'PIN actuel incorrect':'Wrong current PIN'));return;}
-  if(!/^\d{4,6}$/.test(n1)){showToast('⚠️ '+(fr?'Le nouveau PIN doit faire 4 chiffres':'New PIN must be 4 digits'));return;}
+  if(!pinPatronValide(n1)){showToast('⚠️ '+pinPatronMot(fr));return;}
   if(n1!==n2){showToast('⚠️ '+(fr?'Les deux nouveaux PIN ne sont pas pareils':'The two new PINs differ'));return;}
   if(n1===act){showToast('⚠️ '+(fr?'C\'est déjà ton PIN actuel':'That is already your PIN'));return;}
   if(/^(\d)\1+$/.test(n1)||n1==='1234'||n1==='123456'){
@@ -7262,7 +7297,12 @@ async function validerChangerPin(){
   showToast('🔄 '+(fr?'Changement en cours…':'Changing…'));
   try{
     var up=await supa.auth.updateUser({password:n1});
-    if(up.error){showToast('❌ '+(up.error.message||(fr?'Changement refusé':'Change refused')));return;}
+    // ⚠️ LE MESSAGE DU SERVEUR ARRIVAIT BRUT, EN ANGLAIS. C'est le bandeau
+    // noir de sa capture : « Password should be at least 6 characters. »
+    // `authFriendlyError` existe depuis la 22.24 et traduit exactement
+    // celui-là ; cet endroit-ci ne l'appelait pas.
+    if(up.error){showToast('❌ '+((authFriendlyError(up.error)||{}).message
+                 ||(fr?'Changement refusé':'Change refused')));return;}
   }catch(e){showToast('❌ '+(fr?'Changement refusé':'Change refused'));return;}
   DB.cfg.pin=n1;_shopPin=n1;
   journalAjouter('pin',fr?'PIN patron':'Owner PIN','••••','••••');
@@ -10223,9 +10263,26 @@ function showCtx(e,p){
   // dans un menu qui en a déjà dix.
   var _cc=document.getElementById('ctxi-cont2');
   if(_cc){
-    var _fb=null;try{_fb=_familleBoissonDe(p.nm);}catch(e){}
-    var _fl=null;try{_fl=_fb?_formatsDe(_fb):null;}catch(e){}
-    _cc.style.display=(_fl&&!p.vr.length)?'flex':'none';
+    // ⚠️⚠️ LA LIGNE NE S'AFFICHAIT PAS SUR LA MOITIÉ D'UN BAR.
+    // « si j'avais déjà enregistré mes articles, mes boissons, est-ce que je
+    //   peux encore éclater en sous-contenance ? »
+    // MESURÉ sur des noms réels déjà en boutique : « Coca Cola 50 cl » oui,
+    // mais « Eau Tangui 1,5 L » NON, « 33 Export 65 cl » NON, « Jus Fruitki
+    // 1 L » NON, « Whisky King Arthur » NON, « Vin rouge carton 1 L » NON.
+    // `_familleBoissonDe` ne reconnaît que deux formes : le nom EST la
+    // famille (« Coca Cola »), ou famille + variante du catalogue
+    // (« Fanta orange »). Une eau porte sa marque (« Eau Tangui »), une
+    // bière est nommée à l'envers (« 33 Export » sous la famille
+    // « Bière 65 cl », classée en alcool que la boucle ignore) : aucune ne
+    // passe.
+    // L'autre porte, elle, savait déjà : `_venduParFormat` dit oui à toutes
+    // ces boissons et non au riz, et `_echelleFormats` donne l'échelle.
+    // On prend la liste précise de la famille quand on la connaît, l'échelle
+    // générale sinon — la même que l'autre écran montre depuis toujours.
+    var _fl=null;
+    try{var _fb=_familleBoissonDe(p.nm);_fl=_fb?_formatsDe(_fb):null;}catch(e){}
+    if(!(_fl&&_fl.length)){try{if(_venduParFormat(p))_fl=_echelleFormats(p.nm);}catch(e){}}
+    _cc.style.display=((_fl&&_fl.length)&&!p.vr.length)?'flex':'none';
     var _l10=document.getElementById('cx10');
     if(_l10)_l10.textContent=(lang==='fr')?'Ajouter une contenance':'Add a size';
   }
@@ -17063,9 +17120,12 @@ function ctxContenance(){
   if(!artCtx)return;
   var m=document.getElementById('ctxm'); if(m)m.classList.remove('show');
   var fr=(lang==='fr'),p=artCtx;
+  // Même règle qu'à la ligne du menu : la liste précise de la famille quand
+  // on la connaît, l'échelle générale pour toutes les autres boissons.
   var fam=_familleBoissonDe(p.nm);
   var l=fam?_formatsDe(fam):null;
-  if(!l){showToast('ℹ️ '+(fr?'Les contenances ne servent que pour les boissons'
+  if(!(l&&l.length)){try{if(_venduParFormat(p))l=_echelleFormats(p.nm);}catch(e){}}
+  if(!l||!l.length){showToast('ℹ️ '+(fr?'Les contenances ne servent que pour les boissons'
                            :'Sizes only apply to drinks'));return;}
   var base=_nomSansContenance(p.nm);
   // Ce qui existe déjà dans la boutique pour cette boisson.
@@ -17461,7 +17521,7 @@ async function lancerReinitPin(){
   var tel=String((document.getElementById('rp2-tel')||{}).value||'').trim();
   var pin=String((document.getElementById('rp2-pin')||{}).value||'').trim();
   if(tel.replace(/\D/g,'').length<6){_rp2Dire(fr?'Numéro trop court.':'Number too short',false);return;}
-  if(!/^\d{4,6}$/.test(pin)){_rp2Dire(fr?'Le PIN doit faire 4 à 6 chiffres.':'PIN must be 4 to 6 digits',false);return;}
+  if(!pinPatronValide(pin)){_rp2Dire(fr?('Le PIN doit faire '+PIN_MIN_PATRON+' chiffres.'):('PIN must be '+PIN_MIN_PATRON+' digits'),false);return;}
   // ⚠️ On confirme AVANT d'écrire : ce geste met quelqu'un dehors si on se
   // trompe de numéro, et il n'y a pas de marche arrière.
   if(!confirm((fr?'Réinitialiser le PIN du ':'Reset the PIN of ')+tel+' ?\n\n'
