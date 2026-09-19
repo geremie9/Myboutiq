@@ -660,11 +660,40 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 /* ⚠️ Défaut que J'AI introduit en 21.40 et vu sur ma propre capture :
    « 📦 carton FCFA 1 500 » repassait à la ligne et cassait la tuile. Une
    puce de 19 px de haut ne doit jamais pouvoir grandir. */
-.pgros{display:inline-flex;align-items:center;gap:2px;margin-top:3px;height:19px;padding:0 7px;
-  border-radius:6px;border:none;background:rgba(0,150,136,.13);color:#00695C;
-  font-size:10px;font-weight:800;line-height:1;cursor:pointer;position:relative;z-index:3;
-  max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pgros>span{overflow:hidden;text-overflow:ellipsis}
+.pgros{display:inline-flex;align-items:center;gap:3px;margin-top:3px;height:26px;padding:0 9px;
+  border-radius:7px;border:none;background:rgba(0,150,136,.13);color:#00695C;
+  font-size:11px;font-weight:800;line-height:1;cursor:pointer;position:relative;z-index:3;
+  max-width:100%;white-space:nowrap}
+/* ⚠️ `overflow:hidden` VIVAIT ICI, et il DÉCOUPAIT la cible de 44 px : le
+   ::after était bien là, aux bonnes dimensions, et clippé au ras de la
+   puce. Mesuré — un doigt 14 px sous le repère touchait la carte, donc
+   ajoutait UNE unité au lieu d'ouvrir le gros. Le découpage appartient au
+   texte, pas au bouton : c'est le <span> qui ellipse, et `min-width:0`
+   est ce qui l'autorise à rétrécir dans un flex. */
+.pgros>span{overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* ⚠️⚠️ LE SEUL BADGE D'ACTION DE L'APP QUI VIOLAIT SA PROPRE RÈGLE.
+   `.pedit` et `.qbdg`, sur la MÊME carte, ont chacun un ::after invisible
+   de 44 px ; `.vt-gros` et `.vsat-gros`, dedans, aussi — « la leçon de la
+   21.12 ». Elle n'avait jamais atteint ce repère-ci : 19 px de haut, la
+   cible la plus petite de la caisse, sur le geste qui engage le plus
+   d'argent.
+
+   ⚠️⚠️ ET LE ::after SEUL N'Y SUFFIT PAS. `.pcard` est en
+   `overflow:hidden` : tout ce qui dépasse de la carte est DÉCOUPÉ au ras
+   d'elle. Tant mieux — sans ce découpage la cible mordait la gouttière de
+   9 px et la carte d'à côté. Mais il ne restait alors que 22 px sous une
+   puce de 19, et ça ne fait pas 44.
+   Donc la puce GRANDIT pour de vrai — 19 → 26 px — et le ::after ramasse
+   le creux qui reste DANS la carte. Mesuré sur les six tuiles de la
+   boutique d'exemple : cible de 43 px au lieu de 19, la carte passant de
+   148 à 155 px. 43 et non 44 : c'est la carte qui découpe le dernier
+   pixel, et je préfère le dire que l'arrondir.
+   ⚠️ ELLE NE MONTE PAS : au-dessus il y a le prix, et surtout la zone
+   « +1 unité » — le geste utilisé 150 fois plus souvent (mesuré : 3 734
+   lignes sur 3 759). Bas et côtés seulement, 3 px de marge en haut. */
+.pgros::after{content:'';position:absolute;left:50%;transform:translateX(-50%);
+  top:-3px;height:44px;width:calc(100% + 16px);min-width:44px;
+  border-radius:8px}
 .pgros:active{transform:scale(.92)}
 .pgros.vide{background:rgba(26,26,46,.055);color:var(--M);font-weight:700;opacity:.75}
 .pcard.has-photo .pgros{background:rgba(255,255,255,.94);color:#00695C;margin-top:2px}
@@ -832,6 +861,17 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    au lieu de disparaître sans un mot. */
 .bio-sig.eteint{opacity:.4}
 .bio-sig.eteint svg{stroke-dasharray:2.5 3}
+.pgo.pgo-q{background:linear-gradient(135deg,#F2FBF9,#E8F6F3);border-color:#7FBFB3}
+.pgo.pgo-q .pgo-t{color:#00584B}
+.pgo.pgo-q .pgo-b{background:#00695C}
+/* ⚠️ UNE QUESTION DOIT POUVOIR SE TAIRE POUR DE BON. « JE VOIS PARTOUT
+   VENTE EN CARTON » (21.10) : c'est la croix qui tient cette promesse,
+   article par article, et elle survit au rechargement. */
+.pgo-x{flex-shrink:0;width:26px;height:26px;border:none;background:transparent;
+  color:#5B8F86;font-size:13px;font-weight:900;cursor:pointer;border-radius:50%;
+  font-family:'Outfit',sans-serif;position:relative}
+.pgo-x::after{content:'';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%}
 .pgo-e{font-size:19px;flex-shrink:0}
 /* ⚠️ LA MARGE DU BAS N'EST PAS DE L'ESPACEMENT, C'EST UNE SÉCURITÉ. Rendre
    le prix touchable a posé une petite cible à 4 px des boutons − et + :
@@ -4821,7 +4861,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.51'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.52'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -12011,6 +12051,13 @@ function _ajouterLotVariante(p,v,n,mot,force){
   try{parler(fr?((m?(m.nb>1?(fmtQ(m.nb)+' '+mot+'s '):_unGros(mot)+' '):_qd)+'de '+(v.nm||p.nm))
                 :((m?(m.nb+' '+mot+(m.nb>1?'s':'')+' of '):_qd)+(v.nm||p.nm)));}catch(e){}
 }
+// Le panneau de la famille : il ouvre, il ne vend pas.
+function grosOuvrirFamille(e,pid){
+  if(e)e.stopPropagation();
+  var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
+  var carte=document.getElementById('pc-'+pid);
+  try{ouvrirVarInline(p,carte);}catch(x){try{ouvrirVar(p);}catch(y){}}
+}
 function _chipGros(p){
   if(!p||articleIncomplet(p))return '';
   var mot=_motContenant(p,null);
@@ -12062,8 +12109,30 @@ function _chipGros(p){
       return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+(vg.nm||mot)+'">'+_MARQUE_GROS+'<span>'+_texteGros(mot,vg.px)+'</span></button>';
     return '';
   }
-  // Les autres familles gardent leur écran de variantes, sans repère.
-  if(p.vr&&p.vr.length)return '';
+  // ⚠️⚠️ « LES ARTICLES EN VARIANTE ONT UN PETIT SOUCI QUANT À LA VENTE
+  //        EN GROS. »
+  // Il a raison, et la mesure est nette. Une famille — trois savons, un
+  // carton de 24 écrit SUR la famille — renvoyait '' ici : AUCUN repère
+  // dehors. Le même conditionnement sur un article simple affiche
+  // « 📦 carton » et vend d'une tape. Rien sur la tuile ne disait que le
+  // carton existait ; il fallait le savoir pour entrer le chercher.
+  // Sur ses deux vraies boutiques : 45 articles à variantes, tous muets.
+  //
+  // ⚠️ MAIS LA RÈGLE DE LA 21.13 TIENT, ET ON NE LA ROUVRE PAS : « le
+  // repère ne reste dehors que si la famille n'a vraiment que deux
+  // visages », parce qu'un seul prix affiché pour toute une famille en
+  // montre un et cache les autres. Ce repère-ci ne porte donc AUCUN
+  // prix et ne vend RIEN : il est le panneau, pas la porte. Une tape
+  // ouvre la famille, où chaque forme montre son propre prix et son
+  // propre stock — exactement là où il a tranché que ça se choisit.
+  if(p.vr&&p.vr.length){
+    var _ef=[];try{_ef=_etagesGros(p,null);}catch(e){}
+    if(_ef.length&&_ef[0].n>1)
+      return '<button class="pgros vide" onclick="grosOuvrirFamille(event,'+p.id+')" title="'
+             +_ef.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
+             +_MARQUE_GROS+'<span>'+(lang==='fr'?'gros':'bulk')+'</span></button>';
+    return '';
+  }
   var n=Number(p.umSac)||0;
   // ⚠️⚠️ « LE REPÈRE 📦 DIT DEUX CHOSES DIFFÉRENTES SOUS LE MÊME DESSIN. »
   // Vu sur ses captures : « 📦 ×24 » sur l'huile est une QUANTITÉ, « 📦
@@ -12432,6 +12501,122 @@ function _texteOffreGros(of,p){
       +' — '+fmt(of.gain)+' less')),
     btn:(fr?'Appliquer':'Apply')};
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ LA DEUXIÈME PORTE — APPRENDRE LE CARTON QU'IL VEND DÉJÀ
+//
+//  MESURÉ SUR SES BOUTIQUES, et c'est le trou le plus cher de l'app :
+//  sur 3 759 lignes de vente réelles, 134 portent 12 unités ou plus —
+//  du vrai gros, jusqu'à 101 pièces. 111 d'entre elles n'ont JAMAIS
+//  touché le repère 📦. Et sur 631 articles, DEUX portent un prix de
+//  gros ; ZÉRO porte un prix d'ACHAT de gros.
+//
+//  `_offreGros` ne pouvait rien y faire, et ce n'est pas sa faute :
+//  elle exige `et.px>0`, un prix de gros DÉJÀ posé. Elle compare deux
+//  prix — il fallait d'abord qu'un prix existe. Elle est donc muette
+//  sur 629 articles sur 631.
+//
+//  ⚠️ ET LA QUESTION NE SE POSE PAS AU HASARD. « Jus de fruit » est
+//  parti DIX FOIS par douze chez ETS KODJI, HUIT fois chez G — douze
+//  exactement à chaque fois, et l'application a regardé sans jamais
+//  demander « c'est un carton de 12 ? ». C'est ÇA le signal : pas la
+//  grosse quantité d'un soir, mais LE MÊME NOMBRE QUI REVIENT. Il faut
+//  donc deux fois la même quantité derrière soi — la ligne en cours est
+//  la troisième — et le nombre proposé est CELUI QU'IL A LUI-MÊME ÉCRIT,
+//  jamais un nombre deviné. Mesuré sur ses boutiques : 20 couples
+//  article/nombre passent ce filtre sur 631 articles, et tous ressemblent
+//  à un contenant — 12, 13, 15, 16, 19, 20, 38, 100.
+//
+//  ⚠️ ET ELLE SE TAIT POUR DE BON. « JE VOIS PARTOUT VENTE EN CARTON.
+//  CE N'EST PAS TOUS LES ARTICLES OÙ ON ACHÈTE EN CARTON » (21.10) reste
+//  la règle : une croix, et cet article ne repose jamais la question.
+//  Un chemin utile a le droit d'être partout ; une question, non.
+// ══════════════════════════════════════════════════════════════════
+var _SEUIL_GROS=12;
+// Ce que la boutique a déjà fait, lu une fois et gardé tant qu'aucune
+// vente n'est venue s'ajouter. Sans ce garde-fou, on relirait mille
+// ventes à chaque ouverture du panier.
+var _habGros=null,_habGrosN=-1;
+function _habitudesGros(){
+  var n=((DB&&DB.ventes)||[]).length;
+  if(_habGros&&_habGrosN===n)return _habGros;
+  var h={};
+  ((DB&&DB.ventes)||[]).forEach(function(vt){
+    ((vt&&vt.lignes)||[]).forEach(function(l){
+      if(!l||l.gros)return;                 // déjà passé par le carton : rien à apprendre
+      var q=Number(l.qte!=null?l.qte:l.qty)||0;
+      if(!(q>=_SEUIL_GROS))return;
+      var k=String(l.pid)+'|'+(l.vid||'');
+      if(!h[k])h[k]={n:0,q:{}};
+      h[k].n++; h[k].q[q]=(h[k].q[q]||0)+1;
+    });
+  });
+  _habGros=h;_habGrosN=n;return h;
+}
+function _grosRefuse(pid){
+  try{return ((DB.cfg&&DB.cfg.grosNon)||[]).indexOf(String(pid))>-1;}catch(e){return false;}
+}
+function _grosRefuser(pid){
+  try{
+    if(!DB.cfg.grosNon)DB.cfg.grosNon=[];
+    if(DB.cfg.grosNon.indexOf(String(pid))<0)DB.cfg.grosNon.push(String(pid));
+    save();
+  }catch(e){}
+}
+// La proposition d'APPRENDRE le contenant. Elle ne s'affiche que là où
+// `_offreGros` n'a rien à dire — c'est-à-dire là où aucun prix de gros
+// n'existe encore.
+function _offreCarton(key,p,v,qty){
+  if(!p||!(qty>=_SEUIL_GROS))return null;
+  // Un vendeur ne fixe pas les prix. Même règle que `demanderPrixGros` :
+  // on ne lui pose pas une question à laquelle il n'a pas le droit de
+  // répondre.
+  if(role!=='patron'&&!hasPerm('produits'))return null;
+  if(_grosRefuse(p.id))return null;
+  // Il a déjà tranché le prix de cette ligne, ou il y a déjà posé un
+  // contenant : dans les deux cas la question est derrière nous.
+  try{if(_negoDe(key)!==null)return null;}catch(e){}
+  var g=_grosPanier[key];
+  if(g&&((g.lots&&g.lots.length)||Number(g.n)>1))return null;
+  if(!(Number(v?v.px:p.px)>0))return null;
+  // ⚠️ UN PRIX DE GROS EXISTE QUELQUE PART : c'est `_offreGros` qui parle,
+  // et deux propositions sous la même ligne seraient illisibles.
+  var et=[];try{et=_etagesGros(p,v);}catch(e){}
+  if(et.some(function(x){return x&&x.n>1&&x.px>0;}))return null;
+  // 1) La taille est connue, le prix manque. La question a un sens tout
+  //    de suite — c'est le cas des 8 lignes mesurées qui atteignaient le
+  //    carton sans que rien ne soit proposé.
+  var cd=null;try{cd=_condDe(p,v||null);}catch(e){}
+  if(cd&&cd.n>1)return (qty>=cd.n)?{n:cd.n,mot:cd.mot,connu:true,fois:0}:null;
+  // 2) Rien de connu : il faut l'HABITUDE, et le nombre vient de lui.
+  var h=_habitudesGros()[String(p.id)+'|'+(v?v.id:'')];
+  var best=0,bn=0;
+  Object.keys((h&&h.q)||{}).forEach(function(q){
+    var c=h.q[q],qn=Number(q);
+    // À égalité, le PLUS PETIT : vingt-quatre, c'est deux cartons de douze.
+    if(c>best||(c===best&&qn<bn)){best=c;bn=qn;}
+  });
+  // ⚠️ C'EST LA MÊME QUANTITÉ QUI DOIT REVENIR, pas seulement « une grosse
+  // vente de plus ». Une fois douze, une fois vingt, ça ne dessine aucun
+  // contenant — et « tu vends souvent par 12 » serait alors un mensonge.
+  // Il faut donc DEUX fois le même nombre derrière soi ; la ligne en cours
+  // est la troisième. Mesuré sur ses boutiques : 20 couples article/nombre
+  // passent ce filtre, tous plausibles — 12, 13, 15, 16, 19, 20, 38, 100.
+  if(best<2)return null;
+  if(!(bn>1)||!(qty>=bn))return null;
+  return {n:bn,mot:_motContenant(p,v),connu:false,fois:best+1};
+}
+function _texteOffreCarton(oc,p){
+  var fr=(lang==='fr');
+  if(oc.connu)
+    return {txt:(fr
+      ?('<b>'+fmtQ(oc.n)+'</b> = '+_unGros(oc.mot)+'. Tu le vends combien en gros ?')
+      :('<b>'+fmtQ(oc.n)+'</b> = 1 '+oc.mot+'. What do you charge for it?')),
+      btn:(fr?'Dire mon prix':'Set the price')};
+  return {txt:(fr
+    ?('Tu vends souvent par <b>'+fmtQ(oc.n)+'</b>. C\'est '+_unGros(oc.mot)+' ?')
+    :('You often sell <b>'+fmtQ(oc.n)+'</b> at a time. Is that 1 '+oc.mot+'?')),
+    btn:(fr?'Dire mon prix':'Set the price')};
+}
 // Le raccourci des quatre calculateurs : retrouver p et v depuis la clé.
 function _ligneDe(key,qty){
   var pr=String(key).split('-'),p=DB.articles.find(function(x){return x.id==pr[0];});
@@ -12689,7 +12874,7 @@ function gpxChoisirVar(vid){
   _grosPxVar=(p.vr||[]).find(function(x){return x.id==vid;})||null;
   demanderPrixGros(p,_grosPxVar,true);
 }
-function demanderPrixGros(p,v,garderOuvert){
+function demanderPrixGros(p,v,garderOuvert,nSuggere){
   var fr=(lang==='fr');
   if(role!=='patron'&&!hasPerm('produits')){
     // Un vendeur ne fixe pas les prix : on lui met le détail, c'est honnête.
@@ -12698,10 +12883,19 @@ function demanderPrixGros(p,v,garderOuvert){
   _grosPxArt=p;_grosPxVar=v||null;
   var base=v||p;
   var _cd=_condDe(p,v||null);
-  var n=_cd.n,mot=_cd.mot,det=(Number(base.px)||0)*n;
+  // ⭐ LE NOMBRE VIENT DE LUI, PAS DE MOI. Quand `_offreCarton` a vu la
+  // même quantité revenir — douze, dix fois — elle le passe ici pour que
+  // la question soit déjà remplie. La case reste VISIBLE et corrigeable :
+  // c'est une observation qu'on lui soumet, pas un conditionnement qu'on
+  // lui impose. Un conditionnement faux donne un prix d'achat faux, et un
+  // mauvais prix d'achat ne se voit jamais.
+  var _sug=(!(_cd.n>1)&&Number(nSuggere)>1)?Math.round(Number(nSuggere)):0;
+  var n=(_cd.n>1)?_cd.n:(_sug||_cd.n),mot=_cd.mot,det=(Number(base.px)||0)*n;
   _grosRenderVars(p);
   var nr=document.getElementById('gpx-n-row');
-  if(nr)nr.style.display=(n>1)?'none':'block';
+  if(nr)nr.style.display=(_cd.n>1)?'none':'block';
+  var _ni=document.getElementById('gpx-n');
+  if(_ni)_ni.value=_sug?String(_sug):'';
   var nl=document.getElementById('gpx-n-lbl');
   if(nl)nl.textContent=fr?('Combien dans '+_unGros(mot)+' ?'):('How many per '+mot+'?');
   if(v&&!(n>1)){
@@ -13256,6 +13450,25 @@ function ouvrirPanier(){
         +'<button class="pgo-b">'+_tx.btn+'</button>';
       _o.onclick=function(){appliquerOffreGros(key,_of.n,_of.mot);};
       l.appendChild(_o);
+    }else{
+      // ⭐ Là où `_offreGros` se tait faute de prix, on DEMANDE le prix.
+      var _oc=null;try{_oc=_offreCarton(key,p,v,qty);}catch(x){}
+      if(_oc){
+        d.classList.add('sans-b');
+        var _tc=_texteOffreCarton(_oc,p);
+        var _o2=document.createElement('div');_o2.className='pgo pgo-q';
+        _o2.innerHTML='<span class="pgo-e">'+_emojiCont(_oc.mot)+'</span>'
+          +'<div class="pgo-t">'+_tc.txt+'</div>'
+          +'<button class="pgo-b">'+_tc.btn+'</button>'
+          +'<button class="pgo-x" title="'+(lang==='fr'?'Ne plus proposer pour cet article':'Stop asking for this item')+'">✕</button>';
+        _o2.onclick=function(ev){
+          if(ev&&ev.target&&ev.target.classList&&ev.target.classList.contains('pgo-x')){
+            ev.stopPropagation();_grosRefuser(p.id);ouvrirPanier();return;}
+          closeSheet('ov-pan');
+          setTimeout(function(){try{demanderPrixGros(p,v||null,false,_oc.n);}catch(x){}},160);
+        };
+        l.appendChild(_o2);
+      }
     }
   });
   if(!has)l.innerHTML='<div class="empty"><div class="empty-e">🛒</div><div class="empty-t">'+t('vider')+'</div></div>';
