@@ -42,7 +42,8 @@ installation, aucun serveur. Tout vit dans le téléphone.
 - **Vente au comptoir** — la carte, sans table à ouvrir : on tape, on
   encaisse, l'écran est déjà prêt pour le client suivant. C'est l'écran
   d'accueil d'une cave, d'un kiosque, ou du téléphone posé au comptoir
-  (voir plus bas).
+  (voir plus bas), et il porte donc ce que portait le plan de salle :
+  les alertes, et le bandeau recette / nombre de ventes / net.
 
 ## Un bar n'est pas l'autre — forme et poste
 
@@ -171,14 +172,22 @@ chaîne libre, affichée telle qu'il l'a écrite.
    « energisant » **0**. `txtNorm()` met les deux côtés à plat (accents,
    œ/æ, espaces) — 12 et 3 désormais. Ce que le patron a écrit ne
    change pas ; seule la comparaison est aveugle.
-8. **Un écran d'accueil doit porter les alertes.** Les alertes — rien au
-   frais, un casier à recommander, une ardoise qui traîne — ne vivaient
-   que sur le plan de salle. En donnant au comptoir son propre écran
-   d'accueil, on lui avait retiré du même geste le seul endroit où l'app
-   lui parlait : une cave ou un kiosque n'ouvre jamais le plan de salle.
-   Elles s'affichent donc aussi en tête de la carte, **en mode comptoir
-   seulement** — la carte ouverte depuis une table reste un outil de
-   service, pas un tableau de bord.
+8. **Un écran d'accueil porte les chiffres ET les alertes.** Les deux
+   fautes viennent du même geste : en donnant au comptoir son propre
+   écran, on lui a laissé la carte et rien d'autre. Or pour une cave,
+   c'est l'écran de TOUTE la journée — son patron devait passer par
+   Rapports pour savoir ce qu'il avait fait. Le bandeau y revient
+   (recette, nombre de ventes, net — le net réservé au patron, comme
+   ailleurs), sans « en cours » : au comptoir on paye tout de suite, et
+   le ticket du moment est déjà sous les yeux dans la barre du bas.
+   « du soir » avec des tables, « du jour » sans — une cave ouvre le
+   matin.
+9. **Et les alertes avec** — rien au frais, un casier à recommander,
+   une ardoise qui traîne. Un patron pouvait tenir sa journée sans jamais
+   apprendre qu'il n'avait plus une bière au frais. Chiffres et alertes
+   n'apparaissent qu'**en mode comptoir** : la carte ouverte depuis une
+   table reste un outil de service, pas un tableau de bord, et un
+   serveur qui monte une tournée n'a pas à lire l'état du dépôt.
 
 ## Les deux adresses, et ce que ça coûte
 
