@@ -4894,7 +4894,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.53'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.54'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7251,19 +7251,56 @@ function filtrPays(q,lstId,srcId){renderPaysLst(lstId,srcId,PAYS,null);}
 // ─── Indicatif pays sur l'écran de connexion ───────────────────────────────
 // L'utilisateur ne tape JAMAIS l'indicatif : il est choisi ici et préfixé
 // automatiquement, ce qui rend l'identifiant du compte toujours canonique.
-var TZ_VERS_CC={'Africa/Douala':'237','Africa/Abidjan':'225','Africa/Dakar':'221','Africa/Bamako':'223',
-  'Africa/Ouagadougou':'226','Africa/Lome':'228','Africa/Porto-Novo':'229','Africa/Niamey':'227',
-  'Africa/Libreville':'241','Africa/Brazzaville':'242','Africa/Conakry':'224','Africa/Kinshasa':'243',
-  'Africa/Lubumbashi':'243','Africa/Casablanca':'212','Africa/Algiers':'213'};
+// ⚠️ LA TABLE COURTE A ÉTÉ SUPPRIMÉE. Il y en avait DEUX pour la même
+// question — celle-ci, quinze fuseaux, et `_TZ_PAYS`, plus de trente —
+// et c'est la courte que lisait l'écran de connexion. Deux tables pour
+// une seule question, c'est la garantie qu'un jour on relira la
+// mauvaise : c'est arrivé, et ça mettait un drapeau ivoirien sur les
+// téléphones nigérians, ghanéens, kényans et congolais. `_TZ_PAYS` fait
+// désormais foi, partout.
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ DEUX TABLES DE FUSEAUX, ET CELLE-CI PRENAIT LA PLUS COURTE.
+//
+//  `TZ_VERS_CC` en connaît QUINZE. `_TZ_PAYS`, écrite plus tard pour
+//  `paysParDefaut`, en connaît plus de trente — Lagos, Accra, Nairobi,
+//  Kinshasa, Casablanca, Johannesburg… Cette fonction-ci, celle qui pose
+//  le drapeau de l'écran de connexion, lisait la courte : un téléphone
+//  réglé sur Africa/Lagos tombait donc sur `PAYS[0]`, la Côte d'Ivoire.
+//  MESURÉ : Douala → +237 ✅, mais Lagos, Paris et UTC → +225.
+//
+//  Or ce drapeau DÉCIDE de l'identifiant du compte : c'est exactement le
+//  mécanisme des doubles comptes déjà décrit dans `finaliserOb`. Une
+//  seule table, la complète.
+//
+//  ⚠️ ET ON SAIT MAINTENANT QUAND ON DEVINE. `paysPreuve()` dit d'où
+//  vient la réponse ; quand elle ne vient de nulle part, la connexion ne
+//  raconte plus « compte introuvable » — elle dit de choisir son pays.
+// ══════════════════════════════════════════════════════════════════
+// Un numéro qui porte déjà son indicatif ne dépend d'aucune devinette.
+function _porteUnIndicatif(txt){
+  var d=String(txt||'').replace(/\D/g,'');
+  if(!d)return false;
+  if(String(txt||'').trim().charAt(0)==='+')return true;
+  if(d.indexOf('00')===0)return true;
+  for(var i=0;i<PAYS.length;i++){
+    var c=PAYS[i]&&PAYS[i].cc;
+    // Même garde qu'ailleurs : « 233 42 xx xx », un fixe de Douala, ne
+    // doit pas se lire comme un numéro ghanéen.
+    if(c&&d.indexOf(c)===0&&d.length>=c.length+8)return true;
+  }
+  return false;
+}
+function paysPreuve(){
+  if(DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.cc)return 'boutique';
+  try{if(localStorage.getItem('mb_pays_cc'))return 'choisi';}catch(e){}
+  try{if(_TZ_PAYS[Intl.DateTimeFormat().resolvedOptions().timeZone])return 'fuseau';}catch(e){}
+  return null;
+}
 function detecterPays(){
   // 1) pays de la boutique déjà connue
   if(DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.cc)return DB.cfg.pays;
-  // 2) dernier choix mémorisé
-  try{var s=localStorage.getItem('mb_pays_cc');if(s){var f=PAYS.find(function(p){return p.cc===s;});if(f)return f;}}catch(e){}
-  // 3) fuseau horaire du téléphone
-  try{var cc=TZ_VERS_CC[Intl.DateTimeFormat().resolvedOptions().timeZone];
-      if(cc){var t=PAYS.find(function(p){return p.cc===cc;});if(t)return t;}}catch(e){}
-  return PAYS[0];
+  // 2) et 3) le choix mémorisé, puis le fuseau — une seule table, la vraie.
+  return paysParDefaut();
 }
 function majChipPays(){
   var p=obPays||PAYS[0];
@@ -8141,7 +8178,15 @@ async function loginP(){
   if(!supa||!supa.auth||!navigator.onLine){
     if(canMigrateOffline){_finishLoginP();return;}
     if(!navigator.onLine){showToast('📴 '+(lang==='fr'?'Pas de réseau. Connecte-toi une première fois avec internet, ensuite ça marchera hors-ligne.':'No network. Connect once with internet first, then it will work offline.'));return;}
-    showToast(t('compteIntrouvable'));return;
+    // ⚠️⚠️ « COMPTE INTROUVABLE OU PIN INCORRECT » ÉTAIT UN MENSONGE ICI.
+    // Le téléphone se croit en ligne (`navigator.onLine` dit vrai dès
+    // qu'une antenne répond) mais le serveur n'est pas joignable. On
+    // accusait donc son PIN, et on l'envoyait le faire réinitialiser —
+    // pour un problème de liaison qui se répare tout seul en deux
+    // minutes. Un message faux coûte plus cher qu'un message absent.
+    showToast('📡 '+(lang==='fr'?'Pas de liaison avec le serveur. Ton PIN est bon — réessaie dans un instant.'
+                                :'No link to the server. Your PIN is fine — try again in a moment.'));
+    return;
   }
   var email=authEmailFromPhone(tel);
   var authRes=await supa.auth.signInWithPassword({email:email,password:pin});
@@ -8164,6 +8209,23 @@ async function loginP(){
         showToast(reg.error.message||t('compteIntrouvable'));return;
       }
     }else{
+      // ⚠️⚠️ « COMPTE INTROUVABLE » ÉTAIT SOUVENT FAUX, ET SANS ISSUE.
+      // Le compte existe ; c'est l'INDICATIF qui est faux, parce que
+      // personne ne l'a jamais confirmé. Mesuré : un compte enregistré en
+      // « 237 677… », une puce devinée à « 225 », et les replis
+      // n'essaient jamais un autre indicatif — le commerçant est dehors,
+      // avec un message qui l'envoie chercher au mauvais endroit.
+      // On ne devine pas un pays de plus : on lui dit de le choisir, et
+      // on lui ouvre la liste. Son choix est retenu (`mb_pays_cc`), donc
+      // la question ne se pose qu'une fois.
+      var _local=!_porteUnIndicatif(brut);
+      if(_local&&!paysPreuve()){
+        var _fr=(lang==='fr');
+        showToast('🌍 '+(_fr?'Touche le drapeau et choisis ton pays : sans lui, ton numéro ne désigne pas le bon compte.'
+                            :'Tap the flag and pick your country: without it your number points at the wrong account.'));
+        try{ouvrirPaysLogin();}catch(x){}
+        return;
+      }
       showToast((authFriendlyError(authRes.error).message)||t('compteIntrouvable'));return;
     }
   }
