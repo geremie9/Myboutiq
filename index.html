@@ -4928,7 +4928,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.58'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.59'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5473,14 +5473,23 @@ async function syncToSupa(){
     // serveur y est encore. Sinon on relit, on refusionne, on recommence.
     // Relire est aussi la première chose à faire après un conflit : c'est
     // pour ça que c'est une fonction, appelée avant ET pendant la boucle.
-    var _fusionOk=false,_revVu=null;
+    var _fusionOk=false,_revVu=null,_aRecu=false;
     var _relire=async function(){
       try{
         if(!navigator.onLine||!DB.cfg.code)return false;
         var r=await _lireAvantEcrire(DB.cfg.code);
         if(!r)return false;
         _revVu=(r.cfg&&r.cfg._rev!=null)?String(r.cfg._rev):null;
+        var _av=_tailleDB(DB);
         DB=migrateDBData(mergeDB(DB,r));_artSnapApresFusion();
+        // ⚠️ On rafraîchit ICI, et pas à la fin : `syncToSupa` a plusieurs
+        // sorties, dont celle où l'on REFUSE d'écrire. Même dans ce cas la
+        // fusion a eu lieu et ce téléphone doit montrer ce qu'il a reçu.
+        // Différé d'un tour pour ne pas retarder l'écriture qui suit.
+        if(_plusGrand(_av,_tailleDB(DB))){
+          _aRecu=true;
+          setTimeout(function(){try{_rafraichirApresFusion();}catch(e){}},0);
+        }
         return true;
       }catch(e){return false;}
     };
@@ -5828,19 +5837,77 @@ function attentePinRestante(){
   var r=Math.ceil((_pinBloqueJusqu-Date.now())/1000);
   return r>0?r:0;
 }
+// De quoi savoir si une fusion a réellement apporté quelque chose.
+function _tailleDB(d){
+  try{return {ventes:((d&&d.ventes)||[]).length, articles:((d&&d.articles)||[]).length,
+              clients:((d&&d.clients)||[]).length, depenses:((d&&d.depenses)||[]).length};}
+  catch(e){return {ventes:0,articles:0,clients:0,depenses:0};}
+}
+function _plusGrand(a,b){
+  return b.ventes>a.ventes||b.articles>a.articles||b.clients>a.clients||b.depenses>a.depenses;
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « SUR L'AUTRE APPAREIL LES DERNIÈRES VENTES SONT AU COMPLET
+//         APRÈS RÉOUVERTURE, MAIS L'AUTRE NON. »
+//
+//  MESURÉ SUR SA BOUTIQUE « G » : les identifiants de vente portent
+//  l'appareil qui les a faites.
+//      d_1789227095906_twmsypbza3m →  3 ventes (14:54 → 15:37)
+//      d_1789770877780_z4qnzkn7kv  →  6 ventes (15:40 → 15:42)
+//  LE SERVEUR A BIEN LES NEUF. Rien n'est perdu, la fusion marche.
+//
+//  Ce qui manquait est l'ÉCRAN. `syncToSupa` relit le serveur, fusionne
+//  et met à jour DB — puis écrit, et s'arrête là. Les ventes de l'autre
+//  téléphone sont donc dans la mémoire de celui-ci, et nulle part à
+//  l'écran, jusqu'au prochain rendu provoqué par autre chose.
+//  Une fusion qui apporte du neuf doit se voir.
+//  ⚠️ ET SEULEMENT ALORS : cette synchro tourne après CHAQUE vente. Tout
+//  redessiner à chaque fois rendrait à la caisse la seconde qu'on vient
+//  de lui gagner en 22.53.
+// ══════════════════════════════════════════════════════════════════
+function _rafraichirApresFusion(){
+  if(!_demarre||!DB||!DB.cfg)return;
+  try{
+    renderProd(DB.articles);renderStock(DB.articles);
+    renderRpt();renderClients();updateStats();recalcTotaux();
+    try{updateNotifBadge();}catch(e){}
+  }catch(e){}
+}
 function subscribeRealtime(code){
   if(!supa)return;
   if(realtimeChan){supa.removeChannel(realtimeChan);realtimeChan=null;}
   realtimeChan=supa.channel('boutique:'+code)
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'boutiques',filter:'code=eq.'+code},function(payload){
       if(payload.new&&payload.new.data){
+        // ══════════════════════════════════════════════════════════
+        //  ⚠️⚠️ IL REMPLAÇAIT. IL FUSIONNE.
+        //
+        //  `DB=payload.new.data` écrasait la copie de CE téléphone par
+        //  celle du serveur. Tout ce qu'il avait vendu et pas encore
+        //  poussé — une vente hors réseau, une vente de la seconde
+        //  d'avant — disparaissait de l'appareil sans un mot.
+        //  C'est exactement le défaut déjà réparé dans `syncToSupa`
+        //  (« on n'écrase JAMAIS sans avoir relu »), laissé intact sur
+        //  ce chemin-ci. La leçon du cadenas, encore.
+        //  `mergeDB` sait réunir les deux, et refuse deux boutiques
+        //  différentes.
+        // ══════════════════════════════════════════════════════════
         _suppressSync=true;
-        DB=payload.new.data;
+        var _av=_tailleDB(DB);
+        try{ DB=migrateDBData(mergeDB(DB,payload.new.data)); }
+        catch(e){ _suppressSync=false; return; }
         localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
         _suppressSync=false;
+        var _ap=_tailleDB(DB);
         renderProd(DB.articles);renderStock(DB.articles);
-        renderRpt();renderClients();updateStats();
-        showToast('🔄 '+(lang==='fr'?'Mise à jour reçue !':'Update received!'));
+        renderRpt();renderClients();updateStats();recalcTotaux();
+        // On ne crie que si quelque chose est réellement arrivé.
+        var _neuf=_ap.ventes-_av.ventes;
+        if(_neuf>0)showToast('🔄 '+(lang==='fr'
+            ?(_neuf+' vente'+(_neuf>1?'s':'')+" d'un autre appareil")
+            :(_neuf+' sale'+(_neuf>1?'s':'')+' from another device')));
+        else if(_ap.articles!==_av.articles||_ap.clients!==_av.clients)
+          showToast('🔄 '+(lang==='fr'?'Mise à jour reçue !':'Update received!'));
       }
     })
     .subscribe();
