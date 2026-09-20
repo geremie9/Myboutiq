@@ -4920,7 +4920,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.55'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.56'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -12652,15 +12652,68 @@ function _montantDesLots(lots,pxU,paU,qty){
   // Les plus gros d'abord : si la quantité a été corrigée à la main, ce sont
   // les contenants entiers qui survivent, pas les miettes.
   lots=lots.slice().sort(function(a,b){return b.n-a.n;});
-  var reste=qty,total=0,cout=0,ben=0,pris=[];
+  var reste=qty,total=0,cout=0,ben=0,pris=[],_casse=null;
   lots.forEach(function(l){
-    if(reste+1e-9<l.n)return;
     var pa=Number(l.pa)>0?Number(l.pa):(paU>0?paU*l.n:0);
+    if(reste+1e-9<l.n){
+      // ⭐ CE CONTENANT-LÀ EST ENTAMÉ : il ne rentre plus, mais il a bien
+      // été acheté comme contenant. On retient le plus petit d'entre eux —
+      // c'est de celui-là que viennent les pièces qui restent.
+      if(!_casse||l.n<_casse.n)_casse={n:l.n,px:l.px,pa:pa,mot:l.mot};
+      return;
+    }
     total+=l.px; cout+=pa; if(pa>0)ben+=(l.px-pa);
     reste=Math.round((reste-l.n)*100)/100;
     pris.push({n:l.n,px:l.px,pa:pa,mot:l.mot});
   });
-  total+=reste*pxU; cout+=reste*paU; if(paU>0)ben+=reste*(pxU-paU);
+  // ══════════════════════════════════════════════════════════════════
+  //  ⚠️⚠️ « SI JE SOUSTRAIS UNE UNITÉ DANS UN CARTON… ÇA BANNIT LA
+  //         NOTION DU CARTON. »
+  //
+  //  MESURÉ SUR SON CAS EXACT — dix cartons de 24 à 11 000 F :
+  //      240 unités → 110 000 F, « 10 cartons »
+  //      216 unités →  99 000 F, «  9 cartons »
+  //      215 unités →  99 500 F   ← IL ENLÈVE UNE PIÈCE ET LE CLIENT
+  //                                  PAIE 500 F DE PLUS.
+  //  Le neuvième carton, cassé d'une seule pièce, repartait ENTIÈREMENT
+  //  au prix de détail : 23 × 500 = 11 500 au lieu de 11 000. C'est le
+  //  défaut des biscuits de la 21.x, réparé sur le bouton « − » mais
+  //  laissé intact sur le chemin qui enlève VRAIMENT une unité — celui
+  //  qu'il emprunte.
+  //
+  //  LA RÈGLE, ET ELLE VAUT PARTOUT : le total d'une ligne ne peut
+  //  JAMAIS monter quand la quantité baisse. Les pièces qui restent
+  //  viennent d'un contenant qu'il a payé au prix du contenant ; on ne
+  //  les lui refacture pas plus cher que le contenant entier.
+  //
+  //  ⚠️ ET SEULEMENT LÀ. « 2 cartons + 3 biscuits » pris exprès n'a
+  //  aucun contenant entamé : ces trois biscuits sont du détail, et ils
+  //  restent au prix du détail.
+  // ══════════════════════════════════════════════════════════════════
+  var _pxR=reste*pxU,_paR=reste*paU;
+  if(_casse&&reste>0.001){
+    // ⚠️⚠️ MON PREMIER CORRECTIF PLAFONNAIT AU PRIX DU CARTON ENTIER.
+    // Le total cessait bien de monter — mais le BÉNÉFICE, lui, montait :
+    // 12 600 F à 216 pièces, 13 000 F à 215. On facturait un carton plein
+    // pour vingt-trois pièces. Mon propre test l'a attrapé.
+    // La règle juste est plus simple à dire : UN CARTON OUVERT DANS UNE
+    // VENTE EN GROS SE VEND AU TARIF DU CARTON. Les pièces qui restent
+    // valent ce qu'elles valent dans le contenant — ni le prix du détail,
+    // qui ferait payer plus pour moins, ni le contenant entier, qui
+    // gonflerait le bénéfice.
+    // ⚠️ ET JAMAIS AU-DESSUS DU DÉTAIL : si le prix du contenant a été
+    // saisi plus cher que n fois l'unité, c'est le détail qui gagne.
+    var _pxUnitGros=_casse.px/_casse.n;
+    if(_pxUnitGros<pxU||!(pxU>0))_pxR=Math.round(reste*_pxUnitGros);
+    // Le coût suit le prix : sinon le bénéfice annoncé serait faux, et un
+    // mauvais prix d'achat ne se voit jamais. Ces pièces ont été payées au
+    // tarif du contenant, pas à celui de l'unité.
+    if(_casse.pa>0){
+      var _paUnitGros=_casse.pa/_casse.n;
+      if(_paUnitGros<paU||!(paU>0))_paR=Math.round(reste*_paUnitGros*100)/100;
+    }
+  }
+  total+=_pxR; cout+=_paR; if(paU>0||_paR>0)ben+=(_pxR-_paR);
   return {total:total, cout:cout, benConnu:ben,
           nbGros:pris.length, qDetail:reste, lots:pris,
           pxGros:pris.length?pris[0].px:0, paGros:pris.length?pris[0].pa:0,
@@ -12947,6 +13000,32 @@ function _ligneDe(key,qty){
   var v=(pr[1]&&pr[1]!=='0')?(p.vr||[]).find(function(x){return String(x.id)===String(pr[1]);}):null;
   return {p:p,v:v,m:_ligneMontant(key,p,v,qty)};
 }
+// « 8 cartons + 23 » — ce qu'il dirait au client, quand un contenant a
+// été entamé. Le nombre nu qui suit est le reste à la pièce (ou en kg,
+// en litres, quand l'article se mesure).
+// ⚠️⚠️ UN TEST GELÉ M'A ARRÊTÉ ICI, ET IL AVAIT RAISON (t9, « 13
+// bouteilles ne sont plus un casier »). Ma première version disait
+// « 1 casier + 1 » pour treize bouteilles d'un article dont le casier
+// n'a AUCUN prix : la ligne était facturée 13 × le détail, et la phrase
+// annonçait un tarif de casier qui n'existe pas.
+// Le mot ne s'écrit donc que lorsqu'un contenant est RÉELLEMENT facturé
+// comme contenant. Sans prix de gros, on revient au comportement gelé :
+// on compte les pièces, et on se tait sur le casier.
+function _mentionEntamee(grp,ord,reste,g,qty){
+  var _paye=false;
+  try{
+    if(g&&g.lots&&g.lots.length)_paye=g.lots.some(function(l){return l&&l.n>1&&Number(l.px)>0;});
+    else _paye=Number(g&&g.px)>0;
+  }catch(e){}
+  if(!_paye)return null;
+  var _t=ord.map(function(k){var G=grp[k];
+    return fmtQ(G.nb)+' '+G.mot+(G.nb>1?'s':'');}).join(' + ');
+  var _u=(g.um==='kg')?' kg':((g.um==='L')?' L':'');
+  var _nb=ord.reduce(function(s2,k){return s2+grp[k].nb;},0);
+  var _m0=grp[ord[0]];
+  return {nb:_nb,mot:_m0.mot,emo:_emojiCont(_m0.mot),um:g.um||'',entame:true,
+          txt:_t+' + '+fmtQ(reste)+_u};
+}
 function _mentionGros(key,qty){
   var g=_grosPanier[key];
   if(!g||!(g.n>1)||!(qty>0))return null;
@@ -12965,7 +13044,16 @@ function _mentionGros(key,qty){
       _grp[k].nb++;
     });
     if(!_ord.length)return null;
-    if(_r>0.001)return null;                       // entamé : plus un compte rond
+    // ⚠️⚠️ ICI ON RENDAIT `null`, ET C'EST CE QUI « BANNISSAIT LA NOTION
+    // DU CARTON » : dès qu'une seule pièce manquait, le reçu et la voix
+    // cessaient de prononcer le mot. La ligne du panier, elle, disait
+    // encore « 8 cartons + 23 » — la facture, non.
+    // ⚠️ LA RÈGLE GELÉE DE LA 21.x TIENT, ET JE NE LA ROUVRE PAS :
+    // « mieux vaut redire 12 que d'annoncer un carton qui n'en est plus
+    // un. » On n'annonce donc PAS « 9 cartons » quand il y en a huit et
+    // vingt-trois pièces — on dit huit cartons ET vingt-trois pièces.
+    // C'est exact, et c'est ce qu'il dirait au client.
+    if(_r>0.001)return _mentionEntamee(_grp,_ord,_r,g,qty);
     if(_ord.length>1){
       var _fr2=(lang==='fr');
       var _q2=(g.um==='kg')?(fmtQ(qty)+' kg'):((g.um==='L')?(fmtQ(qty)+' L'):fmtQ(qty));
@@ -12980,9 +13068,16 @@ function _mentionGros(key,qty){
     return {nb:_G.nb,mot:_G.mot,emo:_emojiCont(_G.mot),um:g.um||'',
             txt:fmtQ(_G.nb)+' '+_G.mot+(_G.nb>1?'s':'')+' ('+_q3+' × '+fmt(g.px||0)+')'};
   }
-  var nb=qty/g.n;
-  if(Math.abs(nb-Math.round(nb))>0.001)return null;   // entamé : ce n'est plus un carton entier
-  nb=Math.round(nb);
+  var nb=Math.floor((qty+0.001)/g.n);
+  var _rst=Math.round((qty-nb*g.n)*100)/100;
+  if(_rst>0.001){
+    // Même règle qu'au-dessus : le contenant entamé se dit, il ne
+    // s'efface pas. Sans contenant complet du tout, il n'y a rien à
+    // annoncer — c'est une vente au détail ordinaire.
+    if(!(nb>0))return null;
+    var _g1={};_g1[g.n+'|'+g.mot]={n:g.n,mot:g.mot,nb:nb};
+    return _mentionEntamee(_g1,[g.n+'|'+g.mot],_rst,g,qty);
+  }
   var fr=(lang==='fr');
   // Le contenu s'écrit avec sa mesure quand il y en a une : « 1 sac
   // (50 kg × 700) » ne peut plus se lire comme cinquante sachets.
