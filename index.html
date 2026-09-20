@@ -1,5 +1,15 @@
 ﻿<!DOCTYPE html>
-<html lang="fr">
+<!-- ⚠️⚠️ « CHARGÉ » N'EST PAS « PRÊT », ET C'EST PIRE QU'UN ÉCRAN BLANC.
+     MESURÉ en 2G (20 ko/s) sur le fichier réel de 1,7 Mo : le premier
+     pixel arrive à 6,3 s, et à 8 s la vitrine est ENTIÈREMENT PEINTE —
+     76 boutons, tous les textes — alors que le JavaScript n'est pas
+     encore arrivé. Le visiteur touche « Voir une boutique », rien ne
+     répond, il touche encore, il s'en va. L'application est complète à
+     l'œil et morte au doigt pendant plus d'une minute.
+     Cette classe est là dès le premier octet ; le script la retire quand
+     il est réellement prêt. Entre les deux, les boutons DISENT qu'ils
+     attendent au lieu de faire semblant d'être vivants. -->
+<html lang="fr" class="js-attente">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
@@ -36,6 +46,13 @@
    ⚠️ On ne déclenche rien si l'empreinte n'a jamais été posée sur cet
    appareil — pas de fenêtre système à quelqu'un qui n'a rien demandé.
    ══════════════════════════════════════════════════════════════════ */
+/* Le bandeau d'attente existe parce que le script n'est pas là : il ne peut
+   donc pas être traduit par le script. On marque la langue ici, au premier
+   octet, et le CSS montre la bonne phrase. */
+(function(){try{
+  if(/^en/i.test(navigator.language||(navigator.languages||[])[0]||''))
+    document.documentElement.classList.add('tel-en');
+}catch(e){}})();
 (function(){
   try{
     if(!window.PublicKeyCredential||!navigator.credentials||!navigator.credentials.get)return;
@@ -234,6 +251,20 @@ window.addEventListener('appinstalled',function(){
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+/* ── L'attente du script, dite honnêtement (voir le commentaire du <html>) ── */
+html.js-attente .vt-act{opacity:.5;pointer-events:none;position:relative}
+html.js-attente .vt-nav,html.js-attente .vt-liens{pointer-events:none;opacity:.6}
+html.js-attente #vt-attente{display:flex}
+#vt-attente{display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+  z-index:9500;align-items:center;gap:9px;background:#241257;color:#fff;border-radius:999px;
+  padding:10px 18px;font-family:'Outfit',system-ui,sans-serif;font-size:13px;font-weight:800;
+  box-shadow:0 6px 22px rgba(0,0,0,.28);max-width:92vw}
+html.tel-en #vt-attente .fr{display:none}
+#vt-attente .en{display:none}
+html.tel-en #vt-attente .en{display:inline}
+#vt-attente i{width:14px;height:14px;border:2.5px solid rgba(255,255,255,.28);border-top-color:#F0A93E;
+  border-radius:50%;display:block;animation:vtaTourne .8s linear infinite;flex:0 0 auto}
+@keyframes vtaTourne{to{transform:rotate(360deg)}}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--P:#221F2B;--A:#F0A93E;--G:#00C853;--R:#FF3D00;--B:#5C4B6E;--PU:#6E5A82;--O:#FF6D00;--BG:#F0F2F5;--C:#FFF;--T:#1A1A2E;--M:#9E9E9E;--BD:#E8E8E8}
 body{font-family:'Outfit',sans-serif;background:var(--BG);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden}
@@ -660,11 +691,40 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 /* ⚠️ Défaut que J'AI introduit en 21.40 et vu sur ma propre capture :
    « 📦 carton FCFA 1 500 » repassait à la ligne et cassait la tuile. Une
    puce de 19 px de haut ne doit jamais pouvoir grandir. */
-.pgros{display:inline-flex;align-items:center;gap:2px;margin-top:3px;height:19px;padding:0 7px;
-  border-radius:6px;border:none;background:rgba(0,150,136,.13);color:#00695C;
-  font-size:10px;font-weight:800;line-height:1;cursor:pointer;position:relative;z-index:3;
-  max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pgros>span{overflow:hidden;text-overflow:ellipsis}
+.pgros{display:inline-flex;align-items:center;gap:3px;margin-top:3px;height:26px;padding:0 9px;
+  border-radius:7px;border:none;background:rgba(0,150,136,.13);color:#00695C;
+  font-size:11px;font-weight:800;line-height:1;cursor:pointer;position:relative;z-index:3;
+  max-width:100%;white-space:nowrap}
+/* ⚠️ `overflow:hidden` VIVAIT ICI, et il DÉCOUPAIT la cible de 44 px : le
+   ::after était bien là, aux bonnes dimensions, et clippé au ras de la
+   puce. Mesuré — un doigt 14 px sous le repère touchait la carte, donc
+   ajoutait UNE unité au lieu d'ouvrir le gros. Le découpage appartient au
+   texte, pas au bouton : c'est le <span> qui ellipse, et `min-width:0`
+   est ce qui l'autorise à rétrécir dans un flex. */
+.pgros>span{overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* ⚠️⚠️ LE SEUL BADGE D'ACTION DE L'APP QUI VIOLAIT SA PROPRE RÈGLE.
+   `.pedit` et `.qbdg`, sur la MÊME carte, ont chacun un ::after invisible
+   de 44 px ; `.vt-gros` et `.vsat-gros`, dedans, aussi — « la leçon de la
+   21.12 ». Elle n'avait jamais atteint ce repère-ci : 19 px de haut, la
+   cible la plus petite de la caisse, sur le geste qui engage le plus
+   d'argent.
+
+   ⚠️⚠️ ET LE ::after SEUL N'Y SUFFIT PAS. `.pcard` est en
+   `overflow:hidden` : tout ce qui dépasse de la carte est DÉCOUPÉ au ras
+   d'elle. Tant mieux — sans ce découpage la cible mordait la gouttière de
+   9 px et la carte d'à côté. Mais il ne restait alors que 22 px sous une
+   puce de 19, et ça ne fait pas 44.
+   Donc la puce GRANDIT pour de vrai — 19 → 26 px — et le ::after ramasse
+   le creux qui reste DANS la carte. Mesuré sur les six tuiles de la
+   boutique d'exemple : cible de 43 px au lieu de 19, la carte passant de
+   148 à 155 px. 43 et non 44 : c'est la carte qui découpe le dernier
+   pixel, et je préfère le dire que l'arrondir.
+   ⚠️ ELLE NE MONTE PAS : au-dessus il y a le prix, et surtout la zone
+   « +1 unité » — le geste utilisé 150 fois plus souvent (mesuré : 3 734
+   lignes sur 3 759). Bas et côtés seulement, 3 px de marge en haut. */
+.pgros::after{content:'';position:absolute;left:50%;transform:translateX(-50%);
+  top:-3px;height:44px;width:calc(100% + 16px);min-width:44px;
+  border-radius:8px}
 .pgros:active{transform:scale(.92)}
 .pgros.vide{background:rgba(26,26,46,.055);color:var(--M);font-weight:700;opacity:.75}
 .pcard.has-photo .pgros{background:rgba(255,255,255,.94);color:#00695C;margin-top:2px}
@@ -832,6 +892,17 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    au lieu de disparaître sans un mot. */
 .bio-sig.eteint{opacity:.4}
 .bio-sig.eteint svg{stroke-dasharray:2.5 3}
+.pgo.pgo-q{background:linear-gradient(135deg,#F2FBF9,#E8F6F3);border-color:#7FBFB3}
+.pgo.pgo-q .pgo-t{color:#00584B}
+.pgo.pgo-q .pgo-b{background:#00695C}
+/* ⚠️ UNE QUESTION DOIT POUVOIR SE TAIRE POUR DE BON. « JE VOIS PARTOUT
+   VENTE EN CARTON » (21.10) : c'est la croix qui tient cette promesse,
+   article par article, et elle survit au rechargement. */
+.pgo-x{flex-shrink:0;width:26px;height:26px;border:none;background:transparent;
+  color:#5B8F86;font-size:13px;font-weight:900;cursor:pointer;border-radius:50%;
+  font-family:'Outfit',sans-serif;position:relative}
+.pgo-x::after{content:'';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%}
 .pgo-e{font-size:19px;flex-shrink:0}
 /* ⚠️ LA MARGE DU BAS N'EST PAS DE L'ESPACEMENT, C'EST UNE SÉCURITÉ. Rendre
    le prix touchable a posé une petite cible à 4 px des boutons − et + :
@@ -1790,6 +1861,13 @@ body{max-width:min(100%,1200px)}
    boutique, ce bouton-là devient une tache verte sans mot dessus.
    Le vert foncé de la même marque (#0E7A4F) monte à 5,36 : on reconnaît
    toujours WhatsApp, et on lit ce qui est écrit. */
+.vt-comm{margin-top:18px;background:#FFF8EC;border:1px solid #F3DFBE;border-radius:16px;padding:16px 15px}
+.vt-comm-t{font-family:'Nunito',sans-serif;font-size:16px;font-weight:900;color:#241257;line-height:1.25}
+.vt-comm-s{font-size:13px;line-height:1.55;color:#5C4B6E;font-weight:600;margin-top:7px}
+.vt-comm-b{display:block;margin-top:13px;text-align:center;background:var(--A);color:#2E1065;
+  border-radius:13px;padding:14px;font-family:'Outfit',sans-serif;font-size:14.5px;font-weight:900;
+  text-decoration:none;transition:transform .12s}
+.vt-comm-b:active{transform:scale(.97)}
 .vt-wa{display:block;width:100%;background:#0E7A4F;border:none;border-radius:14px;padding:15px;
   color:#fff;font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;cursor:pointer;margin-top:13px;
   transition:transform .12s,background .15s}
@@ -1816,6 +1894,20 @@ body{max-width:min(100%,1200px)}
 .vt-mybar a{display:inline-block;background:#F6B93B;color:#06231F;border-radius:13px;padding:14px 24px;
   font-size:15.5px;font-weight:900;text-decoration:none;position:relative}
 .vt-mybar a:active{transform:scale(.97)}
+/* ⭐ LES GUIDES. Deux raisons, et la seconde n'est pas la moindre :
+   un visiteur qui hésite veut lire avant de cliquer, et un moteur de
+   recherche ne trouve une page que si quelque chose y mène. Ces deux
+   liens sont la seule porte vers /conseils/. */
+.vt-gui{margin-top:30px;padding:17px 18px;background:var(--C);border:1px solid var(--BD);
+  border-radius:17px}
+.vt-gui-t{font-size:12px;font-weight:900;color:var(--M);letter-spacing:.06em;
+  text-transform:uppercase;margin-bottom:10px}
+.vt-gui a{display:flex;align-items:center;gap:10px;padding:10px 0;text-decoration:none;
+  color:var(--T);font-size:14px;font-weight:700;line-height:1.4;border-top:1px solid var(--BD)}
+.vt-gui a:first-of-type{border-top:none;padding-top:2px}
+.vt-gui a em{font-style:normal;font-size:17px;flex:0 0 auto}
+.vt-gui a span{flex:1}
+.vt-gui a b{flex:0 0 auto;color:var(--B);font-weight:900}
 .vt-pied{margin-top:34px;padding-top:18px;border-top:1px solid var(--BD);text-align:center;
   font-size:11.5px;font-weight:600;color:#aaa;line-height:1.85}
 .vt-pied a{color:#8d8d8d}
@@ -1846,6 +1938,8 @@ body{max-width:min(100%,1200px)}
 </style>
 </head>
 <body>
+<!-- Il est retiré par le script dès qu'il est prêt (voir `_jsPret`). -->
+<div id="vt-attente"><i></i><span class="fr">MyBoutiQ se charge…</span><span class="en">MyBoutiQ is loading…</span></div>
 <!-- ⚠️ RÈGLE 1 DE LA BOUTIQUE D'EXEMPLE : impossible à confondre avec la
      sienne. Toujours visible, en haut, sur TOUS les écrans. Il s'est déjà
      retrouvé dans la boutique d'un client sans s'en rendre compte ; ici les
@@ -2122,10 +2216,31 @@ body{max-width:min(100%,1200px)}
       <h2 class="vt-h"><i>✍️</i><b id="ve-t">Écris-moi</b></h2>
       <div class="vt-sous" id="ve-s">Une question, un défaut, une idée, un besoin que l'app ne couvre pas encore. Le message arrive sur WhatsApp, et c'est moi qui réponds.</div>
       <button class="vt-wa" id="ve-b" onclick="ecrireAMyboutiq('site')">💬 Écrire sur WhatsApp</button>
+      <!-- ⭐ LA COMMUNAUTÉ — deux portes, la même section.
+           « Écris-moi » est un tête-à-tête ; la communauté, c'est voir les
+           AUTRES commerçants. Deux besoins différents chez le même visiteur :
+           celui qui hésite veut voir du monde avant de parler. Mais ça reste
+           UNE section — deux titres pour deux boutons WhatsApp, ce serait la
+           page qui bégaie.
+           ⚠️ VIDE, CE BLOC N'EXISTE PAS (même règle que le bloc AUTEUR). -->
+      <div id="ve-comm" style="display:none">
+        <div class="vt-comm">
+          <div class="vt-comm-t" id="vc-t"></div>
+          <div class="vt-comm-s" id="vc-s"></div>
+          <a class="vt-comm-b" id="vc-b" href="#" target="_blank" rel="noopener"></a>
+        </div>
+      </div>
     </section>
+
+    <div class="vt-gui">
+      <div class="vt-gui-t" id="vg-t">Pour aller plus loin</div>
+      <a href="/conseils/combien-ma-boutique-gagne"><em>📊</em><span id="vg-1">Comment savoir chaque soir combien ta boutique a gagné</span><b>→</b></a>
+      <a href="/conseils/vendre-au-carton-et-a-la-piece"><em>📦</em><span id="vg-2">Vendre au carton et à la pièce : le même article, deux prix</span><b>→</b></a>
+    </div>
 
     <div class="vt-pied">
       <div id="vt-pied-l1">MyBoutiQ · Cameroun</div>
+      <div style="display:none"><a href="#" target="_blank" rel="noopener" id="vt-pied-comm">👥 Rejoindre la communauté WhatsApp</a></div>
       <div><a href="https://bar.myboutiq.online/" id="vt-pied-bar">🍻 MyBar — pour les bars et buvettes</a></div>
       <div><a href="./politique-confidentialite.html" id="vt-conf">Politique de confidentialité</a></div>
       <div id="vt-pied-v" style="color:#c4c4c4"></div>
@@ -4779,7 +4894,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.48'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.53'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5880,7 +5995,14 @@ document.addEventListener('DOMContentLoaded',function(){
   if(!_connu)setTimeout(_demarrerApp,1150);
 });
 var _demarre=false;
+// Le script est là. Les boutons de la vitrine cessent de faire semblant.
+function _jsPret(){
+  try{var h=document.documentElement;
+    h.className=String(h.className||'').replace(/\s*js-attente/g,'').trim();}catch(e){}
+  try{var a=document.getElementById('vt-attente');if(a&&a.parentNode)a.parentNode.removeChild(a);}catch(e){}
+}
 function _demarrerApp(){
+    _jsPret();
     if(_demarre)return; _demarre=true;
     DB=loadDB();_reancrerFiches();
     // Le pays de la boutique chargée est prioritaire sur la détection automatique
@@ -5965,6 +6087,7 @@ function _demarrerApp(){
       try{majBandeVitrine();}catch(e){}
       try{majBoutonsInstaller();}catch(e){}
       try{majBlocAuteur();}catch(e){}
+      try{majCommunaute();}catch(e){}
       goScreen('s-landing');
     }
 }
@@ -5995,12 +6118,16 @@ function goScreen(id){
     if(_h.className.indexOf('porte-')>=0)
       _h.className=_h.className.replace(/\s*porte-(login|vitrine|rapide)/g,'');
   }catch(e){}
+  // ⚠️ LE FILET DU LANCEMENT EN DEUX TEMPS. Stock, Rapports, Clients et
+  // les autres sont peints juste après la caisse ; si le commerçant est
+  // plus rapide que le navigateur, on termine AVANT de lui montrer.
+  if(id!=='s-caisse'&&_resteAPeindre)_finirLancement();
   document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('on');});
   var el=document.getElementById(id);
   if(el)el.classList.add('on');
   // La vitrine peut aussi se rouvrir autrement qu'au démarrage (boutique
   // supprimée, retour arrière). Sa barre se branche ici, une seule fois.
-  if(id==='s-landing'){try{majBlocAuteur();}catch(x){}try{_brancherNavSite();}catch(x){}}
+  if(id==='s-landing'){try{majBlocAuteur();}catch(x){}try{majCommunaute();}catch(x){}try{_brancherNavSite();}catch(x){}}
   // ⚠️ L'habitué ne passe JAMAIS par la vitrine : il tombe direct sur la
   // porte, et c'est le seul endroit du démarrage qui n'appelait pas
   // `majBoutonsInstaller()`. Son bouton d'installation n'existait donc pas.
@@ -7055,11 +7182,52 @@ function validerEtapeBoutique(){
     document.getElementById('ob-nom').value=nm;
   try{finaliserOb();}catch(e){goOb(7);}
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ L'INSCRIPTION EN ANGLAIS ÉTAIT EN FRANÇAIS.
+//
+//  `setLang('en')` ne touchait que DEUX éléments — le bouton de la
+//  première étape et la accroche. Mesuré au banc sur tout le parcours :
+//  quatorze textes restaient en français, dont TOUS les « Continuer → »
+//  et TOUTE l'étape « Ta boutique » — le nom, le numéro, le PIN, et la
+//  phrase qui dit que ce PIN est la clé pour revenir.
+//
+//  Un anglophone choisissait donc le code qui protège son argent dans un
+//  formulaire qu'il ne lit pas. Sur 57 comptes, UN SEUL est en anglais.
+//  `appliquerLang()` ne pouvait pas aider : elle a besoin de DB, et à
+//  l'inscription la boutique n'existe pas encore.
+// ══════════════════════════════════════════════════════════════════
+var OB_EN={
+  'ob1-btn':'Continue →','ob2-btn':'Continue →','ob3-btn':'Continue →',
+  'ob4-btn':'Continue →','ob5-btn':'Continue →',
+  'ob2-h':'🌍 Your country?','ob3-h':'📍 Your town or area?',
+  'ob4-h':'🏪 What kind of shop?','ob5-h':'🏪 Your shop',
+  'ob3-notice':'📊 This helps us make MyBoutiQ better where you are.',
+  'ob-ligne-pays-c':'Change',
+  'ob-pin-aide':'This number and this PIN are your key to get back into your shop. Write them down.'};
+var OB_EN_PH={'pays-src':'🔍 Search...','ob-region':'e.g. Douala, Abidjan, Lagos...',
+  'ob-nom':'Your shop name...','ob-tel':'📱 Your phone number',
+  'ob-pin':'🔐 PIN code ('+PIN_MIN_PATRON+' digits)'};
+var OB_FR={
+  'ob1-btn':'Continuer →','ob2-btn':'Continuer →','ob3-btn':'Continuer →',
+  'ob4-btn':'Continuer →','ob5-btn':'Continuer →',
+  'ob2-h':'🌍 Ton pays ?','ob3-h':'📍 Ta région / ville ?',
+  'ob4-h':'🏪 Ton type de commerce ?','ob5-h':'🏪 Ta boutique',
+  'ob3-notice':'📊 Cette information nous aide à améliorer MyBoutiQ dans ta zone géographique.',
+  'ob-ligne-pays-c':'Changer',
+  'ob-pin-aide':'Ce numéro et ce PIN sont ta clé pour revenir dans ta boutique. Note-les.'};
+var OB_FR_PH={'pays-src':'🔍 Rechercher...','ob-region':'Ex: Abidjan, Dakar, Lagos...',
+  'ob-nom':'Nom de ta boutique...','ob-tel':'📱 Ton numéro de téléphone',
+  'ob-pin':'🔐 Code PIN ('+PIN_MIN_PATRON+' chiffres)'};
 function setLang(l){
   obLang=l;lang=l;
   document.getElementById('lb-fr').classList.toggle('on',l==='fr');
   document.getElementById('lb-en').classList.toggle('on',l==='en');
-  document.getElementById('ob1-btn').textContent=l==='fr'?'Continuer →':'Continue →';
+  var T=(l==='en')?OB_EN:OB_FR, P=(l==='en')?OB_EN_PH:OB_FR_PH;
+  Object.keys(T).forEach(function(k){var e=document.getElementById(k);if(e)e.textContent=T[k];});
+  Object.keys(P).forEach(function(k){var e=document.getElementById(k);if(e)e.placeholder=P[k];});
+  // La grille des métiers porte ses propres libellés : on la redessine.
+  try{renderSecGrid('sec-grid',obSecteur||'boutique');}catch(e){}
+  try{majLignePays();}catch(e){}
   document.getElementById('ob-tag').textContent=t('tagline');
 }
 function renderPaysLst(lstId,srcId,data,selPays){
@@ -7245,14 +7413,45 @@ async function _finaliserObSuite(nm,tel,pin,_relacher){
   // compte.
   // ══════════════════════════════════════════════════════════════════
   try{ if(supa&&supa.auth)await supa.auth.signOut(); }catch(e){}
-  var authReg=await signUpOwnerAuth(tel,pin);
-  if(authReg.error){showToast(authReg.error.message||t('compteIntrouvable'));_relacher();return;}
-  var authUser=await getAuthUser();
+  // ══════════════════════════════════════════════════════════════════
+  //  ⭐⭐ ON NE POUVAIT PAS S'INSCRIRE SANS RÉSEAU. C'ÉTAIT LE TROU.
+  //
+  //  REPRODUIT AU BANC : il remplit nom, numéro, PIN, touche
+  //  « Continuer », et reçoit « auth indisponible ». L'écran ne bouge
+  //  pas, le bouton reste actif, RIEN n'est écrit sur le téléphone. Il
+  //  peut appuyer vingt fois ; s'il ferme, tout est perdu.
+  //
+  //  Et la vitrine promet « tout marche sans réseau ». C'est VRAI après
+  //  l'inscription — vérifié : une vente faite hors ligne est
+  //  enregistrée et gardée. C'était faux pendant. La seule minute où le
+  //  réseau était indispensable était la toute première, celle où il est
+  //  debout dans sa boutique avec un client devant lui.
+  //
+  //  La boutique naît donc SUR LE TÉLÉPHONE. Le compte serveur est créé
+  //  au premier réseau retrouvé, par `_creerCompteEnAttente`.
+  //
+  //  ⚠️ CE QUI NE CHANGE PAS : quand le réseau est là, tout se passe
+  //  exactement comme avant, filet d'identité compris. On ne devine rien,
+  //  on ne saute aucune vérification — on ne fait que refuser d'ARRÊTER
+  //  quelqu'un que le réseau a lâché.
+  // ══════════════════════════════════════════════════════════════════
+  var horsReseau=(!navigator.onLine||!supa||!supa.auth);
+  var authReg=horsReseau?{error:{message:'hors-reseau'}}:await signUpOwnerAuth(tel,pin);
+  if(authReg.error&&!horsReseau){
+    // Le réseau a lâché PENDANT la tentative : même traitement que s'il
+    // n'y en avait jamais eu. Toute autre erreur (numéro déjà pris, PIN
+    // refusé par le serveur) se dit, parce qu'elle ne se réparera pas
+    // toute seule.
+    if(!navigator.onLine||_erreurDeReseau(authReg.error))horsReseau=true;
+    else{showToast(authFriendlyError(authReg.error).message||t('compteIntrouvable'));_relacher();return;}
+  }
+  var authUser=horsReseau?null:await getAuthUser();
   // ⚠️ DERNIER FILET : on n'estampille JAMAIS une boutique avec un compte
   // qui ne correspond pas au numéro donné. Mieux vaut refuser la création
   // que de livrer le commerce de quelqu'un à un autre.
+  // (Hors réseau il n'y a aucun compte à estampiller : rien à confondre.)
   var _attendu=authEmailFromPhone(tel);
-  if(!authUser||!authUser.email||String(authUser.email).toLowerCase()!==String(_attendu).toLowerCase()){
+  if(!horsReseau&&(!authUser||!authUser.email||String(authUser.email).toLowerCase()!==String(_attendu).toLowerCase())){
     var fr=(obLang==='fr');
     showToast('⚠️ '+(fr?'Impossible de créer ce compte ici. Ferme l\'app et rouvre-la, puis réessaie.'
                        :'Cannot create this account here. Close the app, reopen it and try again.'));
@@ -7268,7 +7467,8 @@ async function _finaliserObSuite(nm,tel,pin,_relacher){
   // La boutique démarre VIDE : le patron ajoute SES articles.
   // (Le modèle d'articles reste disponible en OPTION, depuis le guide de la caisse vide.)
   DB={
-    cfg:{lang:obLang,pays:p,secteur:obSecteur,nom:nm,tel,pin,s:p.s,d:p.d,code,region:reg,veille:false,idFiscal:'',plan:'gratuit',biometrie:false,paramAvances:false,ownerEmail:authEmailFromPhone(tel),ownerId:authUser?authUser.id:null},
+    cfg:{lang:obLang,pays:p,secteur:obSecteur,nom:nm,tel,pin,s:p.s,d:p.d,code,region:reg,veille:false,idFiscal:'',plan:'gratuit',biometrie:false,paramAvances:false,ownerEmail:authEmailFromPhone(tel),ownerId:authUser?authUser.id:null,
+         compteEnAttente:horsReseau?1:0},
     articles:[],
     boutiques:[{id:1,nm,code,secteur:obSecteur,actif:true,ventes:0}],
     boutiqueCourante:0,
@@ -7279,6 +7479,19 @@ async function _finaliserObSuite(nm,tel,pin,_relacher){
     stats:{totalUsers:1,boutiquesActives:1,patrons:1,vendeurs:0}
   };
   save();
+  if(horsReseau){
+    // Elle est à lui, elle est sur son téléphone, il peut vendre. Le
+    // compte serveur suivra ; on le DIT, au lieu d'un code d'erreur.
+    var _fr=(obLang==='fr');
+    lang=obLang;appliquerLang();
+    document.getElementById('p-tel').value=tel;
+    document.getElementById('p-pin').value=pin;
+    _relacher();
+    _finishLoginP();
+    showToast('📴 '+(_fr?'Pas de réseau — '+nm+' est gardée sur ce téléphone. Elle part toute seule dès que le réseau revient.'
+                        :'No network — '+nm+' is kept on this phone. It will sync on its own when the network returns.'));
+    return;
+  }
   var synced=await syncToSupa();
   if(!synced){_relacher();return;}
   lang=obLang;
@@ -7288,6 +7501,50 @@ async function _finaliserObSuite(nm,tel,pin,_relacher){
   _finishLoginP();
   showToast('✅ '+nm+' — Bienvenue sur MyBoutiQ !');
 }
+
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ LE COMPTE QUI ATTEND LE RÉSEAU
+//  Créé quand la boutique est née hors ligne. On n'essaie qu'avec les
+//  identifiants qu'IL a choisis, jamais devinés, et on n'efface le
+//  drapeau que si le compte porte bien son numéro.
+// ══════════════════════════════════════════════════════════════════
+function _erreurDeReseau(e){
+  var m=String((e&&(e.message||e.msg))||'').toLowerCase();
+  return !navigator.onLine||!m||m.indexOf('fetch')>=0||m.indexOf('network')>=0
+      ||m.indexOf('indisponible')>=0||m.indexOf('unavailable')>=0
+      ||m.indexOf('timeout')>=0||m.indexOf('failed')>=0;
+}
+var _compteEnCours=false;
+async function _creerCompteEnAttente(){
+  if(_compteEnCours)return false;
+  if(!DB||!DB.cfg||!DB.cfg.compteEnAttente)return false;
+  if(!navigator.onLine)return false;
+  try{assurerConnexionSupa();}catch(e){}
+  if(!supa||!supa.auth)return false;
+  var tel=DB.cfg.tel||'', pin=DB.cfg.pin||'';
+  if(!tel||!pin)return false;
+  _compteEnCours=true;
+  try{
+    var r=await signUpOwnerAuth(tel,pin);
+    // Le compte existe peut-être déjà (deuxième téléphone, réinstallation) :
+    // on tente alors simplement d'y entrer.
+    if(r&&r.error){
+      var e2=await supa.auth.signInWithPassword({email:authEmailFromPhone(tel),password:pin});
+      if(e2&&e2.error){_compteEnCours=false;return false;}
+    }
+    var u=await getAuthUser();
+    if(!u||!u.email||String(u.email).toLowerCase()!==String(authEmailFromPhone(tel)).toLowerCase()){
+      _compteEnCours=false;return false;
+    }
+    DB.cfg.ownerId=u.id; DB.cfg.compteEnAttente=0; save();
+    var ok=await syncToSupa();
+    if(ok)showToast('☁️ '+(lang==='fr'?'Ta boutique est sauvegardée en ligne':'Your shop is now backed up online'));
+    _compteEnCours=false;
+    return !!ok;
+  }catch(e){_compteEnCours=false;return false;}
+}
+window.addEventListener('online',function(){setTimeout(function(){
+  try{_creerCompteEnAttente();}catch(e){}},1200);});
 
 // ═══════════════════════════════════════════
 // APPLIQUER LANGUE
@@ -7476,7 +7733,18 @@ async function validerChangerPin(){
     : ('PIN changed'+(n>1?(' for your '+n+' shops'):'')+'.')));
 }
 function swTab(btn,fid){document.querySelectorAll('.ltab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.getElementById('fp').style.display=fid==='fp'?'block':'none';document.getElementById('fv').style.display=fid==='fv'?'block':'none';}
-function applyRolePerms(){
+// ⚠️⚠️ ELLE REPEIGNAIT TOUTE LA GRILLE, ET ELLE N'EST PAS SEULE.
+// Mesuré au lancement sur une boutique de 137 articles (Android ×4) :
+// `renderProd` ×2 pour 369 ms, `majEnteteCaisse` ×2 pour 210 ms. Sur une
+// vraie connexion c'est TROIS fois : `lancerApp` peint, l'habillage
+// appelle `applyRolePerms` qui repeint, puis la fin de connexion
+// l'appelle encore. Deux de ces trois peintures ne sont vues par
+// personne — elles se remplacent dans la même respiration.
+// Le rôle est fixé AVANT `lancerApp` : la grille qu'il vient de peindre
+// est donc déjà la bonne. `sansRedessiner` ne sert QU'aux appels du
+// lancement ; partout ailleurs — un droit modifié en cours de route, un
+// vendeur qui prend la caisse — elle repeint comme avant.
+function applyRolePerms(sansRedessiner){
   var showAdd=(role==='patron'||hasPerm('produits'));
   var showStk=(role==='patron'||hasPerm('stock'));
   var showExp=(role==='patron'||hasPerm('depenses'));
@@ -7486,7 +7754,7 @@ function applyRolePerms(){
   // Le patron l'a dans ses Réglages (« 💸 Dépenses boutique ») : dans la barre,
   // c'est une icône de plus à lire à chaque ouverture de caisse.
   var bd=document.getElementById('btn-dep');if(bd)bd.style.display=(showExp&&role!=='patron')?'flex':'none';
-  try{majEnteteCaisse();}catch(x){}
+  if(!sansRedessiner)try{majEnteteCaisse();}catch(x){}
   var cb=document.getElementById('card-ben');if(cb)cb.style.display=showBen?'':'none';
   // Remises et clients/crédits : les interrupteurs existaient dans « Mon équipe »
   // mais n'étaient branchés sur RIEN. On cache maintenant ce qui est interdit.
@@ -7503,7 +7771,7 @@ function applyRolePerms(){
   var lb=document.getElementById('loyalty-btn');if(lb)lb.style.display=showCli?'':'none';
   var pc=document.getElementById('pmv-credit');if(pc)pc.style.display=showCli?'':'none';
   if(!showCli&&pmntModeVente==='credit'){try{selPmntVente('especes');}catch(e){}}
-  renderProd(DB.articles);
+  if(!sansRedessiner)renderProd(DB.articles);
 }
 // Renvoie 'ok', 'desactive' ou 'trop'. Ne crée le vendeur que si c'est permis.
 // ⚠️ Avant, un vendeur DÉSACTIVÉ par le patron se réactivait tout seul en se
@@ -7755,7 +8023,7 @@ function _finishLoginP(){
   // entrée : elle doit être là AVANT de parler au serveur.
   setTimeout(function(){try{listerBoutiquesDuCompte();}catch(e){}},1500);
   lancerApp();
-  applyRolePerms();
+  applyRolePerms(true);
 }
 // ══════════════════════════════════════════════════════════════════
 //  ⚠️⚠️ LE RATTRAPAGE NE MARCHAIT QUE DANS UN SENS.
@@ -8208,7 +8476,47 @@ function _ouvrirCaisseVendeur(nm,code){
   subscribeRealtime(DB.cfg.code||code);
   try{demarrerSurveillanceTempsReel();}catch(e){}
   lancerApp();
-  applyRolePerms();
+  applyRolePerms(true);
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ « MÊME L'EMPREINTE, ÇA PREND TOUJOURS DU TEMPS. »
+//
+//  Et ce n'est PAS le capteur — mesuré, sur une boutique de la taille
+//  d'ETS KODJI (137 articles, 820 ventes, 253 Ko) et un Android
+//  d'entrée de gamme (processeur ralenti 4×), SANS UN SEUL APPEL
+//  RÉSEAU : 1 125 ms entre le doigt posé et la caisse utilisable.
+//  1 597 ms sur un téléphone plus vieux.
+//
+//  Le détail, et il est sans appel :
+//     renderProd                 266 ms   ← la caisse, il la regarde
+//     initAssistance             151 ms   ← l'aide, il ne l'ouvre pas
+//     checkNotifications          79 ms
+//     renderStock                 55 ms   ← un autre onglet
+//     renderRpt                   34 ms   ← un autre onglet
+//     renderAgpx / renderAgstk    39 ms   ← deux autres écrans
+//     suggererArchivage           15 ms
+//     …
+//  484 ms sur 869 servaient à peindre des écrans qu'il n'a pas demandés,
+//  pendant qu'il attend la seule chose qu'il veut : sa caisse.
+//
+//  On peint donc la caisse, on la lui donne, et le reste se peint juste
+//  après, hors de son attente.
+//
+//  ⚠️ CE QUI NE PEUT PAS ATTENDRE RESTE DEVANT. `_alignerFamillesAnciennes`,
+//  `_replierLotsDeGros` et `_replierFamillesSolitaires` TRANSFORMENT les
+//  articles : les repousser ferait peindre la caisse dans l'ancienne forme
+//  puis la redessiner sous ses doigts — et une tape entre les deux
+//  vendrait la mauvaise chose. La vitesse ne vaut jamais ça.
+//
+//  ⚠️ ET AUCUN ÉCRAN NE PEUT S'OUVRIR À MOITIÉ PEINT : `goScreen` force
+//  le reste à se terminer avant d'afficher autre chose que la caisse.
+//  Le gain est sur l'ATTENTE, jamais sur ce qu'il voit.
+// ══════════════════════════════════════════════════════════════════
+var _resteAPeindre=null;
+function _finirLancement(){
+  var f=_resteAPeindre; if(!f)return;
+  _resteAPeindre=null;
+  try{f();}catch(e){}
 }
 function lancerApp(){
   screenHist=['s-caisse'];
@@ -8216,18 +8524,10 @@ function lancerApp(){
   initTabs();
   try{majBandeauDemo();}catch(e){}
   if(DB.cfg.veille)activerVeille();
+  // ── Ce qu'il voit maintenant ──
   renderProd(DB.articles);
-  renderStock(DB.articles);
-  renderRpt();
-  renderClients();
-  renderEquipe();
-  renderAgpx();
-  renderAgstk();
-  renderFourn();
   updateStats();
   updateObjBar();
-  initEmoGrid();
-  initCatGrid();
   updateNotifBadge();
   document.getElementById('bn-hdr').textContent=DB.cfg.nom;
   document.getElementById('code-val').textContent=DB.cfg.code;
@@ -8237,8 +8537,24 @@ function lancerApp(){
   document.getElementById('h-rapports').textContent='📊 '+t('rapports');
   document.getElementById('h-gestion').textContent=lang==='fr'?'Gestion':'Management';
   document.getElementById('h-clients').textContent='👥 '+t('clients');
-  initAssistance();
-  renderPlansAbo();
+  // ── Ce qui peut attendre qu'il ait sa caisse ──
+  _resteAPeindre=function(){
+    renderStock(DB.articles);
+    renderRpt();
+    renderClients();
+    renderEquipe();
+    renderAgpx();
+    renderAgstk();
+    renderFourn();
+    initEmoGrid();
+    initCatGrid();
+    initAssistance();
+    renderPlansAbo();
+  };
+  // Deux filets : la première respiration du navigateur, et le premier
+  // écran qu'il demande. Le premier des deux qui arrive gagne.
+  if(window.requestIdleCallback)requestIdleCallback(_finirLancement,{timeout:1200});
+  else setTimeout(_finirLancement,60);
 }
 
 // ═══════════════════════════════════════════
@@ -11968,6 +12284,13 @@ function _ajouterLotVariante(p,v,n,mot,force){
   try{parler(fr?((m?(m.nb>1?(fmtQ(m.nb)+' '+mot+'s '):_unGros(mot)+' '):_qd)+'de '+(v.nm||p.nm))
                 :((m?(m.nb+' '+mot+(m.nb>1?'s':'')+' of '):_qd)+(v.nm||p.nm)));}catch(e){}
 }
+// Le panneau de la famille : il ouvre, il ne vend pas.
+function grosOuvrirFamille(e,pid){
+  if(e)e.stopPropagation();
+  var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
+  var carte=document.getElementById('pc-'+pid);
+  try{ouvrirVarInline(p,carte);}catch(x){try{ouvrirVar(p);}catch(y){}}
+}
 function _chipGros(p){
   if(!p||articleIncomplet(p))return '';
   var mot=_motContenant(p,null);
@@ -12019,8 +12342,30 @@ function _chipGros(p){
       return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+(vg.nm||mot)+'">'+_MARQUE_GROS+'<span>'+_texteGros(mot,vg.px)+'</span></button>';
     return '';
   }
-  // Les autres familles gardent leur écran de variantes, sans repère.
-  if(p.vr&&p.vr.length)return '';
+  // ⚠️⚠️ « LES ARTICLES EN VARIANTE ONT UN PETIT SOUCI QUANT À LA VENTE
+  //        EN GROS. »
+  // Il a raison, et la mesure est nette. Une famille — trois savons, un
+  // carton de 24 écrit SUR la famille — renvoyait '' ici : AUCUN repère
+  // dehors. Le même conditionnement sur un article simple affiche
+  // « 📦 carton » et vend d'une tape. Rien sur la tuile ne disait que le
+  // carton existait ; il fallait le savoir pour entrer le chercher.
+  // Sur ses deux vraies boutiques : 45 articles à variantes, tous muets.
+  //
+  // ⚠️ MAIS LA RÈGLE DE LA 21.13 TIENT, ET ON NE LA ROUVRE PAS : « le
+  // repère ne reste dehors que si la famille n'a vraiment que deux
+  // visages », parce qu'un seul prix affiché pour toute une famille en
+  // montre un et cache les autres. Ce repère-ci ne porte donc AUCUN
+  // prix et ne vend RIEN : il est le panneau, pas la porte. Une tape
+  // ouvre la famille, où chaque forme montre son propre prix et son
+  // propre stock — exactement là où il a tranché que ça se choisit.
+  if(p.vr&&p.vr.length){
+    var _ef=[];try{_ef=_etagesGros(p,null);}catch(e){}
+    if(_ef.length&&_ef[0].n>1)
+      return '<button class="pgros vide" onclick="grosOuvrirFamille(event,'+p.id+')" title="'
+             +_ef.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
+             +_MARQUE_GROS+'<span>'+(lang==='fr'?'gros':'bulk')+'</span></button>';
+    return '';
+  }
   var n=Number(p.umSac)||0;
   // ⚠️⚠️ « LE REPÈRE 📦 DIT DEUX CHOSES DIFFÉRENTES SOUS LE MÊME DESSIN. »
   // Vu sur ses captures : « 📦 ×24 » sur l'huile est une QUANTITÉ, « 📦
@@ -12389,6 +12734,122 @@ function _texteOffreGros(of,p){
       +' — '+fmt(of.gain)+' less')),
     btn:(fr?'Appliquer':'Apply')};
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ LA DEUXIÈME PORTE — APPRENDRE LE CARTON QU'IL VEND DÉJÀ
+//
+//  MESURÉ SUR SES BOUTIQUES, et c'est le trou le plus cher de l'app :
+//  sur 3 759 lignes de vente réelles, 134 portent 12 unités ou plus —
+//  du vrai gros, jusqu'à 101 pièces. 111 d'entre elles n'ont JAMAIS
+//  touché le repère 📦. Et sur 631 articles, DEUX portent un prix de
+//  gros ; ZÉRO porte un prix d'ACHAT de gros.
+//
+//  `_offreGros` ne pouvait rien y faire, et ce n'est pas sa faute :
+//  elle exige `et.px>0`, un prix de gros DÉJÀ posé. Elle compare deux
+//  prix — il fallait d'abord qu'un prix existe. Elle est donc muette
+//  sur 629 articles sur 631.
+//
+//  ⚠️ ET LA QUESTION NE SE POSE PAS AU HASARD. « Jus de fruit » est
+//  parti DIX FOIS par douze chez ETS KODJI, HUIT fois chez G — douze
+//  exactement à chaque fois, et l'application a regardé sans jamais
+//  demander « c'est un carton de 12 ? ». C'est ÇA le signal : pas la
+//  grosse quantité d'un soir, mais LE MÊME NOMBRE QUI REVIENT. Il faut
+//  donc deux fois la même quantité derrière soi — la ligne en cours est
+//  la troisième — et le nombre proposé est CELUI QU'IL A LUI-MÊME ÉCRIT,
+//  jamais un nombre deviné. Mesuré sur ses boutiques : 20 couples
+//  article/nombre passent ce filtre sur 631 articles, et tous ressemblent
+//  à un contenant — 12, 13, 15, 16, 19, 20, 38, 100.
+//
+//  ⚠️ ET ELLE SE TAIT POUR DE BON. « JE VOIS PARTOUT VENTE EN CARTON.
+//  CE N'EST PAS TOUS LES ARTICLES OÙ ON ACHÈTE EN CARTON » (21.10) reste
+//  la règle : une croix, et cet article ne repose jamais la question.
+//  Un chemin utile a le droit d'être partout ; une question, non.
+// ══════════════════════════════════════════════════════════════════
+var _SEUIL_GROS=12;
+// Ce que la boutique a déjà fait, lu une fois et gardé tant qu'aucune
+// vente n'est venue s'ajouter. Sans ce garde-fou, on relirait mille
+// ventes à chaque ouverture du panier.
+var _habGros=null,_habGrosN=-1;
+function _habitudesGros(){
+  var n=((DB&&DB.ventes)||[]).length;
+  if(_habGros&&_habGrosN===n)return _habGros;
+  var h={};
+  ((DB&&DB.ventes)||[]).forEach(function(vt){
+    ((vt&&vt.lignes)||[]).forEach(function(l){
+      if(!l||l.gros)return;                 // déjà passé par le carton : rien à apprendre
+      var q=Number(l.qte!=null?l.qte:l.qty)||0;
+      if(!(q>=_SEUIL_GROS))return;
+      var k=String(l.pid)+'|'+(l.vid||'');
+      if(!h[k])h[k]={n:0,q:{}};
+      h[k].n++; h[k].q[q]=(h[k].q[q]||0)+1;
+    });
+  });
+  _habGros=h;_habGrosN=n;return h;
+}
+function _grosRefuse(pid){
+  try{return ((DB.cfg&&DB.cfg.grosNon)||[]).indexOf(String(pid))>-1;}catch(e){return false;}
+}
+function _grosRefuser(pid){
+  try{
+    if(!DB.cfg.grosNon)DB.cfg.grosNon=[];
+    if(DB.cfg.grosNon.indexOf(String(pid))<0)DB.cfg.grosNon.push(String(pid));
+    save();
+  }catch(e){}
+}
+// La proposition d'APPRENDRE le contenant. Elle ne s'affiche que là où
+// `_offreGros` n'a rien à dire — c'est-à-dire là où aucun prix de gros
+// n'existe encore.
+function _offreCarton(key,p,v,qty){
+  if(!p||!(qty>=_SEUIL_GROS))return null;
+  // Un vendeur ne fixe pas les prix. Même règle que `demanderPrixGros` :
+  // on ne lui pose pas une question à laquelle il n'a pas le droit de
+  // répondre.
+  if(role!=='patron'&&!hasPerm('produits'))return null;
+  if(_grosRefuse(p.id))return null;
+  // Il a déjà tranché le prix de cette ligne, ou il y a déjà posé un
+  // contenant : dans les deux cas la question est derrière nous.
+  try{if(_negoDe(key)!==null)return null;}catch(e){}
+  var g=_grosPanier[key];
+  if(g&&((g.lots&&g.lots.length)||Number(g.n)>1))return null;
+  if(!(Number(v?v.px:p.px)>0))return null;
+  // ⚠️ UN PRIX DE GROS EXISTE QUELQUE PART : c'est `_offreGros` qui parle,
+  // et deux propositions sous la même ligne seraient illisibles.
+  var et=[];try{et=_etagesGros(p,v);}catch(e){}
+  if(et.some(function(x){return x&&x.n>1&&x.px>0;}))return null;
+  // 1) La taille est connue, le prix manque. La question a un sens tout
+  //    de suite — c'est le cas des 8 lignes mesurées qui atteignaient le
+  //    carton sans que rien ne soit proposé.
+  var cd=null;try{cd=_condDe(p,v||null);}catch(e){}
+  if(cd&&cd.n>1)return (qty>=cd.n)?{n:cd.n,mot:cd.mot,connu:true,fois:0}:null;
+  // 2) Rien de connu : il faut l'HABITUDE, et le nombre vient de lui.
+  var h=_habitudesGros()[String(p.id)+'|'+(v?v.id:'')];
+  var best=0,bn=0;
+  Object.keys((h&&h.q)||{}).forEach(function(q){
+    var c=h.q[q],qn=Number(q);
+    // À égalité, le PLUS PETIT : vingt-quatre, c'est deux cartons de douze.
+    if(c>best||(c===best&&qn<bn)){best=c;bn=qn;}
+  });
+  // ⚠️ C'EST LA MÊME QUANTITÉ QUI DOIT REVENIR, pas seulement « une grosse
+  // vente de plus ». Une fois douze, une fois vingt, ça ne dessine aucun
+  // contenant — et « tu vends souvent par 12 » serait alors un mensonge.
+  // Il faut donc DEUX fois le même nombre derrière soi ; la ligne en cours
+  // est la troisième. Mesuré sur ses boutiques : 20 couples article/nombre
+  // passent ce filtre, tous plausibles — 12, 13, 15, 16, 19, 20, 38, 100.
+  if(best<2)return null;
+  if(!(bn>1)||!(qty>=bn))return null;
+  return {n:bn,mot:_motContenant(p,v),connu:false,fois:best+1};
+}
+function _texteOffreCarton(oc,p){
+  var fr=(lang==='fr');
+  if(oc.connu)
+    return {txt:(fr
+      ?('<b>'+fmtQ(oc.n)+'</b> = '+_unGros(oc.mot)+'. Tu le vends combien en gros ?')
+      :('<b>'+fmtQ(oc.n)+'</b> = 1 '+oc.mot+'. What do you charge for it?')),
+      btn:(fr?'Dire mon prix':'Set the price')};
+  return {txt:(fr
+    ?('Tu vends souvent par <b>'+fmtQ(oc.n)+'</b>. C\'est '+_unGros(oc.mot)+' ?')
+    :('You often sell <b>'+fmtQ(oc.n)+'</b> at a time. Is that 1 '+oc.mot+'?')),
+    btn:(fr?'Dire mon prix':'Set the price')};
+}
 // Le raccourci des quatre calculateurs : retrouver p et v depuis la clé.
 function _ligneDe(key,qty){
   var pr=String(key).split('-'),p=DB.articles.find(function(x){return x.id==pr[0];});
@@ -12646,7 +13107,7 @@ function gpxChoisirVar(vid){
   _grosPxVar=(p.vr||[]).find(function(x){return x.id==vid;})||null;
   demanderPrixGros(p,_grosPxVar,true);
 }
-function demanderPrixGros(p,v,garderOuvert){
+function demanderPrixGros(p,v,garderOuvert,nSuggere){
   var fr=(lang==='fr');
   if(role!=='patron'&&!hasPerm('produits')){
     // Un vendeur ne fixe pas les prix : on lui met le détail, c'est honnête.
@@ -12655,10 +13116,19 @@ function demanderPrixGros(p,v,garderOuvert){
   _grosPxArt=p;_grosPxVar=v||null;
   var base=v||p;
   var _cd=_condDe(p,v||null);
-  var n=_cd.n,mot=_cd.mot,det=(Number(base.px)||0)*n;
+  // ⭐ LE NOMBRE VIENT DE LUI, PAS DE MOI. Quand `_offreCarton` a vu la
+  // même quantité revenir — douze, dix fois — elle le passe ici pour que
+  // la question soit déjà remplie. La case reste VISIBLE et corrigeable :
+  // c'est une observation qu'on lui soumet, pas un conditionnement qu'on
+  // lui impose. Un conditionnement faux donne un prix d'achat faux, et un
+  // mauvais prix d'achat ne se voit jamais.
+  var _sug=(!(_cd.n>1)&&Number(nSuggere)>1)?Math.round(Number(nSuggere)):0;
+  var n=(_cd.n>1)?_cd.n:(_sug||_cd.n),mot=_cd.mot,det=(Number(base.px)||0)*n;
   _grosRenderVars(p);
   var nr=document.getElementById('gpx-n-row');
-  if(nr)nr.style.display=(n>1)?'none':'block';
+  if(nr)nr.style.display=(_cd.n>1)?'none':'block';
+  var _ni=document.getElementById('gpx-n');
+  if(_ni)_ni.value=_sug?String(_sug):'';
   var nl=document.getElementById('gpx-n-lbl');
   if(nl)nl.textContent=fr?('Combien dans '+_unGros(mot)+' ?'):('How many per '+mot+'?');
   if(v&&!(n>1)){
@@ -13213,6 +13683,25 @@ function ouvrirPanier(){
         +'<button class="pgo-b">'+_tx.btn+'</button>';
       _o.onclick=function(){appliquerOffreGros(key,_of.n,_of.mot);};
       l.appendChild(_o);
+    }else{
+      // ⭐ Là où `_offreGros` se tait faute de prix, on DEMANDE le prix.
+      var _oc=null;try{_oc=_offreCarton(key,p,v,qty);}catch(x){}
+      if(_oc){
+        d.classList.add('sans-b');
+        var _tc=_texteOffreCarton(_oc,p);
+        var _o2=document.createElement('div');_o2.className='pgo pgo-q';
+        _o2.innerHTML='<span class="pgo-e">'+_emojiCont(_oc.mot)+'</span>'
+          +'<div class="pgo-t">'+_tc.txt+'</div>'
+          +'<button class="pgo-b">'+_tc.btn+'</button>'
+          +'<button class="pgo-x" title="'+(lang==='fr'?'Ne plus proposer pour cet article':'Stop asking for this item')+'">✕</button>';
+        _o2.onclick=function(ev){
+          if(ev&&ev.target&&ev.target.classList&&ev.target.classList.contains('pgo-x')){
+            ev.stopPropagation();_grosRefuser(p.id);ouvrirPanier();return;}
+          closeSheet('ov-pan');
+          setTimeout(function(){try{demanderPrixGros(p,v||null,false,_oc.n);}catch(x){}},160);
+        };
+        l.appendChild(_o2);
+      }
     }
   });
   if(!has)l.innerHTML='<div class="empty"><div class="empty-e">🛒</div><div class="empty-t">'+t('vider')+'</div></div>';
@@ -20934,7 +21423,35 @@ async function restaurerBoutique(){
   goScreen('s-login');
   showToast('✅ '+(lang==='fr'?'Boutique restaurée ! Connecte-toi.':'Store restored! Please login.'));
 }
-function showToast(msg){var t2=document.getElementById('toast');t2.textContent=msg;t2.classList.add('show');setTimeout(function(){t2.classList.remove('show');},2800);}
+// ⚠️⚠️ IL SE POSAIT SUR L'EN-TÊTE. Mesuré : toast [14 → 46 px], en-tête
+// [0 → 66 px], z-index 400 contre 50. Le tout premier message d'une
+// boutique neuve — « 📊 Résumé du jour : 0 ventes » — s'affichait donc
+// PAR-DESSUS le nom de la boutique. Pour quelqu'un qui vient de
+// s'inscrire, l'app commence par annoncer zéro en couvrant la seule
+// chose qui lui appartient à l'écran.
+// On le pose sous ce qui est collé en haut — en-tête, bandeau de la
+// démo — et on recalcule à chaque fois, parce que ça change d'un écran
+// à l'autre.
+function _hautDuToast(){
+  var bas=0;
+  try{
+    // ⚠️ MON PREMIER JET EXIGEAIT `top<=2` ET NE TROUVAIT RIEN : dans la
+    // boutique d'exemple l'en-tête commence à 47 px, poussé par le bandeau
+    // de la démo. On prend donc le BAS de l'en-tête de l'écran ouvert, quel
+    // que soit ce qui le précède — c'est lui qui porte le nom de la
+    // boutique, et c'est lui qu'il ne faut pas couvrir.
+    var ecran=document.querySelector('.scr.on');
+    if(ecran)ecran.querySelectorAll('.mhdr').forEach(function(e){
+      if(!e||getComputedStyle(e).display==='none')return;
+      var r=e.getBoundingClientRect();
+      if(r.height>0&&r.top<140&&r.bottom>bas)bas=r.bottom;
+    });
+  }catch(e){}
+  return bas>0?Math.round(bas+10):14;
+}
+function showToast(msg){var t2=document.getElementById('toast');t2.textContent=msg;
+  try{t2.style.top=_hautDuToast()+'px';}catch(e){}
+  t2.classList.add('show');setTimeout(function(){t2.classList.remove('show');},2800);}
 function copierCode(){var code=formatShopCode(DB&&DB.cfg&&DB.cfg.code||'');if(!code)return;navigator.clipboard&&navigator.clipboard.writeText(code).then(function(){var cv=document.getElementById('code-val');if(cv)cv.textContent=code;showToast(t('codeCopie')+' '+code);});}
 var _teamCodeShown=false;
 function masquerCodeEquipe(){_teamCodeShown=false;var v=document.getElementById('teamcode-val');if(v)v.textContent='••••';var b=document.getElementById('btn-teamcode-eye');if(b)b.textContent=lang==='fr'?'👁️ Voir':'👁️ Show';}
@@ -22806,6 +23323,9 @@ function _vitrineLangue(){
     'vb-t':'Do you run a bar, a pub?',
     'vb-d':'A shop counts items. A bar counts open tables, crates, and empty bottles that are worth money at the depot. MyBar is built for that — same house, same simplicity, and it works with no network either.',
     'vb-b':'Open MyBar →',
+    'vg-t':'Go further',
+    'vg-1':'How to know each evening how much your shop earned',
+    'vg-2':'Selling by the case and by the piece: one item, two prices',
     'vt-pied-bar':'🍻 MyBar — for bars and pubs',
     'vf-t':'What it actually does',
     'vf-s':'Six things you already do by hand. Here they take one tap.',
@@ -23453,7 +23973,21 @@ navTo=function(tab,btn){Array.from(document.querySelectorAll('.ni')).forEach(fun
   // pas ; c'est ce que fait n'importe quelle application à onglets.
   screenHist=[];
   goScreen(m[tab]);if(tab==='rapports')renderRpt();if(tab==='clients')renderClients();if(tab==='stock')renderStock(DB.articles);};
-var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();renderNotifPanel();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms();ensureNotifPermission();checkNotifications();try{suggererArchivage();}catch(e){}try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneGrille();}catch(e){}try{majLigneReleve();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}
+var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBoutonsInstaller();}catch(e){}DB=migrateDBData(DB);var bh=document.getElementById('btn-history');if(bh)bh.style.display=role==='patron'?'flex':'none';majModeParametres();recalcTotaux();updateObjBar();updateClientVenteUI();applyRolePerms(true);
+/* ⚠️ CES TROIS-LÀ PESAIENT 94 ms SUR UN ANDROID D'ENTRÉE DE GAMME, mesuré
+   (checkNotifications 79, suggererArchivage 15, renderNotifPanel), et aucun
+   ne peint la caisse : le panneau des notifications est fermé, la
+   permission système n'est pas urgente, et proposer d'archiver l'année
+   passée peut attendre trois dixièmes de seconde. Ils rejoignent la
+   deuxième vague — et `goScreen` la force dès qu'un écran est demandé. */
+(function(){var _suite=_resteAPeindre;_resteAPeindre=function(){
+  if(_suite)try{_suite();}catch(e){}
+  try{renderNotifPanel();}catch(e){}
+  try{_creerCompteEnAttente();}catch(e){}
+  try{ensureNotifPermission();}catch(e){}
+  try{checkNotifications();}catch(e){}
+  try{suggererArchivage();}catch(e){}
+};})();try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneGrille();}catch(e){}try{majLigneReleve();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}
 // ⭐ LA VENTE INTERROMPUE REVIENT AVEC LUI. Posée sur le téléphone quand
 // l'app est passée en fond, reprise ici — et annoncée, parce qu'un panier
 // qui reâpparaît sans un mot ne s'explique pas.
@@ -23886,6 +24420,56 @@ var _annonceCourante=null,_annonceDerniereVerif=0;
 //  qu'il n'aura jamais.
 // ══════════════════════════════════════════════════════════════════
 var WA_MYBOUTIQ='237689335389';
+// ═══════════════════════════════════════════════════════════════
+//  LA COMMUNAUTÉ WHATSAPP — colle ton lien d'invitation ici, et il apparaît
+//  sur la vitrine ET dans le pied de page. Rien d'autre à toucher.
+//    WhatsApp → Infos du groupe → « Inviter via un lien » → Copier le lien
+//    ça donne : https://chat.whatsapp.com/XXXXXXXXXXXX
+//
+//  ⚠️ TANT QUE C'EST VIDE, LE BLOC N'EXISTE PAS. Je ne fabrique pas une
+//  adresse d'invitation : un lien mort sur une vitrine coûte plus cher que
+//  pas de lien du tout.
+//  ⚠️ ET UN LIEN D'INVITATION EST PUBLIC PAR NATURE : qui l'a, entre. Le
+//  jour où tu veux refermer la porte, c'est « Réinitialiser le lien » dans
+//  WhatsApp, PUIS cette ligne-ci — sinon la vitrine continue d'envoyer le
+//  monde sur une adresse morte.
+// ═══════════════════════════════════════════════════════════════
+var COMMUNAUTE={
+  lien:'https://chat.whatsapp.com/FVUxHhKQZSs4HEAIGKesiR',
+  titre:'',       // vide → le texte par défaut ci-dessous
+  mot:'',         // vide → idem
+  bouton:''       // vide → idem
+};
+function majCommunaute(){
+  var z=document.getElementById('ve-comm');if(!z)return;
+  var l=String(COMMUNAUTE.lien||'').trim();
+  // Une adresse d'invitation WhatsApp, et RIEN d'autre : un lien collé de
+  // travers enverrait ses visiteurs n'importe où, sous son nom à lui.
+  var bon=/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9_-]{6,}$/.test(l);
+  // ⚠️ LE PIED DE PAGE SE REFERME AUSSI. Trouvé par t120 : on cachait le
+  // bloc et on laissait le lien du pied allumé. Le jour où il réinitialise
+  // son invitation WhatsApp, la vitrine aurait continué d'envoyer le monde
+  // sur une adresse morte — le défaut exact contre lequel j'avais écrit un
+  // avertissement six lignes plus haut.
+  var _pi=document.getElementById('vt-pied-comm');
+  if(!bon){
+    z.style.display='none';
+    if(_pi&&_pi.parentElement){_pi.parentElement.style.display='none';_pi.removeAttribute('href');}
+    return;
+  }
+  var fr=true;try{fr=!_vitrineEnAnglais();}catch(e){}
+  z.style.display='';
+  var t=document.getElementById('vc-t');
+  if(t)t.textContent=COMMUNAUTE.titre||(fr?'👥 La communauté des commerçants MyBoutiQ'
+                                          :'👥 The MyBoutiQ shopkeepers community');
+  var sb=document.getElementById('vc-s');
+  if(sb)sb.textContent=COMMUNAUTE.mot||(fr
+    ?"Des commerçants qui tiennent une boutique comme la tienne. On y montre ce qui change dans l'app, on y pose ses questions, et les réponses servent à tout le monde. C'est aussi là que naissent la plupart des corrections."
+    :"Shopkeepers running a shop like yours. What changes in the app is shown here, questions get asked, and the answers serve everyone.");
+  var bt=document.getElementById('vc-b');
+  if(bt){bt.href=l;bt.textContent=COMMUNAUTE.bouton||(fr?'Rejoindre la communauté →':'Join the community →');}
+  if(_pi&&_pi.parentElement){_pi.href=l;_pi.parentElement.style.display='';}
+}
 // ⚠️ CE TEXTE SE MET À JOUR À CHAQUE VERSION. C'est le seul endroit :
 // la vitrine et le bandeau y puisent tous les deux.
 var QUOI_DE_NEUF={
