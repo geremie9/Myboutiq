@@ -4928,7 +4928,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.59'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.60'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -11646,14 +11646,30 @@ function _tailleCarteArticle(){
   }catch(e){}
   return 106;
 }
-// ⚠️⚠️ LA PUCE DU GROS PEND SOUS LE NOM, et la géométrie ne le savait
-// pas : mesuré, la puce d'un satellite mordait le ROND des deux voisins.
-// L'encombrement d'un satellite n'est plus « la pastille + 38 px de prix
-// et de nom » mais « + la puce » quand elle est là. On le dit ici, une
-// fois, et le rayon s'écarte de lui-même.
-var _PUCE_GROS_H=30;
+// ⚠️⚠️⚠️ CE QUE J'AI CASSÉ EN 22.58, ET REMIS ICI.
+//
+// « Les articles en variante ne s'ouvrent plus en cercle. »
+//
+// En 22.58 j'ai fait grandir l'encombrement d'un satellite de 30 px pour
+// tenir compte de la puce du gros qui pend sous le nom. MESURÉ APRÈS
+// COUP, sur un écran de 390×844 :
+//     2 à 5 formes : la pastille tombe de 116 px à 62 — moitié moins
+//     7 formes et au-delà : LE CERCLE NE TIENT PLUS DU TOUT, et l'app
+//     retombe sur le panneau. Le cercle avait disparu.
+//
+// LA CAUSE : `court` est le PLUS PETIT côté de l'écran — 390, pas 844.
+// Les 30 px que j'ajoutais sortaient donc de la LARGEUR disponible,
+// alors que la puce pend en HAUTEUR. Il ne restait que 3 px de marge
+// dans ce calcul ; j'en ai pris trente.
+//
+// Le défaut que je corrigeais — la puce d'un satellite qui chevauche le
+// bord du rond voisin — coûtait infiniment moins cher que le remède :
+// la puce est posée par-dessus, en blanc, avec son ombre, et elle reste
+// lisible. On revient donc à la géométrie d'avant, et le chevauchement
+// se traite sans toucher au rayon (voir `.vsat-gros`, qui ne dépasse
+// plus de la colonne de son satellite).
 function _geoCercle(n,avecPuce){
-  var _sous=38+(avecPuce?_PUCE_GROS_H:0);
+  var _sous=38;
   var court=Math.min(window.innerWidth,window.innerHeight);
   // ⚠️ LE PLAFOND ÉTAIT À 66 px, CHOISI AU JUGÉ — et c'était tout le
   // problème : « ça sort petit petit, ça ne respecte pas les articles qui
@@ -11668,7 +11684,7 @@ function _geoCercle(n,avecPuce){
     // pas tant que les pastilles étaient petites : en les agrandissant, les
     // satellites se sont mis à mordre le CENTRE (le titre et la croix).
     var besoin=Math.max(96,
-                        Math.ceil(Math.max(t+14,t+_sous-24)*n/(2*Math.PI)),   // pastille + ce qui pend dessous
+                        Math.ceil((t+14)*n/(2*Math.PI)),   // pastille + respiration
                         Math.ceil(32+t/2));                // dégagement du centre : la croix seule (44 px)
     var max=Math.floor(court/2)-(t/2+_sous);   // le prix, le nom, et la puce du gros
     if(besoin<=max){
