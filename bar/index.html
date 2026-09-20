@@ -736,6 +736,11 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
     </div>
     <div class="hrgt"><button class="hbtn" id="btn-add-prod" onclick="ouvrirProduit(null)" title="Nouveau produit" data-title-en="New product">➕</button><button class="hbtn" id="menu-st" onclick="goSt()" style="display:none">⚙️</button></div>
   </div>
+  <div class="stats-bar" id="cpt-stats" style="display:none">
+    <div class="sc"><div class="sl" id="cpt-lca">Recette</div><div class="sv sv-a" id="cpt-ca">0</div></div>
+    <div class="sc"><div class="sl" id="cpt-lnb">Ventes</div><div class="sv" id="cpt-nb">0</div></div>
+    <div class="sc" id="cpt-sben"><div class="sl" id="cpt-lben">Net</div><div class="sv sv-g" id="cpt-ben">0</div></div>
+  </div>
   <div class="mcont" style="padding-bottom:170px">
     <div class="ssec">
       <input class="sinp" id="menu-src" oninput="chercherMenu(this.value)" placeholder="🔍 Bière, sucrerie, brochette..." data-fr="🔍 Bière, sucrerie, brochette..." data-en="🔍 Beer, soda, brochette..." data-ph>
@@ -844,7 +849,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
      déchet.
    • on achète en casiers, on vend à la bouteille.
    ══════════════════════════════════════════════════════════════════ */
-var BUILD='1.5';
+var BUILD='1.6';
 
 /* ══════════════════════════════════════════════════════════════════
    LA LANGUE
@@ -1201,6 +1206,34 @@ function ouvrirComptoir(){
   goScreen('s-menu');majNavs();rendreMenu();
 }
 function finMenu(){if(modeComptoir)ouvrirPaiement();else fermerMenu();}
+
+/* ⚠️ POUR UNE CAVE, LE COMPTOIR EST L'ÉCRAN DE TOUTE LA JOURNÉE.
+   Le plan de salle portait la recette, le net et ce qui est encore
+   assis dehors ; en donnant au comptoir son propre écran d'accueil, on
+   lui avait laissé la carte et rien d'autre — un patron de cave devait
+   passer par Rapports pour savoir combien il avait fait dans la
+   journée. Le bandeau revient, avec les trois chiffres qui valent la
+   peine ICI : ce qui est rentré, combien de clients, ce qui reste.
+
+   Pas d'« en cours » : au comptoir on paye tout de suite, et le ticket
+   du moment est déjà sous les yeux dans la barre du bas. */
+function majStatsComptoir(on){
+  var b=$('cpt-stats');if(!b)return;
+  b.style.display=on?'':'none';
+  if(!on)return;
+  var soir=forme('tables');
+  $('cpt-lca').textContent=L(soir?'Recette du soir':'Recette du jour',soir?"Tonight's takings":"Today's takings");
+  $('cpt-lnb').textContent=motAdditions();   /* déjà dans la bonne langue */
+  $('cpt-lben').textContent=L(soir?'Net du soir':'Net du jour',soir?"Tonight's net":"Today's net");
+  var vs=ventesDuSoir();
+  var ca=vs.reduce(function(s,v){return s+v.total;},0);
+  var net=vs.reduce(function(s,v){return s+(v.total-(v.cout||0));},0)
+          -depExploitation(depensesDuSoir()).reduce(function(s,d){return s+d.montant;},0);
+  nombreAnime($('cpt-ca'),ca,fmt);
+  nombreAnime($('cpt-nb'),vs.length,function(x){return String(Math.round(x));});
+  $('cpt-sben').style.display=estPatron()?'':'none';
+  nombreAnime($('cpt-ben'),net,fmt);
+}
 function zoneNm(z){for(var i=0;i<ZONES.length;i++)if(ZONES[i].c===z)return L(ZONES[i].nm,ZONES[i].ne);return z;}
 
 /* ── La carte de départ ────────────────────────────────────────────
@@ -2357,6 +2390,7 @@ function rendreMenu(){
   $('menu-back').style.display=cp?'none':'';
   $('menu-nav').style.display=cp?'':'none';
   $('menu-st').style.display=cp?'':'none';
+  majStatsComptoir(cp);
   $('menu-csub').textContent=cp?L('À encaisser','To cash in'):L('Total table','Table total');
   $('menu-benc').textContent=cp?L('✓ Encaisser','✓ Cash in'):L('✓ Terminé','✓ Done');
   $('btn-add-prod').style.display=estPatron()?'':'none';
