@@ -1034,9 +1034,15 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 /* Le repère du gros sur une variante : même langage que dehors (.pgros),
    même place — sous le prix, en bas de la tuile. La zone de touche est
    élargie à 44 px comme partout ailleurs. */
-.vt-gros{display:inline-flex;align-items:center;gap:3px;margin-top:3px;
-  background:rgba(0,150,136,.15);color:#00695C;border-radius:6px;padding:2px 7px;
-  font-size:10px;font-weight:900;line-height:1;position:relative;z-index:3}
+.vt-gros{display:inline-flex;align-items:center;gap:4px;margin-top:4px;
+  background:rgba(0,150,136,.15);color:#00695C;border-radius:7px;padding:0 9px;
+  height:26px;max-width:100%;white-space:nowrap;
+  font-size:11px;font-weight:900;line-height:1;position:relative;z-index:3}
+/* Le mot se rogne, le prix jamais : un prix à moitié lu est un prix faux. */
+.g-e{font-style:normal;flex:0 0 auto}
+.g-mot{overflow:hidden;text-overflow:ellipsis;min-width:0;white-space:nowrap}
+.g-px{flex:0 0 auto;font-weight:900}
+.g-mot+.g-px::before{content:'· ';opacity:.65}
 .vtile.has-photo .vt-gros{background:rgba(255,255,255,.94);color:#00695C}
 .vt-gros::after{content:'';position:absolute;top:50%;left:50%;
   transform:translate(-50%,-50%);width:100%;height:44px;min-width:44px}
@@ -1048,12 +1054,14 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    satellite, ce repère recouvrait le NOM de la variante — « Savon A »
    devenait « S…n A ». On le pose donc sur le bord bas du ROND, au-dessus
    du nom, et le nom descend d'un cran quand un repère est là. */
-.vsat-gros{position:absolute;top:calc(var(--vsat-r,66px) - 9px);left:50%;transform:translateX(-50%);
-  display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.96);
-  color:#00695C;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:900;
-  line-height:1;white-space:nowrap;max-width:var(--vsat-arc,82px);overflow:hidden;
-  box-shadow:0 2px 8px rgba(0,0,0,.28);z-index:4}
-.vsat.hasgros .vsat-nm{margin-top:11px}
+/* ⚠️ ELLE ÉTAIT POSÉE À CHEVAL SUR LE BORD DU ROND, par-dessus le prix
+   de détail, et débordait (94 à 100 px mesurés sur un satellite de 82).
+   Elle descend dans la colonne, sous le nom : le rond reste lisible, et
+   la largeur est enfin celle du satellite. */
+.vsat-gros{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);
+  color:#00695C;border-radius:8px;padding:0 9px;height:24px;font-size:11px;font-weight:900;
+  line-height:1;white-space:nowrap;max-width:100%;
+  box-shadow:0 2px 8px rgba(0,0,0,.28);z-index:4;position:relative}
 .vsat-gros.vide{background:rgba(255,255,255,.86);color:#4a4a5a;font-weight:800}
 .vsat-gros::after{content:'';position:absolute;top:50%;left:50%;
   transform:translate(-50%,-50%);width:100%;height:44px;min-width:44px}
@@ -4920,7 +4928,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.57'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.58'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -11571,7 +11579,14 @@ function _tailleCarteArticle(){
   }catch(e){}
   return 106;
 }
-function _geoCercle(n){
+// ⚠️⚠️ LA PUCE DU GROS PEND SOUS LE NOM, et la géométrie ne le savait
+// pas : mesuré, la puce d'un satellite mordait le ROND des deux voisins.
+// L'encombrement d'un satellite n'est plus « la pastille + 38 px de prix
+// et de nom » mais « + la puce » quand elle est là. On le dit ici, une
+// fois, et le rayon s'écarte de lui-même.
+var _PUCE_GROS_H=30;
+function _geoCercle(n,avecPuce){
+  var _sous=38+(avecPuce?_PUCE_GROS_H:0);
   var court=Math.min(window.innerWidth,window.innerHeight);
   // ⚠️ LE PLAFOND ÉTAIT À 66 px, CHOISI AU JUGÉ — et c'était tout le
   // problème : « ça sort petit petit, ça ne respecte pas les articles qui
@@ -11586,9 +11601,9 @@ function _geoCercle(n){
     // pas tant que les pastilles étaient petites : en les agrandissant, les
     // satellites se sont mis à mordre le CENTRE (le titre et la croix).
     var besoin=Math.max(96,
-                        Math.ceil((t+14)*n/(2*Math.PI)),   // pastille + respiration
+                        Math.ceil(Math.max(t+14,t+_sous-24)*n/(2*Math.PI)),   // pastille + ce qui pend dessous
                         Math.ceil(32+t/2));                // dégagement du centre : la croix seule (44 px)
-    var max=Math.floor(court/2)-(t/2+38);   // 38 : le prix et le nom pendent sous la pastille
+    var max=Math.floor(court/2)-(t/2+_sous);   // le prix, le nom, et la puce du gros
     if(besoin<=max){
       // La part du tour qui revient à chaque satellite. En dessous d'un
       // certain arc, une étiquette extérieure mord sur le voisin : le nom
@@ -11611,7 +11626,7 @@ function _styleVarLbl(s){
 function _majChipVar(p){
   if(!_varChip)return;
   var fr=lang==='fr',s=_styleVar();
-  var trop=(s==='cercle'&&p&&!_geoCercle(p.vr.length));
+  var trop=(s==='cercle'&&p&&!_geoCercle(p.vr.length,_familleAvecPuceGros(p)));
   _varChip.innerHTML=_styleVarLbl(trop?'carre':s)
     +'<span style="opacity:.5;font-weight:700">'
     +(trop?(fr?'· trop pour le cercle':'· too many for circle'):(fr?'· changer':'· change'))+'</span>';
@@ -11804,7 +11819,7 @@ function ouvrirVarCercle(p,carte){
   // p.vr donnerait un cercle dimensionné pour cinq quand on en montre trois,
   // avec des trous et des pastilles rapetissées pour rien.
   var r=carte.getBoundingClientRect(),W=window.innerWidth,H=window.innerHeight,n=_varVisibles(p).length;
-  var g=_geoCercle(n);if(!g)return false;
+  var g=_geoCercle(n,_familleAvecPuceGros(p));if(!g)return false;
   var R=g.R,marge=g.taille/2+38;
   // Le centre suit la carte touchée, puis on le ramène pour que rien ne sorte.
   var cx=Math.min(Math.max(R+marge,r.left+r.width/2),W-R-marge);
@@ -11865,8 +11880,13 @@ function renderVarCercle(p){
       +(function(){var _im=_imgVar(p,v),_f=_formatDeVariante(p,v);return (_im?('<img src="'+_im+'" loading="lazy" alt="">'):vignetteArt(p,v,g.taille-6,Math.round((g.taille-6)/2)))+(_f?('<span class="vsat-fmt">'+_f+'</span>'):'');})()
       +'<span class="vsat-px">'+(g.serre?('<i>'+(v.nm||'?')+'</i>'):'')+'<b>'+i.pxCourt+'</b></span></span>'
       +(i.q>0?'<span class="vsat-b" data-moins="1">'+fmtQ(i.q)+'</span>':'')
-      +_cg
-      +(g.serre?'':'<span class="vsat-nm">'+(v.nm||'?')+'</span>');
+      // ⚠️ LE NOM D'ABORD, LA PUCE DU GROS ENSUITE. On choisit une forme
+      // par son NOM : « Diamaor », « Mayor », « Locale ». La puce était
+      // posée avant lui — et par-dessus le prix de détail — si bien que
+      // l'ordre de lecture était image, prix, tarif de gros, et le nom en
+      // dernier. Elle descend sous le nom, à sa place.
+      +(g.serre?'':'<span class="vsat-nm">'+(v.nm||'?')+'</span>')
+      +_cg;
     _replierPhotoVar(d,vignetteArt(Object.assign({},p,{img:''}),Object.assign({},v,{img:'',_img:''}),62,31));
     _brancherVar(d,p,v);
     l.appendChild(d);
@@ -12163,6 +12183,12 @@ function _motDeLot(p,v,lot){
   for(var i=0;i<mots.length;i++)if(nm.indexOf(mots[i])>=0)return mots[i];
   return _motContenant(p,v);
 }
+// Une seule de ses formes qui porte une puce suffit : elles sont toutes
+// posées sur le même cercle.
+function _familleAvecPuceGros(p){
+  try{return (_varVisibles(p)||[]).some(function(v){return !!_chipGrosVariante(p,v,true);});}
+  catch(e){return false;}
+}
 function _chipGrosVariante(p,v,cercle){
   if(!p||!v||_estGrosDeVariante(v))return '';
   var cls=cercle?'vsat-gros':'vt-gros',mot=_motContenant(p,v);
@@ -12177,26 +12203,26 @@ function _chipGrosVariante(p,v,cercle){
   if(_etv.length>1)
     return '<span class="'+cls+'" data-etage="'+v.id+'" title="'
       +_etv.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-      +_MARQUE_GROS+' '+(lang==='fr'?'gros ▾':'bulk ▾')+'</span>';
+      +_htmlGros((lang==='fr'?'gros ▾':'bulk ▾'),0,false)+'</span>';
   var mid='';
   if(cd.par>0&&cd.parTaille>1&&cd.parMot)
     {var _mv=_milieuDe(p,v);
      mid='<span class="'+cls+(_mv.px>0?'':' vide')+'" data-grosdet="'+v.id+'" data-grosn="'+cd.parTaille+'" data-grosmot="'+String(cd.parMot).replace(/"/g,'')+'" title="'
       +(lang==='fr'?('Vendre 1 '+cd.parMot+' de '+fmtQ(cd.parTaille)):('Sell 1 '+cd.parMot))+'">'
-      +_MARQUE_GROS+' '+_texteGros(cd.parMot,_mv.px)+'</span>';}
+      +_htmlGros(cd.parMot,_mv.px,true)+'</span>';}
   // ⭐ Le prix du carton vit maintenant SUR la variante : la puce le lit là,
   // et aucune quatrième forme n'encombre la liste. (Les boutiques qui ont
   // encore un lot en variante gardent la puce d'en dessous.)
   var _gv=_grosDe(p,v);
   if(_gv.px>0&&_gv.n>1)
     return mid+'<span class="'+cls+'" data-grosv="'+v.id+'" data-grosvn="'+_gv.n+'" title="'
-      +_gv.mot+' de '+fmtQ(_gv.n)+'">'+_MARQUE_GROS+' '+_texteGros(_gv.mot,_gv.px)+'</span>';
+      +_gv.mot+' de '+fmtQ(_gv.n)+'">'+_htmlGros(_gv.mot,_gv.px,true)+'</span>';
   var lots=_lotsDeVariante(p,v);
   if(lots.length)
     return mid+lots.map(function(lot){
       var ml=_motDeLot(p,v,lot);
       return '<span class="'+cls+'" data-gros="'+lot.id+'" title="'+(lot.nm||ml)+' — '+fmtQ(getQBase(lot))+'">'
-        +_MARQUE_GROS+' '+_texteGros(ml,lot.px)+'</span>';
+        +_htmlGros(ml,lot.px,true)+'</span>';
     }).join('');
   // ⚠️⚠️ CE QUE J'AVAIS CASSÉ EN 21.44, ET IL L'A VU TOUT DE SUITE :
   // « impossible de vendre à l'intérieur des variantes en carton ou tout
@@ -12225,14 +12251,14 @@ function _chipGrosVariante(p,v,cercle){
     // captures. Le MOT, comme dehors ; la taille reste dans l'infobulle.
     return mid+'<span class="'+cls+' vide" data-grosdet="'+v.id+'" title="'
       +(lang==='fr'?('Vendre '+_unGros(mot)+' de '+fmtQ(n)):('Sell 1 '+mot+' of '+fmtQ(n)))+'">'
-      +_emojiCont(mot)+' '+mot+'</span>';
+      +_htmlGros(mot,0,false)+'</span>';
   // Rien de connu : le repère NEUTRE, exactement comme dehors. « Tout
   // produit est vendable en gros » — y compris celui dont il n'a jamais
   // dit le conditionnement. Une tape ouvre l'écran qui le demande.
   if(role!=='patron'&&!hasPerm('produits'))return '';
   return '<span class="'+cls+' vide" data-grosneuf="'+v.id+'" title="'
     +(lang==='fr'?('Vendre '+(v.nm||'')+' en gros'):('Sell wholesale'))+'">'
-    +_emojiCont(mot)+' '+(lang==='fr'?'gros':'bulk')+'</span>';
+    +_htmlGros((lang==='fr'?'gros':'bulk'),0,false)+'</span>';
 }
 // ⭐ VENDRE LE CONTENU D'UN CONTENANT, POUR UNE VARIANTE PRÉCISE.
 // L'équivalent de `_ajouterLot` (qui, lui, ne sait travailler que sur un
@@ -13227,6 +13253,52 @@ function _sansDevise(v){
 function _texteGros(mot,px){
   var m=String(mot||'').trim();
   return px>0?(m+' · '+_sansDevise(px)):m;
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « POUR LES ARTICLES EN VARIANTE, LA VENTE GROSSISTE EST
+//         GÊNANTE. PARFOIS C'EST PETIT ET IL N'Y A PAS TROP DE
+//         PROFESSIONNALISME. »
+//
+//  C'est un écart que J'AI CREUSÉ : en 22.52 j'ai porté la puce du gros
+//  de 19 à 26 px sur la TUILE, et je ne l'ai jamais portée DEDANS.
+//  MESURÉ, sur la même famille :
+//      dehors  .pgros      26 px, police 11
+//      dedans  .vt-gros    14 px, police 10   ← « c'est petit »
+//      cercle  .vsat-gros  16 px, police 10, cible réelle 16 px
+//
+//  Et deux défauts de mise en page que la mesure a sortis :
+//   · en vue carrés, « carton · 10 000 » repasse à la ligne quand
+//     « carton · 9 500 » tient : les trois cartes de la même famille
+//     n'ont alors plus la même hauteur, et l'écran a l'air bâclé ;
+//   · sur le cercle, la puce est posée À CHEVAL sur le bord du rond,
+//     par-dessus le prix de détail, et déborde de 94 à 100 px sur un
+//     satellite qui n'en fait que 82.
+//
+//  La puce ne peut donc plus grandir : hauteur fixe, une seule ligne.
+//  Quand la place manque, c'est le MOT qui se rogne, jamais le prix —
+//  un prix à moitié lu est un prix faux, et le mot, lui, se retrouve
+//  sur la tuile et dans l'infobulle.
+//  ⚠️ SUR LE CERCLE, 82 px NE SUFFISENT PAS pour « carton · 9 500 » :
+//  on n'y met que le prix. La règle de la 21.41 tient — « sur une puce
+//  de gros, un nombre est toujours un prix » — et l'absence de prix s'y
+//  lit toujours par le MOT seul, jamais par un nombre nu.
+// ══════════════════════════════════════════════════════════════════
+function _htmlGros(mot,px,etroit){
+  var m=String(mot||'').trim();
+  var e=_emojiCont(m)||_MARQUE_GROS;
+  if(!(px>0))return '<i class="g-e">'+e+'</i><span class="g-mot">'+m+'</span>';
+  // ⚠️ MESURÉ : « 📦 carton · 9 500 » en 11 px demande 130 px ; une carte
+  // de variante en offre 98, un satellite 82. Le mot ressortait donc en
+  // « ca… », « c… » — deux lettres qui ne disent rien, et trois cartes
+  // dont les puces ne se ressemblaient plus.
+  // À l'intérieur d'une famille on ne garde donc que l'EMOJI et le PRIX :
+  // l'emoji dit le contenant (📦 carton, 🧺 sac, 🛢️ bidon, 🧃 casier) et
+  // la règle de la 21.41 tient — sur une puce de gros, un nombre est
+  // toujours un prix. Le mot entier reste sur la tuile, dehors, et dans
+  // l'infobulle. Quand aucun prix n'est posé, c'est le mot qui s'affiche,
+  // seul : un nombre nu ne peut donc jamais être confondu avec lui.
+  if(etroit)return '<i class="g-e">'+e+'</i><b class="g-px">'+_sansDevise(px)+'</b>';
+  return '<i class="g-e">'+e+'</i><span class="g-mot">'+m+'</span><b class="g-px">'+_sansDevise(px)+'</b>';
 }
 // ⚠️ Composer _unGros(_grosEntier(mot)) donnait « UN palette ENTIÈRE » : le
 // second appel recevait « palette entière », introuvable dans la table.
