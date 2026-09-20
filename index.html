@@ -4920,7 +4920,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.56'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.57'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -11808,7 +11808,23 @@ function ouvrirVarCercle(p,carte){
   var R=g.R,marge=g.taille/2+38;
   // Le centre suit la carte touchée, puis on le ramène pour que rien ne sorte.
   var cx=Math.min(Math.max(R+marge,r.left+r.width/2),W-R-marge);
-  var cy=Math.min(Math.max(R+marge+16,r.top+r.height/2),H-R-marge-14);
+  // ⚠️⚠️ « LA VENTE PERTURBE À CAUSE DE LA BARRE OÙ ON VALIDE LA VENTE. »
+  // Sa capture : la pastille « lot de 100 » du satellite du bas passe
+  // SOUS la barre « 1 article · Encaisser ». Mesuré à 390×844, carte en
+  // bas de grille : satellite de 630 à 773 px, barre de 714 à 772 —
+  // 59 px de recouvrement, pile sur la pastille du gros et le nom.
+  // La barre est volontairement AU-DESSUS du cercle (21.x : « le total
+  // doit rester lisible pendant qu'il choisit ») et on ne rouvre pas
+  // cette décision : on remonte le CERCLE pour qu'il ne la rencontre
+  // jamais. Le plancher n'est plus le bas de l'écran, c'est le haut de
+  // la barre quand elle est là.
+  var _bas=H;
+  try{var _fc=document.querySelector('.fcart');
+      if(_fc&&!_fc.classList.contains('hide')){
+        var _fb=_fc.getBoundingClientRect();
+        if(_fb.height>0&&_fb.top<H)_bas=Math.max(160,_fb.top-8);
+      }}catch(e){}
+  var cy=Math.min(Math.max(R+marge+16,r.top+r.height/2),_bas-R-marge-14);
   var box=document.createElement('div');box.className='vcircle';
   box.style.setProperty('--vsat-r',g.taille+'px');
   box.style.setProperty('--vsat-w',g.large+'px');
@@ -14401,6 +14417,77 @@ function partagerRecu(){if(!dernierRecu)return;var r=dernierRecu;var msg='🏪 *
 
 function updateStats(){document.getElementById('sv').textContent=fmt(totalV);document.getElementById('sb').textContent=fmt(totalB);document.getElementById('st').textContent=nbT;}
 function updateObjBar(){var ob=document.getElementById('obj-bar');if(DB.objectif>0){ob.style.display='block';var pct=Math.min(100,Math.round(totalV/DB.objectif*100));document.getElementById('obj-fill').style.width=pct+'%';document.getElementById('obj-val').textContent=fmt(totalV)+' / '+fmt(DB.objectif)+' ('+pct+'%)';}else ob.style.display='none';}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « TOUS LES STOCKS OK » ALORS QUE NEUF SONT ÉPUISÉS.
+//
+//  Sa capture : « ⚠️ ALERTES STOCK — ✅ Tous les stocks OK », et sur
+//  l'écran d'à côté « 9 articles à commander · 9 à zéro ».
+//
+//  La même ligne fausse était recopiée à CINQ endroits :
+//      DB.articles.filter(p => getStk(p) <= p.al && p.al > 0)
+//  Elle lit le total de la FAMILLE. Or « Riz » affiche 172 kg pendant
+//  que « Riz (kg) » est à zéro, « Huile » 55 unités pendant que
+//  « Locale » est à zéro, « Savon vaisselle » 427 pendant que deux de
+//  ses quatre formes sont à zéro. Le total cache exactement ce qu'il
+//  faut voir.
+//
+//  ⚠️ MESURÉ EN BASE, et ce n'est pas un cas particulier :
+//      ETS KODJI — 14 familles sur 24 ont une variante à zéro
+//      G         — 15 sur 21
+//      Gggg      —  6 sur 10
+//  Plus d'une famille sur deux. Les alertes, la pastille de
+//  notification, la commande au fournisseur et le filtre « Stock bas »
+//  étaient tous aveugles à ça.
+//
+//  `variantesEpuisees()` existait et faisait déjà le bon travail — mais
+//  seules deux des cinq lignes s'en servaient. Une seule fonction dit
+//  désormais ce qui manque, et tout le monde la lit.
+// ══════════════════════════════════════════════════════════════════
+function _alertesStock(){
+  var vides=[],bas=[];
+  (DB.articles||[]).forEach(function(p){
+    if(!p)return;
+    var seuil=Number(p.al)||0;
+    // Une famille dont les formes partagent une réserve commune se compte
+    // comme un seul article : c'est le même tas.
+    if(!(p.vr&&p.vr.length)||utiliseStockBase(p)){
+      var ts=getStk(p);
+      if(ts<=0)vides.push({p:p,v:null,q:0});
+      else if(seuil>0&&ts<=seuil)bas.push({p:p,v:null,q:ts});
+      return;
+    }
+    p.vr.forEach(function(v){
+      // Une forme sans prix n'est pas encore en vente : rien à alerter.
+      if(!(Number(v.px)>0||Number(v.pa)>0))return;
+      var q=Number(v.stk)||0;
+      if(q<=0)vides.push({p:p,v:v,q:0});
+      else if(seuil>0&&q<=seuil)bas.push({p:p,v:v,q:q});
+    });
+  });
+  return {vides:vides,bas:bas,tout:vides.concat(bas)};
+}
+// Le nom à afficher : « Huile — Locale », jamais « Huile » tout court
+// quand c'est UNE de ses formes qui manque.
+function _nomAlerte(a){
+  return (a.p.nm||'')+((a.v&&a.v.nm)?(' — '+a.v.nm):'');
+}
+// Le même verdict, article par article, pour les filtres du stock. On le
+// calcule une fois par rendu : sans ça, `_alertesStock()` repasserait sur
+// toute la boutique pour CHAQUE article de la liste.
+var _alrtIdx=null,_alrtIdxN=-1,_alrtStamp=0;
+function _alerteDe(p){
+  var n=((DB&&DB.articles)||[]).length;
+  if(!_alrtIdx||_alrtIdxN!==n||_alrtIdx._t!==_alrtStamp){
+    _alrtIdx={_t:_alrtStamp};_alrtIdxN=n;
+    var a=_alertesStock();
+    a.vides.forEach(function(x){var k=x.p.id;(_alrtIdx[k]=_alrtIdx[k]||{}).vide=true;});
+    a.bas.forEach(function(x){var k=x.p.id;(_alrtIdx[k]=_alrtIdx[k]||{}).bas=true;});
+  }
+  return (p&&_alrtIdx[p.id])||{};
+}
+// Toute écriture sur le stock invalide l'index : un chiffre d'alerte qui
+// date d'avant la vente serait pire que pas d'alerte du tout.
+function _alertesChangees(){_alrtStamp++;}
 function variantesEpuisees(){
   // Une variante à 0 doit alerter MÊME si le total famille est positif (Maggi 25F épuisé, 20F plein)
   var out=[];
@@ -14410,8 +14497,8 @@ function variantesEpuisees(){
   });
   return out;
 }
-function updateNotifBadge(){var al=DB.articles.filter(function(p){var ts=getStk(p);return ts<=p.al&&p.al>0;});var vo=variantesEpuisees();var cr=DB.clients.filter(function(c){var d=Math.ceil((new Date(c.date)-new Date())/864e5);return c.credit>0&&d<=3;});var total=al.length+vo.length+cr.length;var badge=document.getElementById('notif-badge');badge.textContent=total;badge.classList.toggle('show',total>0);}
-function showNotifs(){var al=DB.articles.filter(function(p){var ts=getStk(p);return ts<=p.al&&p.al>0;});var vo=variantesEpuisees();var cr=DB.clients.filter(function(c){var d=Math.ceil((new Date(c.date)-new Date())/864e5);return c.credit>0&&d<=3;});var msg='';if(al.length)msg+='⚠️ '+al.length+' '+(lang==='fr'?'article(s) en stock bas':'low stock item(s)')+' | ';if(vo.length)msg+='🧩 '+(lang==='fr'?'Épuisé : ':'Out: ')+vo.slice(0,3).map(function(x){return x.p.nm+' — '+(x.v.nm||'?');}).join(', ')+(vo.length>3?' +'+(vo.length-3):'')+' | ';if(cr.length)msg+='💰 '+cr.length+' '+(lang==='fr'?'crédit(s) urgent(s)':'urgent credit(s)');showToast(msg||t('aucuneNotif'));}
+function updateNotifBadge(){var _a=_alertesStock();var al=_a.bas,vo=_a.vides;var cr=DB.clients.filter(function(c){var d=Math.ceil((new Date(c.date)-new Date())/864e5);return c.credit>0&&d<=3;});var total=al.length+vo.length+cr.length;var badge=document.getElementById('notif-badge');badge.textContent=total;badge.classList.toggle('show',total>0);}
+function showNotifs(){var _a=_alertesStock();var al=_a.bas,vo=_a.vides;var cr=DB.clients.filter(function(c){var d=Math.ceil((new Date(c.date)-new Date())/864e5);return c.credit>0&&d<=3;});var msg='';if(al.length)msg+='⚠️ '+al.length+' '+(lang==='fr'?'article(s) en stock bas':'low stock item(s)')+' | ';if(vo.length)msg+='🧩 '+(lang==='fr'?'Épuisé : ':'Out: ')+vo.slice(0,3).map(_nomAlerte).join(', ')+(vo.length>3?' +'+(vo.length-3):'')+' | ';if(cr.length)msg+='💰 '+cr.length+' '+(lang==='fr'?'crédit(s) urgent(s)':'urgent credit(s)');showToast(msg||t('aucuneNotif'));}
 
 // ═══════════════════════════════════════════
 // PRIX
@@ -19652,7 +19739,7 @@ function majValeurStock(q30){
     bt.textContent='🛒 '+(fr?'À commander':'To order')+(n>0?(' ('+n+')'):'');
   }
 }
-function renderStock(lst){var c=document.getElementById('stk-lst');if(!c)return;c.innerHTML='';var _fr=lang==='fr';
+function renderStock(lst){var c=document.getElementById('stk-lst');if(!c)return;_alertesChangees();c.innerHTML='';var _fr=lang==='fr';
   // "Vendu" sur 30 jours : c'est la donnée utile pour décider quoi racheter.
   // (Avant : p.vd = total depuis toujours, qui ne dit rien de l'activité récente.)
   var _q30=qteVendueParArticle(30);
@@ -19685,12 +19772,23 @@ function filtreStock(f){
 }
 function appliquerFiltreStock(){
   if(!DB)return;
+  // Frais à chaque rendu, stable pendant le rendu : un chiffre d'alerte
+  // qui date d'avant la dernière vente serait pire que pas d'alerte.
+  _alertesChangees();
   var q=txtNorm(_stkQ),q30=qteVendueParArticle(30),_q30v=null;
   var lst=DB.articles.filter(function(p){
     if(q&&txtNorm(p.nm).indexOf(q)===-1)return false;
     var ts=getStk(p);
-    if(_stkFiltre==='bas')return ts>0&&p.al>0&&ts<=p.al;
-    if(_stkFiltre==='out')return ts<=0||(p.vr.length&&!utiliseStockBase(p)&&p.vr.some(function(v){return (v.stk||0)<=0;}));
+    // ⚠️⚠️ « QUAND ON CLIQUE SUR STOCK BAS ÇA LAISSE VIDE. »
+    // Sa capture : « 0 article sur 21 · Aucun résultat » — avec neuf
+    // articles à zéro sur l'onglet d'à côté. Cette ligne lisait `ts`, le
+    // total de la FAMILLE : « Savon vaisselle » affiche 427 unités, donc
+    // jamais bas, pendant que deux de ses quatre formes sont à zéro.
+    // Même règle que les alertes, et elle vit à un seul endroit
+    // (`_alertesStock`) : ce que le filtre montre et ce que l'alerte
+    // annonce ne peuvent plus diverger.
+    if(_stkFiltre==='bas')return _alerteDe(p).bas;
+    if(_stkFiltre==='out')return _alerteDe(p).vide;
     if(_stkFiltre==='vend')return (q30[p.id]||0)>0;
     if(_stkFiltre==='cmd'){
       // ⚠️ Une famille dont UNE SEULE variante est à zéro doit compter :
@@ -20211,14 +20309,14 @@ function renderRpt(){
   var top5=Array.from(DB.articles).filter(function(p){return (qteJour[p.id]||0)>0;})
             .sort(function(a,b){return (qteJour[b.id]||0)-(qteJour[a.id]||0);}).slice(0,5);
   var maxVd=Math.max.apply(null,top5.map(function(p){return qteJour[p.id]||0;}).concat([1]));
-  var al=DB.articles.filter(function(p){var ts=getStk(p);return ts<=p.al&&p.al>0;});
+  var al=_alertesStock().tout;
   var vr=_vp.slice(-5).reverse();
   var barColors=['#4A6CF7','#27AE60','#F5A623','#E74C3C','#9B59B6'];
   var topChartHtml='<div class="bchart-wrap">'+(top5.map(function(p,i){
     var q=qteJour[p.id]||0;
     var pct=Math.round(q/maxVd*100);
     return '<div class="bchart-row">'+vignetteArt(p,null,26)+'<span class="bchart-lbl">'+p.nm+'</span><div class="bchart-track"><div class="bchart-fill" style="width:'+pct+'%;background:'+barColors[i%barColors.length]+'"></div></div><span class="bchart-val">'+fmtQ(q)+' '+(lang==='fr'?'vte':'sold')+'</span></div>';
-  }).join('')||'<div class="empty"><div class="empty-e">📊</div><div class="empty-t">'+(lang==='fr'?'Aucune vente aujourd\'hui':'No sale today')+'</div></div>')+'</div>';
+  }).join('')||'<div class="empty"><div class="empty-e">📊</div><div class="empty-t">'+(_motCloture()||(lang==='fr'?'Aucune vente aujourd\'hui':'No sale today'))+'</div></div>')+'</div>';
 
   if(role==='vendeur'&&!hasPerm('rapports')){
     // ── VUE VENDEUR (simplifiée, sans données financières sensibles) ──
@@ -20227,7 +20325,7 @@ function renderRpt(){
       '<div class="rrow"><span class="rlbl">🛍️ '+(lang==='fr'?'Transactions enregistrées':'Transactions recorded')+'</span><span class="rval">'+nbT+'</span></div></div>'+
       '<div class="rcd"><div class="rctit">🏆 '+(lang==='fr'?'Articles les plus vendus aujourd\'hui':'Best selling items today')+'</div>'+topChartHtml+'</div>'+
       '<div class="rcd"><div class="rctit">⚠️ '+(lang==='fr'?'Alertes stock':'Stock alerts')+'</div>'+
-      (al.map(function(p){var ts=getStk(p);return '<div class="tit"><div class="temo">'+p.e+'</div><div class="tinf"><div class="tnm">'+p.nm+'</div><div class="tqt" style="color:'+(ts<=0?'var(--R)':'var(--O)')+'">'+(ts<=0?'⛔ '+(lang==='fr'?'Épuisé':'Out'):'⚠️ '+ts+(lang==='fr'?' restant':'left'))+'</div></div></div>';}).join('')||'<div style="text-align:center;padding:11px;color:var(--G);font-weight:700">'+t('stockOk')+'</div>')+
+      (al.map(function(a){var ts=a.q;return '<div class="tit"><div class="temo">'+(a.p.e||'')+'</div><div class="tinf"><div class="tnm">'+_nomAlerte(a)+'</div><div class="tqt" style="color:'+(ts<=0?'var(--R)':'var(--O)')+'">'+(ts<=0?'⛔ '+(lang==='fr'?'Épuisé':'Out'):'⚠️ '+fmtQ(ts)+(lang==='fr'?' restant':' left'))+'</div></div></div>';}).join('')||'<div style="text-align:center;padding:11px;color:var(--G);font-weight:700">'+t('stockOk')+'</div>')+
       '</div>'+
       '<div style="text-align:center;padding:10px;font-size:11px;color:var(--M);font-weight:600">🔒 '+(lang==='fr'?'Rapport financier complet réservé au patron':'Full financial report reserved to the owner')+'</div>';
     return;
@@ -20351,14 +20449,24 @@ function renderRpt(){
     '<div class="rcd"><div class="rctit">🏆 '+(lang==='fr'?('Top articles '+_motP):('Top items '+_motP))+'</div>'+topChartHtml+'</div>'+
     _rptVendeursHtml(_vp)+
     '<div class="rcd"><div class="rctit">⚠️ '+(lang==='fr'?'Alertes stock':'Stock alerts')+'</div>'+
-    (al.map(function(p){var ts=getStk(p);return '<div class="tit"><div class="temo">'+p.e+'</div><div class="tinf"><div class="tnm">'+p.nm+'</div><div class="tqt" style="color:'+(ts<=0?'var(--R)':'var(--O)')+'">'+( ts<=0?'⛔ '+(lang==='fr'?'Épuisé':'Out'):'⚠️ '+ts+(lang==='fr'?' restant':'left'))+'</div></div><button onclick="ouvrirStk(DB.articles.find(function(x){return x.id==='+p.id+'}))" style="background:var(--B);color:#fff;border:none;border-radius:7px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">+</button></div>';}).join('')||'<div style="text-align:center;padding:11px;color:var(--G);font-weight:700">'+t('stockOk')+'</div>')+
+    (al.map(function(a){var p=a.p,ts=a.q;return '<div class="tit"><div class="temo">'+(p.e||'')+'</div><div class="tinf"><div class="tnm">'+_nomAlerte(a)+'</div><div class="tqt" style="color:'+(ts<=0?'var(--R)':'var(--O)')+'">'+(ts<=0?'⛔ '+(lang==='fr'?'Épuisé':'Out'):'⚠️ '+fmtQ(ts)+(lang==='fr'?' restant':' left'))+'</div></div><button onclick="ouvrirStk(DB.articles.find(function(x){return x.id==='+p.id+'}))" style="background:var(--B);color:#fff;border:none;border-radius:7px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">+</button></div>';}).join('')||'<div style="text-align:center;padding:11px;color:var(--G);font-weight:700">'+t('stockOk')+'</div>')+
     '</div>'+
     '<div class="rcd"><div class="rctit">🕐 '+(lang==='fr'?'Dernières ventes':'Recent sales')+'</div>'+
     (vr.map(function(v){
       if(v.annulee)return '<div class="rrow"><span class="rlbl" style="text-decoration:line-through;color:var(--M)">⏰ '+v.h+' — '+(lang==='fr'?'ANNULÉE':'CANCELLED')+'</span><span class="rval" style="color:var(--M);text-decoration:line-through">'+fmt(v.total)+'</span></div>';
       var btn=hasPerm('annuler')?'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">↩️ '+(lang==='fr'?'Annuler':'Cancel')+'</button>':'';
       return '<div class="rrow" style="align-items:center"><span class="rlbl">⏰ '+v.h+'</span><span style="display:flex;align-items:center"><span class="rval g">'+fmt(v.total)+'</span>'+btn+'</span></div>';
-    }).join('')||'<div class="empty" style="padding:11px"><div class="empty-t">'+t('aucuneVente')+'</div></div>')+
+    }).join('')||'<div class="empty" style="padding:11px"><div class="empty-t">'+(_motCloture()||t('aucuneVente'))+'</div></div>')+
+    (function(){
+      // ⚠️ La carte n'en montre que CINQ. Sans ce mot, les autres ont
+      // l'air d'avoir disparu — c'est exactement ce qu'il a signalé.
+      var _n=_vp.length,_fr=(lang==='fr');
+      var _c=(vr.length&&_ventesCloturees().length)?('<div style="font-size:10.5px;color:var(--M);font-weight:700;padding:4px 2px 0">'+_motCloture()+'</div>'):'';
+      if(_n>vr.length)_c+='<div style="font-size:10.5px;color:var(--M);font-weight:700;padding:4px 2px 0">'
+        +(_fr?('… et '+(_n-vr.length)+' autre'+((_n-vr.length)>1?'s':'')+' '+_motP+' — '+_n+' en tout')
+             :('… and '+(_n-vr.length)+' more — '+_n+' in total'))+'</div>';
+      return _c;
+    })()+
     '</div>';
 }
 
@@ -21220,6 +21328,31 @@ function _rptJours(){
   if(_rptPer==='mois')return new Date().getDate();
   return 0;
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « DANS RAPPORT, DERNIÈRES VENTES, IL Y EN A CERTAINES QUI
+//         N'APPARAISSENT PAS. »
+//
+//  Ce ne sont pas des ventes perdues : `getCaisseSales()` écarte celles
+//  qui sont CLÔTURÉES. Après une clôture de caisse, les ventes du jour
+//  sortent du rapport « jour » — et l'écran annonce « Aucune vente
+//  aujourd'hui », ce qui est faux et inquiétant quand on vient d'en
+//  faire six.
+//  ⚠️ MESURÉ EN BASE, et ce n'est pas rare : 64 ventes clôturées chez
+//  « G », 59 chez « ETS KODJI », 11 chez « ETS KODJI 3 ».
+//  On ne change RIEN au calcul — une caisse clôturée est clôturée. On
+//  cesse seulement de laisser croire qu'il n'a rien vendu.
+// ══════════════════════════════════════════════════════════════════
+function _ventesCloturees(){
+  if(_rptPer!=='jour')return [];
+  try{return getTodaySales().filter(function(v){return v&&v.cloturee;});}catch(e){return [];}
+}
+function _motCloture(){
+  var c=_ventesCloturees(); if(!c.length)return '';
+  var fr=(lang==='fr'),t=c.reduce(function(s2,v){return s2+(Number(v.total)||0);},0);
+  return fr?('🔒 '+c.length+' vente'+(c.length>1?'s':'')+' déjà clôturée'+(c.length>1?'s':'')
+             +' aujourd\'hui — '+fmt(t))
+          :('🔒 '+c.length+' sale'+(c.length>1?'s':'')+' already closed today — '+fmt(t));
+}
 function _rptVentes(){
   if(_rptPer==='jour')return getCaisseSales();
   var d=new Date();d.setHours(0,0,0,0);
@@ -21480,8 +21613,8 @@ function clearObj(){DB.objectif=0;save();closeSheet('ov-obj');document.getElemen
 // FOURNISSEURS
 // ═══════════════════════════════════════════
 function ouvrirFourn(){renderFourn();document.getElementById('ov-fourn').classList.add('show');}
-function renderFourn(){var c=document.getElementById('fourn-lst');if(!c)return;var al=DB.articles.filter(function(p){var ts=getStk(p);return ts<=p.al&&p.al>0;});c.innerHTML='<div class="sth" style="margin-bottom:11px">🚚 '+(lang==='fr'?'Mes fournisseurs':'My suppliers')+'</div>'+DB.fournisseurs.map(function(f,fi){return '<div class="fourn-cd"><div style="font-size:28px">🏭</div><div class="fourn-inf"><div class="fourn-nm">'+f.nm+'</div><div class="fourn-det">'+f.articles+'</div></div><button class="bwa" onclick="cmdFourn('+fi+')">📱</button></div>';}).join('');}
-function cmdFourn(fi){var f=DB.fournisseurs[fi];var al=DB.articles.filter(function(p){var ts=getStk(p);return ts<=p.al&&p.al>0;});var msg='🏪 *'+DB.cfg.nom+'*\n\n'+(lang==='fr'?'Bonjour ':'Hello ')+f.nm+',\n\n'+(lang==='fr'?'Nous souhaitons commander :':'We want to order:')+'\n';if(al.length)al.forEach(function(p){msg+='• '+p.e+' '+p.nm+'\n';});else msg+='• ...\n';msg+='\n'+(lang==='fr'?'Merci !':'Thank you!');if(f.tel)window.open('https://wa.me/'+f.tel.replace(/\s/g,'')+'?text='+encodeURIComponent(msg),'_blank');else window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');}
+function renderFourn(){var c=document.getElementById('fourn-lst');if(!c)return;c.innerHTML='<div class="sth" style="margin-bottom:11px">🚚 '+(lang==='fr'?'Mes fournisseurs':'My suppliers')+'</div>'+DB.fournisseurs.map(function(f,fi){return '<div class="fourn-cd"><div style="font-size:28px">🏭</div><div class="fourn-inf"><div class="fourn-nm">'+f.nm+'</div><div class="fourn-det">'+f.articles+'</div></div><button class="bwa" onclick="cmdFourn('+fi+')">📱</button></div>';}).join('');}
+function cmdFourn(fi){var f=DB.fournisseurs[fi];var al=_alertesStock().tout;var msg='🏪 *'+DB.cfg.nom+'*\n\n'+(lang==='fr'?'Bonjour ':'Hello ')+f.nm+',\n\n'+(lang==='fr'?'Nous souhaitons commander :':'We want to order:')+'\n';if(al.length)al.forEach(function(a){msg+='• '+(a.p.e||'')+' '+_nomAlerte(a)+'\n';});else msg+='• ...\n';msg+='\n'+(lang==='fr'?'Merci !':'Thank you!');if(f.tel)window.open('https://wa.me/'+f.tel.replace(/\s/g,'')+'?text='+encodeURIComponent(msg),'_blank');else window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');}
 
 // ═══════════════════════════════════════════
 // LANGUE & DEVISE
