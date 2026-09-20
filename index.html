@@ -71,13 +71,39 @@
     if(b.length<16||b.length>1024)return;          // même garde que debase64
     var u=new Uint8Array(b.length);
     for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
+    // ══════════════════════════════════════════════════════════════
+    //  ⚠️⚠️ « ÇA TOURNE UN MOMENT AVANT D'ACCEPTER MON EMPREINTE »
+    //
+    //  Sa capture montre une feuille GRISE qui monte du bas avec un arc
+    //  ROSE qui tourne. Ni le gris ni le rose ne sont dans notre
+    //  palette : ce n'est pas notre écran, c'est celui d'Android
+    //  (Credential Manager). Et s'il tourne, c'est qu'il CHERCHE.
+    //
+    //  On lui donnait l'identifiant de la clé sans jamais lui dire OÙ
+    //  elle habite. Sans `transports`, la spécification oblige le
+    //  téléphone à supposer qu'elle peut être ailleurs — sur un autre
+    //  appareil par Bluetooth (transport « hybride »), sur une clé USB —
+    //  alors il démarre toute cette machinerie, interroge ses
+    //  fournisseurs, et ne propose le capteur qu'après. Le capteur, lui,
+    //  était prêt depuis le début.
+    //
+    //  Ce n'est pas une supposition : la clé est CRÉÉE avec
+    //  `authenticatorAttachment:'platform'` (voir activerBiometrieFlow).
+    //  Une clé de plateforme a pour transport `internal`. On se contente
+    //  donc de DIRE ce qu'on a demandé — et depuis cette version on garde
+    //  en plus ce que le téléphone a réellement répondu (`tr`).
+    //  `hints:['client-device']` dit la même chose à la couche au-dessus,
+    //  pour les navigateurs qui la comprennent ; les autres l'ignorent.
+    // ══════════════════════════════════════════════════════════════
+    var _tr=(e&&e.tr&&e.tr.length)?e.tr:['internal'];
     window._bioTotAbort=new AbortController();
     window._bioTotDebut=(performance&&performance.now)?performance.now():0;
     window._bioTot=navigator.credentials.get({
       signal:window._bioTotAbort.signal,
       publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
                  userVerification:'required',timeout:60000,
-                 allowCredentials:[{type:'public-key',id:u.buffer}]}
+                 hints:['client-device'],
+                 allowCredentials:[{type:'public-key',id:u.buffer,transports:_tr}]}
     });
     window._bioTot.catch(function(){});            // jamais d'erreur non rattrapée
   }catch(x){}
@@ -4894,7 +4920,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.54'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.55'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6686,7 +6712,8 @@ async function guetterEmpreinte(){
     _guetteAbort=new AbortController();
     var dem={signal:_guetteAbort.signal,
              publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
-                        userVerification:'required',timeout:60000}};
+                        userVerification:'required',timeout:60000,
+                        hints:['client-device']}};
     var cles=_clesEmpreinte();
     if(cles)dem.publicKey.allowCredentials=cles;
     try{_chronoBio('demande');}catch(x){}
@@ -6710,7 +6737,8 @@ async function entreeEmpreinte(){
   await new Promise(function(r){setTimeout(r,60);});
   try{
     var ch=crypto.getRandomValues(new Uint8Array(32));
-    var dem={publicKey:{challenge:ch,userVerification:'required',timeout:60000}};
+    var dem={publicKey:{challenge:ch,userVerification:'required',timeout:60000,
+                        hints:['client-device']}};
     var cles=_clesEmpreinte();
     if(cles)dem.publicKey.allowCredentials=cles;
     var ok=await navigator.credentials.get(dem);
@@ -20450,7 +20478,16 @@ function _clesEmpreinte(){
     if(!id){var e=lireEntree();id=e&&e.bioId;}
     if(!id)return undefined;
     var buf=debase64(id);
-    return buf?[{type:'public-key',id:buf}]:undefined;
+    if(!buf)return undefined;
+    // ⚠️ SANS `transports`, ANDROID CHERCHE LA CLÉ PARTOUT — y compris sur
+    // un autre téléphone par Bluetooth — et sa feuille tourne pendant ce
+    // temps. Voir le long commentaire du bloc de tête. `tr` est ce que le
+    // téléphone a répondu à la création ; `internal` est le repli pour les
+    // clés posées avant cette version, et il est vrai par construction :
+    // elles ont toutes été créées en `authenticatorAttachment:'platform'`.
+    var tr=null;
+    try{var o=bioLu();if(o&&o.tr&&o.tr.length)tr=o.tr;}catch(e){}
+    return [{type:'public-key',id:buf,transports:tr||['internal']}];
   }catch(e){return undefined;}
 }
 async function activerBiometrieFlow(){
@@ -20508,7 +20545,19 @@ async function activerBiometrieFlow(){
       var _pour='',_bq='';
       try{if(role==='vendeur'&&nomVendeur)_pour=String(nomVendeur);}catch(e){}
       try{_bq=(DB&&DB.cfg&&DB.cfg.code)||'';}catch(e){}
-      bioEcrire({on:true,id:b64(cred.rawId),dec:!dur,refus:0,pour:_pour,bq:_bq});
+      // ⭐ CE QUE LE TÉLÉPHONE RÉPOND, PLUTÔT QUE CE QU'ON SUPPOSE.
+      // `getTransports()` dit par quels chemins CETTE clé est joignable.
+      // On le garde et on le répète à chaque demande : le téléphone n'a
+      // alors plus rien à chercher. S'il ne répond pas (vieux Android),
+      // on retombe sur `internal`, qui est vrai puisque la clé vient
+      // d'être créée en `authenticatorAttachment:'platform'`.
+      var _tr=null;
+      try{ if(cred.response&&typeof cred.response.getTransports==='function'){
+             var _t=cred.response.getTransports();
+             if(_t&&_t.length)_tr=_t.slice(0,4);
+           } }catch(e){}
+      bioEcrire({on:true,id:b64(cred.rawId),dec:!dur,refus:0,pour:_pour,bq:_bq,
+                 tr:_tr||['internal']});
       return true;
     }
   }catch(e){
@@ -20587,6 +20636,17 @@ async function ouvrirDiagBio(){
   h+=_liLigne(actif,fr?'L\'interrupteur est allumé (sur CE téléphone)':'Switch is on (this phone)',
       actif?(fr?'oui — pour toutes tes boutiques':'yes — for every shop'):(fr?'NON — c\'est sans doute tout le problème : allume « Empreinte / Face ID » juste au-dessus':'NO — turn on the switch above'));
   if(!actif)ok=false;
+
+  // ⭐ CE QU'ON DIT À ANDROID SUR L'ENDROIT OÙ VIT LA CLÉ.
+  // « Ça tourne un moment avant d'accepter mon empreinte » : la feuille
+  // grise d'Android tournait parce qu'elle cherchait la clé ailleurs —
+  // jusque sur un autre téléphone, par Bluetooth. Cette ligne-là dit ce
+  // qu'on lui répond maintenant, et sur quoi on se fonde.
+  var _tr=(dev.tr&&dev.tr.length)?dev.tr:null;
+  h+=_liLigne(true,fr?'Où le téléphone doit chercher la clé':'Where the phone must look',
+      _tr?(_tr.join(', ')+(fr?' — la réponse du téléphone lui-même':' — reported by the phone'))
+         :('internal'+(fr?' — clé posée avant cette version, et créée sur cet appareil'
+                          :' — key made before this version, on this device')));
 
   var idApp=dev.id||(DB&&DB.cfg&&DB.cfg.bioCredId)||'',idMem=dev.id||mem.bioId||'';
   var aCle=!!(idApp||idMem);
@@ -20737,8 +20797,13 @@ async function loginBiometrique(){
   arreterGuetEmpreinte();
   await new Promise(function(r){setTimeout(r,60);});
   try{
+    // ⚠️ QUATRIÈME PORTE, ET JE L'AVAIS MANQUÉE au premier passage. Elle
+    // hérite bien des `transports` par `_clesEmpreinte`, mais il lui
+    // manquait l'indice. La leçon du cadenas, encore : corriger un bouton
+    // à la fois laisse toujours celui qu'on oublie.
     var dem={publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
-             userVerification:'required',timeout:60000}};
+             userVerification:'required',timeout:60000,
+             hints:['client-device']}};
     var cles=_clesEmpreinte();
     if(cles)dem.publicKey.allowCredentials=cles;
     var res=await navigator.credentials.get(dem);
