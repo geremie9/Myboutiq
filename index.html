@@ -1488,6 +1488,16 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 @keyframes tin{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 
 /* ── EMPTY ── */
+/* La main tendue de la caisse vide — voir `_htmlAideCreation`. Calme :
+   ce n'est pas une alerte, c'est une proposition. */
+.aide-cr{margin:18px auto 0;max-width:340px;background:#F4F7FF;border:1.5px solid #D6E0FA;
+  border-radius:15px;padding:14px 15px;text-align:center}
+.aide-cr-t{font-size:13px;font-weight:800;color:var(--T);line-height:1.4}
+.aide-cr-s{font-size:12px;font-weight:600;color:var(--M);margin:5px 0 11px;line-height:1.45}
+.aide-cr-b{background:#25D366;color:#fff;border:none;border-radius:11px;padding:11px 18px;
+  font-size:13px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;min-height:44px;
+  width:100%;max-width:260px}
+.aide-cr-b:active{transform:scale(.97)}
 .empty{text-align:center;padding:36px 20px;color:var(--M)}
 .empty-e{font-size:44px;margin-bottom:9px}.empty-t{font-size:14px;font-weight:700}.empty-s{font-size:12px;margin-top:4px;font-weight:600}
 /* Sélecteur de quantité (articles au poids/mesure) */
@@ -4124,6 +4134,12 @@ body{max-width:min(100%,1200px)}
       <div class="stit2" onclick="closeSheet('ov-porte');ouvrirCollageListe()"><div class="stico" style="background:#E8F5E9">📋</div><div class="stii"><div class="stitl" id="porte-coller">Coller une liste</div><div class="stisub" id="porte-coller-s">Depuis WhatsApp ou ton fournisseur</div></div><span class="starr">›</span></div>
       <div class="stit2" onclick="closeSheet('ov-porte');ouvrirAjout()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="porte-un">Un seul article, en détail</div><div class="stisub" id="porte-un-s">Avec photo, variantes, conditionnement et seuil d'alerte</div></div><span class="starr">›</span></div>
       <div class="stit2" onclick="closeSheet('ov-porte');ouvrirCatalogueRegional()"><div class="stico" style="background:#E3F2FD">🗺️</div><div class="stii"><div class="stitl" id="porte-cat">Voir chez les boutiques voisines</div><div class="stisub" id="porte-cat-s">Ce que vendent les commerçants autour de toi</div></div><span class="starr">›</span></div>
+      <!-- ⚠️ CINQ PORTES, ET CELUI QUI N'EN PREND AUCUNE. Cet écran liste
+           les façons de faire SOI-MÊME. La dernière ligne est pour celui
+           qui a tout regardé et n'a rien pris : on ne lui propose pas une
+           sixième méthode, on lui propose quelqu'un. Remplie par
+           `majPorteArticles`, et seulement si c'est le patron. -->
+      <div id="porte-aide"></div>
     </div>
   </div>
 </div>
@@ -4928,7 +4944,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.60'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.61'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9204,6 +9220,11 @@ function renderProd(lst){
           '<button class="eg-btn2" onclick="entrerDemo()" style="border-color:var(--B);color:var(--B)">'+
             '👀 '+(fr?'Essayer une boutique d\'exemple':'Try an example shop')+'</button>'+
         '</div>'+
+        // ⚠️ EN DERNIER, ET C'EST VOULU. Le bouton qui compte reste
+        // « Choisir en photos ». Celui-ci s'adresse à celui que l'écran a
+        // déjà arrêté — 21 boutiques sur 57 dans sa base, dont 15 revenues
+        // un autre jour sans jamais rien poser.
+        _htmlAideCreation()+
       '</div>';
       // L'app SAIT parler depuis la 19.74 et ne disait rien sur tout ce
       // parcours. Elle pose la question à voix haute — c'est la seule chose
@@ -18434,6 +18455,8 @@ function chaValider(){
 function ouvrirPorteArticles(){
   if(!(role==='patron'||hasPerm('produits'))){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
   majPorteArticles();
+  try{var _pa=document.getElementById('porte-aide');
+      if(_pa)_pa.innerHTML=_htmlAideCreation();}catch(e){}
   document.getElementById('ov-porte').classList.add('show');
 }
 // La recommandation ne change pas — le catalogue reste la porte la plus sûre.
@@ -19904,7 +19927,7 @@ function renderStock(lst){var c=document.getElementById('stk-lst');if(!c)return;
   if(_stkFiltre==='cmd'&&!_stkQ){
     try{renderCommande(c,_q30,qteVendueParVariante(30));return;}catch(e){}
   }
-  if(!lst.length){c.innerHTML=(!DB.articles.length&&(role==='patron'||hasPerm('produits')))?('<div class="empty-guide"><div class="eg-ico">📦</div><div class="eg-t">'+(_fr?'Ton stock est vide':'Your stock is empty')+'</div><div class="eg-s">'+(_fr?'Ajoute tes articles pour suivre les quantités et être alerté quand ça baisse.':'Add your items to track quantities and get low-stock alerts.')+'</div><button class="eg-btn" onclick="ouvrirPorteArticles()">📦 '+(_fr?'Ajouter un article':'Add an item')+'</button></div>'):('<div class="empty"><div class="empty-e">🔍</div><div class="empty-t">'+(_fr?'Aucun résultat':'No result')+'</div></div>');return;}var bc={};lst.forEach(function(p){if(!bc[p.cat])bc[p.cat]=[];bc[p.cat].push(p);});Object.entries(bc).forEach(function(e){var cat=e[0],items=e[1];var replie=!!_catsRepliees[cat];
+  if(!lst.length){c.innerHTML=(!DB.articles.length&&(role==='patron'||hasPerm('produits')))?('<div class="empty-guide"><div class="eg-ico">📦</div><div class="eg-t">'+(_fr?'Ton stock est vide':'Your stock is empty')+'</div><div class="eg-s">'+(_fr?'Ajoute tes articles pour suivre les quantités et être alerté quand ça baisse.':'Add your items to track quantities and get low-stock alerts.')+'</div><button class="eg-btn" onclick="ouvrirPorteArticles()">📦 '+(_fr?'Ajouter un article':'Add an item')+'</button>'+_htmlAideCreation()+'</div>'):('<div class="empty"><div class="empty-e">🔍</div><div class="empty-t">'+(_fr?'Aucun résultat':'No result')+'</div></div>');return;}var bc={};lst.forEach(function(p){if(!bc[p.cat])bc[p.cat]=[];bc[p.cat].push(p);});Object.entries(bc).forEach(function(e){var cat=e[0],items=e[1];var replie=!!_catsRepliees[cat];
 var ti=document.createElement('div');ti.className='scat-h';
 ti.innerHTML='<span>'+(replie?'▸':'▾')+' '+(CE[cat]||'📦')+' '+cat+'</span><span class="scat-n">'+items.length+'</span>';
 ti.onclick=function(){toggleCatStock(cat);};
@@ -21270,6 +21293,54 @@ var SUPPORT_MAIL='geremiekodji9@gmail.com';
 function _supportTexte(){
   var c=(DB&&DB.cfg&&DB.cfg.code)||'';
   return lang==='fr'?'Bonjour, j\'ai besoin d\'aide avec MyBoutiQ (boutique '+c+').':'Hello, I need help with MyBoutiQ (store '+c+').';
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ « TU N'ARRIVES PAS À CRÉER EXACTEMENT TA CAISSE, TES ARTICLES ?
+//         MYBOUTIQ TE LA CRÉE EN 10 MINUTES. ÉCRIS JUSTE. »
+//
+//  Son idée, et les chiffres la réclamaient depuis longtemps.
+//  MESURÉ EN BASE : sur 57 boutiques créées, 21 n'ont JAMAIS reçu un
+//  seul article — et QUINZE d'entre elles sont revenues un AUTRE jour,
+//  deux semaines plus tard en moyenne. Ce ne sont pas des curieux d'une
+//  minute : ils reviennent, regardent une caisse vide, et repartent.
+//
+//  Ils se sont tous arrêtés au même endroit. On y met donc la seule
+//  chose qui débloque quelqu'un qui n'y arrive pas : quelqu'un.
+//
+//  ⚠️ DISCRET, ET JAMAIS DEVANT. Le bouton qui compte reste « Choisir
+//  en photos » : la plupart y arrivent seuls, et leur mettre une demande
+//  d'aide en premier leur dirait que c'est difficile. Cette ligne vient
+//  APRÈS, en petit, pour celui que l'écran a déjà arrêté.
+//  ⚠️ ET SEULEMENT AU PATRON : un vendeur n'a pas à créer le catalogue.
+// ══════════════════════════════════════════════════════════════════
+function aideCreationDispo(){
+  try{ return (role==='patron'||hasPerm('produits')); }catch(e){ return false; }
+}
+function _htmlAideCreation(){
+  if(!aideCreationDispo())return '';
+  var fr=(lang==='fr');
+  return '<div class="aide-cr">'
+    +'<div class="aide-cr-t">'+(fr?'Tu n\'arrives pas à créer exactement ta caisse, tes articles ?'
+                                 :'Struggling to set up your till and your items?')+'</div>'
+    +'<div class="aide-cr-s">'+(fr?'MyBoutiQ te la crée en 10 minutes. Écris juste.'
+                                 :'We build it for you in 10 minutes. Just write.')+'</div>'
+    +'<button class="aide-cr-b" onclick="ecrireAideCaisse()">💬 '+(fr?'Écrire au support':'Write to support')+'</button>'
+    +'</div>';
+}
+// Le message part avec ce qu'il faut pour agir : le nom, le code, et
+// où il en est. Jamais son PIN.
+function ecrireAideCaisse(){
+  var fr=(lang==='fr');
+  var nm='',cd='',na=0;
+  try{nm=(DB&&DB.cfg&&DB.cfg.nom)||'';cd=(DB&&DB.cfg&&DB.cfg.code)||'';
+      na=((DB&&DB.articles)||[]).length;}catch(e){}
+  var msg=fr
+    ?('Bonjour MyBoutiQ 👋\n\nJe n\'arrive pas à créer ma caisse et mes articles.\n\n'
+       +'Boutique : '+nm+'\nCode : '+cd+'\nArticles déjà enregistrés : '+na)
+    :('Hello MyBoutiQ 👋\n\nI cannot set up my till and my items.\n\n'
+       +'Shop: '+nm+'\nCode: '+cd+'\nItems so far: '+na);
+  try{journalAjouter('aide','Demande d\'aide à la création','',nm+' · '+cd);}catch(e){}
+  window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(msg),'_blank');
 }
 function contacterSupport(){
   window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(_supportTexte()),'_blank');
