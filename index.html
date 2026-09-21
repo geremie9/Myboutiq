@@ -5018,7 +5018,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.65'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.66'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -13376,14 +13376,39 @@ function _mentionEntamee(grp,ord,reste,g,qty){
     if(g&&g.lots&&g.lots.length)_paye=g.lots.some(function(l){return l&&l.n>1&&Number(l.px)>0;});
     else _paye=Number(g&&g.px)>0;
   }catch(e){}
-  if(!_paye)return null;
+  // ══════════════════════════════════════════════════════════════════
+  //  ⚠️⚠️ J'OUVRE UN TEST GELÉ, ET JE LE DIS : t9, « 13 bouteilles ne
+  //  sont plus un casier ».
+  //
+  //  SA CAPTURE, MESURÉE À L'IDENTIQUE — Bougie à 200, lot de 12 SANS
+  //  prix de lot :
+  //      24 pièces → « 📚 2 lots (24 × FCFA 200) »   4 800 F
+  //      25 pièces → « FCFA 200 × 25 »               5 000 F
+  //      23 pièces → « FCFA 200 × 23 »               4 600 F
+  //  Une seule pièce de plus ou de moins, et le mot « lot » disparaît.
+  //  C'est ÇA, « elle oublie de compter en gros ».
+  //
+  //  POURQUOI LA GARDE EXISTAIT : ne pas annoncer un tarif de casier qui
+  //  n'existe pas. L'intention est juste — mais l'app dit DÉJÀ « 2 lots »
+  //  au compte exact, sans qu'aucun tarif n'existe, en montrant le prix à
+  //  l'unité entre parenthèses. La garde ne protégeait donc rien : elle
+  //  créait une falaise entre 24 et 25.
+  //
+  //  MAINTENANT : le contenant est nommé dans les deux cas. Sans prix de
+  //  gros, la phrase porte le prix à l'unité — exactement comme au compte
+  //  exact — donc elle n'annonce toujours aucun tarif qui n'existe pas.
+  //      25 pièces → « 2 lots + 1 (25 × FCFA 200) »
+  //  Avec un vrai prix de carton, rien ne change : « 2 cartons + 23 ».
+  // ══════════════════════════════════════════════════════════════════
   var _t=ord.map(function(k){var G=grp[k];
     return fmtQ(G.nb)+' '+G.mot+(G.nb>1?'s':'');}).join(' + ');
   var _u=(g.um==='kg')?' kg':((g.um==='L')?' L':'');
   var _nb=ord.reduce(function(s2,k){return s2+grp[k].nb;},0);
   var _m0=grp[ord[0]];
+  var _court=_t+' + '+fmtQ(reste)+_u;
+  var _sfx=_paye?'':(' ('+fmtQ(qty)+_u+' \u00d7 '+fmt(Number(g.px)||0)+')');
   return {nb:_nb,mot:_m0.mot,emo:_emojiCont(_m0.mot),um:g.um||'',entame:true,
-          txt:_t+' + '+fmtQ(reste)+_u};
+          paye:_paye,court:_court,txt:_court+_sfx};
 }
 function _mentionGros(key,qty){
   var g=_grosPanier[key];
@@ -24982,8 +25007,13 @@ encaisser=function(){
       }
       return;
     }
+    // ⚠️ UN CONTENANT ENTAMÉ N'EST PAS UN CONTENANT ENTIER. `gros`
+    // fait écrire au reçu « 2 lots (25) » — comme si deux lots en
+    // contenaient vingt-cinq. La phrase entière part donc à côté,
+    // « 2 lots + 1 », et le reçu la recopie telle quelle.
     lignes.push({nm:p.nm+(v?' — '+v.nm:''),px:px,pa:pa,qte:qty,qty:qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:qBase,dep:qDep,
-                 gros:_mgv?{nb:_mgv.nb,mot:_mgv.mot}:null});});
+                 gros:(_mgv&&!_mgv.entame)?{nb:_mgv.nb,mot:_mgv.mot}:null,
+                 grosTxt:(_mgv&&_mgv.entame)?_mgv.court:null});});
   var now=new Date(),h=now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),dateFr=now.toLocaleDateString('fr-FR');
   var ptsGagnes=0,ptsUtilises=Math.round(remisePoints/1000*100),clientId=null,clientNm='';
   if(clientVente){var cl=DB.clients.find(function(c){return c.id===clientVente.id;})||clientVente;clientId=cl.id;clientNm=cl.nm;if(ptsUtilises>0){cl.points=Math.max(0,(cl.points||0)-ptsUtilises);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'points_use',pts:ptsUtilises,amt:remisePoints});}ptsGagnes=pointsGagnesPour(total);cl.points=(cl.points||0)+ptsGagnes;majNiveauClient(cl);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'achat',amt:total,pts:ptsGagnes});
@@ -25006,7 +25036,8 @@ encaisser=function(){
     // emporte : 1 carton (24).
     var _dedans=Math.round((Number(l.qte)||0)*(Number(l.qBase)||1)*100)/100;
     var _n=l.gros?(l.nm+' — '+fmtQ(l.gros.nb)+' '+l.gros.mot+(l.gros.nb>1?'s':'')+' ('+fmtQ(_dedans)+_u+')')
-                 :(l.nm+' ×'+fmtQ(l.qte)+_u);
+                 :(l.grosTxt?(l.nm+' — '+l.grosTxt+' ('+fmtQ(_dedans)+_u+')')
+                            :(l.nm+' ×'+fmtQ(l.qte)+_u));
     return {nm:_n,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:(remiseVente||0)+_negoV,client:clientNm};
   panier={};remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
   renderProd(DB.articles);renderStock(DB.articles);renderClients();recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
