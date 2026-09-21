@@ -148,7 +148,13 @@
   try{
     var h=document.documentElement;
     var db=null;try{db=localStorage.getItem('myboutiq_v6');}catch(x){}
-    h.className+=(db?' porte-login':' porte-vitrine');
+    // ⚠️ « Pourquoi souvent quand j'ouvre mon app, ça me renvoie sur le
+    // site ? » Parce que cette ligne ne lisait QUE le stockage — la seule
+    // chose qu'Android efface quand le téléphone manque de place. Le
+    // commerçant retombait sur la page de pub, comme un inconnu.
+    // Le cookie de fonctionnement, lui, survit à cet effacement.
+    var deja=false;try{deja=String(document.cookie||'').indexOf('mb_deja=1')>=0;}catch(x){}
+    h.className+=((db||deja)?' porte-login':' porte-vitrine');
     // La clé d'empreinte est déjà lue plus haut : si elle existe, le signe
     // n'a aucune raison d'attendre le JavaScript pour se montrer.
     var bio=null;try{bio=JSON.parse(localStorage.getItem('myboutiq_bio')||'null');}catch(x){}
@@ -2416,6 +2422,7 @@ body{max-width:min(100%,1200px)}
     <button class="entry-btn on" id="btn-old-user" onclick="setModeEntree('old')">✅ <span id="lbl-old-user">Ancien utilisateur</span></button>
     <button class="entry-btn" id="btn-new-user" onclick="setModeEntree('new')">🆕 <span id="lbl-new-user">Nouvelle inscription</span></button>
   </div>
+  <div id="lg-efface" style="display:none;width:100%;background:rgba(240,169,62,.16);border:1.5px solid rgba(240,169,62,.45);border-radius:14px;padding:12px 14px;margin-bottom:13px;text-align:left"></div>
   <div id="auth-wrap" style="width:100%">
     <div id="conn-connu" style="display:none;width:100%;background:rgba(255,255,255,.10);border:1.5px solid rgba(255,255,255,.20);border-radius:14px;padding:11px 14px;margin-bottom:13px;text-align:left">
       <div style="display:flex;align-items:center;gap:9px">
@@ -4934,7 +4941,70 @@ const CE={'Boissons':'🥤','Alimentation':'🍖','Ménage':'🧹','Autre':'📦
 // ═══════════════════════════════════════════
 // ÉTAT GLOBAL
 // ═══════════════════════════════════════════
-function loadDB(){var d=localStorage.getItem('myboutiq_v6');return d?JSON.parse(d):null;}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ UN SEUL OCTET ABÎMÉ VALAIT UN TÉLÉPHONE VIDE.
+//
+//  MESURÉ AU BANC : avec `myboutiq_v6` tronqué (écriture coupée, mémoire
+//  pleine au mauvais moment), `JSON.parse` jetait un SyntaxError — et
+//  personne ne le rattrapait. La boutique n'existait plus pour l'app.
+//
+//  Or le téléphone garde DÉJÀ des copies (`myboutiq_sauv`, une par jour et
+//  une avant chaque geste destructeur). On les lit plutôt que d'abandonner.
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️ LA LECTURE PROTÉGÉE VIT ICI, ET NULLE PART AILLEURS. `loadDB` est
+//  RÉÉCRITE 18 000 lignes plus bas pour y ajouter la migration ; corriger
+//  seulement celle du haut, c'est corriger du code mort — le banc l'a
+//  attrapé. Les deux passent maintenant par cette fonction-ci.
+var _dbRecuperee=0;
+function _lireDBBrute(){
+  var d=null;try{d=localStorage.getItem('myboutiq_v6');}catch(e){return null;}
+  if(!d)return null;
+  try{return JSON.parse(d);}catch(e){}
+  try{
+    var l=JSON.parse(localStorage.getItem('myboutiq_sauv')||'[]');
+    if(l.length&&l[0].d){var r=JSON.parse(l[0].d);_dbRecuperee=l[0].t||1;return r;}
+  }catch(e2){}
+  return null;
+}
+function loadDB(){return _lireDBBrute();}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ CHROME JETTE LES DONNÉES D'UN SITE « ORDINAIRE ».
+//
+//  « Pourquoi souvent quand j'ouvre mon app, ça me renvoie sur le site ? »
+//
+//  MESURÉ : `navigator.storage.persisted()` répondait FALSE. Tant que
+//  l'origine n'est pas marquée persistante, Android efface TOUT son
+//  stockage — localStorage, caches, service worker — dès que le téléphone
+//  manque de place. Au rallumage il ne reste rien, le script d'ouverture
+//  ne trouve plus `myboutiq_v6`… et peint la vitrine. C'est ÇA, « le site ».
+//
+//  La permission ne se demande qu'une fois par lancement et Chrome
+//  l'accorde en silence à une app installée. Elle n'a JAMAIS été demandée.
+// ══════════════════════════════════════════════════════════════════
+function _garderLesDonnees(){
+  try{
+    if(!navigator.storage||!navigator.storage.persist)return;
+    navigator.storage.persisted().then(function(ok){
+      if(ok)return true;
+      return navigator.storage.persist();
+    }).catch(function(){});
+  }catch(e){}
+}
+// ── La marque de l'habitué ─────────────────────────────────────────
+//  ⚠️ ELLE NE PEUT PAS VIVRE DANS localStorage : c'est justement ce que
+//  l'éviction efface. Un cookie de fonctionnement y survit — il ne porte
+//  qu'un « 1 », aucun code, aucun numéro, aucun PIN.
+var _MARQUE_CONNU='mb_deja';
+function _marquerHabitue(){
+  try{
+    if(!DB||!DB.cfg||!DB.cfg.code||DB.cfg.demo)return;
+    if(String(document.cookie||'').indexOf(_MARQUE_CONNU+'=1')>=0)return;
+    document.cookie=_MARQUE_CONNU+'=1; max-age=63072000; path=/; SameSite=Lax';
+  }catch(e){}
+}
+function _dejaVenu(){
+  try{return String(document.cookie||'').indexOf(_MARQUE_CONNU+'=1')>=0;}catch(e){return false;}
+}
 function save(){
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
   if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){
@@ -4944,7 +5014,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.62'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.63'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6107,6 +6177,9 @@ document.addEventListener('DOMContentLoaded',function(){
   // Le reste (connexion serveur, icônes, version) se fait APRÈS l'affichage :
   // rien de tout cela n'est nécessaire pour taper son PIN.
   initSupa();
+  // La permission de garder les données : demandée à chaque ouverture,
+  // parce que Chrome ne l'accorde qu'une fois l'app installée et connue.
+  try{_garderLesDonnees();}catch(e){}
   try{console.log('MyBoutiQ build '+APP_BUILD);var _ab=document.getElementById('app-build');if(_ab)_ab.textContent='Version '+APP_BUILD;}catch(e){}
   try{installerIconesNav();}catch(e){}
   if(!_connu)setTimeout(_demarrerApp,1150);
@@ -6137,6 +6210,9 @@ function _demarrerApp(){
       DB.equipe.forEach(function(m){if(m.permsAll===undefined)m.permsAll=false;});
       lang=DB.cfg.lang||'fr';
       appliquerLang();
+      // Le téléphone a rendu une copie de secours : il doit le savoir, sinon
+      // il croira que les dernières heures se sont évaporées sans raison.
+      if(_dbRecuperee)setTimeout(function(){try{_direRecuperee();}catch(e){}},1400);
       // ══════════════════════════════════════════════════════════════
       //  ⚠️⚠️ LA BOUTIQUE D'EXEMPLE SE REFERMAIT TOUTE SEULE EN UNE SECONDE.
       //
@@ -6196,6 +6272,14 @@ function _demarrerApp(){
       setModeEntree('old');
       goScreen('s-login');
       ouvrirInvitationVendeur();
+    } else if(_dejaVenu()){
+      // ⚠️ IL A DÉJÀ EU SA BOUTIQUE SUR CE TÉLÉPHONE, et elle n'y est plus.
+      // Lui montrer la page de pub, c'est lui dire qu'il a tout perdu. Ce
+      // n'est pas vrai : le serveur la garde. On l'amène à la porte et on
+      // lui explique — c'est la seule chose qui compte à cette seconde-là.
+      setModeEntree('old');
+      goScreen('s-login');
+      try{_direDonneesEffacees();}catch(e){}
     } else {
       // Pas de DB locale : montrer la page vitrine pour un nouveau visiteur
       renderPaysLst('pays-lst','pays-src',PAYS,null);
@@ -6947,6 +7031,40 @@ function setModeEntree(mode){
   }else{
     var bc=document.getElementById('conn-connu');if(bc)bc.style.display='none';
   }
+}
+// ══════════════════════════════════════════════════════════════════
+//  CE QU'IL FAUT LUI DIRE QUAND LE TÉLÉPHONE A ÉTÉ VIDÉ
+//
+//  À cette seconde-là il croit avoir tout perdu : ses articles, ses prix,
+//  ses ventes. Ce n'est pas vrai, et c'est la SEULE chose à lui dire.
+//  ⚠️ Pas de promesse en l'air : on parle de sa dernière sauvegarde en
+//  ligne, pas de « tout ». Ce qu'il a vendu hors réseau après le dernier
+//  envoi n'est nulle part, et lui faire croire l'inverse serait pire.
+// ══════════════════════════════════════════════════════════════════
+function _direRecuperee(){
+  var fr=(lang==='fr');
+  var quand='';
+  try{if(_dbRecuperee>1e12)quand=' \u00b7 '+_sauvQuand(_dbRecuperee);}catch(e){}
+  showToast('\ud83d\udedf '+(fr?'Donn\u00e9es ab\u00eem\u00e9es \u2014 copie de secours reprise'
+                                 :'Damaged data \u2014 backup copy restored')+quand);
+  try{parler(fr?'Les donn\u00e9es \u00e9taient ab\u00eem\u00e9es. La copie de secours est reprise.'
+               :'The data was damaged. The backup copy was restored.');}catch(e){}
+}
+function _direDonneesEffacees(){
+  var fr=(lang==='fr');
+  var el=document.getElementById('lg-efface'); if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:flex-start;gap:9px">'
+    +'<span style="font-size:20px;line-height:1.2">\ud83d\udee1\ufe0f</span>'
+    +'<div style="flex:1;min-width:0">'
+    +'<div style="font-size:13.5px;font-weight:800;color:#fff">'
+      +(fr?'Ce t\u00e9l\u00e9phone a \u00e9t\u00e9 vid\u00e9':'This phone was cleared')+'</div>'
+    +'<div style="font-size:11.5px;font-weight:600;color:rgba(255,255,255,.80);margin-top:3px;line-height:1.45">'
+      +(fr?'Ta boutique n\'est pas perdue : reconnecte-toi avec ton num\u00e9ro et ton PIN, ta derni\u00e8re sauvegarde en ligne revient.'
+          :'Your shop is not lost: sign in with your number and PIN, and your last online backup comes back.')+'</div>'
+    +'</div></div>';
+  el.style.display='block';
+  try{parler(fr?'Ta boutique n\'est pas perdue. Reconnecte-toi.'
+               :'Your shop is not lost. Sign in again.');}catch(e){}
 }
 function ouvrirInscriptionDepuisLogin(){
   obLang=lang||'fr';
@@ -23442,7 +23560,10 @@ function migrateDBData(d){
   recomputeStock(d);
   return d;
 }
-loadDB=function(){var d=localStorage.getItem('myboutiq_v6');return d?migrateDBData(JSON.parse(d)):null;};
+// ⚠️ C'EST CETTE LIGNE-CI QUI TOURNE, pas la `function loadDB` du haut.
+// Elle n'ajoute que la migration : la lecture protégée reste dans
+// _lireDBBrute(), une seule fois, pour les deux.
+loadDB=function(){var d=_lireDBBrute();return d?migrateDBData(d):null;};
 // ⚠️ CET ENROBAGE TARDIF DOIT REPASSER TOUS LES ARGUMENTS.
 // Il n'en prenait que deux et jetait le troisième (`discret`) : la synchro
 // de fond redevenait bruyante sans qu'aucun appel ne le montre, et la voix
@@ -24144,9 +24265,29 @@ function _sauvJour(){
     sauvegarderAvant(lang==='fr'?'copie du jour':'daily copy');
   }catch(e){}
 }
+// ⚠️⚠️ `setItem` JETTE QUAND LE TÉLÉPHONE EST PLEIN (QuotaExceededError,
+// vérifié au banc). Sans filet, l'exception remontait EN PLEINE VENTE :
+// la fonction appelante s'arrêtait net, et le reste de l'encaissement —
+// reçu, stock, envoi au serveur — ne se faisait pas. La vente disparaissait
+// sans un mot. Maintenant on le DIT, et on envoie quand même au serveur :
+// c'est lui qui garde la vente quand le téléphone ne peut plus.
+var _pleinDit=0;
+function _telephonePlein(){
+  try{
+    if(Date.now()-_pleinDit<60000)return; _pleinDit=Date.now();
+    var fr=(lang==='fr');
+    showToast('📵 '+(fr?'Téléphone plein — gardé en ligne seulement'
+                       :'Phone storage full — kept online only'));
+    try{parler(fr?'Le téléphone est plein. Libère de la place.'
+                 :'The phone is full. Free some space.');}catch(e){}
+  }catch(e){}
+}
 function persistDB(delaiMs){
   _sauvJour();
-  localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
+  try{
+    localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
+    _marquerHabitue();
+  }catch(e){ _telephonePlein(); }
   if(delaiMs===false)return;
   if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){
     clearTimeout(syncTimeout);
