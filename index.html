@@ -4944,7 +4944,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.61'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.62'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -4993,7 +4993,7 @@ function journalAjouter(act,art,av,ap){
   DB.journal.unshift({id:genVenteId(),ts:new Date().toISOString(),dev:_deviceId,who:_journalQui(),role:(typeof role!=='undefined'?role:'patron'),act:act,art:String(art||''),av:(av==null?'':String(av)),ap:(ap==null?'':String(ap))});
   DB.journal=DB.journal.slice(0,300);
 }
-function _journalIco(act){return act==='prix'?'💰':act==='stock'?'📦':act==='famille'?'🔗':act==='suppr'?'🗑️':act==='depense'?'💸':'✏️';}
+function _journalIco(act){return act==='aide'?'🆘':act==='prix'?'💰':act==='stock'?'📦':act==='famille'?'🔗':act==='suppr'?'🗑️':act==='depense'?'💸':'✏️';}
 function _tempsEcoule(iso){
   var d=new Date(iso),diff=Math.max(0,Date.now()-d.getTime()),fr=lang==='fr';
   var mn=Math.floor(diff/60000);
@@ -5008,7 +5008,7 @@ function renderJournal(){
   var g=document.getElementById('journal-lst');if(!g)return;var fr=lang==='fr';
   var J=(DB&&DB.journal)||[];
   if(!J.length){g.innerHTML='<div class="empty" style="padding:26px 12px"><div class="empty-e">📋</div><div class="empty-t">'+(fr?'Aucune modification pour l\'instant':'No change yet')+'</div><div style="font-size:11.5px;color:var(--M);font-weight:600;margin-top:5px">'+(fr?'Les prix modifiés, corrections de stock et suppressions apparaîtront ici.':'Price edits, stock fixes and deletions will show here.')+'</div></div>';return;}
-  var actLbl={prix:fr?'Prix':'Price',stock:fr?'Stock':'Stock',suppr:fr?'Supprimé':'Deleted',famille:fr?'Famille':'Family'};
+  var actLbl={prix:fr?'Prix':'Price',stock:fr?'Stock':'Stock',suppr:fr?'Supprimé':'Deleted',famille:fr?'Famille':'Family',aide:fr?'Aide':'Help'};
   g.innerHTML=J.map(function(e){
     var fleche=(e.av&&e.ap)?(e.av+' → <b>'+e.ap+'</b>'):(e.ap?('<b>'+e.ap+'</b>'):(e.av||''));
     var badge=e.role==='vendeur'?'<span style="background:#FFF3E0;color:#B45309;border-radius:6px;padding:1px 6px;font-size:9.5px;font-weight:800;margin-left:5px">'+e.who+'</span>':'<span style="background:#EAF1FF;color:var(--B);border-radius:6px;padding:1px 6px;font-size:9.5px;font-weight:800;margin-left:5px">'+e.who+'</span>';
@@ -21329,17 +21329,27 @@ function _htmlAideCreation(){
 }
 // Le message part avec ce qu'il faut pour agir : le nom, le code, et
 // où il en est. Jamais son PIN.
+// ⚠️ LE MOT-CLÉ EST LE MÊME EN FR ET EN EN. Une seule recherche WhatsApp
+// (« AIDECAISSE ») doit sortir TOUTES les demandes, quelle que soit la
+// langue du commerçant.
+var MARQUE_AIDE='#AIDECAISSE';
+function _refAide(){ return 'AC-'+String(Date.now()).slice(-5); }
 function ecrireAideCaisse(){
   var fr=(lang==='fr');
   var nm='',cd='',na=0;
   try{nm=(DB&&DB.cfg&&DB.cfg.nom)||'';cd=(DB&&DB.cfg&&DB.cfg.code)||'';
       na=((DB&&DB.articles)||[]).length;}catch(e){}
+  var ref=_refAide();
+  // ⚠️ LE CODE AVANT LE NOM : WhatsApp coupe l'aperçu vers 45 signes, et
+  // quatre boutiques de la base s'appellent « G ». Le code, lui, est unique
+  // et de longueur fixe : il reste lisible sans ouvrir la conversation.
+  var tete='🆘 '+MARQUE_AIDE+(cd?' · '+cd:'')+(nm?' · '+nm:'');
   var msg=fr
-    ?('Bonjour MyBoutiQ 👋\n\nJe n\'arrive pas à créer ma caisse et mes articles.\n\n'
+    ?(tete+'\nRéf '+ref+'\n\nBonjour MyBoutiQ 👋\n\nJe n\'arrive pas à créer ma caisse et mes articles.\n\n'
        +'Boutique : '+nm+'\nCode : '+cd+'\nArticles déjà enregistrés : '+na)
-    :('Hello MyBoutiQ 👋\n\nI cannot set up my till and my items.\n\n'
+    :(tete+'\nRef '+ref+'\n\nHello MyBoutiQ 👋\n\nI cannot set up my till and my items.\n\n'
        +'Shop: '+nm+'\nCode: '+cd+'\nItems so far: '+na);
-  try{journalAjouter('aide','Demande d\'aide à la création','',nm+' · '+cd);}catch(e){}
+  try{journalAjouter('aide','Demande d\'aide à la création',ref,nm+' · '+cd);}catch(e){}
   window.open('https://wa.me/'+SUPPORT_TEL+'?text='+encodeURIComponent(msg),'_blank');
 }
 function contacterSupport(){
