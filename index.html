@@ -5018,7 +5018,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.64'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.65'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -13051,8 +13051,30 @@ function _montantDesLots(lots,pxU,paU,qty){
     }
   }
   total+=_pxR; cout+=_paR; if(paU>0||_paR>0)ben+=(_pxR-_paR);
+  // ══════════════════════════════════════════════════════════════════
+  //  ⚠️⚠️ « ELLE OUBLIE DE COMPTER EN GROS ET LE CLIENT EST FACTURÉ
+  //         PAR PIÈCE. CE PROBLÈME QUE TU PRÉTENDS RÉSOLU EST TOUJOURS
+  //         PRÉSENT. »  — IL AVAIT RAISON, ET MA CORRECTION ÉTAIT
+  //         INCOMPLÈTE.
+  //
+  //  La 22.56 avait réparé LE TOTAL et LE MOT (« 1 carton + 23 »), mais
+  //  pas LA FACTURE : `encaisser` écrivait la ligne du reste avec le prix
+  //  de DÉTAIL de l'article. Mesuré, 2 cartons de 24 à 11 000 moins une
+  //  pièce :
+  //      la caisse encaissait  21 542 F  (1 carton + 23 au tarif carton)
+  //      le reçu imprimait     22 500 F  (11 000 + 23 × 500)
+  //  Le total et les lignes ne disaient pas la même chose, et c'est les
+  //  LIGNES que le client lit.
+  //
+  //  Le prix réellement appliqué au reste sort donc d'ici, avec le mot du
+  //  contenant entamé. Un seul endroit calcule, un seul endroit facture.
+  // ══════════════════════════════════════════════════════════════════
+  var _pxD=(reste>0.001)?Math.round(_pxR/reste*100)/100:pxU;
+  var _paD=(reste>0.001)?Math.round(_paR/reste*100)/100:paU;
   return {total:total, cout:cout, benConnu:ben,
           nbGros:pris.length, qDetail:reste, lots:pris,
+          pxDetail:_pxD, paDetail:_paD,
+          casseMot:(_casse&&reste>0.001&&_pxD<pxU)?(_casse.mot||''):'',
           pxGros:pris.length?pris[0].px:0, paGros:pris.length?pris[0].pa:0,
           n:pris.length?pris[0].n:0};
 }
@@ -24943,9 +24965,21 @@ encaisser=function(){
                      qte:G.nb,qty:G.nb,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:G.n,
                      dep:Math.round(_dG/G.n*100)/100,gros:{nb:G.nb,mot:G.mot}});
       });
-      if(_mm.qDetail>0)
-        lignes.push({nm:_nomV,px:px,pa:pa,qte:_mm.qDetail,qty:_mm.qDetail,pid:p.id,
+      if(_mm.qDetail>0){
+        // ⚠️ LE RESTE D'UN CONTENANT ENTAMÉ N'EST PAS DU DÉTAIL. Il a été
+        // ENCAISSÉ au tarif du carton : la ligne doit porter CE prix-là,
+        // sinon le reçu ne retombe pas sur le total payé — et le bénéfice
+        // par article, lui non plus.
+        var _pxD=(Number(_mm.pxDetail)>0)?_mm.pxDetail:px;
+        var _paD=(Number(_mm.paDetail)>0)?_mm.paDetail:pa;
+        // Et il le DIT, sinon le client lit un prix unitaire qui n'est ni
+        // celui de l'étiquette ni celui du carton, sans explication.
+        var _nmD=_mm.casseMot
+          ?(_nomV+' — '+(lang==='fr'?(_mm.casseMot+' entamé'):('opened '+_mm.casseMot)))
+          :_nomV;
+        lignes.push({nm:_nmD,px:_pxD,pa:_paD,qte:_mm.qDetail,qty:_mm.qDetail,pid:p.id,
                      vid:vid&&vid!=='0'?vid:null,qBase:1,dep:_detDep,gros:null});
+      }
       return;
     }
     lignes.push({nm:p.nm+(v?' — '+v.nm:''),px:px,pa:pa,qte:qty,qty:qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:qBase,dep:qDep,
@@ -24966,7 +25000,12 @@ encaisser=function(){
   sauverEtEnvoyerVite();dernierRecu={boutique:DB.cfg.nom,lignes:lignes.map(function(l){var _p=DB.articles.find(function(x){return x.id==l.pid;});var _u=(_p&&estMesure(_p)&&!l.vid)?(' '+uniteArt(_p)):'';
     // ⭐ « UN CARTON SEULEMENT SUR LA FACTURE. » Le contenu reste écrit
     // entre parenthèses : le client doit pouvoir compter ce qu'il emporte.
-    var _n=l.gros?(l.nm+' — '+fmtQ(l.gros.nb)+' '+l.gros.mot+(l.gros.nb>1?'s':'')+' ('+fmtQ(l.qte)+_u+')')
+    // ⚠️ LE CONTENU, PAS LE NOMBRE DE CARTONS. `l.qte` compte les
+    // CONTENANTS : la parenthèse imprimait « 1 carton (1) », ce qui ne dit
+    // rien à personne. Ce que le client doit pouvoir compter, c'est ce qu'il
+    // emporte : 1 carton (24).
+    var _dedans=Math.round((Number(l.qte)||0)*(Number(l.qBase)||1)*100)/100;
+    var _n=l.gros?(l.nm+' — '+fmtQ(l.gros.nb)+' '+l.gros.mot+(l.gros.nb>1?'s':'')+' ('+fmtQ(_dedans)+_u+')')
                  :(l.nm+' ×'+fmtQ(l.qte)+_u);
     return {nm:_n,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:(remiseVente||0)+_negoV,client:clientNm};
   panier={};remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
