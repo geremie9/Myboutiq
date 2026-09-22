@@ -5018,7 +5018,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.66'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.67'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -13406,9 +13406,14 @@ function _mentionEntamee(grp,ord,reste,g,qty){
   var _nb=ord.reduce(function(s2,k){return s2+grp[k].nb;},0);
   var _m0=grp[ord[0]];
   var _court=_t+' + '+fmtQ(reste)+_u;
+  // Ce que les contenants comptés contiennent vraiment : la barre de la
+  // caisse en a besoin pour additionner plusieurs articles sans refaire
+  // le calcul de son côté — et deux calculs finissent toujours par se
+  // contredire.
+  var _dedans=Math.round((qty-reste)*100)/100;
   var _sfx=_paye?'':(' ('+fmtQ(qty)+_u+' \u00d7 '+fmt(Number(g.px)||0)+')');
   return {nb:_nb,mot:_m0.mot,emo:_emojiCont(_m0.mot),um:g.um||'',entame:true,
-          paye:_paye,court:_court,txt:_court+_sfx};
+          paye:_paye,court:_court,reste:reste,dedans:_dedans,txt:_court+_sfx};
 }
 function _mentionGros(key,qty){
   var g=_grosPanier[key];
@@ -13444,12 +13449,12 @@ function _mentionGros(key,qty){
       var _t2=_ord.map(function(k){var G=_grp[k];return fmtQ(G.nb)+' '+G.mot+(G.nb>1?'s':'');}).join(' + ');
       var _nb2=_ord.reduce(function(s2,k){return s2+_grp[k].nb;},0);
       return {nb:_nb2,mot:_grp[_ord[0]].mot,emo:_emojiCont(_grp[_ord[0]].mot),um:g.um||'',
-              txt:_t2+' ('+_q2+')'};
+              reste:0,dedans:qty,txt:_t2+' ('+_q2+')'};
     }
     // un seul étage : on garde la phrase d'avant, avec son prix
     var _G=_grp[_ord[0]];
     var _q3=(g.um==='kg')?(fmtQ(qty)+' kg'):((g.um==='L')?(fmtQ(qty)+' L'):fmtQ(qty));
-    return {nb:_G.nb,mot:_G.mot,emo:_emojiCont(_G.mot),um:g.um||'',
+    return {nb:_G.nb,mot:_G.mot,emo:_emojiCont(_G.mot),um:g.um||'',reste:0,dedans:qty,
             txt:fmtQ(_G.nb)+' '+_G.mot+(_G.nb>1?'s':'')+' ('+_q3+' × '+fmt(g.px||0)+')'};
   }
   var nb=Math.floor((qty+0.001)/g.n);
@@ -13466,8 +13471,48 @@ function _mentionGros(key,qty){
   // Le contenu s'écrit avec sa mesure quand il y en a une : « 1 sac
   // (50 kg × 700) » ne peut plus se lire comme cinquante sachets.
   var q=(g.um==='kg')?(fmtQ(qty)+' kg'):((g.um==='L')?(fmtQ(qty)+' L'):fmtQ(qty));
-  return {nb:nb,mot:g.mot,emo:_emojiCont(g.mot),um:g.um||'',
+  return {nb:nb,mot:g.mot,emo:_emojiCont(g.mot),um:g.um||'',reste:0,dedans:qty,
           txt:fmtQ(nb)+' '+g.mot+(nb>1?'s':'')+' ('+q+(fr?' × ':' × ')+fmt(g.px||0)+')'};
+}
+// ═══════════════════════════════════════════════════════════════════
+//  ⭐ « COMMENT SAVOIR LE NOMBRE DE CARTONS, BOÎTES, CASIERS… DANS
+//     LE PANIER ? »
+//
+//  MESURÉ : on ne pouvait pas. La barre du bas comptait les PIÈCES
+//  (« 24 articles »), la pastille de la tuile aussi. Les contenants
+//  n'existaient QUE dans les lignes du panier ouvert — un geste de plus,
+//  article par article, pendant qu'un client attend.
+//
+//  Or pour un grossiste, le nombre de cartons EST le chiffre de la vente.
+//  La barre le porte donc maintenant, tous articles confondus, groupé par
+//  mot : « 2 cartons + 1 palette + 5 ». Le gros chiffre de la bulle reste
+//  le compte de pièces — les deux se lisent ensemble.
+//
+//  ⚠️ AUCUN CALCUL REFAIT ICI. Chaque ligne est interrogée par
+//  `_mentionGros`, la même fonction que le panier et le reçu : la barre ne
+//  peut pas annoncer autre chose que ce qu'il lira en ouvrant.
+// ═══════════════════════════════════════════════════════════════════
+function _resumeContenants(){
+  var grp={},ord=[],vrac=0;
+  try{
+    Object.keys(panier).forEach(function(k){
+      var q=panier[k]||0; if(!(q>0))return;
+      var m=null; try{m=_mentionGros(k,q);}catch(e){}
+      if(m&&m.nb>0&&m.mot){
+        if(!grp[m.mot]){grp[m.mot]={mot:m.mot,nb:0};ord.push(m.mot);}
+        grp[m.mot].nb+=m.nb;
+        vrac+=Math.max(0,q-(Number(m.dedans)||0));
+      }else vrac+=q;
+    });
+  }catch(e){return null;}
+  if(!ord.length)return null;
+  // Deux mots suffisent à la barre ; au-delà elle déborderait et ne se
+  // lirait plus. Le détail complet est à une tape, dans le panier.
+  var t=ord.slice(0,2).map(function(k){
+    return fmtQ(grp[k].nb)+' '+k+(grp[k].nb>1?'s':'');}).join(' + ');
+  if(ord.length>2)t+=' +…';
+  else if(vrac>0.001)t+=' + '+fmtQ(vrac);
+  return t;
 }
 function _ajouterLot(p,n,mot,force){
   var fr=(lang==='fr');
@@ -14242,7 +14287,14 @@ function updatePUI(pid){
   if(badge){badge.innerHTML='<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">✕</span>';badge.classList.toggle('show',pq>0);}
   if(card)card.classList.toggle('sel',pq>0);
   var fc=document.getElementById('fcart');
-  if(nb>0){fc.classList.remove('hide');document.getElementById('cc').textContent=nb;document.getElementById('csb').textContent=nb+' '+(lang==='fr'?'article'+(nb>1?'s':''):'item'+(nb>1?'s':''));document.getElementById('ctot').textContent=fmt(total);}
+  if(nb>0){fc.classList.remove('hide');document.getElementById('cc').textContent=fmtQ(nb);
+    // Les contenants d'abord quand il y en a : c'est le chiffre de la vente
+    // en gros. Sans contenant, le compte de pièces, comme avant.
+    var _rc=null;try{_rc=_resumeContenants();}catch(e){}
+    document.getElementById('csb').textContent=_rc
+      ?_rc
+      :(nb+' '+(lang==='fr'?'article'+(nb>1?'s':''):'item'+(nb>1?'s':'')));
+    document.getElementById('ctot').textContent=fmt(total);}
   else fc.classList.add('hide');
   try{majFabAjout();}catch(e){}
 }
