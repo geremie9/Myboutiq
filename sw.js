@@ -1,4 +1,4 @@
-const CACHE_NAME='myboutiq-v270';
+const CACHE_NAME='myboutiq-v271';
 const IMG_CACHE='myboutiq-images-v1';
 // ⚠️ Les polices vivaient hors du cache : chaque ouverture repartait les
 // chercher chez Google, et hors ligne la boutique s'affichait dans une police
