@@ -421,6 +421,52 @@ html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
    n'avait rien changé — mesuré, pas supposé. Le « caché par défaut » revient
    donc ici, où une règle plus précise peut le contredire. */
 #entree-rapide,#er-pin-wrap{display:none}
+/* ── LE CLAVIER DE L'APP ────────────────────────────────────────────
+   Trois colonnes égales, quatre rangées. À 360 px ça donne des touches
+   de 104×54 px : le clavier d'Android en offre ~36×44. */
+.er-ligne{display:flex;align-items:stretch;gap:8px}
+.er-ligne .fi{flex:1;min-width:0}
+.er-kb{flex:0 0 auto;width:48px;min-height:48px;border-radius:12px;
+  background:rgba(255,255,255,.10);border:1.5px solid rgba(255,255,255,.20);
+  color:rgba(255,255,255,.85);font-size:20px;cursor:pointer;line-height:1}
+.er-kb:active{background:rgba(255,255,255,.22)}
+.kpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.kp{min-height:54px;border-radius:14px;background:rgba(255,255,255,.11);
+  border:1.5px solid rgba(255,255,255,.20);color:#fff;font-size:23px;font-weight:800;
+  font-family:'Outfit',sans-serif;cursor:pointer;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;transition:background .1s,transform .1s}
+.kp:active{background:rgba(255,255,255,.28);transform:scale(.96)}
+.kp-eff{font-size:19px;color:rgba(255,255,255,.8)}
+.kp-ok{background:var(--G);border-color:var(--G);color:#06331A;font-size:24px}
+.kp-ok:active{background:#00A846;color:#04270F}
+/* Quand le clavier de l'app est là, « Ouvrir » vit dans le ✓ : un seul
+   endroit pour valider, et de la place gagnée sur les petits écrans. */
+html.clavier-app #er-ouvrir-b{display:none}
+/* Le mot qu'on ne dit qu'une fois. */
+#er-kb-mot{background:rgba(255,255,255,.10);border:1.5px solid rgba(255,255,255,.22);
+  border-radius:14px;padding:12px 13px;margin-top:11px;text-align:left}
+#er-kb-mot .t{font-size:12.5px;font-weight:800;color:#fff;line-height:1.4}
+#er-kb-mot button{margin-top:10px;width:100%;min-height:44px;border-radius:11px;border:none;
+  background:rgba(255,255,255,.90);color:#241257;font-size:13px;font-weight:900;
+  font-family:'Outfit',sans-serif;cursor:pointer}
+/* ⚠️ MESURÉ, 360×740 (un téléphone très courant) : la porte faisait
+   884 px pour 740 d'écran, et la touche « ✓ » tombait à 788 px — hors
+   de l'écran. Un clavier dont on ne peut pas atteindre la validation
+   est pire que pas de clavier du tout.
+   Quand le clavier de l'app est là, la porte se serre : la phrase
+   d'accroche s'efface (la marque est juste au-dessus et la dit déjà) et
+   le logo prend la taille qu'il faut, pas celle qu'il aimerait. */
+html.clavier-app .login-sub{display:none}
+html.clavier-app .login-logo svg{width:72px;height:72px}
+html.clavier-app .login-brand{font-size:30px}
+html.clavier-app .entry-toggle{margin-bottom:8px}
+@media (max-height:760px){
+  html.clavier-app .login-logo svg{width:56px;height:56px}
+  html.clavier-app .login-brand{font-size:26px}
+  html.clavier-app .kpad{gap:7px}
+  html.clavier-app .kp{min-height:46px;font-size:21px}
+}
 /* Le bouton qui a entendu le doigt mais ne peut pas encore agir : il le
    DIT (son texte change, écrit par le bloc de tête) et il cesse de
    répondre, pour qu'un deuxième appui ne compte pas pour rien. */
@@ -2625,8 +2671,49 @@ body{max-width:min(100%,1200px)}
       <div id="er-pin-wrap">
         <div id="er-cible" style="font-size:13px;font-weight:800;color:#fff;margin-bottom:9px;display:flex;align-items:center;gap:8px"></div>
         <button class="bio-sig" id="er-bio" onclick="toucherSigneBio('er-bio')" title="Empreinte" aria-label="Empreinte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>
-        <input class="fi" type="password" id="er-pin" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" aria-label="PIN" style="text-align:center;letter-spacing:10px;font-size:22px;font-weight:900" oninput="if(window._pinTape)_pinTape()" onkeydown="if(event.key==='Enter'&&window.validerEntreeRapide)validerEntreeRapide()">
-        <button class="btn-login" style="margin-top:10px" onclick="if(window.validerEntreeRapide)validerEntreeRapide()"><span id="er-btn">Ouvrir</span></button>
+        <div class="er-ligne"><input class="fi" type="password" id="er-pin" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" aria-label="PIN" style="text-align:center;letter-spacing:10px;font-size:22px;font-weight:900" oninput="if(window._pinTape)_pinTape()" onkeydown="if(event.key==='Enter'&&window.validerEntreeRapide)validerEntreeRapide()">
+        <button type="button" class="er-kb" id="er-kb" style="display:none" onclick="if(window.basculerClavier)basculerClavier()" aria-label="Changer de clavier" title="Changer de clavier">⌨</button></div>
+        <!-- ══════════════════════════════════════════════════════════
+             LE CLAVIER DE L'APP — de gros chiffres qui ne cachent rien.
+
+             Le clavier d'Android occupe environ la moitié basse de
+             l'écran : il recouvre le bouton « Ouvrir » et parfois le
+             champ lui-même. Ses touches font ~36 px de large sur un
+             téléphone de 360 px, et le commerçant tape souvent d'une
+             seule main, en tenant sa marchandise de l'autre.
+             Celui-ci est DANS la page : il ne recouvre rien, ses touches
+             font 104×54 px — cinq fois la surface — et le « ✓ » est là
+             où le pouce arrive.
+             ⚠️ ET PERSONNE N'EST ENFERMÉ : le ⌨ à droite des points rend
+             le clavier du téléphone en une tape, et l'app s'en souvient.
+             ⚠️ `inputmode="none"` (posé par le script) empêche le clavier
+             du téléphone de s'ouvrir SANS rendre le champ mort : au
+             clavier physique — un PC, une tablette avec clavier — on tape
+             toujours normalement. `readonly` aurait tout bloqué.
+             ══════════════════════════════════════════════════════════ -->
+        <div id="er-clavier" class="kpad" style="display:none">
+          <button type="button" class="kp" data-k="1">1</button>
+          <button type="button" class="kp" data-k="2">2</button>
+          <button type="button" class="kp" data-k="3">3</button>
+          <button type="button" class="kp" data-k="4">4</button>
+          <button type="button" class="kp" data-k="5">5</button>
+          <button type="button" class="kp" data-k="6">6</button>
+          <button type="button" class="kp" data-k="7">7</button>
+          <button type="button" class="kp" data-k="8">8</button>
+          <button type="button" class="kp" data-k="9">9</button>
+          <button type="button" class="kp kp-eff" data-k="eff" id="kp-eff" aria-label="Effacer">⌫</button>
+          <button type="button" class="kp" data-k="0">0</button>
+          <button type="button" class="kp kp-ok" data-k="ok" id="kp-ok" aria-label="Ouvrir">✓</button>
+        </div>
+        <!-- ⚠️ DIT UNE SEULE FOIS — « en expliquant une seule fois aux
+             utilisateurs ». Une app qui réexplique à chaque ouverture ce
+             qu'on a déjà compris, c'est du bruit. Le bouton le range pour
+             toujours (`mb_clavier_vu`).
+             ⚠️ ET ELLE EST SOUS LE CLAVIER, PAS DESSUS : mesuré, 133 px
+             au-dessus poussaient la touche « ✓ » hors de l'écran sur
+             360×640 comme sur 360×740. -->
+        <div id="er-kb-mot" style="display:none"></div>
+        <button class="btn-login" id="er-ouvrir-b" style="margin-top:10px" onclick="if(window.validerEntreeRapide)validerEntreeRapide()"><span id="er-btn">Ouvrir</span></button>
         <button class="btn-login" id="er-retour-b" onclick="retourListeBoutiques()" style="margin-top:8px;background:transparent;color:rgba(255,255,255,.6);box-shadow:none">↩︎ <span id="er-retour">Choisir une autre boutique</span></button>
       </div>
       <div style="display:flex;gap:14px;justify-content:center;padding-top:6px">
@@ -5255,7 +5342,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.76'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.77'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6977,6 +7064,7 @@ function majEntreeRapide(){
   if(!_erPremierPassage||!p.value)p.value='';
   _erPremierPassage=false;
   // Le clavier doit être là tout de suite : il tape son PIN, il vend.
+  try{poserClavier();}catch(x){}
   try{p.focus();}catch(x){}
   setTimeout(function(){try{p.focus();}catch(x){}},60);
   // ⭐ LE GESTE GARDÉ PENDANT QUE L'APP SE CHARGEAIT (voir le bloc de tête).
@@ -7083,6 +7171,86 @@ async function _prouverPatronEnFond(tel,pin){
 //  cet appareil (`aCodePerso`) : son code est haché, la vérification est
 //  locale et exacte. Sans code personnel, rien ne change pour lui.
 // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  ⌨ LE CLAVIER DE L'APP
+//
+//  « on le fait si c'est plus facile, et en expliquant une seule fois »
+//
+//  Le clavier d'Android prend la moitié basse de l'écran : il recouvre
+//  le bouton d'ouverture, parfois le champ lui-même, et il apparaît en
+//  faisant sauter toute la page. Ses touches font ~36 px de large sur un
+//  téléphone de 360 px. Celui-ci vit DANS la page : rien ne bouge, rien
+//  n'est recouvert, et une touche fait 104×54 px — cinq fois la surface.
+//
+//  ⚠️ PERSONNE N'EST ENFERMÉ. Le ⌨ à droite du champ rend le clavier du
+//  téléphone en une tape, et le choix est gardé. C'est la condition pour
+//  qu'un changement d'habitude ne stresse personne : on peut revenir.
+//
+//  ⚠️ ET ON NE L'EXPLIQUE QU'UNE FOIS. Une app qui réapprend chaque matin
+//  ce qu'on a compris hier est fatigante. `mb_clavier_vu` range le mot
+//  pour toujours dès qu'il touche « D'accord ».
+// ══════════════════════════════════════════════════════════════════
+var _CLAV='mb_clavier',_CLAV_VU='mb_clavier_vu';
+function clavierAppActif(){
+  try{return localStorage.getItem(_CLAV)!=='tel';}catch(e){return true;}
+}
+function poserClavier(){
+  var kp=document.getElementById('er-clavier'),kb=document.getElementById('er-kb'),
+      ch=document.getElementById('er-pin'),mot=document.getElementById('er-kb-mot');
+  if(!kp||!ch)return;
+  var app=clavierAppActif(),fr=(lang==='fr');
+  kp.style.display=app?'grid':'none';
+  if(kb)kb.style.display='block';
+  try{document.documentElement.classList.toggle('clavier-app',app);}catch(e){}
+  // ⚠️ `inputmode="none"` et PAS `readonly` : le champ reste vivant pour un
+  // clavier physique (PC, tablette avec clavier), seul le clavier À L'ÉCRAN
+  // du téléphone reste fermé.
+  try{ch.setAttribute('inputmode',app?'none':'numeric');}catch(e){}
+  if(kb)kb.setAttribute('title',app?(fr?'Utiliser le clavier du téléphone':'Use the phone keyboard')
+                                   :(fr?'Utiliser le clavier de l\'app':'Use the app keypad'));
+  if(!mot)return;
+  var vu=true;try{vu=!!localStorage.getItem(_CLAV_VU);}catch(e){}
+  if(app&&!vu){
+    mot.innerHTML='<div class="t">⌨ '+(fr
+      ?'Tape ton PIN avec ces gros chiffres. Le clavier du téléphone ne cache plus rien. Le ⌨ à droite te le rend quand tu veux.'
+      :'Enter your PIN with these big keys. The phone keyboard no longer covers anything. The ⌨ on the right brings it back whenever you want.')
+      +'</div><button type="button" onclick="clavierCompris()">'+(fr?'D\'accord':'Got it')+'</button>';
+    mot.style.display='block';
+  }else mot.style.display='none';
+}
+function clavierCompris(){
+  try{localStorage.setItem(_CLAV_VU,'1');}catch(e){}
+  var m=document.getElementById('er-kb-mot');if(m)m.style.display='none';
+  var ch=document.getElementById('er-pin');if(ch)try{ch.focus();}catch(e){}
+}
+function basculerClavier(){
+  try{localStorage.setItem(_CLAV,clavierAppActif()?'tel':'app');}catch(e){}
+  // Le choix vaut choix : on ne lui remontre plus l'explication.
+  try{localStorage.setItem(_CLAV_VU,'1');}catch(e){}
+  poserClavier();
+  var ch=document.getElementById('er-pin');
+  if(ch)try{ch.focus();}catch(e){}
+}
+// Une seule écoute pour les douze touches : rien à recâbler à chaque rendu.
+function _clavierTape(k){
+  var ch=document.getElementById('er-pin');if(!ch)return;
+  if(k==='eff'){ ch.value=String(ch.value||'').slice(0,-1); }
+  else if(k==='ok'){ if(window.validerEntreeRapide)validerEntreeRapide(); return; }
+  else { if(String(ch.value||'').length>=6)return; ch.value=String(ch.value||'')+k; }
+  // ⚠️ ON PASSE PAR L'ÉVÉNEMENT `input`, pas par un appel direct : c'est lui
+  // que le reste de la porte écoute (l'ouverture au dernier chiffre juste).
+  // Un jour où un autre écouteur s'ajoutera, il sera servi lui aussi.
+  try{ch.dispatchEvent(new Event('input',{bubbles:true}));}catch(e){if(window._pinTape)_pinTape();}
+}
+document.addEventListener('click',function(ev){
+  var t=ev.target,n=0;
+  while(t&&t.nodeType===1&&n++<3){
+    if(t.classList&&t.classList.contains('kp')&&t.getAttribute('data-k')!=null){
+      ev.preventDefault();_clavierTape(t.getAttribute('data-k'));return;
+    }
+    t=t.parentNode;
+  }
+});
 var _pinEnCours=false;
 async function _pinTape(){
   try{
