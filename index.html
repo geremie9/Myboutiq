@@ -2869,6 +2869,31 @@ body{max-width:min(100%,1200px)}
       <button onclick="installerApp()" style="flex-shrink:0;background:#2E7D32;color:#fff;border:none;border-radius:9px;padding:10px 12px;font-size:11.5px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap" id="cai-install-b">Installer</button>
       <button onclick="_fermerInstallCaisse()" aria-label="Fermer" style="flex-shrink:0;background:transparent;border:none;color:#1B5E20;font-size:15px;font-weight:900;cursor:pointer;padding:8px 4px">✕</button>
     </div>
+    <!-- ══════════════════════════════════════════════════════════════
+         L'EMPREINTE, PROPOSÉE — parce que personne ne la trouvait.
+
+         MESURÉ DANS SA BASE, 59 boutiques : UNE SEULE porte la trace
+         d'une empreinte activée, et c'est la sienne (« G », 463 ventes).
+         28 boutiques ont vendu, 12 ont passé 20 ventes, 50 ont servi ces
+         trente derniers jours — et pas une n'a l'empreinte.
+         Ce n'est pas qu'ils n'en veulent pas : RIEN dans l'app ne la
+         propose. Elle vit dans Réglages, derrière un interrupteur que
+         personne n'ouvre quand il vend.
+
+         ⚠️ ET ON NE HARCÈLE PAS. La carte attend qu'il ait ouvert trois
+         fois avec son code (pas le premier jour, où tout est nouveau),
+         se propose DEUX fois au maximum dans toute la vie de l'app, à
+         une semaine d'écart, et disparaît pour toujours dès qu'il dit
+         non deux fois ou qu'il l'active. C'est la différence entre
+         proposer et insister.
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="cai-bio" style="display:none;margin:0 15px 10px;background:#E3F2FD;border:1.5px solid #64B5F6;
+         border-radius:12px;padding:10px 12px;align-items:center;gap:10px">
+      <span style="font-size:18px;flex-shrink:0">👆</span>
+      <div style="flex:1;min-width:0;font-size:11.5px;font-weight:700;color:#0D47A1;line-height:1.4" id="cai-bio-t"></div>
+      <button onclick="_bioOui()" style="flex-shrink:0;background:#1565C0;color:#fff;border:none;border-radius:9px;padding:10px 12px;font-size:11.5px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap" id="cai-bio-b">Activer</button>
+      <button onclick="_bioPlusTard()" aria-label="Plus tard" style="flex-shrink:0;background:transparent;border:none;color:#0D47A1;font-size:15px;font-weight:900;cursor:pointer;padding:8px 4px">✕</button>
+    </div>
     <div class="pgrid" id="pgrid"></div>
     <div style="height:20px"></div>
   </div>
@@ -5406,7 +5431,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.79'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.80'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9156,6 +9181,9 @@ function registerVendeurEquipe(nm){
 function _finishLoginP(){
   // Il est entré : la série d'erreurs n'a plus de sens.
   try{_oublierEchecsLocal();}catch(e){}
+  // Et on compte l'ouverture : la carte de l'empreinte n'arrive qu'à la
+  // troisième, jamais le premier jour où tout est déjà nouveau.
+  try{_bioCompterOuverture();}catch(e){}
   role='patron';
   // ⚠️ Il manquait le repli sur _pinPatronValide que j'avais ajouté en 19.81
   // à l'AUTRE chemin de connexion (_terminerLoginPatron). Ici _shopPin
@@ -9642,6 +9670,7 @@ async function loginV(){
 function _finishLoginV(nm,code){
   // Entré : la série d'erreurs n'a plus de sens (même règle que le patron).
   try{_oublierEchecsLocal();}catch(e){}
+  try{_bioCompterOuverture();}catch(e){}
   _pinRefuse=false;_pinRefuseJusqua=0;   // il vient de prouver son PIN : on repart propre
   // On demande AVANT d'ouvrir la boutique : un vendeur écarté par le patron,
   // ou un vendeur de trop, ne doit pas entrer.
@@ -9748,6 +9777,16 @@ function lancerApp(){
     initAssistance();
     renderPlansAbo();
   };
+  // 👆 La proposition de l'empreinte arrive APRÈS la caisse, jamais
+  // pendant : il ouvre son app pour vendre, pas pour lire une offre.
+  setTimeout(function(){try{_bioMontrerCarte();}catch(e){}},1800);
+  // ⚠️ ET ON RATTRAPE CEUX QUI L'ONT DÉJÀ : sans cette ligne, la trace ne
+  // compterait que les activations à venir, et les rapports diraient zéro
+  // pendant des semaines alors que des téléphones l'ont déjà allumée.
+  setTimeout(function(){try{
+    if(bioActif()&&DB&&DB.cfg&&!(DB.cfg.bioVu&&DB.cfg.bioVu[String(_deviceId||'')]))
+      _noterBioAppareil(true);
+  }catch(e){}},2600);
   // Deux filets : la première respiration du navigateur, et le premier
   // écran qu'il demande. Le premier des deux qui arrive gagne.
   if(window.requestIdleCallback)requestIdleCallback(_finirLancement,{timeout:1200});
@@ -22417,6 +22456,95 @@ async function proposerEmpreinteALaPorte(){
     };
   }catch(e){}
 }
+// ══════════════════════════════════════════════════════════════════
+//  👆 PROPOSER L'EMPREINTE — et pouvoir MESURER si ça prend.
+//
+//  ⚠️⚠️ PREMIER PROBLÈME, ET C'EST LE MIEN : ON NE POUVAIT PAS MESURER.
+//  Depuis la 21.63 l'interrupteur vit sur l'APPAREIL (`myboutiq_bio`),
+//  jamais sur le serveur — et c'était le bon choix. Mais du coup
+//  `cfg.biometrie` n'est plus JAMAIS écrit : il n'est qu'initialisé à
+//  `false`. Compter les `true` dans la base rendait donc ZÉRO, et ce
+//  zéro-là ne voulait rien dire. Seule la clé héritée d'avant la 21.63
+//  (`cfg.bioCredId`) prouve encore quelque chose : UNE boutique sur 59,
+//  la sienne.
+//  On écrit donc une trace — la liste des appareils où c'est allumé —
+//  et rien d'autre ne change.
+//
+//  ⚠️⚠️⚠️ CETTE TRACE NE DOIT JAMAIS DÉCIDER DE RIEN. C'est très
+//  exactement le défaut que la 21.63 a corrigé : un interrupteur venu
+//  d'un AUTRE téléphone allumait ici un capteur sans clé, donc un
+//  capteur qui ne peut rien reconnaître. `bioLu()` le dit en toutes
+//  lettres : « JAMAIS DEPUIS DB.cfg ». Ce champ-ci se remplit et se lit
+//  dans les rapports, point. Aucune ligne de l'app ne doit s'en servir
+//  pour ouvrir quoi que ce soit.
+// ══════════════════════════════════════════════════════════════════
+function _noterBioAppareil(actif){
+  try{
+    if(!DB||!DB.cfg)return;
+    var m=DB.cfg.bioVu;
+    if(!m||typeof m!=='object'||Array.isArray(m))m={};
+    var id=String(_deviceId||'').slice(0,40); if(!id)return;
+    if(actif)m[id]={on:1,q:new Date().toISOString().slice(0,10)};
+    else delete m[id];
+    // On ne garde pas une liste sans fin : douze appareils, c'est déjà
+    // plus que n'importe quel commerçant n'en possédera.
+    var cles=Object.keys(m);
+    if(cles.length>12)cles.slice(0,cles.length-12).forEach(function(k){delete m[k];});
+    DB.cfg.bioVu=m;
+    try{save();}catch(e){}
+  }catch(e){}
+}
+// ── LA CARTE QUI PROPOSE, DEUX FOIS AU MAXIMUM ──────────────────────
+var _CLE_BIOINV='mb_bio_invite';
+function _bioInvLu(){
+  try{var o=JSON.parse(localStorage.getItem(_CLE_BIOINV)||'null');
+      return (o&&typeof o==='object')?o:{n:0,q:0,ouv:0,fini:0};}
+  catch(e){return {n:0,q:0,ouv:0,fini:0};}
+}
+function _bioInvEcrire(o){try{localStorage.setItem(_CLE_BIOINV,JSON.stringify(o));}catch(e){}}
+// Chaque ouverture au code compte : on ne propose rien avant la troisième.
+function _bioCompterOuverture(){
+  var o=_bioInvLu(); o.ouv=(Number(o.ouv)||0)+1; _bioInvEcrire(o);
+}
+function _bioPeutProposer(){
+  try{
+    if(!window.PublicKeyCredential||!_origineSure())return false;   // ce téléphone ne peut pas
+    if(bioActif())return false;                                      // déjà fait
+    if(!DB||!DB.cfg)return false;
+    var o=_bioInvLu();
+    if(o.fini)return false;                                          // il a tranché
+    if((Number(o.ouv)||0)<3)return false;                            // pas le premier jour
+    if((Number(o.n)||0)>=2)return false;                             // deux fois, jamais trois
+    // Une semaine entre les deux demandes : une insistance quotidienne
+    // n'est plus une proposition.
+    if((Number(o.q)||0)&&(Date.now()-o.q)<7*24*3600*1000)return false;
+    return true;
+  }catch(e){return false;}
+}
+function _bioMontrerCarte(){
+  var c=document.getElementById('cai-bio'); if(!c)return;
+  if(!_bioPeutProposer()){c.style.display='none';return;}
+  var fr=(lang==='fr');
+  var t=document.getElementById('cai-bio-t');
+  if(t)t.textContent=fr?'Ouvre ta caisse avec ton doigt, sans taper de chiffres.'
+                       :'Open your till with your finger — no digits to type.';
+  var bt=document.getElementById('cai-bio-b');
+  if(bt)bt.textContent=fr?'Activer':'Turn on';
+  c.style.display='flex';
+  var o=_bioInvLu(); o.n=(Number(o.n)||0)+1; o.q=Date.now(); _bioInvEcrire(o);
+}
+function _bioPlusTard(){
+  var c=document.getElementById('cai-bio'); if(c)c.style.display='none';
+  var o=_bioInvLu();
+  // Deux « plus tard » valent un non : on ne le lui redemande plus jamais.
+  if((Number(o.n)||0)>=2)o.fini=1;
+  _bioInvEcrire(o);
+}
+function _bioOui(){
+  var c=document.getElementById('cai-bio'); if(c)c.style.display='none';
+  var o=_bioInvLu(); o.fini=1; _bioInvEcrire(o);   // proposé, accepté : c'est réglé
+  try{toggleBiometrie();}catch(e){}
+}
 function toggleBiometrie(){
   if(!window.PublicKeyCredential){showToast('⛔ '+(lang==='fr'?'Ce téléphone ne gère pas l\'empreinte':'This phone has no biometrics'));return;}
   if(!bioActif()){
@@ -22439,12 +22567,14 @@ function toggleBiometrie(){
     }
     activerBiometrieFlow().then(function(ok){
       _majTogBio(ok);
+      try{_noterBioAppareil(!!ok);}catch(e){}
       if(ok)showToast('✅ '+(lang==='fr'?'Empreinte activée — pour CE téléphone, et pour toutes tes boutiques':'Biometrics enabled on this phone'));
     });
   }else{
     // On garde la clé : rallumer ne redemandera pas de la refabriquer.
     bioEcrire({on:false});
     _majTogBio(false);
+    try{_noterBioAppareil(false);}catch(e){}
     showToast('🔓 '+(lang==='fr'?'Empreinte désactivée sur ce téléphone':'Biometrics disabled on this phone'));
   }
 }
