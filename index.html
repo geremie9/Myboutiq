@@ -1508,6 +1508,14 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 /* ── EMPTY ── */
 /* La main tendue de la caisse vide — voir `_htmlAideCreation`. Calme :
    ce n'est pas une alerte, c'est une proposition. */
+/* ⚠️ MESURÉ : 15 × 19 px. Un ✕ minuscule à côté d'une ligne de 2 500 F, au
+   comptoir, avec un client qui attend — c'est exactement le défaut corrigé
+   sur le repère de gros. La cible fait 44 px, comme le reste. */
+.pilx{width:44px;height:44px;border-radius:12px;border:1.5px solid #F6D2CA;
+  background:#FFF5F3;color:#A8341A;font-size:15px;font-weight:900;cursor:pointer;
+  font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;
+  flex:0 0 auto;padding:0}
+.pilx:active{transform:scale(.94)}
 .aide-cr{margin:18px auto 0;max-width:340px;background:#F4F7FF;border:1.5px solid #D6E0FA;
   border-radius:15px;padding:14px 15px;text-align:center}
 .aide-cr-t{font-size:13px;font-weight:800;color:var(--T);line-height:1.4}
@@ -2565,7 +2573,7 @@ body{max-width:min(100%,1200px)}
       <div class="tscr" id="tabs-c"></div>
     </div>
     <div id="topventes" style="display:none"></div>
-    <div class="shdr"><span class="stit" id="sec-lbl">⭐</span><button class="sact" id="btn-add" onclick="ouvrirPorteArticles()" style="display:none">+ Ajouter</button></div>
+    <div class="shdr"><span class="stit" id="sec-lbl">⭐</span><button class="sact" id="btn-libre" onclick="ouvrirMontantLibre()" style="display:none">💰 Autre</button><button class="sact" id="btn-add" onclick="ouvrirPorteArticles()" style="display:none">+ Ajouter</button></div>
     <div class="cash-guide" id="cash-guide">🟢 Taper = +1 · 💰 Prix · 🔴 ✕ = -1</div>
     <!-- ⚠️⚠️ 256 ARTICLES SUR 687, DANS LES VRAIES BOUTIQUES, NE PEUVENT PAS
          ÊTRE VENDUS. Deux boutiques n'ont RIEN de vendable, quatre en ont la
@@ -3000,6 +3008,41 @@ body{max-width:min(100%,1200px)}
 <!-- ══ OVERLAYS ══ -->
 
 <!-- PANIER -->
+<!-- ══ LE MONTANT LIBRE ═══════════════════════════════════════════
+     Une seule case obligatoire : le montant. Le nom est facultatif —
+     à cet instant précis, le client attend sa monnaie. -->
+<div class="ov" id="ov-libre" onclick="closeOv(event,'ov-libre')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="shd">
+      <div class="sht" id="ml-tit">💰 Autre montant</div>
+      <button class="sclose" onclick="closeSheet('ov-libre')">✕</button>
+    </div>
+    <div class="sbody">
+      <div class="pig">
+        <label class="pl" id="ml-lbl-mt">Combien le client paie</label>
+        <input class="pi" id="ml-mt" type="number" inputmode="decimal" step="25" min="0"
+               placeholder="ex : 2 500" onkeydown="if(event.key==='Enter')validerMontantLibre()">
+      </div>
+      <div class="pig">
+        <label class="pl" id="ml-lbl-nm">C'est pour quoi ? (facultatif)</label>
+        <input class="pi" id="ml-nm" type="text" maxlength="40"
+               placeholder="ex : recharge, sachet, dépannage"
+               onkeydown="if(event.key==='Enter')validerMontantLibre()">
+      </div>
+      <div id="ml-err" style="display:none;background:#FFF5F3;border:1.5px solid #F6D2CA;color:#A8341A;border-radius:11px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:11px"></div>
+      <div class="enc att" style="margin:0 0 13px">
+        <div class="enc-t" style="font-size:13px" id="ml-av-t">⚠️ Ce que ça compte, et ce que ça ne compte pas</div>
+        <div style="font-size:12px;font-weight:600;color:#3B3B4E;line-height:1.5" id="ml-av-s">
+          Le montant entre dans ta <strong>recette du jour</strong>. Mais comme l'app ne sait pas ce que
+          la marchandise t'a coûté, elle ne compte <strong>aucun bénéfice</strong> dessus — un bénéfice
+          inconnu vaut mieux qu'un bénéfice faux. Aucun stock ne bouge.
+        </div>
+      </div>
+      <button class="bnxt" onclick="validerMontantLibre()" id="ml-ok">➕ Ajouter au panier</button>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="ov-pan" onclick="closeOv(event,'ov-pan')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="ov-pan-t">🛒 Mon Panier</div><button class="bcl" onclick="closeSheet('ov-pan')">✕</button></div>
@@ -5060,7 +5103,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.72'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.73'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7958,6 +8001,27 @@ function appliquerLang(){
   document.getElementById('btn-enc').innerHTML='💵 '+t('encaisser');
   document.getElementById('cash-guide').textContent=lang==='fr'?'🟢 Taper = +1 · 💰 Prix · 🔴 ✕ = -1':'🟢 Tap = +1 · 💰 Price · 🔴 ✕ = -1';
   document.getElementById('btn-add').textContent='+ '+(lang==='fr'?'Ajouter':'Add');
+  // ⚠️ LE MONTANT LIBRE AUSSI. Un bouton et une feuille laissés en français
+  // sur une app en anglais, c'est le défaut qu'on a déjà corrigé deux fois
+  // (le bouton « Installer », les titres de guides) : on ne le refait pas.
+  (function(){
+    var fr=(lang==='fr');
+    var _p=function(id,txt){var e=document.getElementById(id);if(e)e.textContent=txt;};
+    var _ph=function(id,txt){var e=document.getElementById(id);if(e)e.placeholder=txt;};
+    _p('btn-libre', fr?'💰 Autre':'💰 Other');
+    _p('ml-tit',    fr?'💰 Autre montant':'💰 Other amount');
+    _p('ml-lbl-mt', fr?'Combien le client paie':'How much the customer pays');
+    _p('ml-lbl-nm', fr?'C\'est pour quoi ? (facultatif)':'What is it for? (optional)');
+    _ph('ml-mt',    fr?'ex : 2 500':'e.g. 2,500');
+    _ph('ml-nm',    fr?'ex : recharge, sachet, dépannage':'e.g. airtime, bag, quick favour');
+    _p('ml-ok',     fr?'➕ Ajouter au panier':'➕ Add to basket');
+    _p('ml-av-t',   fr?'⚠️ Ce que ça compte, et ce que ça ne compte pas'
+                      :'⚠️ What it counts, and what it does not');
+    var a=document.getElementById('ml-av-s');
+    if(a)a.innerHTML=fr
+      ?'Le montant entre dans ta <strong>recette du jour</strong>. Mais comme l\'app ne sait pas ce que la marchandise t\'a coûté, elle ne compte <strong>aucun bénéfice</strong> dessus — un bénéfice inconnu vaut mieux qu\'un bénéfice faux. Aucun stock ne bouge.'
+      :'The amount goes into your <strong>day\'s takings</strong>. But since the app does not know what the goods cost you, it counts <strong>no profit</strong> on it — an unknown profit beats a false one. No stock moves.';
+  })();
   // Panier
   document.getElementById('ov-pan-t').textContent=lang==='fr'?'🛒 Mon Panier':'🛒 My Cart';
   document.getElementById('lbl-total').textContent=t('total');
@@ -8097,6 +8161,10 @@ function swTab(btn,fid){document.querySelectorAll('.ltab').forEach(function(t){t
 // lancement ; partout ailleurs — un droit modifié en cours de route, un
 // vendeur qui prend la caisse — elle repeint comme avant.
 function applyRolePerms(sansRedessiner){
+  // ⚠️ « 💰 Autre » suit le droit d'ENCAISSER, pas celui de créer des
+  // articles : c'est une vente, pas une modification du catalogue.
+  var _bl=document.getElementById('btn-libre');
+  if(_bl)_bl.style.display=(role==='patron'||hasPerm('vente'))?'inline-block':'none';
   var showAdd=(role==='patron'||hasPerm('produits'));
   var showStk=(role==='patron'||hasPerm('stock'));
   var showExp=(role==='patron'||hasPerm('depenses'));
@@ -14355,7 +14423,7 @@ function validerGros(){
   _ajouterLot(p,n);
 }
 function updatePUI(pid){
-  var total=calcTotal(),nb=Object.values(panier).reduce(function(a,b){return a+b;},0);
+  var total=calcTotal(),nb=Object.values(panier).reduce(function(a,b){return a+b;},0)+panierLibre.length;
   var pq=Object.keys(panier).filter(function(k){return k.split('-')[0]==pid;}).reduce(function(s,k){return s+panier[k];},0);
   var badge=document.getElementById('qb-'+pid),card=document.getElementById('pc-'+pid);
   if(badge){badge.innerHTML='<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">✕</span>';badge.classList.toggle('show',pq>0);}
@@ -14374,6 +14442,69 @@ function updatePUI(pid){
 }
 function calcTotal(){return Object.entries(panier).reduce(function(s,e){var l=_ligneDe(e[0],e[1]);return s+(l?l.m.total:0);},0);}
 function calcBenTotal(){return Object.entries(panier).reduce(function(s,e){var l=_ligneDe(e[0],e[1]);return s+(l?(l.m.total-l.m.cout):0);},0);}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ LE MONTANT LIBRE — « la vente que l'app refusait »
+//
+//  MESURÉ DANS SA BASE : 13 boutiques ont un catalogue complet (15 à 39
+//  articles), DEUX dépassent 20 ventes. Ce n'est pas la saisie qui les
+//  arrête : c'est la première vente IMPOSSIBLE.
+//
+//  Le panier est indexé par article. Vendre quelque chose qui n'est pas
+//  au catalogue — un service, un dépannage, la marchandise arrivée ce
+//  matin — n'était pas enregistrable. Le commerçant a deux choix : arrêter
+//  le client pour créer l'article, ou ne rien noter. Il ne fait jamais le
+//  premier. Sa journée devient fausse, et il cesse d'ouvrir l'app.
+//
+//  ⚠️ LA RÈGLE DE FIABILITÉ, ET ELLE EXISTAIT DÉJÀ : une ligne sans prix
+//  d'achat ne compte RIEN au bénéfice (`getSaleBenef` : `if(pa>0)`).
+//  « Un bénéfice inconnu vaut mieux qu'un bénéfice faux. » Un montant
+//  libre entre donc dans la RECETTE, jamais dans le bénéfice, et ne
+//  touche AUCUN stock (`recomputeStock` ignore déjà `pid == null`).
+// ══════════════════════════════════════════════════════════════════
+var panierLibre=[],_libreSeq=0;
+function libreTotal(){
+  return panierLibre.reduce(function(s,x){return s+(Number(x.px)||0);},0);
+}
+function panierVide(){
+  try{return !Object.keys(panier).length && !panierLibre.length;}catch(e){return true;}
+}
+function ouvrirMontantLibre(){
+  if(role!=='patron'&&!hasPerm('vente')){
+    showToast('🔒 '+(lang==='fr'?'Ton patron ne t\'a pas autorisé à encaisser':'You are not allowed to take payments'));
+    return;
+  }
+  var fr=(lang==='fr');
+  var m=document.getElementById('ml-mt'); if(m)m.value='';
+  var n=document.getElementById('ml-nm'); if(n)n.value='';
+  var e=document.getElementById('ml-err'); if(e)e.style.display='none';
+  document.getElementById('ov-libre').classList.add('show');
+  setTimeout(function(){try{m.focus();}catch(x){}},220);
+}
+function validerMontantLibre(){
+  var fr=(lang==='fr');
+  var mt=Math.round((parseFloat(String((document.getElementById('ml-mt')||{}).value||'')
+        .replace(',','.'))||0)*100)/100;
+  var err=document.getElementById('ml-err');
+  if(!(mt>0)){
+    if(err){err.textContent=fr?'Écris le montant que le client paie.':'Enter the amount the customer pays.';
+            err.style.display='block';}
+    try{document.getElementById('ml-mt').focus();}catch(e){}
+    return;
+  }
+  var nm=String((document.getElementById('ml-nm')||{}).value||'').trim();
+  panierLibre.push({id:'L'+(++_libreSeq), nm:nm||(fr?'Autre':'Other'), px:mt});
+  closeSheet('ov-libre');
+  try{updatePUI(0);}catch(e){}
+  try{_panierSauver();}catch(e){}
+  showToast('💰 '+(nm||(fr?'Autre':'Other'))+' — '+fmt(mt));
+  if(navigator.vibrate)navigator.vibrate(25);
+}
+function retirerMontantLibre(id){
+  panierLibre=panierLibre.filter(function(x){return String(x.id)!==String(id);});
+  try{updatePUI(0);}catch(e){}
+  try{_panierSauver();}catch(e){}
+  if(panierVide())closeSheet('ov-pan'); else ouvrirPanier();
+}
 function ouvrirPanier(){
   var l=document.getElementById('pan-lst');l.innerHTML='';var has=false;
   Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1];if(!qty)return;var parts=key.split('-');var pid=parts[0],vid=parts[1];var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;has=true;var px=v?v.px:p.px;
@@ -14444,6 +14575,20 @@ function ouvrirPanier(){
         l.appendChild(_o2);
       }
     }
+  });
+  // Les montants libres, après les articles : ils se lisent comme le reste
+  // et se retirent d'une tape.
+  panierLibre.forEach(function(x){
+    has=true;
+    var fr=(lang==='fr');
+    var d=document.createElement('div');d.className='pit';
+    d.innerHTML='<div class="pit-i" style="font-size:24px">💰</div>'
+      +'<div class="piinf"><div class="pinm">'+x.nm+'</div>'
+      +'<div class="piun">'+(fr?'Montant libre — bénéfice inconnu':'Free amount — profit unknown')+'</div></div>'
+      +'<div class="piqt"><button class="pilx" onclick="retirerMontantLibre(\''+x.id+'\')" aria-label="'
+      +(fr?'Retirer':'Remove')+'">✕</button></div>'
+      +'<div class="pipx">'+fmt(x.px)+'</div>';
+    l.appendChild(d);
   });
   if(!has)l.innerHTML='<div class="empty"><div class="empty-e">🛒</div><div class="empty-t">'+t('vider')+'</div></div>';
   document.getElementById('pan-tot').textContent=fmt(calcTotal());
@@ -14516,8 +14661,8 @@ function chgQLot(key,sens){
   }
   chgQ(key,-n);
 }
-function chgQ(key,d){panier[key]=Math.round(((panier[key]||0)+d)*100)/100;if(panier[key]<=0){delete panier[key];_oublierNego(key);}updatePUI(parseInt(key.split('-')[0]));document.getElementById('pan-tot').textContent=fmt(calcTotal());if(!Object.keys(panier).length)closeSheet('ov-pan');else ouvrirPanier();}
-function viderPanier(){panier={};_grosPanier={};_negoLigne={};renderProd(DB.articles);document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');}
+function chgQ(key,d){panier[key]=Math.round(((panier[key]||0)+d)*100)/100;if(panier[key]<=0){delete panier[key];_oublierNego(key);}updatePUI(parseInt(key.split('-')[0]));document.getElementById('pan-tot').textContent=fmt(calcTotal());if(panierVide())closeSheet('ov-pan');else ouvrirPanier();}
+function viderPanier(){panier={};_grosPanier={};_negoLigne={};panierLibre=[];renderProd(DB.articles);document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');}
 function procederPmt(){
   closeSheet('ov-pan');
   var total=calcTotal();
@@ -19684,10 +19829,10 @@ var _CLE_PANIER='myboutiq_panier';
 function _panierSauver(){
   try{
     if(!DB||!DB.cfg||!DB.cfg.code)return;
-    if(!panier||!Object.keys(panier).length){localStorage.removeItem(_CLE_PANIER);return;}
+    if(panierVide()){localStorage.removeItem(_CLE_PANIER);return;}
     localStorage.setItem(_CLE_PANIER,JSON.stringify({
       c:String(DB.cfg.code),r:role,v:(role==='vendeur'?(nomVendeur||''):''),t:Date.now(),
-      p:panier,g:_grosPanier||{},n:_negoLigne||{}
+      p:panier,g:_grosPanier||{},n:_negoLigne||{},l:panierLibre||[]
     }));
   }catch(e){}
 }
@@ -19695,9 +19840,11 @@ function _panierOublier(){try{localStorage.removeItem(_CLE_PANIER);}catch(e){}}
 function _panierRestaurer(){
   try{
     if(!DB||!DB.cfg||!DB.cfg.code)return 0;
-    if(panier&&Object.keys(panier).length)return 0;      // il a déjà commencé
+    if(!panierVide())return 0;                           // il a déjà commencé
     var brut=localStorage.getItem(_CLE_PANIER);if(!brut)return 0;
-    var o=JSON.parse(brut);if(!o||!o.p)return 0;
+    var o=JSON.parse(brut);if(!o)return 0;
+    if(!o.p&&!(o.l&&o.l.length))return 0;
+    o.p=o.p||{};
     if(String(o.c)!==String(DB.cfg.code)){_panierOublier();return 0;}
     if((o.r||'')==='vendeur'&&String(o.v||'')!==String(nomVendeur||''))return 0;
     if((o.r||'')!=='vendeur'&&role==='vendeur')return 0;
@@ -19708,11 +19855,23 @@ function _panierRestaurer(){
       var pid=String(k).split('-')[0];
       if((DB.articles||[]).some(function(a){return String(a.id)===pid;})){net[k]=o.p[k];n++;}
     });
-    if(!n){_panierOublier();return 0;}
+    // ⚠️ Un panier qui ne contient QUE des montants libres est un panier
+    // valide : il n'a aucun article, et c'est justement le cas qu'on vient
+    // d'ouvrir. Le jeter serait reperdre la vente qu'on cherche à sauver.
+    var lib=[];
+    try{
+      lib=(o.l||[]).filter(function(x){return x&&Number(x.px)>0;})
+            .map(function(x){return {id:String(x.id||('L'+(++_libreSeq))),
+                                     nm:String(x.nm||''),px:Number(x.px)||0};});
+    }catch(e){}
+    if(!n&&!lib.length){_panierOublier();return 0;}
     panier=net;
+    panierLibre=lib;
+    lib.forEach(function(x){var m=String(x.id).match(/^L(\d+)$/);
+      if(m&&+m[1]>_libreSeq)_libreSeq=+m[1];});
     if(o.g)_grosPanier=o.g;
     if(o.n)_negoLigne=o.n;
-    return n;
+    return n+lib.length;
   }catch(e){return 0;}
 }
 // Le moment qui compte : celui où le téléphone passe à autre chose.
@@ -22925,9 +23084,16 @@ function annulerNego(){
   showToast('↩️ '+(lang==='fr'?'Prix normal remis':'Normal price restored'));
   ouvrirPanier();
 }
-function calcTotalBrut(){return Object.entries(panier).reduce(function(s,e){var l=_ligneDe(e[0],e[1]);return s+(l?l.m.total:0);},0);}
+// ⚠️ LE MONTANT LIBRE ENTRE ICI, ET NULLE PART AILLEURS. `calcTotal` et
+// `calcBenTotal` se déduisent de ces deux-là : une seule addition à
+// toucher, donc aucun risque que le panier et la caisse se contredisent.
+function calcTotalBrut(){return Object.entries(panier).reduce(function(s,e){var l=_ligneDe(e[0],e[1]);return s+(l?l.m.total:0);},0)+libreTotal();}
 // Ne compte que ce dont on connaît le prix d'achat : sans lui, le bénéfice est
 // inconnu, pas égal au prix de vente.
+// ⚠️ ET SURTOUT PAS DANS LE BÉNÉFICE. Un montant libre n'a pas de prix
+// d'achat : compter son bénéfice à zéro le SOUS-estime, le compter à 100 %
+// serait un mensonge. « Un bénéfice inconnu vaut mieux qu'un bénéfice
+// faux » — la règle est déjà celle de `getSaleBenef`, on ne l'ouvre pas.
 function calcBenBrut(){return Object.entries(panier).reduce(function(s,e){var l=_ligneDe(e[0],e[1]);return s+(l?l.m.benConnu:0);},0);}
 calcTotal=function(){return Math.max(0,calcTotalBrut()-remisePoints-(remiseVente||0)-_negoTotal());};
 // ═══════════════════════════════════════════════════════════════════
@@ -25146,6 +25312,16 @@ encaisser=function(){
     lignes.push({nm:p.nm+(v?' — '+v.nm:''),px:px,pa:pa,qte:qty,qty:qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:qBase,dep:qDep,
                  gros:(_mgv&&!_mgv.entame)?{nb:_mgv.nb,mot:_mgv.mot}:null,
                  grosTxt:(_mgv&&_mgv.entame)?_mgv.court:null});});
+  // ⚠️ LES MONTANTS LIBRES, EN LIGNES À PART.
+  //   `pid: null`  → `recomputeStock` les ignore : aucun stock ne bouge.
+  //   `pa: 0`      → `getSaleBenef` ne les compte pas : bénéfice inconnu,
+  //                  jamais inventé.
+  //   `libre: true`→ pour que les rapports puissent les nommer un jour
+  //                  sans avoir à les deviner.
+  panierLibre.forEach(function(x){
+    lignes.push({nm:x.nm,px:Number(x.px)||0,pa:0,qte:1,qty:1,pid:null,vid:null,
+                 qBase:1,dep:0,gros:null,libre:true});
+  });
   var now=new Date(),h=now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),dateFr=now.toLocaleDateString('fr-FR');
   var ptsGagnes=0,ptsUtilises=Math.round(remisePoints/1000*100),clientId=null,clientNm='';
   if(clientVente){var cl=DB.clients.find(function(c){return c.id===clientVente.id;})||clientVente;clientId=cl.id;clientNm=cl.nm;if(ptsUtilises>0){cl.points=Math.max(0,(cl.points||0)-ptsUtilises);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'points_use',pts:ptsUtilises,amt:remisePoints});}ptsGagnes=pointsGagnesPour(total);cl.points=(cl.points||0)+ptsGagnes;majNiveauClient(cl);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'achat',amt:total,pts:ptsGagnes});
@@ -25171,7 +25347,7 @@ encaisser=function(){
                  :(l.grosTxt?(l.nm+' — '+l.grosTxt+' ('+fmtQ(_dedans)+_u+')')
                             :(l.nm+' ×'+fmtQ(l.qte)+_u));
     return {nm:_n,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:(remiseVente||0)+_negoV,client:clientNm};
-  panier={};remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
+  panier={};panierLibre=[];remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
   renderProd(DB.articles);renderStock(DB.articles);renderClients();recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
   document.getElementById('succ-amt').textContent=fmt(total);
   var sc=document.getElementById('succ');sc.classList.add('show');if(navigator.vibrate)navigator.vibrate([50,30,50]);
