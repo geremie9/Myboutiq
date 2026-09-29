@@ -805,14 +805,23 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    surveiller au navigateur TOUTES les proprietes, y compris celles que le
    JS pose lui-meme. On ne garde que les quatre qui bougent vraiment : moins
    de couches a recomposer, meme animation a l'oeil. */
-.pcard{background:var(--C);border-radius:16px;padding:15px 8px 13px;text-align:center;cursor:pointer;border:1px solid var(--BD);transition:transform .15s cubic-bezier(.34,1.56,.64,1),box-shadow .15s,background .15s,border-color .15s;position:relative;box-shadow:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04);user-select:none}
+/* ⚠️ « LES TUILES ONT UNE FORME UN PEU TROP LONGUE. » Il a raison, et
+   c'est moi : la 22.74 les a fait passer de 155 à 172 px pour aligner les
+   noms, et je l'avais annoncé comme le prix à payer. On reprend ces pixels
+   là où ils ne servent à rien — les marges — sans toucher à ce qui aligne
+   (les deux lignes réservées au nom). */
+/* ⚠️ LES 13 px DU BAS NE SONT PAS DE LA DÉCORATION : ils logent la cible
+   de 44 px de la puce du gros (`.pgros::after`). Ramenés à 10 en 22.81, la
+   cible mordait la carte du voisin — attrapé par t122, pas par moi. On rend
+   ces trois pixels et on garde les douze autres. */
+.pcard{background:var(--C);border-radius:16px;padding:11px 8px 13px;text-align:center;cursor:pointer;border:1px solid var(--BD);transition:transform .15s cubic-bezier(.34,1.56,.64,1),box-shadow .15s,background .15s,border-color .15s;position:relative;box-shadow:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04);user-select:none}
 .pcard:active{transform:scale(.91)}.pcard.sel{border-color:var(--G);background:#F0FFF8;box-shadow:0 4px 15px rgba(0,200,83,.2)}
 .pcard.hasv{border-color:rgba(41,121,255,.22);background:#F8F9FF}
 .pcard.neg{border-color:rgba(255,109,0,.25);background:#FFF8F0}
 .pcard.out-ok{border-color:rgba(255,61,0,.2)}
-.pemoji{font-size:44px;line-height:1;width:62px;height:62px;margin:2px auto 9px;display:flex;align-items:center;justify-content:center;filter:none;opacity:.95;transition:transform .15s}
+.pemoji{font-size:42px;line-height:1;width:58px;height:58px;margin:1px auto 7px;display:flex;align-items:center;justify-content:center;filter:none;opacity:.95;transition:transform .15s}
 /* Pastille média : cadre neutre qui accueille la photo ou l'emoji (aspect "icône d'app") */
-.pmedia{width:62px;height:62px;margin:2px auto 9px;border-radius:14px;background:var(--BG);
+.pmedia{width:58px;height:58px;margin:1px auto 7px;border-radius:14px;background:var(--BG);
   display:flex;align-items:center;justify-content:center;font-size:33px;line-height:1;position:relative}
 .pmedia.pmono{font-weight:900;font-size:30px;font-family:'Nunito',sans-serif}
 .pmedia .padd{position:absolute;right:-3px;bottom:-3px;width:20px;height:20px;border-radius:50%;
@@ -847,7 +856,7 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    grille les met toutes à la même taille, et les noms tombent au même
    endroit, photo ou pas. */
 .pcard.has-photo{overflow:hidden;background:#2B2733}
-.pcard.has-photo::before{content:"";display:block;width:62px;height:62px;margin:2px auto 9px}
+.pcard.has-photo::before{content:"";display:block;width:58px;height:58px;margin:1px auto 7px}
 .pcard.has-photo .pcard-img{position:absolute;inset:0;width:100%;height:100%;border-radius:14.5px;margin:0;box-shadow:none;transition:transform .15s}
 .pcard.has-photo:active .pcard-img{transform:scale(1.06)}
 /* ⚠️⚠️ DÉFAUT VU SUR SA CAPTURE, ET REPRODUIT AU BANC : quand la photo ne
@@ -864,7 +873,14 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    reprend en marge intérieure, donc il n'ajoute PAS UN PIXEL de hauteur :
    une carte à photo et une carte sans photo mesurent exactement pareil.
    Et il est CENTRÉ comme l'autre : une seule grammaire de carte. */
-.pcard.has-photo .pcard-overlay{margin:-10px -8px -13px;padding:10px 7px 13px;background:linear-gradient(to top,rgba(0,0,0,.75) 8%,rgba(0,0,0,.4) 55%,transparent 100%);border-radius:0 0 14.5px 14.5px;text-align:center}
+/* ⚠️⚠️ CES QUATRE NOMBRES SONT ACCORDÉS À LA MARGE INTÉRIEURE DE
+   `.pcard`, ET RIEN NE LE DIT AILLEURS. Le voile déborde des marges pour
+   toucher les bords, puis les reprend en marge intérieure : il n'ajoute
+   donc pas un pixel de hauteur. En 22.81 j'ai changé le padding de la
+   carte (15/13 → 11/10) et j'ai OUBLIÉ ceux-ci : le voile dépassait de
+   3 px en bas. C'est le test du débordement qui l'a attrapé, pas moi.
+   Si `.pcard{padding}` change, CES DEUX LIGNES CHANGENT AVEC. */
+.pcard.has-photo .pcard-overlay{margin:-11px -8px -13px;padding:11px 7px 13px;background:linear-gradient(to top,rgba(0,0,0,.75) 8%,rgba(0,0,0,.4) 55%,transparent 100%);border-radius:0 0 14.5px 14.5px;text-align:center}
 /* ⚠️ `white-space:nowrap` coupait « Adaptateur de prise » en « Adaptateur
    de pr… » sur la carte à photo pendant que la carte d'à côté, sans photo,
    l'écrivait EN ENTIER sur deux lignes. Deux traitements du même nom dans
@@ -1947,8 +1963,14 @@ body{max-width:min(100%,1200px)}
    Ce qui change ne change que là où il y a la place. */
 .pnm,.pnm-ov{font-size:clamp(10px,0.80vw + 6px,13px)}
 .ppr,.ppr-ov{font-size:clamp(12px,1.00vw + 7.2px,16px)}
-.pmedia,.pcard.has-photo::before,.pemoji{width:clamp(62px,7.5vw + 26px,86px);height:clamp(62px,7.5vw + 26px,86px)}
-.pemoji{font-size:clamp(44px,5.5vw + 17.6px,60px)}
+/* ⚠️ LA CONSTANTE SUIT LA BORNE BASSE, SINON LA PROMESSE TOMBE. La règle
+   de la 22.47 est « les bornes basses tiennent jusqu'à 480 px pile » — au
+   delà du plus large des téléphones. En passant la pastille de 62 à 58 px
+   (22.81) j'ai laissé « + 26px » : à 480 px la formule rendait 62, donc la
+   pastille grandissait dès 444 px, sur de vrais téléphones. 7,5 × 4,8 + 22
+   = 58 : le palier retombe exactement sur 480. */
+.pmedia,.pcard.has-photo::before,.pemoji{width:clamp(58px,7.5vw + 22px,86px);height:clamp(58px,7.5vw + 22px,86px)}
+.pemoji{font-size:clamp(42px,5.5vw + 15.6px,60px)}   /* 5,5 × 4,8 + 15,6 = 42 à 480 px */
 .pcard-img{width:clamp(52px,6.2vw + 22.2px,72px);height:clamp(52px,6.2vw + 22.2px,72px)}
 /* Les contenances d'une famille s'ouvrent dans la MÊME grille, au même
    endroit, sous le doigt : si elles gardaient leur taille fixe pendant que
@@ -3736,7 +3758,25 @@ body{max-width:min(100%,1200px)}
       <div style="font-size:15px;font-weight:800;color:var(--T);margin-bottom:3px" id="ng-nm">Article</div>
       <div style="font-size:12px;font-weight:600;color:var(--M);margin-bottom:15px" id="ng-sub">Prix normal</div>
       <div class="pig"><label class="pl" id="ng-lbl">Prix pour ce client</label>
-        <input class="pi" type="number" id="ng-inp" oninput="calcNego()" inputmode="numeric" placeholder="0"></div>
+        <div class="er-ligne"><input class="pi" type="number" id="ng-inp" oninput="calcNego()" inputmode="numeric" placeholder="0" style="flex:1;min-width:0">
+        <button type="button" class="er-kb" id="ng-kb" onclick="basculerClavier()" aria-label="Changer de clavier" title="Changer de clavier">⌨</button></div></div>
+      <!-- Le même clavier que la porte : de gros chiffres, dans la page,
+           qui ne recouvrent rien. Le ⌨ rend celui du téléphone, et le
+           choix est le même partout dans l'app. -->
+      <div id="ng-clavier" class="kpad" style="display:none;margin-bottom:12px">
+        <button type="button" class="kp" data-k="1">1</button>
+        <button type="button" class="kp" data-k="2">2</button>
+        <button type="button" class="kp" data-k="3">3</button>
+        <button type="button" class="kp" data-k="4">4</button>
+        <button type="button" class="kp" data-k="5">5</button>
+        <button type="button" class="kp" data-k="6">6</button>
+        <button type="button" class="kp" data-k="7">7</button>
+        <button type="button" class="kp" data-k="8">8</button>
+        <button type="button" class="kp" data-k="9">9</button>
+        <button type="button" class="kp kp-eff" data-k="eff" aria-label="Effacer">⌫</button>
+        <button type="button" class="kp" data-k="0">0</button>
+        <button type="button" class="kp kp-ok" data-k="ok" id="ng-kp-ok" aria-label="Appliquer">✓</button>
+      </div>
       <div id="ng-info" style="display:none;font-size:12px;font-weight:700;padding:10px 12px;border-radius:11px;margin:11px 0 14px;line-height:1.45"></div>
       <button class="bpay" style="margin-bottom:9px" onclick="validerNego()" id="ng-ok">✅ Appliquer ce prix</button>
       <button class="bvid" onclick="annulerNego()" id="ng-eff" style="display:none">↩️ Remettre le prix normal</button>
@@ -5431,7 +5471,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.80'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.81'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6750,6 +6790,9 @@ function _demarrerApp(){
     _jsPret();
     if(_demarre)return; _demarre=true;
     DB=loadDB();_reancrerFiches();
+    // ⚠️ La boutique peut revenir du serveur sans son PIN (voir `_pinGarde`).
+    // Sans cette ligne, ni le code court ni le PIN à six n'ouvrent hors ligne.
+    try{ if(DB&&DB.cfg&&!DB.cfg.pin){var _pg=_pinGarde(); if(_pg)DB.cfg.pin=_pg;} }catch(e){}
     // Le pays de la boutique chargée est prioritaire sur la détection automatique
     if(DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.cc){obPays=DB.cfg.pays;try{majChipPays();}catch(e){}}
     if(DB){
@@ -7403,15 +7446,45 @@ function basculerClavier(){
   // Le choix vaut choix : on ne lui remontre plus l'explication.
   try{localStorage.setItem(_CLAV_VU,'1');}catch(e){}
   poserClavier();
+  // La même bascule sert la feuille du prix quand elle est ouverte : un
+  // seul ⌨ dans toute l'app, un seul choix gardé.
+  var _app=clavierAppActif();
+  var _nk=document.getElementById('ng-clavier'),_ni=document.getElementById('ng-inp');
+  var _ov=document.getElementById('ov-nego');
+  if(_nk&&_ov&&_ov.classList.contains('show')){
+    _nk.style.display=_app?'grid':'none';
+    if(_ni){try{_ni.setAttribute('inputmode',_app?'none':'numeric');}catch(e){}
+            if(!_app)try{_ni.focus();}catch(e){}}
+    return;
+  }
   var ch=document.getElementById('er-pin');
   if(ch)try{ch.focus();}catch(e){}
 }
+// ⚠️⚠️ « L'APP APPELLE LE CLAVIER DU SMARTPHONE ET ÇA PERTURBE. »
+// Le clavier d'Android montait par-dessus la feuille du prix négocié — une
+// feuille basse, donc à moitié recouverte — et `ouvrirNego` lui donnait le
+// focus 150 ms après l'ouverture, sans qu'il ait rien demandé : il touche un
+// prix pour le voir, et l'écran saute.
+// Le clavier de l'app (22.77) savait déjà écrire de gros chiffres sans rien
+// recouvrir. Il ne savait écrire que dans le champ du PIN ; il écrit
+// maintenant dans le champ qu'on lui désigne.
+var _champClavier='er-pin';
+function _clavierVers(id){_champClavier=id||'er-pin';}
 // Une seule écoute pour les douze touches : rien à recâbler à chaque rendu.
 function _clavierTape(k){
-  var ch=document.getElementById('er-pin');if(!ch)return;
+  var ch=document.getElementById(_champClavier);if(!ch)return;
   if(k==='eff'){ ch.value=String(ch.value||'').slice(0,-1); }
-  else if(k==='ok'){ if(window.validerEntreeRapide)validerEntreeRapide(); return; }
-  else { if(String(ch.value||'').length>=6)return; ch.value=String(ch.value||'')+k; }
+  else if(k==='ok'){
+    // Le ✓ valide CE QUE LE CHAMP SERT : la porte ouvre, le prix s'applique.
+    if(_champClavier==='ng-inp'){ if(window.validerNego)validerNego(); return; }
+    if(window.validerEntreeRapide)validerEntreeRapide(); return;
+  }
+  else {
+    // Le PIN s'arrête à six chiffres ; un prix, non.
+    var _max=(_champClavier==='er-pin')?6:9;
+    if(String(ch.value||'').length>=_max)return;
+    ch.value=String(ch.value||'')+k;
+  }
   // ⚠️ ON PASSE PAR L'ÉVÉNEMENT `input`, pas par un appel direct : c'est lui
   // que le reste de la porte écoute (l'ouverture au dernier chiffre juste).
   // Un jour où un autre écouteur s'ajoutera, il sera servi lui aussi.
@@ -7443,8 +7516,13 @@ async function _pinTape(){
       // est ENCORE dans le champ (même garde que le code personnel vendeur).
       if(String((document.getElementById('er-pin')||{}).value||'').trim()!==v)return;
       if(bon){
+        // ⚠️ ON NE PASSE PLUS LE PIN ICI. `validerEntreeRapide` sait
+        // reconnaître le code court elle-même, ET elle a le repli sur le
+        // PIN gardé — ce que cet appel-ci n'avait pas : quand `cfg.pin`
+        // avait été effacé par une synchro, il envoyait une chaîne VIDE
+        // et l'app répondait « Entre ton PIN » sur un code juste.
         _pinEnCours=true;
-        try{await validerEntreeRapide(String(DB.cfg.pin||''));}finally{_pinEnCours=false;}
+        try{await validerEntreeRapide();}finally{_pinEnCours=false;}
         return;
       }
     }
@@ -7526,7 +7604,7 @@ async function validerEntreeRapide(pinImpose){
   if(pinImpose==null&&pin.length===4&&codeOuvertureActif()){
     var _ok=false;try{_ok=await _codeOuvJuste(pin);}catch(x){}
     if(_ok){
-      var _vrai=String((DB&&DB.cfg&&DB.cfg.pin)||_pinPatronValide||'');
+      var _vrai=String((DB&&DB.cfg&&DB.cfg.pin)||_pinPatronValide||_pinGarde()||'');
       // Le PIN de la boutique a disparu du téléphone (synchro, effacement) :
       // le code court ne peut plus rien prouver au serveur. On le dit, au
       // lieu d'envoyer quatre chiffres qui seront refusés.
@@ -9178,6 +9256,43 @@ function registerVendeurEquipe(nm){
   DB.equipe.push({id:(DB.equipe.reduce(function(m,v){return Math.max(m,v.id||0);},0)+1),nm:nm,role:'vendeur',bg:c[0],tc:c[1],actif:true,perms:defautPerms()});
   return 'ok';
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « LE PIN DE 4 CHIFFRES NE MARCHE PAS. »  — ET LA CAUSE EST PLUS
+//         GRAVE QUE LE CODE COURT.
+//
+//  Le déclencheur du serveur EFFACE le PIN du blob partagé — c'est
+//  voulu, aucun code en clair ne doit dormir là-bas :
+//      new.data := new.data #- '{cfg,pin}'
+//  Mais une synchro redescend cette version-là et REMPLACE DB. Le
+//  téléphone se retrouve alors sans `cfg.pin`, et à la prochaine
+//  ouverture :
+//    · le code à 4 chiffres n'a plus rien à donner au serveur — il
+//      répond « 🔐 Entre ton PIN » (reproduit au banc, c'est exactement
+//      ce qu'il décrit) ;
+//    · et PIRE : hors ligne, son PIN à SIX ne l'ouvre plus non plus,
+//      parce que la comparaison se fait contre ce `cfg.pin` disparu.
+//      Hors ligne, c'est son cas NORMAL le soir.
+//
+//  `_finishLoginP` remettait bien `cfg.pin` après chaque connexion — mais
+//  dans le blob, donc la synchro suivante peut l'emporter à nouveau. La
+//  copie doit vivre AILLEURS, dans une clé à elle, que rien ne fusionne.
+//
+//  ⚠️ CE QUE ÇA COÛTE, DIT FRANCHEMENT : le PIN du patron est écrit en
+//  clair dans le stockage de son téléphone. C'est EXACTEMENT ce que fait
+//  déjà `cfg.pin` aujourd'hui quand il est là — on ne crée pas une
+//  exposition nouvelle, on rend durable celle qui existe. Le jour où le
+//  mot de passe du compte sera une longue chaîne tirée au hasard (la
+//  bonne architecture), cette clé-ci disparaîtra avec lui.
+// ══════════════════════════════════════════════════════════════════
+var _CLE_PIN_LOC='mb_pin_loc';
+function _garderPin(pin){
+  try{ if(pin&&String(pin).length>=4)localStorage.setItem(_CLE_PIN_LOC,String(pin)); }catch(e){}
+}
+function _pinGarde(){
+  try{var v=localStorage.getItem(_CLE_PIN_LOC);return (v&&String(v).length>=4)?String(v):'';}
+  catch(e){return '';}
+}
+function _oublierPinGarde(){try{localStorage.removeItem(_CLE_PIN_LOC);}catch(e){}}
 function _finishLoginP(){
   // Il est entré : la série d'erreurs n'a plus de sens.
   try{_oublierEchecsLocal();}catch(e){}
@@ -9190,8 +9305,11 @@ function _finishLoginP(){
   // devenait la chaîne vide dès que cfg.pin était absent — et il l'est
   // toujours au retour du serveur, puisque le déclencheur efface le clair.
   if(DB&&DB.cfg){
-    _shopPin=String(DB.cfg.pin||_pinPatronValide||'')||null;
+    _shopPin=String(DB.cfg.pin||_pinPatronValide||_pinGarde()||'')||null;
     if(_shopPin&&DB.cfg&&!DB.cfg.pin)DB.cfg.pin=_shopPin;   // pour le hors ligne
+    // ⚠️ ET ON LE GARDE HORS DU BLOB. Voir `_pinGarde` : une synchro peut
+    // remplacer DB par la version du serveur, qui n'a PAS de `cfg.pin`.
+    if(_shopPin)_garderPin(_shopPin);
     _pinRefuse=false;_pinRefuseJusqua=0;                                        // nouvelle connexion : on repart propre
     assurerPinVendeur();
   } // 2e facteur serveur du patron
@@ -23890,11 +24008,75 @@ function findArticleByLineName(nm){var base=saleArticleBaseName(nm);return (DB.a
 //      d'un jour ne doit jamais devenir le prix de l'article : c'est la
 //      règle qui protège déjà la boutique d'exemple.
 // ══════════════════════════════════════════════════════════════════
-var _negoLigne={};                  // clé de panier → total négocié
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « SI JE METS UN GROS DANS LE PANIER, QUAND J'AJOUTE SUR PLUS
+//         ÇA S'AUGMENTE EN DÉTAIL… » — ET LE PRIX, LUI, NE BOUGEAIT PAS.
+//
+//  Sa capture : « 1 carton + 60 (84 × F 2000) », total F 47 000, barré
+//  F 168 000. 47 000 est EXACTEMENT ce qu'il avait négocié pour UN
+//  carton, une capture plus tôt.
+//
+//  REPRODUIT AU BANC, son cas exact :
+//      1 carton (24)      → normal  47 000, négocié 47 000 ✅
+//      + 60 au détail (84)→ normal 167 000, négocié 47 000, PAYÉ 47 000
+//      il devait payer 167 000        →  120 000 F DE MANQUE
+//
+//  La cause : `_negoLigne[key]` gardait un MONTANT ABSOLU, et
+//  `_negoTotal()` recalculait le prix normal à la quantité COURANTE tout
+//  en gardant ce montant FIGÉ. Plus il ajoutait, plus la remise
+//  grandissait toute seule. `_oublierNego` n'est appelé qu'à zéro.
+//
+//  LA RÈGLE, ET C'EST CELLE DU COMPTOIR : « je te fais le carton à
+//  47 000 » vaut pour LE CARTON. Ce qu'il ajoute après se paie au prix
+//  normal, ce qu'il retire se déduit au prix normal. On garde donc la
+//  quantité convenue à côté du montant convenu.
+//
+//  ⚠️ On accepte encore l'ancienne forme (un nombre nu) : un panier
+//  sauvegardé par une version d'avant ne doit pas devenir gratuit.
+// ══════════════════════════════════════════════════════════════════
+var _negoLigne={};                  // clé de panier → {px, qty} convenus
 var _negoArt=null;                  // la ligne en cours de négociation
-function _negoDe(key){
+// Ce qui a été CONVENU, tel quel : le montant et la quantité d'alors.
+function _negoConvenu(key){
   var n=_negoLigne[key];
-  return (typeof n==='number'&&isFinite(n)&&n>=0)?n:null;
+  if(typeof n==='number'&&isFinite(n)&&n>=0)return {px:n,qty:null};   // ancienne forme
+  if(n&&typeof n==='object'&&isFinite(n.px)&&n.px>=0)
+    return {px:n.px,qty:(isFinite(n.qty)&&n.qty>0)?n.qty:null};
+  return null;
+}
+// Ce que la ligne coûte AUJOURD'HUI, à la quantité qu'elle porte
+// maintenant. C'est cette valeur-là que lisent l'affichage et le total.
+function _negoDe(key){
+  var c=_negoConvenu(key);
+  if(!c)return null;
+  var qty=panier[key];
+  if(!(qty>0))return null;
+  // Rien n'a bougé depuis l'accord : c'est le prix convenu, au franc près.
+  if(c.qty===null||Math.abs(qty-c.qty)<0.001)return c.px;
+  // La quantité a changé. L'écart se règle au prix normal, dans les deux
+  // sens — ce qui revient à dire, et c'est comme ça qu'il le dit au
+  // comptoir : LA REMISE CONVENUE, EN FRANCS, RESTE LA MÊME.
+  //     prix payé = prix normal d'aujourd'hui − remise convenue
+  var av=null,ap=null;
+  try{av=_ligneDe(key,c.qty);ap=_ligneDe(key,qty);}catch(e){}
+  if(!av||!ap)return c.px;
+  var remise=av.m.total-c.px;
+  var v=ap.m.total-remise;
+  // ⚠️⚠️ LE TROU QUE CETTE RÈGLE OUVRE, ET QU'ON FERME ICI : une remise
+  // en francs qui reste entière pendant que la quantité s'effondre finit
+  // par dépasser le total. Négocier 1 000 de moins sur 24 bouteilles puis
+  // n'en garder qu'une, et la ligne devient GRATUITE.
+  // En dessous de la quantité convenue, la remise ne peut donc pas être
+  // plus généreuse, proportionnellement, que celle qui a été accordée.
+  if(qty<c.qty-0.001&&c.qty>0){
+    var plancher=Math.round(c.px*qty/c.qty);   // en francs entiers, c'est de l'argent liquide
+    if(v<plancher)v=plancher;
+  }
+  // Et deux bornes qui ne plient jamais : rien en dessous de zéro, rien
+  // AU-DESSUS du prix normal — cet écran ne sait que baisser.
+  if(!(v>0))v=0;
+  if(v>ap.m.total)v=ap.m.total;
+  return Math.round(v*100)/100;
 }
 // Ce que les négociations retirent au total. Une seule addition, lue par
 // calcTotal et calcBenTotal — les deux mêmes endroits que la remise.
@@ -23932,7 +24114,14 @@ function ouvrirNego(key){
   document.getElementById('ng-eff').style.display=(_negoDe(key)!==null)?'block':'none';
   calcNego();
   document.getElementById('ov-nego').classList.add('show');
-  setTimeout(function(){try{i.focus();}catch(e){}},150);
+  var _app=false;try{_app=clavierAppActif();}catch(e){}
+  var _kp=document.getElementById('ng-clavier'),_kb=document.getElementById('ng-kb');
+  if(_kp)_kp.style.display=_app?'grid':'none';
+  if(_kb)_kb.style.display='block';
+  try{i.setAttribute('inputmode',_app?'none':'numeric');}catch(e){}
+  _clavierVers('ng-inp');
+  // Quand le clavier de l'app est là, on n'appelle personne.
+  if(!_app)setTimeout(function(){try{i.focus();}catch(e){}},150);
 }
 function calcNego(){
   if(!_negoArt)return;
@@ -23967,7 +24156,10 @@ function validerNego(){
     showToast('⚠️ '+(lang==='fr'?'Ici on ne fait que baisser un prix':'This only lowers prices'));
     return;
   }
-  _negoLigne[_negoArt.key]=Math.round(val*100)/100;
+  // Le montant ET la quantité sur laquelle il porte : sans la seconde, la
+  // remise grandissait à chaque « + ».
+  _negoLigne[_negoArt.key]={px:Math.round(val*100)/100,qty:_negoArt.qty};
+  _clavierVers('er-pin');
   var baisse=_negoArt.normal-val;
   closeSheet('ov-nego');_negoArt=null;
   try{showToast('🤝 '+(lang==='fr'?'Prix négocié — ':'Negotiated — ')+fmt(baisse)+(lang==='fr'?' de moins':' less'));}catch(e){}
@@ -23976,6 +24168,7 @@ function validerNego(){
 }
 function annulerNego(){
   if(!_negoArt)return;
+  _clavierVers('er-pin');
   _oublierNego(_negoArt.key);
   closeSheet('ov-nego');_negoArt=null;
   showToast('↩️ '+(lang==='fr'?'Prix normal remis':'Normal price restored'));
