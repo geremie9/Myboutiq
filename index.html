@@ -188,6 +188,60 @@
       h.className+=' porte-rapide';
   }catch(x){}
 })();
+/* ══════════════════════════════════════════════════════════════════
+   LA PORTE EST PEINTE BIEN AVANT D'ÊTRE VIVANTE. ON GARDE LE GESTE.
+
+   MESURÉ AU BANC sur le fichier réel, commerçant déjà connu :
+       processeur ÷6  -> porte peinte à   396 ms, vivante à   636 ms
+       processeur ÷12 -> porte peinte à   672 ms, vivante à 1 216 ms
+       processeur ÷20 -> porte peinte à 1 061 ms, vivante à 2 124 ms
+   Sur le téléphone à 25 000 F de ses commerçants, ça fait UNE SECONDE
+   pendant laquelle il voit son champ, tape son PIN, touche « Ouvrir »…
+   et rien. Pas une erreur, pas un mot : le bouton appelle
+   `validerEntreeRapide` derrière un `if(window.validerEntreeRapide)`, et
+   cette fonction n'existe pas encore. Le geste est PERDU. Il retouche,
+   il retouche encore — c'est exactement ce qui énerve devant un client.
+
+   On ne peut pas rendre la porte vivante plus tôt : c'est un mégaoctet de
+   JavaScript à lire. Mais on peut faire ce que fait déjà la vitrine
+   (`js-attente`) : DIRE qu'on a entendu. Ce bloc-ci tourne au premier
+   octet, note l'intention, l'écrit sur le bouton, et l'app la rejoue
+   toute seule dès qu'elle est prête (voir `majEntreeRapide`).
+   `_erPremierPassage` protégeait déjà le PIN commencé à la main ; il
+   manquait le geste d'ouverture.
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+  var fr=!/^en/i.test(navigator.language||(navigator.languages||[])[0]||'');
+  function retenir(){
+    // ⚠️⚠️ « LA FONCTION EXISTE » NE VEUT PAS DIRE « L'APP EST PRÊTE ».
+    // Reproduit au banc, processeur ÷20 : `validerEntreeRapide` est définie
+    // dès la fin du gros bloc de script, mais DB n'est chargée qu'à la
+    // toute fin du document (`_ouvrirLaPorte`). Entre les deux, un appui
+    // partait dans la fonction, ne trouvait pas de boutique, et répondait
+    // « ce PIN ne correspond pas à la boutique gardée ici ». Un PIN JUSTE,
+    // refusé, devant le client. C'est PIRE que le bouton mort.
+    // Le vrai signal, c'est `_demarre` : l'app a chargé sa boutique.
+    if(typeof window.validerEntreeRapide==='function'&&window._demarre)return;
+    window._entreeVoulue=true;
+    try{
+      var b=document.getElementById('er-btn');
+      if(b)b.textContent=fr?'J\'ouvre…':'Opening…';
+      document.documentElement.classList.add('porte-occupee');
+    }catch(x){}
+  }
+  try{
+    document.addEventListener('click',function(ev){
+      var t=ev.target,n=0;
+      while(t&&t.nodeType===1&&n++<6){
+        if(t.id==='er-btn'||(t.querySelector&&t.querySelector('#er-btn'))){retenir();return;}
+        t=t.parentNode;
+      }
+    },true);
+    document.addEventListener('keydown',function(ev){
+      if(ev.key==='Enter'&&ev.target&&ev.target.id==='er-pin')retenir();
+    },true);
+  }catch(x){}
+})();
 window._pwaInvite=null;
 window.addEventListener('beforeinstallprompt',function(e){
   try{e.preventDefault();}catch(x){}
@@ -293,7 +347,43 @@ window.addEventListener('appinstalled',function(){
   ]
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- ══════════════════════════════════════════════════════════════════
+     ⚠️⚠️ LA PORTE ATTENDAIT UN FICHIER HÉBERGÉ CHEZ jsDELIVR.
+
+     « une app qui met beaucoup plus de temps à charger va énerver les
+      clients qui attendent »
+
+     Cette balise n'avait ni `defer` ni `async`. Un <script src> sans
+     l'un des deux ARRÊTE LE LECTEUR DE PAGE : tant que le fichier n'est
+     pas arrivé, plus rien n'est lu — ni la feuille de style juste en
+     dessous, ni `#s-login`, qui est pourtant déjà dans le fichier et
+     n'a besoin de personne.
+
+     MESURÉ AU BANC, processeur ÷6, sur le fichier réel, pour un
+     commerçant déjà connu — en ne faisant varier QUE la latence du CDN :
+         CDN instantané   -> porte peinte à    290 ms
+         CDN à 1,5 s (2G) -> porte peinte à  1 759 ms
+         CDN à 3 s        -> porte peinte à  3 263 ms
+         CDN injoignable  -> porte peinte à    239 ms
+     La porte se peignait exactement quand jsDelivr répondait. Et le
+     service worker ne garde PAS ce fichier (il ignore tout ce qui n'est
+     pas de notre origine) : c'était un aller-retour au Cameroun À CHAQUE
+     OUVERTURE, pour une bibliothèque dont la caisse n'a aucun besoin
+     pour s'ouvrir — elle ne sert qu'à la synchronisation.
+
+     EXACTEMENT LE MÊME PIÈGE QUE LES POLICES GOOGLE, corrigé en tête de
+     ce fichier : « un navigateur n'exécute AUCUN script tant qu'une
+     feuille de style déclarée avant lui n'est pas arrivée ». Une ligne
+     plus bas, jamais vu.
+
+     `defer` garde tout le reste intact : le fichier est toujours exécuté
+     AVANT `DOMContentLoaded`, donc `initSupa()` le trouve comme avant
+     quand le réseau est bon. Et s'il n'arrive pas, l'app le sait déjà
+     faire : `chargerBibliothequeSupa()` le rappelle plus tard, et
+     `assurerConnexionSupa()` rattrape la synchronisation.
+     Le service worker le garde maintenant en cache, comme les polices.
+     ══════════════════════════════════════════════════════════════════ -->
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ── L'attente du script, dite honnêtement (voir le commentaire du <html>) ── */
 html.js-attente .vt-act{opacity:.5;pointer-events:none;position:relative}
@@ -331,6 +421,11 @@ html.doigt-pret #er-bio{display:flex}.scr.on{display:flex}
    n'avait rien changé — mesuré, pas supposé. Le « caché par défaut » revient
    donc ici, où une règle plus précise peut le contredire. */
 #entree-rapide,#er-pin-wrap{display:none}
+/* Le bouton qui a entendu le doigt mais ne peut pas encore agir : il le
+   DIT (son texte change, écrit par le bloc de tête) et il cesse de
+   répondre, pour qu'un deuxième appui ne compte pas pour rien. */
+html.porte-occupee #er-btn{opacity:.75}
+html.porte-occupee #er-pin-wrap .btn-login{pointer-events:none}
 html.porte-rapide #login-tabs,html.porte-rapide #fp,html.porte-rapide #conn-connu,
 html.porte-rapide #er-retour-b{display:none}
 html.porte-rapide #entree-rapide,html.porte-rapide #er-pin-wrap{display:block}
@@ -5150,7 +5245,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.74'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.75'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5337,6 +5432,14 @@ function initSupa(){
 }
 function chargerBibliothequeSupa(){
   if(typeof supabase!=='undefined'||document.getElementById('supa-lib-2'))return;
+  // ⚠️ DEPUIS QUE LA BALISE D'ORIGINE EST EN `defer`, elle s'exécute APRÈS
+  // les scripts de la page — donc après `_ouvrirLaPorte()`. Un commerçant
+  // qui tape son PIN tout de suite passe par `assurerConnexionSupa()`
+  // alors que `supabase` n'existe pas encore : sans ce test, on injectait
+  // une SECONDE copie de la bibliothèque pendant que la première arrivait.
+  // Deux téléchargements pour rien, sur une connexion camerounaise.
+  try{ if([].slice.call(document.scripts).some(function(x){
+         return String(x.src||'').indexOf('supabase-js')>=0; }))return; }catch(e){}
   var s=document.createElement('script');
   s.id='supa-lib-2';
   s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
@@ -6284,7 +6387,39 @@ function installerIconesNav(){
 // ═══════════════════════════════════════════
 // INIT & SPLASH
 // ═══════════════════════════════════════════
-document.addEventListener('DOMContentLoaded',function(){
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ `DOMContentLoaded` N'ATTEND PAS QUE LE DOCUMENT SOIT LU.
+//  IL ATTEND AUSSI TOUS LES SCRIPTS `defer`.
+//
+//  « une app qui met beaucoup plus de temps à charger va énerver les
+//   clients qui attendent »
+//
+//  MESURÉ AU BANC, processeur ÷6, la bibliothèque du serveur passée en
+//  `defer` (elle ne bloque donc plus la lecture de la page) :
+//      CDN à 3 s  ->  porte PEINTE à 286 ms … et `DOMContentLoaded` à
+//                     3 135 ms.
+//  Or c'est `DOMContentLoaded` qui appelait `_demarrerApp()`, et donc qui
+//  chargeait DB. Sans DB, `validerEntreeRapide()` ne peut RIEN ouvrir.
+//  Le commerçant voyait sa porte en un quart de seconde, tapait son PIN,
+//  touchait « Ouvrir » — et attendait trois secondes sans un mot, pendant
+//  que son client patientait devant lui.
+//
+//  CE SCRIPT EST LE DERNIER DU DOCUMENT (voir l'appel tout en bas, juste
+//  avant `</body>`) : quand il s'exécute, tout le HTML est lu et toutes
+//  les fonctions existent. La PORTE n'a donc aucune raison d'attendre
+//  quoi que ce soit venant du réseau.
+//
+//  On sépare donc les deux :
+//    · `_ouvrirLaPorte()` — l'écran, le PIN, la caisse. Appelée dès que
+//      ce script finit, sans attendre personne.
+//    · `_brancherServeur()` — la connexion Supabase, les icônes, le
+//      numéro de version. Reste sur `DOMContentLoaded`, parce que c'est
+//      là que la bibliothèque `defer` est enfin arrivée.
+//  Les deux gardent leur propre verrou : peu importe qui arrive d'abord.
+// ══════════════════════════════════════════════════════════════════
+var _porteOuverte=false,_serveurBranche=false;
+function _ouvrirLaPorte(){
+  if(_porteOuverte)return; _porteOuverte=true;
   // ═══ Ouverture INSTANTANÉE pour qui est déjà connu ═══
   // Le commerçant ouvre son app des dizaines de fois par jour. L'écran de
   // démarrage n'a de sens que la première fois : quand l'appareil sait déjà
@@ -6313,6 +6448,10 @@ document.addEventListener('DOMContentLoaded',function(){
     if(_c||_n)history.replaceState(null,'',location.pathname); // URL propre
   }catch(e){}
   if(_connu){try{_demarrerApp();}catch(e){}}
+  else setTimeout(_demarrerApp,1150);
+}
+function _brancherServeur(){
+  if(_serveurBranche)return; _serveurBranche=true;
   // Le reste (connexion serveur, icônes, version) se fait APRÈS l'affichage :
   // rien de tout cela n'est nécessaire pour taper son PIN.
   initSupa();
@@ -6321,7 +6460,12 @@ document.addEventListener('DOMContentLoaded',function(){
   try{_garderLesDonnees();}catch(e){}
   try{console.log('MyBoutiQ build '+APP_BUILD);var _ab=document.getElementById('app-build');if(_ab)_ab.textContent='Version '+APP_BUILD;}catch(e){}
   try{installerIconesNav();}catch(e){}
-  if(!_connu)setTimeout(_demarrerApp,1150);
+}
+document.addEventListener('DOMContentLoaded',function(){
+  // Filet : si jamais l'appel de fin de document n'a pas eu lieu (script
+  // coupé en plein vol, lecture interrompue), la porte s'ouvre quand même.
+  _ouvrirLaPorte();
+  _brancherServeur();
 });
 var _demarre=false;
 // Le script est là. Les boutons de la vitrine cessent de faire semblant.
@@ -6825,6 +6969,14 @@ function majEntreeRapide(){
   // Le clavier doit être là tout de suite : il tape son PIN, il vend.
   try{p.focus();}catch(x){}
   setTimeout(function(){try{p.focus();}catch(x){}},60);
+  // ⭐ LE GESTE GARDÉ PENDANT QUE L'APP SE CHARGEAIT (voir le bloc de tête).
+  // Il a touché « Ouvrir » avant que quoi que ce soit existe : on ne le lui
+  // fait pas refaire. Une seule fois — le drapeau tombe ici.
+  if(window._entreeVoulue){
+    window._entreeVoulue=false;
+    try{document.documentElement.classList.remove('porte-occupee');}catch(x){}
+    setTimeout(function(){try{validerEntreeRapide();}catch(x){}},0);
+  }
   return true;
 }
 // Étape 2 : les boutiques, une fois le compte ouvert.
@@ -6899,6 +7051,17 @@ async function _prouverPatronEnFond(tel,pin){
 }
 async function validerEntreeRapide(){
   var fr=lang==='fr';
+  // ⚠️ MÊME GARDE QUE LE BLOC DE TÊTE, MAIS ICI ELLE EST IMPRENABLE : quel
+  // que soit le chemin (bouton, touche Entrée, appel direct), tant que la
+  // boutique n'est pas chargée on ne peut RIEN vérifier. On garde le geste
+  // au lieu de refuser un PIN juste.
+  if(!_demarre){
+    window._entreeVoulue=true;
+    try{document.documentElement.classList.add('porte-occupee');
+        var _b=document.getElementById('er-btn');
+        if(_b)_b.textContent=fr?'J\'ouvre…':'Opening…';}catch(x){}
+    return;
+  }
   if(_refusePendantBlocage())return;
   var e=lireEntree();
   // ── Le vendeur qui revient : son code et son prénom sont déjà connus ──
@@ -27653,6 +27816,14 @@ if('serviceWorker' in navigator){
     });
   });
 }
+// ⚠️⚠️ LA PORTE S'OUVRE ICI, PAS SUR `DOMContentLoaded`.
+// Nous sommes au dernier octet du dernier script du document : tout le
+// HTML est lu, toutes les fonctions existent, DB peut être chargée. Rien
+// de ce qui reste à venir (la bibliothèque du serveur, en `defer`) n'est
+// nécessaire pour taper un PIN et ouvrir sa caisse.
+// Mesuré : porte VIVANTE à ~570 ms au lieu de 3 135 ms quand le CDN met
+// trois secondes à répondre.
+try{_ouvrirLaPorte();}catch(e){}
 </script>
 </body>
 </html>

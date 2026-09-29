@@ -1,4 +1,4 @@
-const CACHE_NAME='myboutiq-v274';
+const CACHE_NAME='myboutiq-v275';
 const IMG_CACHE='myboutiq-images-v1';
 // ⚠️ Les polices vivaient hors du cache : chaque ouverture repartait les
 // chercher chez Google, et hors ligne la boutique s'affichait dans une police
@@ -60,6 +60,27 @@ self.addEventListener('fetch',function(e){
   // Les polices : gardées une fois, servies pour toujours. Elles ne changent
   // jamais, et elles ne doivent plus jamais faire attendre une ouverture.
   if(url.hostname==='fonts.googleapis.com'||url.hostname==='fonts.gstatic.com'){
+    e.respondWith(
+      caches.open(FONT_CACHE).then(function(c){
+        return c.match(e.request).then(function(garde){
+          if(garde)return garde;
+          return fetch(e.request).then(function(res){
+            if(res&&(res.status===200||res.type==='opaque'))c.put(e.request,res.clone());
+            return res;
+          }).catch(function(){return garde;});
+        });
+      })
+    );
+    return;
+  }
+
+  // La bibliothèque du serveur (supabase-js) : gardée une fois, servie
+  // pour toujours. Elle ne sert qu'à la synchronisation, jamais à ouvrir
+  // la caisse — mais elle repartait chez jsDelivr à CHAQUE ouverture, et
+  // le lecteur de page l'attendait (voir le commentaire de sa balise).
+  // Même traitement que les polices : cache d'abord, réseau seulement la
+  // première fois.
+  if(url.hostname==='cdn.jsdelivr.net'){
     e.respondWith(
       caches.open(FONT_CACHE).then(function(c){
         return c.match(e.request).then(function(garde){
