@@ -3034,6 +3034,7 @@ body{max-width:min(100%,1200px)}
       <div class="sttit" id="lbl-securite">🔐 Sécurité</div>
       <div class="stcd">
         <div class="stit2" onclick="ouvrirChangerPin()"><div class="stico" style="background:#FFEBEE">🔑</div><div class="stii"><div class="stitl" id="st-chpin">Changer mon PIN</div><div class="stisub" id="st-chpin-s">Le code qui ouvre ta caisse</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirCodeOuverture()"><div class="stico" style="background:#E8F5E9">⚡</div><div class="stii"><div class="stitl" id="st-codeouv">Ouvrir avec 4 chiffres</div><div class="stisub" id="st-codeouv-s">Un code court pour ce téléphone</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="toggleBiometrie()"><div class="stico" style="background:#E3F2FD">👆</div><div class="stii"><div class="stitl" id="st-bio2">Empreinte / Face ID</div><div class="stisub" id="st-bio2-s">Entrer sans taper le PIN</div></div><button class="tog off" id="tog-bio2" onclick="event.stopPropagation();toggleBiometrie()"></button></div>
         <div class="stit2" id="row-erreurs" style="display:none" onclick="ouvrirErreurs()"><div class="stico" style="background:#FFF3E0">⚠️</div><div class="stii"><div class="stitl" id="st-err">Erreurs signalées</div><div class="stisub" id="st-err-s"></div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-abo" style="display:none" onclick="ecrireAbonnement()"><div class="stico" style="background:#FFF3E0">🔑</div><div class="stii"><div class="stitl" id="st-abo">Mon abonnement</div><div class="stisub" id="st-abo-s"></div></div><span class="starr">›</span></div>
@@ -4273,6 +4274,41 @@ body{max-width:min(100%,1200px)}
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════════════════════════
+       LE CODE D'OUVERTURE — 4 chiffres, pour CE téléphone seulement.
+
+       ⚠️⚠️ POURQUOI IL EST SÉPARÉ DU PIN, ET NON PAS « LE PIN RACCOURCI ».
+       Le PIN du patron EST le mot de passe de son compte
+       (`signInWithPassword({email, password: pin})`). Le ramener à quatre
+       chiffres, ce serait 10 000 combinaisons attaquables depuis
+       n'importe où dans le monde avec son seul numéro — et le verrou
+       qu'on vient d'écrire ne protège pas ce chemin-là, qui ne passe
+       même pas par l'app.
+       Le code d'ouverture, lui, ne quitte JAMAIS l'appareil : il n'est
+       comparé qu'ici, et il n'est pas stocké en clair (PBKDF2, 150 000
+       tours, le même que le code personnel d'un vendeur).
+       MESURÉ : l'appareil laisse passer 120 essais par 24 h au maximum
+       (22.78). À cette cadence, 4 chiffres tiennent ~42 jours d'attaque
+       continue sur un téléphone volé, 6 chiffres ~11 ans. C'est le
+       niveau d'un écran de verrouillage — et c'est 4 chiffres partout
+       dans le monde pour exactement cette raison.
+       ⚠️ ET LA PORTE ACCEPTE TOUJOURS LES DEUX : personne ne peut
+       s'enfermer dehors en oubliant le code court.
+       ══════════════════════════════════════════════════════════════ -->
+  <div class="ov" id="ov-codeouv" onclick="closeOv(event,'ov-codeouv')">
+    <div class="bsht"><div class="shndl"></div>
+      <div class="shhdr"><div class="shtit">⚡ <span id="co-tit">Ouvrir avec 4 chiffres</span></div><button class="bcl" onclick="closeSheet('ov-codeouv')">✕</button></div>
+      <div class="pstps">
+        <div style="background:#E8F5E9;border:1.4px solid #A5D6A7;border-radius:10px;padding:10px 12px;font-size:11.5px;font-weight:700;color:#1B5E20;margin-bottom:13px;line-height:1.5" id="co-note">Un code court pour ouvrir CE téléphone, comme l'écran de verrouillage. Il ne sort jamais d'ici. Ton PIN à 6 chiffres continue de marcher, et c'est lui qu'il te faudra sur un nouveau téléphone.</div>
+        <div class="pig"><label class="pl" id="co-l1">Ton PIN à 6 chiffres</label><input class="pi" type="password" id="co-pin" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
+        <div class="pig"><label class="pl" id="co-l2">Code d'ouverture (4 chiffres)</label><input class="pi" type="password" id="co-new" maxlength="4" inputmode="numeric" placeholder="••••"></div>
+        <div class="pig"><label class="pl" id="co-l3">Répète-le</label><input class="pi" type="password" id="co-new2" maxlength="4" inputmode="numeric" placeholder="••••"></div>
+        <button class="bnxt" onclick="validerCodeOuverture()"><span id="co-btn">Poser mon code</span></button>
+        <button class="bnxt" id="co-off" style="display:none;margin-top:9px;background:#FFEBEE;color:#C62828" onclick="retirerCodeOuverture()"><span id="co-off-l">Retirer le code court</span></button>
+      </div>
+    </div>
+  </div>
+
   <!-- BILAN DE L'ANNÉE -->
   <div class="ov" id="ov-annee" onclick="closeOv(event,'ov-annee')">
     <div class="bsht"><div class="shndl"></div>
@@ -5370,7 +5406,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.78'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.79'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7373,6 +7409,20 @@ async function _pinTape(){
     var v=String(ch.value||'').trim();
     if(v.length<4)return;
     var bon=false;
+    // ⚡ LE CODE D'OUVERTURE DE CET APPAREIL, s'il y en a un. Quatre chiffres
+    // suffisent alors — et le PIN à six continue de marcher juste en dessous :
+    // impossible de s'enfermer dehors en oubliant le court.
+    if(v.length===4&&codeOuvertureActif()){
+      bon=await _codeOuvJuste(v);
+      // Il a pu continuer à taper pendant le calcul : on ne valide que ce qui
+      // est ENCORE dans le champ (même garde que le code personnel vendeur).
+      if(String((document.getElementById('er-pin')||{}).value||'').trim()!==v)return;
+      if(bon){
+        _pinEnCours=true;
+        try{await validerEntreeRapide(String(DB.cfg.pin||''));}finally{_pinEnCours=false;}
+        return;
+      }
+    }
     if(entreeRapideVendeur()){
       var e=lireEntree();
       if(!e||!e.nom||!aCodePerso(e.nom))return;      // pas de code local : on ne devine pas
@@ -7389,7 +7439,11 @@ async function _pinTape(){
     try{await validerEntreeRapide();}finally{_pinEnCours=false;}
   }catch(e){_pinEnCours=false;}
 }
-async function validerEntreeRapide(){
+// ⚠️ `pinImpose` : le code d'ouverture à 4 chiffres a déjà été vérifié sur
+// l'appareil, mais ce n'est PAS lui qui parle au serveur — le serveur ne le
+// connaît pas et ne doit jamais le connaître. On passe donc le vrai PIN,
+// celui que la boutique garde ici, exactement comme si le patron l'avait tapé.
+async function validerEntreeRapide(pinImpose){
   var fr=lang==='fr';
   // ⚠️ MÊME GARDE QUE LE BLOC DE TÊTE, MAIS ICI ELLE EST IMPRENABLE : quel
   // que soit le chemin (bouton, touche Entrée, appel direct), tant que la
@@ -7436,9 +7490,25 @@ async function validerEntreeRapide(){
                        :'This phone does not know your number yet — enter it once'));
     majEntreeRapide();return;
   }
-  var pin=(document.getElementById('er-pin').value||'').trim();
+  var pin=pinImpose!=null?String(pinImpose):(document.getElementById('er-pin').value||'').trim();
   if(pin.length<4){showToast('🔐 '+(fr?'Entre ton PIN':'Enter your PIN'));return;}
   document.getElementById('er-pin').value='';
+  // ⚡ LE CODE D'OUVERTURE SE VÉRIFIE ICI AUSSI, et pas seulement à la frappe.
+  // ⚠️ SANS CE BLOC : il tape ses quatre chiffres, touche « ✓ » (ou Entrée),
+  // et ces quatre chiffres partaient au serveur COMME MOT DE PASSE. Refus
+  // garanti, et un essai raté compté contre lui — pour un code juste.
+  // Le ✓ doit faire exactement ce que fait le dernier chiffre tapé.
+  if(pinImpose==null&&pin.length===4&&codeOuvertureActif()){
+    var _ok=false;try{_ok=await _codeOuvJuste(pin);}catch(x){}
+    if(_ok){
+      var _vrai=String((DB&&DB.cfg&&DB.cfg.pin)||_pinPatronValide||'');
+      // Le PIN de la boutique a disparu du téléphone (synchro, effacement) :
+      // le code court ne peut plus rien prouver au serveur. On le dit, au
+      // lieu d'envoyer quatre chiffres qui seront refusés.
+      if(!_vrai){showToast('🔐 '+(fr?'Entre ton PIN à 6 chiffres cette fois-ci':'Enter your 6-digit PIN this time'));return;}
+      pin=_vrai;
+    }
+  }
   // Hors réseau : on vérifie le PIN contre la boutique déjà sur le téléphone.
   // On ne peut ouvrir que celle-là, et on le dit.
   assurerConnexionSupa();
@@ -8552,6 +8622,16 @@ function appliquerLang(){
   document.getElementById('st-veille-s').textContent=lang==='fr'
     ?'Pendant que MyBoutiQ est à l\'écran. Si tu ouvres une autre application, c\'est elle qui décide — et ça revient tout seul.'
     :'While MyBoutiQ is on screen. If you open another app, that app decides — and it comes back on its own.';
+  // ⚡ Le code d'ouverture : la ligne suit la langue, et dit son état — un
+  // réglage qui ne montre pas s'il est actif oblige à l'ouvrir pour savoir.
+  try{
+    var _co=document.getElementById('st-codeouv'),_cs=document.getElementById('st-codeouv-s');
+    var _on=false;try{_on=codeOuvertureActif();}catch(e){}
+    if(_co)_co.textContent=lang==='fr'?'Ouvrir avec 4 chiffres':'Open with 4 digits';
+    if(_cs)_cs.textContent=_on
+      ?(lang==='fr'?'✅ Posé sur ce téléphone':'✅ Set on this phone')
+      :(lang==='fr'?'Un code court pour ce téléphone':'A short code for this phone');
+  }catch(e){}
   document.getElementById('tog-veille').className='tog '+(DB.cfg.veille?'on':'off');
   var _tne2=document.getElementById('tog-noemoji');if(_tne2)_tne2.className='tog '+(DB.cfg.noEmoji?'on':'off');
   var _tra=document.getElementById('tog-recuauto');if(_tra)_tra.className='tog '+(DB.cfg.recuAuto?'on':'off');
@@ -8673,6 +8753,94 @@ async function _propagerPinAuxBoutiques(nouveau){
     }
   }catch(e){}
   return n;
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⚡ LE CODE D'OUVERTURE — 4 chiffres, cet appareil, rien d'autre.
+//  (Le pourquoi est écrit en entier au-dessus de la feuille `ov-codeouv`.)
+// ══════════════════════════════════════════════════════════════════
+var _CLE_CODEOUV='mb_code_ouv';
+function _lireCodeOuv(){
+  try{var o=JSON.parse(localStorage.getItem(_CLE_CODEOUV)||'null');
+      return (o&&o.h&&o.sel&&o.code)?o:null;}catch(e){return null;}
+}
+// ⚠️ LE CODE EST LIÉ À UNE BOUTIQUE. Sans ça, un patron qui change de
+// boutique sur le même téléphone ouvrirait la nouvelle avec le code court
+// de l'ancienne — un code posé pour une caisse en ouvrirait une autre.
+function codeOuvertureActif(){
+  var o=_lireCodeOuv();
+  if(!o||!DB||!DB.cfg)return false;
+  return String(o.code)===String(DB.cfg.code||'');
+}
+async function _codeOuvJuste(v){
+  var o=_lireCodeOuv();
+  if(!codeOuvertureActif())return false;
+  try{return (await _hachCode(v,o.sel))===o.h;}catch(e){return false;}
+}
+function ouvrirCodeOuverture(){
+  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  var fr=(lang==='fr');
+  // ⚠️ La feuille voisine (« Changer mon PIN ») est restée en français en
+  // anglais depuis toujours. On ne refait pas la même chose : tout se pose
+  // ici, à l'ouverture, donc rien ne peut être oublié.
+  var mots={'co-tit':[ 'Ouvrir avec 4 chiffres','Open with 4 digits'],
+    'co-note':['Un code court pour ouvrir CE téléphone, comme l\'écran de verrouillage. Il ne sort jamais d\'ici. Ton PIN à 6 chiffres continue de marcher, et c\'est lui qu\'il te faudra sur un nouveau téléphone.',
+               'A short code to open THIS phone, like its lock screen. It never leaves this device. Your 6-digit PIN keeps working, and that is the one you will need on a new phone.'],
+    'co-l1':['Ton PIN à 6 chiffres','Your 6-digit PIN'],
+    'co-l2':['Code d\'ouverture (4 chiffres)','Opening code (4 digits)'],
+    'co-l3':['Répète-le','Repeat it'],
+    'co-off-l':['Retirer le code court','Remove the short code']};
+  Object.keys(mots).forEach(function(id){
+    var e=document.getElementById(id); if(e)e.textContent=mots[id][fr?0:1];
+  });
+  ['co-pin','co-new','co-new2'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  var on=codeOuvertureActif();
+  document.getElementById('co-btn').textContent=on?(fr?'Changer mon code':'Change my code')
+                                                  :(fr?'Poser mon code':'Set my code');
+  var off=document.getElementById('co-off');
+  if(off)off.style.display=on?'block':'none';
+  document.getElementById('ov-codeouv').classList.add('show');
+}
+function _coErr(m){showToast('⚠️ '+m);}
+async function validerCodeOuverture(){
+  var fr=(lang==='fr');
+  var pin=(document.getElementById('co-pin').value||'').trim();
+  var a=(document.getElementById('co-new').value||'').trim();
+  var b=(document.getElementById('co-new2').value||'').trim();
+  // 1. Il prouve que c'est bien lui. L'app peut rester ouverte des heures.
+  if(!DB||!DB.cfg||String(DB.cfg.pin||'')!==pin)
+    return _coErr(fr?'Ce n\'est pas ton PIN.':'That is not your PIN.');
+  if(!/^\d{4}$/.test(a))return _coErr(fr?'Quatre chiffres, pas plus.':'Exactly four digits.');
+  if(a!==b)return _coErr(fr?'Les deux ne sont pas pareils.':'The two do not match.');
+  // 2. ⚠️⚠️ LE CODE COURT NE DOIT PAS TRAHIR LE LONG. Si son PIN est
+  //    « 123456 » et qu'il choisit « 1234 », celui qui le regarde taper le
+  //    code court à la caisse apprend QUATRE des six chiffres du mot de
+  //    passe de son compte. On refuse tout morceau du PIN.
+  if(String(DB.cfg.pin||'').indexOf(a)>=0)
+    return _coErr(fr?'Ce sont des chiffres de ton PIN — quelqu\'un qui te regarde taper apprendrait ton PIN. Prends-en d\'autres.'
+                    :'Those digits are part of your PIN. Pick different ones.');
+  // 3. Les quatre codes que tout le monde essaie en premier.
+  if(/^(\d)\1{3}$/.test(a)||['1234','4321','2580','0852','1379','9731'].indexOf(a)>=0)
+    return _coErr(fr?'Celui-là est le premier qu\'on essaie. Prends-en un autre.'
+                    :'That one is the first anybody tries. Pick another.');
+  var sel=_selNeuf(),h;
+  try{h=await _hachCode(a,sel);}catch(e){return _coErr(fr?'Impossible d\'enregistrer.':'Could not save.');}
+  // ⚠️ Le code n'est JAMAIS gardé en clair — ni ici, ni ailleurs. Et il ne
+  // part pas au serveur : il ne vit que dans ce téléphone.
+  try{localStorage.setItem(_CLE_CODEOUV,JSON.stringify({sel:sel,h:h,code:String(DB.cfg.code||''),q:Date.now()}));}
+  catch(e){return _coErr(fr?'Le téléphone n\'a pas pu l\'enregistrer.':'The phone could not save it.');}
+  // La trace : le patron doit pouvoir voir, plus tard, qu'un code court a
+  // été posé sur cet appareil-là — et quand.
+  try{journalAjouter('unite',fr?'Code d\'ouverture (4 chiffres)':'Opening code (4 digits)','',fr?'posé sur cet appareil':'set on this device');}catch(e){}
+  closeSheet('ov-codeouv');
+  showToast('⚡ '+(fr?'C\'est posé. Quatre chiffres suffisent maintenant sur ce téléphone.'
+                    :'Done. Four digits are enough on this phone now.'));
+}
+function retirerCodeOuverture(){
+  var fr=(lang==='fr');
+  try{localStorage.removeItem(_CLE_CODEOUV);}catch(e){}
+  closeSheet('ov-codeouv');
+  showToast('🔐 '+(fr?'Code court retiré. Ton PIN à 6 chiffres reprend la porte.'
+                    :'Short code removed. Your 6-digit PIN takes the door back.'));
 }
 function ouvrirChangerPin(){
   if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
