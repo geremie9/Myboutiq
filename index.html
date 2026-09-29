@@ -523,7 +523,7 @@ html.porte-rapide #entree-rapide,html.porte-rapide #er-pin-wrap{display:block}
    qu'il faut le lui proposer, et nulle part ailleurs ça ne le rattrape. */
 .lg-install{position:absolute;top:14px;right:14px;z-index:5;background:rgba(240,169,62,.20);
   border:1px solid rgba(240,169,62,.48);border-radius:11px;padding:8px 12px;color:var(--A);
-  font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:900;cursor:pointer;min-height:36px}
+  font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:900;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;gap:4px}
 .lg-install:active{background:rgba(240,169,62,.32)}
 #s-login::before{content:'';position:absolute;width:340px;height:340px;background:radial-gradient(circle,rgba(245,166,35,.20),transparent 70%);top:-70px;right:-90px;border-radius:50%}
 .login-logo{margin-bottom:8px;line-height:0;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 8px 18px rgba(0,0,0,.28))}
@@ -2143,7 +2143,17 @@ body{max-width:min(100%,1200px)}
   .vt-corps{max-width:760px;margin:0 auto;padding:30px 24px 40px}
   .vt-fg{grid-template-columns:1fr 1fr 1fr}
 }
+/* ⚠️ CETTE RÈGLE NE COUVRAIT QUE LA VITRINE (`.vt-*`). Le réglage
+   « réduire les animations » d'Android et d'iPhone n'est pas une
+   coquetterie : des gens le mettent parce que le mouvement leur donne
+   mal au cœur ou leur fait perdre le fil. Or l'APP, elle, continuait de
+   pulser, de tourner et de glisser — le logo du démarrage, la roue
+   d'attente, les panneaux qui s'ouvrent, les tuiles qui s'enfoncent.
+   Le réglage vaut maintenant partout : les animations vont droit à leur
+   état final au lieu d'être supprimées, donc rien ne disparaît. */
 @media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important}
   .vt-c,.vt-tot span,.vt-pay,.vt-ok,.vt-doigt{animation:none!important}
   .vt-tot span{transform:translateY(-51px)}.vt-ok{opacity:0}
 }
@@ -2600,7 +2610,7 @@ body{max-width:min(100%,1200px)}
           <div id="connu-sub" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.65)"></div>
         </div>
       </div>
-      <button type="button" onclick="oublierEntree()" id="connu-chg" style="background:none;border:none;padding:6px 0 0;color:rgba(255,255,255,.75);font-size:11.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline"></button>
+      <button type="button" onclick="oublierEntree()" id="connu-chg" style="background:none;border:none;padding:11px 10px 6px;min-height:44px;display:inline-flex;align-items:center;color:rgba(255,255,255,.8);font-size:12px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline"></button>
     </div>
     <!-- PORTE D'ENTRÉE RAPIDE : l'appareil se souvient de toi, tu ne donnes que ton PIN -->
     <div id="entree-rapide" style="width:100%">
@@ -2615,13 +2625,13 @@ body{max-width:min(100%,1200px)}
       <div id="er-pin-wrap">
         <div id="er-cible" style="font-size:13px;font-weight:800;color:#fff;margin-bottom:9px;display:flex;align-items:center;gap:8px"></div>
         <button class="bio-sig" id="er-bio" onclick="toucherSigneBio('er-bio')" title="Empreinte" aria-label="Empreinte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>
-        <input class="fi" type="password" id="er-pin" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" style="text-align:center;letter-spacing:10px;font-size:22px;font-weight:900" onkeydown="if(event.key==='Enter'&&window.validerEntreeRapide)validerEntreeRapide()">
+        <input class="fi" type="password" id="er-pin" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" aria-label="PIN" style="text-align:center;letter-spacing:10px;font-size:22px;font-weight:900" oninput="if(window._pinTape)_pinTape()" onkeydown="if(event.key==='Enter'&&window.validerEntreeRapide)validerEntreeRapide()">
         <button class="btn-login" style="margin-top:10px" onclick="if(window.validerEntreeRapide)validerEntreeRapide()"><span id="er-btn">Ouvrir</span></button>
         <button class="btn-login" id="er-retour-b" onclick="retourListeBoutiques()" style="margin-top:8px;background:transparent;color:rgba(255,255,255,.6);box-shadow:none">↩︎ <span id="er-retour">Choisir une autre boutique</span></button>
       </div>
       <div style="display:flex;gap:14px;justify-content:center;padding-top:6px">
-        <button type="button" onclick="ouvrirResetPin()" id="er-oubli" style="background:none;border:none;padding:8px 0;color:rgba(255,255,255,.6);font-size:11.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline">PIN oublié ?</button>
-        <button type="button" onclick="oublierEntree()" id="er-chg" style="background:none;border:none;padding:8px 0;color:rgba(255,255,255,.6);font-size:11.5px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline"></button>
+        <button type="button" onclick="ouvrirResetPin()" id="er-oubli" style="background:none;border:none;padding:11px 10px;min-height:44px;display:inline-flex;align-items:center;color:rgba(255,255,255,.72);font-size:12px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline">PIN oublié ?</button>
+        <button type="button" onclick="oublierEntree()" id="er-chg" style="background:none;border:none;padding:11px 10px;min-height:44px;display:inline-flex;align-items:center;color:rgba(255,255,255,.72);font-size:12px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;text-decoration:underline"></button>
       </div>
     </div>
     <div class="login-tabs" id="login-tabs">
@@ -5245,7 +5255,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.75'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.76'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7049,6 +7059,54 @@ async function _prouverPatronEnFond(tel,pin){
     }catch(x){}
   }catch(e){}
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ LA PORTE S'OUVRE DÈS QUE LE PIN TOMBE JUSTE — SANS TOUCHER « OUVRIR »
+//
+//  « je veux quelque chose qui ne stresse pas les utilisateurs »
+//
+//  Il fait ce geste vingt fois par jour, souvent d'une seule main, souvent
+//  avec un client devant lui. Le dernier chiffre tapé, il devait encore
+//  viser un bouton que le clavier du téléphone recouvre à moitié. Ce
+//  bouton-là ne lui apprenait rien : l'appareil SAIT déjà, à la frappe
+//  près, si le PIN est le bon.
+//
+//  ⚠️⚠️ ET ON NE VALIDE JAMAIS UN PIN FAUX TOUT SEUL. C'est la règle qui
+//  rend ce raccourci sans danger : chaque frappe intermédiaire (« 1 »,
+//  « 12 », « 123 »…) serait sinon un essai raté, et `attentePinRestante()`
+//  — le verrou anti-force brute — se refermerait sur SON propre PIN au
+//  bout de quelques ouvertures. On compare donc ICI, en local, contre ce
+//  que le téléphone garde déjà, et on n'appelle `validerEntreeRapide` que
+//  si ça tombe juste. Un PIN faux ne déclenche rien : le bouton reste, et
+//  c'est lui qui consomme l'essai, comme avant.
+//
+//  ⚠️ LE VENDEUR AUSSI, mais seulement s'il a un code personnel posé sur
+//  cet appareil (`aCodePerso`) : son code est haché, la vérification est
+//  locale et exacte. Sans code personnel, rien ne change pour lui.
+// ══════════════════════════════════════════════════════════════════
+var _pinEnCours=false;
+async function _pinTape(){
+  try{
+    if(_pinEnCours||!_demarre)return;
+    var ch=document.getElementById('er-pin'); if(!ch)return;
+    var v=String(ch.value||'').trim();
+    if(v.length<4)return;
+    var bon=false;
+    if(entreeRapideVendeur()){
+      var e=lireEntree();
+      if(!e||!e.nom||!aCodePerso(e.nom))return;      // pas de code local : on ne devine pas
+      bon=await _codePersoJuste(e.nom,v);
+      // ⚠️ Il a pu continuer à taper pendant le hachage : on ne valide que
+      // ce qui est ENCORE dans le champ, sinon on ouvrirait sur un ancien
+      // état et on lui prendrait les chiffres qu'il venait d'ajouter.
+      if(String((document.getElementById('er-pin')||{}).value||'').trim()!==v)return;
+    }else{
+      bon=!!(DB&&DB.cfg&&DB.cfg.pin&&String(DB.cfg.pin)===v);
+    }
+    if(!bon)return;
+    _pinEnCours=true;
+    try{await validerEntreeRapide();}finally{_pinEnCours=false;}
+  }catch(e){_pinEnCours=false;}
+}
 async function validerEntreeRapide(){
   var fr=lang==='fr';
   // ⚠️ MÊME GARDE QUE LE BLOC DE TÊTE, MAIS ICI ELLE EST IMPRENABLE : quel
@@ -8157,6 +8215,11 @@ window.addEventListener('online',function(){setTimeout(function(){
 function appliquerLang(){
   if(!DB)return;
   lang=DB.cfg.lang||'fr';
+  // ⚠️ `<html lang="fr">` restait « fr » même en anglais : une synthèse
+  // vocale lisait alors l'anglais avec la prononciation française, et les
+  // correcteurs proposaient les mauvais mots. Une ligne, et la page dit
+  // enfin dans quelle langue elle est écrite.
+  try{document.documentElement.lang=(lang==='en')?'en':'fr';}catch(e){}
   var s=DB.cfg.s||'F';
   // Login
   document.getElementById('login-sub').textContent=t('tagline');
