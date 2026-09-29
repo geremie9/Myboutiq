@@ -147,14 +147,26 @@
 (function(){
   try{
     var h=document.documentElement;
-    var db=null;try{db=localStorage.getItem('myboutiq_v6');}catch(x){}
+    // ⚠️⚠️ « VIDE » ET « JE NE SAIS PAS » NE SONT PAS LA MÊME CHOSE.
+    // Reproduit au banc : quand localStorage LÈVE une erreur — stockage
+    // cloisonné, données de site bloquées, couche pas encore prête après un
+    // redémarrage — la lecture rendait `null`, exactement comme un téléphone
+    // neuf. L'app affichait alors la page de pub à un commerçant qui a une
+    // boutique. C'est ÇA, « parfois ça me renvoie sur le site » : ce n'est
+    // pas l'effacement de la 22.63, c'est un stockage qui se tait un instant.
+    var db=null,muet=false;
+    try{db=localStorage.getItem('myboutiq_v6');}catch(x){muet=true;}
     // ⚠️ « Pourquoi souvent quand j'ouvre mon app, ça me renvoie sur le
     // site ? » Parce que cette ligne ne lisait QUE le stockage — la seule
     // chose qu'Android efface quand le téléphone manque de place. Le
     // commerçant retombait sur la page de pub, comme un inconnu.
     // Le cookie de fonctionnement, lui, survit à cet effacement.
-    var deja=false;try{deja=String(document.cookie||'').indexOf('mb_deja=1')>=0;}catch(x){}
-    h.className+=((db||deja)?' porte-login':' porte-vitrine');
+    var deja=false;try{deja=String(document.cookie||'').indexOf('mb_deja=1')>=0;}catch(x){muet=true;}
+    // Dans le doute, la PORTE. Un habitué qui voit la porte tape son PIN ;
+    // un nouveau qui voit la porte touche « Nouvelle inscription ». Personne
+    // ne croit avoir tout perdu.
+    h.className+=((db||deja||muet)?' porte-login':' porte-vitrine');
+    if(muet)try{h.setAttribute('data-muet','1');}catch(x){}
     // La clé d'empreinte est déjà lue plus haut : si elle existe, le signe
     // n'a aucune raison d'attendre le JavaScript pour se montrer.
     var bio=null;try{bio=JSON.parse(localStorage.getItem('myboutiq_bio')||'null');}catch(x){}
@@ -4966,8 +4978,11 @@ const CE={'Boissons':'🥤','Alimentation':'🍖','Ménage':'🧹','Autre':'📦
 //  seulement celle du haut, c'est corriger du code mort — le banc l'a
 //  attrapé. Les deux passent maintenant par cette fonction-ci.
 var _dbRecuperee=0;
+// ⚠️ VRAI quand le téléphone n'a pas RÉPONDU — à ne jamais confondre avec
+// un téléphone qui répond « je n'ai rien ».
+var _stockageMuet=false,_habitueConnu=false;
 function _lireDBBrute(){
-  var d=null;try{d=localStorage.getItem('myboutiq_v6');}catch(e){return null;}
+  var d=null;try{d=localStorage.getItem('myboutiq_v6');}catch(e){_stockageMuet=true;return null;}
   if(!d)return null;
   try{return JSON.parse(d);}catch(e){}
   try{
@@ -5013,7 +5028,28 @@ function _marquerHabitue(){
   }catch(e){}
 }
 function _dejaVenu(){
-  try{return String(document.cookie||'').indexOf(_MARQUE_CONNU+'=1')>=0;}catch(e){return false;}
+  try{return String(document.cookie||'').indexOf(_MARQUE_CONNU+'=1')>=0;}
+  catch(e){_stockageMuet=true;return false;}
+}
+// Le téléphone n'a pas répondu : on ne conclut RIEN. On montre la porte, on
+// le dit, et on réessaie une fois — le stockage redevient souvent lisible
+// une seconde plus tard.
+function _direStockageMuet(){
+  var fr=(lang==='fr');
+  var el=document.getElementById('lg-efface'); if(!el)return;
+  el.innerHTML='<div style="display:flex;align-items:flex-start;gap:9px">'
+    +'<span style="font-size:20px;line-height:1.2">\u23f3</span>'
+    +'<div style="flex:1;min-width:0">'
+    +'<div style="font-size:13.5px;font-weight:800;color:#fff">'
+      +(fr?'Le t\u00e9l\u00e9phone n\'a pas r\u00e9pondu':'The phone did not answer')+'</div>'
+    +'<div style="font-size:11.5px;font-weight:600;color:rgba(255,255,255,.80);margin-top:3px;line-height:1.45">'
+      +(fr?'Ta boutique est probablement toujours l\u00e0 \u2014 le t\u00e9l\u00e9phone n\'a pas pu la lire \u00e0 cet instant.'
+          :'Your shop is most likely still there \u2014 the phone could not read it just now.')+'</div>'
+    +'<button onclick="location.reload()" style="margin-top:9px;background:var(--A);color:#2E1065;border:none;'
+      +'border-radius:10px;padding:10px 14px;font-size:12.5px;font-weight:900;cursor:pointer;'
+      +'font-family:Outfit,sans-serif;min-height:40px">\u21bb '+(fr?'R\u00e9essayer':'Try again')+'</button>'
+    +'</div></div>';
+  el.style.display='block';
 }
 function save(){
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
@@ -5024,7 +5060,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.71'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.72'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6164,7 +6200,10 @@ document.addEventListener('DOMContentLoaded',function(){
   // démarrage n'a de sens que la première fois : quand l'appareil sait déjà
   // qui entre, on va droit au PIN, sans une seconde d'attente.
   var _connu=false;
-  try{_connu=!!localStorage.getItem('myboutiq_entree')||!!localStorage.getItem('myboutiq_v6');}catch(e){}
+  // ⚠️ Une lecture qui ÉCHOUE ne veut pas dire « inconnu ». Sans ça, le
+  // démarrage attendait 1 150 ms de plus pour rien, la vitrine affichée.
+  try{_connu=!!localStorage.getItem('myboutiq_entree')||!!localStorage.getItem('myboutiq_v6');}
+  catch(e){_connu=true;_stockageMuet=true;}
   try{initPaysLogin();}catch(e){}
   // Le code d'invitation doit être lu AVANT le démarrage, il décide de l'écran.
   try{
@@ -6282,7 +6321,36 @@ function _demarrerApp(){
       setModeEntree('old');
       goScreen('s-login');
       ouvrirInvitationVendeur();
-    } else if(_dejaVenu()){
+    } else if((function(){
+      // ⚠️ LE COOKIE SE LIT AVANT LE TEST, pas après : sinon une lecture qui
+      // ÉCHOUE ne se signalait jamais, et la garde ne servait à rien dans le
+      // cas où seul le cookie est muet. On distingue bien « il répond que
+      // non » (vitrine) de « il ne répond pas » (porte).
+      _habitueConnu=_dejaVenu(); return _stockageMuet;
+    })()){
+      // ⚠️ LE TÉLÉPHONE N'A PAS RÉPONDU. On ne conclut rien : ni « il est
+      // neuf », ni « il a tout perdu ». La porte, un mot honnête, et une
+      // seconde tentative automatique — le stockage redevient souvent
+      // lisible une seconde plus tard.
+      setModeEntree('old');
+      goScreen('s-login');
+      try{_direStockageMuet();}catch(e){}
+      // ⚠️⚠️ UNE SEULE SECONDE CHANCE, JAMAIS DEUX. Un rechargement
+      // automatique qui se répète parce que le stockage reste muet, c'est
+      // une boucle infinie sur le téléphone de quelqu'un qui voulait juste
+      // vendre. Le témoin vit dans `window.name` : il survit au
+      // rechargement et ne demande AUCUNE permission de stockage — ce qui
+      // est justement le problème qu'on est en train de traiter.
+      try{
+        if(String(window.name||'').indexOf('mbRetry')<0){
+          window.name=(window.name||'')+'mbRetry';
+          setTimeout(function(){
+            try{ localStorage.getItem('myboutiq_v6'); }catch(e){}
+            location.reload();
+          },1400);
+        }
+      }catch(e){}
+    } else if(_habitueConnu){
       // ⚠️ IL A DÉJÀ EU SA BOUTIQUE SUR CE TÉLÉPHONE, et elle n'y est plus.
       // Lui montrer la page de pub, c'est lui dire qu'il a tout perdu. Ce
       // n'est pas vrai : le serveur la garde. On l'amène à la porte et on
