@@ -212,6 +212,21 @@
    ══════════════════════════════════════════════════════════════════ */
 (function(){
   var fr=!/^en/i.test(navigator.language||(navigator.languages||[])[0]||'');
+  // ⚠️⚠️ RÉGRESSION QUE J'AI MOI-MÊME INTRODUITE EN 22.77, ATTRAPÉE PAR LE
+  // SECOND PASSAGE DU BANC : depuis que le clavier vit DANS la page, c'est
+  // sur SES touches qu'il tape — et ce bloc-ci ne surveillait que l'ancien
+  // bouton « Ouvrir », caché quand le clavier est là. Ses chiffres tombaient
+  // donc dans le vide tant que le mégaoctet de script n'était pas lu, sans
+  // le moindre signe. Un clavier mort est pire qu'un bouton mort : on tape
+  // six fois avant de comprendre.
+  // Écrire un chiffre dans un champ ne demande aucune application : ce bloc
+  // le fait lui-même, et l'app retrouve le PIN déjà tapé en arrivant.
+  function touche(k){
+    var ch=document.getElementById('er-pin'); if(!ch)return;
+    if(k==='eff')ch.value=String(ch.value||'').slice(0,-1);
+    else if(k==='ok')return retenir();
+    else { if(String(ch.value||'').length>=6)return; ch.value=String(ch.value||'')+k; }
+  }
   function retenir(){
     // ⚠️⚠️ « LA FONCTION EXISTE » NE VEUT PAS DIRE « L'APP EST PRÊTE ».
     // Reproduit au banc, processeur ÷20 : `validerEntreeRapide` est définie
@@ -224,8 +239,13 @@
     if(typeof window.validerEntreeRapide==='function'&&window._demarre)return;
     window._entreeVoulue=true;
     try{
+      // ⚠️ LE MOT NE PEUT PLUS VIVRE SUR « Ouvrir » SEUL : ce bouton est caché
+      // quand le clavier de l'app est là. La ligne sous « Bonjour 👋 », elle,
+      // se voit dans les deux cas — et `majEntreeRapide` la réécrit ensuite.
       var b=document.getElementById('er-btn');
       if(b)b.textContent=fr?'J\'ouvre…':'Opening…';
+      var so=document.getElementById('er-sous');
+      if(so)so.textContent=fr?'J\'ouvre ta boutique…':'Opening your shop…';
       document.documentElement.classList.add('porte-occupee');
     }catch(x){}
   }
@@ -233,6 +253,12 @@
     document.addEventListener('click',function(ev){
       var t=ev.target,n=0;
       while(t&&t.nodeType===1&&n++<6){
+        // Le clavier de l'app : tant que `_clavierTape` n'existe pas, c'est
+        // nous qui écrivons le chiffre. Ensuite on ne touche plus à rien.
+        if(t.className&&String(t.className).indexOf('kp')>=0&&t.getAttribute&&t.getAttribute('data-k')!=null){
+          if(typeof window._clavierTape!=='function'){ev.preventDefault();touche(t.getAttribute('data-k'));}
+          return;
+        }
         if(t.id==='er-btn'||(t.querySelector&&t.querySelector('#er-btn'))){retenir();return;}
         t=t.parentNode;
       }
@@ -472,6 +498,8 @@ html.clavier-app .entry-toggle{margin-bottom:8px}
    répondre, pour qu'un deuxième appui ne compte pas pour rien. */
 html.porte-occupee #er-btn{opacity:.75}
 html.porte-occupee #er-pin-wrap .btn-login{pointer-events:none}
+/* Le ✓ aussi : il a entendu, il n'a pas encore pu agir. */
+html.porte-occupee .kp-ok{opacity:.6;pointer-events:none}
 html.porte-rapide #login-tabs,html.porte-rapide #fp,html.porte-rapide #conn-connu,
 html.porte-rapide #er-retour-b{display:none}
 html.porte-rapide #entree-rapide,html.porte-rapide #er-pin-wrap{display:block}
@@ -5342,7 +5370,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.77'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.78'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6255,9 +6283,95 @@ function _signalerBlocagePin(err){
   }
   return true;
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ LE TÉLÉPHONE NE COMPTAIT AUCUN ESSAI.
+//
+//  Le verrou anti-force brute vivait UNIQUEMENT sur le serveur
+//  (`_pin_attente`) : il ne protège donc que les ouvertures qui passent
+//  par le réseau. Or la boutique s'ouvre aussi HORS LIGNE — c'est même
+//  le cas normal au Cameroun le soir — et là, `validerEntreeRapide`
+//  comparait le PIN à celui gardé sur l'appareil, refusait, et
+//  n'enregistrait rien.
+//
+//  MESURÉ AU BANC : 300 PIN faux d'affilée, hors ligne, acceptés en
+//  10 ms, ZÉRO blocage, et le bon PIN ouvre ensuite comme si de rien
+//  n'était. À ce rythme, les 10 000 combinaisons d'un code à 4 chiffres
+//  tombent en moins d'une seconde, et le million d'un code à 6 chiffres
+//  en une minute. Celui qui ramasse le téléphone n'a pas besoin de
+//  connaître le PIN : il a juste besoin d'un script.
+//
+//  Le compteur vit donc AUSSI sur l'appareil, et dans le STOCKAGE, pas
+//  en mémoire : un simple rechargement de page remettrait sinon tout à
+//  zéro. L'effacer, c'est effacer la boutique avec — donc celui qui
+//  cherche les données n'a pas intérêt à le faire.
+//
+//  ⚠️ ET ON NE FAIT PAS CONFIANCE À L'HORLOGE : on garde le temps QUI
+//  RESTE et la dernière heure vue. Reculer la pendule ne fait donc
+//  avancer aucune attente (`ecoule` ne peut pas être négatif).
+//
+//  Même échelle que le serveur, pour qu'un commerçant ne découvre pas
+//  deux règles différentes : 5 essais → 1 min, 10 → 5 min, 15 → 15 min,
+//  20 → 1 h. Et la série s'oublie après 15 minutes sans erreur, comme
+//  côté serveur — celui qui se trompe deux fois lundi et deux fois
+//  vendredi n'est pas un voleur.
+// ══════════════════════════════════════════════════════════════════
+var _CLE_ESSAIS='mb_essais';
+function _lireEssais(){
+  try{var o=JSON.parse(localStorage.getItem(_CLE_ESSAIS)||'null');
+      return (o&&typeof o==='object')?o:{n:0,reste:0,vu:Date.now(),fen:0,j:0,fenJ:0};}
+  catch(e){return {n:0,reste:0,vu:Date.now(),fen:0,j:0,fenJ:0};}
+}
+function _ecrireEssais(o){try{localStorage.setItem(_CLE_ESSAIS,JSON.stringify(o));}catch(e){}}
+// Combien de secondes il reste à attendre, ici, sur cet appareil.
+function _attenteLocale(){
+  var o=_lireEssais(),now=Date.now(),vu=Number(o.vu)||now;
+  var ecoule=Math.max(0,(now-vu)/1000);                    // jamais négatif
+  o.reste=Math.max(0,(Number(o.reste)||0)-ecoule);
+  // La série s'oublie après un quart d'heure sans nouvelle erreur.
+  if(o.reste<=0&&(Number(o.fen)||0)&&(now-o.fen)>15*60*1000){o.n=0;o.fen=0;}
+  // ⚠️⚠️ SANS CE PLAFOND DU JOUR, L'ÉCHELLE SE REMETTAIT À ZÉRO TOUTE SEULE.
+  // Mesuré en la déroulant : une heure d'attente dure plus longtemps que le
+  // quart d'heure qui oublie la série — donc après chaque grosse attente, le
+  // compteur repartait de 1 et rendait QUATRE essais gratuits. Cadence
+  // réelle : ~15 essais par heure, pas un. Le serveur, lui, a un plafond de
+  // 120 échecs par 24 h (`pin_essais_code`) ; l'appareil a maintenant le
+  // même, donc la même règle partout et une cadence qui tombe à ~4 par heure.
+  if((Number(o.fenJ)||0)&&(now-o.fenJ)<24*3600*1000&&(Number(o.j)||0)>=120)
+    o.reste=Math.max(o.reste,900);
+  // ⚠️⚠️ CE `Math.max` EST TOUT LE TEST DE L'HORLOGE, ET JE L'AVAIS RATÉ.
+  // Reproduit au banc : pendant que la pendule était reculée d'une semaine,
+  // l'attente tenait bon (60 s → 60 s) ; mais j'écrivais `vu = now`, donc
+  // la date d'avant. À la remise à l'heure, « une semaine » venait de
+  // s'écouler d'un coup et l'attente tombait à ZÉRO. Reculer la pendule
+  // puis la remettre suffisait à tout débloquer.
+  // On ne garde donc que l'heure la PLUS AVANCÉE jamais vue.
+  o.vu=Math.max(vu,now);_ecrireEssais(o);
+  return Math.ceil(o.reste);
+}
+function _noterEchecLocal(){
+  var o=_lireEssais(),now=Date.now();
+  if((Number(o.fen)||0)&&(now-o.fen)>15*60*1000)o.n=0;    // nouvelle série
+  o.n=(Number(o.n)||0)+1; o.fen=now; o.vu=Math.max(Number(o.vu)||now,now);
+  // Le compte de la journée, celui qui ne se remet pas à zéro entre deux séries.
+  if(!(Number(o.fenJ)||0)||(now-o.fenJ)>24*3600*1000){o.j=1;o.fenJ=now;}
+  else o.j=(Number(o.j)||0)+1;
+  var sec=0;
+  if(o.n>=20)sec=3600; else if(o.n>=15)sec=900; else if(o.n>=10)sec=300; else if(o.n>=5)sec=60;
+  if(sec)o.reste=sec;
+  _ecrireEssais(o);
+  return sec;
+}
+// ⚠️ ON EFFACE AUSSI LE COMPTE DU JOUR, et c'est un choix — le serveur, lui,
+// le garde. Raison : celui qui ENTRE a prouvé qu'il connaît le code. Le
+// plafond du jour existe contre quelqu'un qui ne réussit JAMAIS ; le laisser
+// courir après une entrée réussie ne gênerait que le commerçant, qui se
+// retrouverait bloqué un quart d'heure pour une faute de frappe le soir.
+function _oublierEchecsLocal(){_ecrireEssais({n:0,reste:0,vu:Date.now(),fen:0,j:0,fenJ:0});}
 function attentePinRestante(){
   var r=Math.ceil((_pinBloqueJusqu-Date.now())/1000);
-  return r>0?r:0;
+  if(r<0)r=0;
+  var l=0;try{l=_attenteLocale();}catch(e){}
+  return Math.max(r,l);
 }
 // De quoi savoir si une fusion a réellement apporté quelque chose.
 function _tailleDB(d){
@@ -7283,9 +7397,17 @@ async function validerEntreeRapide(){
   // au lieu de refuser un PIN juste.
   if(!_demarre){
     window._entreeVoulue=true;
+    // ⚠️ LE MOT DOIT SE VOIR DANS LES DEUX CLAVIERS. Reproduit au banc :
+    // quand le gros script est lu mais que la boutique n'est pas encore
+    // chargée, c'est CE chemin-ci qui répond — et il n'écrivait que sur
+    // « Ouvrir », caché quand le clavier de l'app est là. Le commerçant
+    // tapait le ✓ et ne voyait rien changer. La ligne sous « Bonjour 👋 »
+    // se voit toujours, elle.
     try{document.documentElement.classList.add('porte-occupee');
         var _b=document.getElementById('er-btn');
-        if(_b)_b.textContent=fr?'J\'ouvre…':'Opening…';}catch(x){}
+        if(_b)_b.textContent=fr?'J\'ouvre…':'Opening…';
+        var _so=document.getElementById('er-sous');
+        if(_so)_so.textContent=fr?'J\'ouvre ta boutique…':'Opening your shop…';}catch(x){}
     return;
   }
   if(_refusePendantBlocage())return;
@@ -7324,7 +7446,12 @@ async function validerEntreeRapide(){
     if(DB&&DB.cfg&&String(DB.cfg.pin||'')===pin){
       _shopPin=pin;_finishLoginP();
       showToast('📴 '+(fr?'Hors ligne — seule '+(DB.cfg.nom||'ta boutique')+' est disponible':'Offline — only this shop is available'));
-    }else showToast('📴 '+(fr?'Pas de réseau, et ce PIN ne correspond pas à la boutique gardée ici':'No network, and this PIN does not match the shop stored here'));
+    }else{
+      // Hors ligne, c'est LE chemin du voleur : 300 essais en 10 ms avant
+      // cette ligne. Chaque refus compte maintenant sur l'appareil.
+      try{_noterEchecLocal();}catch(x){}
+      showToast('📴 '+(fr?'Pas de réseau, et ce PIN ne correspond pas à la boutique gardée ici':'No network, and this PIN does not match the shop stored here'));
+    }
     return;
   }
   // ══ ENTRÉE INSTANTANÉE DU PATRON ══
@@ -7356,7 +7483,8 @@ async function validerEntreeRapide(){
       if(!r2.error){res=r2;email='owner-'+alts[i]+'@myboutiq.app';}
     }
   }
-  if(res.error){showToast('❌ '+(fr?'PIN incorrect':'Wrong PIN'));return;}
+  if(res.error){try{_noterEchecLocal();}catch(x){}
+    showToast('❌ '+(fr?'PIN incorrect':'Wrong PIN'));return;}
   _pinPatronValide=pin;   // accepte par le serveur : il fera foi hors reseau
   try{memoriserEntree({role:'patron',tel:e.tel,email:email});}catch(x){}
   var mes=await listerBoutiquesDuCompte();
@@ -8775,6 +8903,13 @@ function _cvErr(msg){
 }
 async function validerCodeVendeur(){
   var fr=(lang==='fr');
+  // On ne pose pas de question à quelqu'un qu'on est en train de faire
+  // attendre : le verrou vaut ici comme à la porte.
+  if(_cvMode!=='poser'){
+    var _a0=0;try{_a0=attentePinRestante();}catch(e){}
+    if(_a0>0)return _cvErr(fr?('Trop d\'essais. Réessaie dans '+(_a0<90?(_a0+' secondes'):(Math.ceil(_a0/60)+' minutes'))+'.')
+                             :('Too many tries. Retry in '+(_a0<90?(_a0+' s'):(Math.ceil(_a0/60)+' min'))+'.'));
+  }
   var a=(document.getElementById('cv-1').value||'').trim();
   if(!/^\d{4,6}$/.test(a))return _cvErr(fr?'Quatre chiffres au moins.':'At least four digits.');
   if(_cvMode==='poser'){
@@ -8793,6 +8928,10 @@ async function validerCodeVendeur(){
   var juste=await _codePersoJuste(_cvNom,a);
   if(!juste){
     _noterTentative(_cvNom);
+    try{_noterEchecLocal();}catch(e){}
+    var _att=0;try{_att=attentePinRestante();}catch(e){}
+    if(_att>0)return _cvErr(fr?('Trop d\'essais. Réessaie dans '+(_att<90?(_att+' secondes'):(Math.ceil(_att/60)+' minutes'))+'.')
+                              :('Too many tries. Retry in '+(_att<90?(_att+' s'):(Math.ceil(_att/60)+' min'))+'.'));
     return _cvErr(fr?'Ce n\'est pas ton code.':'Wrong code.');
   }
   var s2=_cvSuite;_cvFermer();if(s2)s2(true);
@@ -8847,6 +8986,8 @@ function registerVendeurEquipe(nm){
   return 'ok';
 }
 function _finishLoginP(){
+  // Il est entré : la série d'erreurs n'a plus de sens.
+  try{_oublierEchecsLocal();}catch(e){}
   role='patron';
   // ⚠️ Il manquait le repli sur _pinPatronValide que j'avais ajouté en 19.81
   // à l'AUTRE chemin de connexion (_terminerLoginPatron). Ici _shopPin
@@ -9331,6 +9472,8 @@ async function loginV(){
   _finishLoginV(nm,code);
 }
 function _finishLoginV(nm,code){
+  // Entré : la série d'erreurs n'a plus de sens (même règle que le patron).
+  try{_oublierEchecsLocal();}catch(e){}
   _pinRefuse=false;_pinRefuseJusqua=0;   // il vient de prouver son PIN : on repart propre
   // On demande AVANT d'ouvrir la boutique : un vendeur écarté par le patron,
   // ou un vendeur de trop, ne doit pas entrer.
