@@ -641,7 +641,7 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 .pcard.hasv{border-color:rgba(41,121,255,.22);background:#F8F9FF}
 .pcard.neg{border-color:rgba(255,109,0,.25);background:#FFF8F0}
 .pcard.out-ok{border-color:rgba(255,61,0,.2)}
-.pemoji{font-size:44px;line-height:1;margin-bottom:8px;display:block;filter:none;opacity:.95;transition:transform .15s}
+.pemoji{font-size:44px;line-height:1;width:62px;height:62px;margin:2px auto 9px;display:flex;align-items:center;justify-content:center;filter:none;opacity:.95;transition:transform .15s}
 /* Pastille média : cadre neutre qui accueille la photo ou l'emoji (aspect "icône d'app") */
 .pmedia{width:62px;height:62px;margin:2px auto 9px;border-radius:14px;background:var(--BG);
   display:flex;align-items:center;justify-content:center;font-size:33px;line-height:1;position:relative}
@@ -657,7 +657,28 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    dure deux secondes à chaque ouverture de la caisse, et sur une photo qui
    ne vient jamais, ça dure toujours. La photo se pose par-dessus et le fond
    ne se voit plus jamais. */
-.pcard.has-photo{padding:0;aspect-ratio:1/1.18;overflow:hidden;display:flex;align-items:flex-end;background:#2B2733}
+/* ⚠️⚠️ « CERTAINS ARTICLES SONT PLUS LONGUES » — ET C'ÉTAIT ÉCRIT ICI.
+   MESURÉ AU BANC, 18 articles, quatre largeurs de téléphone :
+     360 px — carte à photo 125 px, carte sans photo 161 px (36 px d'écart)
+     390 px — 137 / 161        412 px — 145 / 161        320 px — 173 / 155
+   `aspect-ratio` donnait à la carte à photo une hauteur À ELLE, que la
+   ligne de la grille ne pouvait plus égaliser : dans une même rangée, une
+   carte s'arrêtait 36 px plus haut que sa voisine. Et comme son nom est
+   collé EN BAS (voile) alors que celui d'une carte sans photo est au
+   MILIEU (sous la pastille), deux articles voisins écrivaient leur nom à
+   deux hauteurs différentes. L'œil qui balaie la rangée lit alors deux
+   lignes de texte décalées — c'est ce qu'il voit comme « des noms en
+   double ». Mesuré aussi : AUCUN recouvrement réel de tuiles aux quatre
+   largeurs, et aucune tuile ne porte deux noms. Ce n'est pas un doublon,
+   c'est un défaut d'alignement.
+   LA CARTE À PHOTO REPREND DONC LA GÉOMÉTRIE COMMUNE : même marge
+   intérieure, même emplacement réservé pour l'image (`::before`, invisible
+   — la photo, elle, reste en `position:absolute` et couvre toute la
+   carte), même bloc de texte. Plus aucune hauteur propre : la ligne de la
+   grille les met toutes à la même taille, et les noms tombent au même
+   endroit, photo ou pas. */
+.pcard.has-photo{overflow:hidden;background:#2B2733}
+.pcard.has-photo::before{content:"";display:block;width:62px;height:62px;margin:2px auto 9px}
 .pcard.has-photo .pcard-img{position:absolute;inset:0;width:100%;height:100%;border-radius:14.5px;margin:0;box-shadow:none;transition:transform .15s}
 .pcard.has-photo:active .pcard-img{transform:scale(1.06)}
 /* ⚠️⚠️ DÉFAUT VU SUR SA CAPTURE, ET REPRODUIT AU BANC : quand la photo ne
@@ -669,9 +690,19 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    ce qui suppose une photo est rangé SOUS `.has-photo`. Le voile de la
    carte ne l'était pas. Il l'est maintenant, et sans photo il redevient un
    nom noir et un prix bleu — exactement la carte sans photo d'à côté. */
-.pcard-overlay{position:relative;z-index:1;width:100%;padding:8px 7px 8px;text-align:center}
-.pcard.has-photo .pcard-overlay{background:linear-gradient(to top,rgba(0,0,0,.75) 8%,rgba(0,0,0,.4) 55%,transparent 100%);border-radius:0 0 14.5px 14.5px;text-align:left}
-.pnm-ov{font-size:10px;font-weight:800;color:var(--T);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard-overlay{position:relative;z-index:1;width:100%;text-align:center}
+/* Le voile déborde des marges de la carte pour toucher ses bords — et les
+   reprend en marge intérieure, donc il n'ajoute PAS UN PIXEL de hauteur :
+   une carte à photo et une carte sans photo mesurent exactement pareil.
+   Et il est CENTRÉ comme l'autre : une seule grammaire de carte. */
+.pcard.has-photo .pcard-overlay{margin:-10px -8px -13px;padding:10px 7px 13px;background:linear-gradient(to top,rgba(0,0,0,.75) 8%,rgba(0,0,0,.4) 55%,transparent 100%);border-radius:0 0 14.5px 14.5px;text-align:center}
+/* ⚠️ `white-space:nowrap` coupait « Adaptateur de prise » en « Adaptateur
+   de pr… » sur la carte à photo pendant que la carte d'à côté, sans photo,
+   l'écrivait EN ENTIER sur deux lignes. Deux traitements du même nom dans
+   la même grille. Deux lignes pour tout le monde, et une hauteur réservée
+   pour les deux : un nom court et un nom long posent leur prix à la même
+   hauteur, donc les prix s'alignent d'une carte à l'autre. */
+.pnm-ov{font-size:10px;font-weight:800;color:var(--T);line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:2.4em}
 .ppr-ov{font-size:12px;font-weight:900;color:var(--B);margin-top:2px}
 .pcard.has-photo .pnm-ov{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 .pcard.has-photo .ppr-ov{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
@@ -806,6 +837,19 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 .stkvchip.on{border-color:var(--B);background:#EEF4FF}
 .sout{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:var(--R);color:#fff;border-radius:7px;padding:2px 5px;font-size:8px;font-weight:800;white-space:nowrap}
 .sneg{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:var(--O);color:#fff;border-radius:7px;padding:2px 5px;font-size:8px;font-weight:800;white-space:nowrap}
+/* ⚠️⚠️ « ÉPUISÉ » N'EXISTAIT PAS SUR LES ARTICLES À PHOTO. Ces quatre
+   pastilles vivent à `bottom:-7px`, donc DEHORS — et `.pcard.has-photo`
+   porte `overflow:hidden` pour arrondir la photo. Mesuré au banc : sur une
+   carte à photo, la pastille est bien dans le DOM et n'affiche pas un
+   pixel. Le vendeur tapait donc un article épuisé sans aucun avertissement,
+   devant le client, et n'apprenait la rupture qu'au refus. C'est exactement
+   ce qui bloque une vente.
+   Sur une carte à photo elles passent donc DEDANS, en haut au centre —
+   la seule place libre : ✎ tient le coin gauche, le compteur du panier le
+   coin droit. */
+.pcard.has-photo .slow,.pcard.has-photo .sinc,.pcard.has-photo .sout,.pcard.has-photo .sneg{
+  bottom:auto;top:7px;left:50%;transform:translateX(-50%);
+  box-shadow:0 1px 4px rgba(0,0,0,.35);z-index:2}
 
 /* ── FLOAT CART ── */
 .fcart{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);width:calc(100% - 30px);max-width:400px;z-index:60;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
@@ -1115,6 +1159,7 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    les deux grilles. */
 .vt-badge{position:absolute;top:6px;right:6px;min-width:26px;height:26px;border-radius:13px;background:var(--R);color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 2px 7px rgba(0,0,0,.3);z-index:3}
 .vt-moins{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:13px;background:#fff;border:1.5px solid var(--BD);color:var(--R);font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.22);z-index:3}
+.vt-plus{position:absolute;top:6px;left:36px;width:26px;height:26px;border-radius:13px;background:#fff;border:1.5px solid var(--BD);color:var(--G);font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.22);z-index:3}
 /* ── ⚠️ « TU ENTRES MÊME POUR ANNULER UN PRODUIT, C'EST COMPLIQUÉ. » ──
    MESURÉ : le « − » d'une variante fait 24×24 px à l'écran. La norme
    tactile est 44×44 — il fait la MOITIÉ de ce qu'un doigt exige, et le
@@ -1129,6 +1174,7 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 /* Le − doit aussi se VOIR : c'est le geste de correction, celui qu'on
    cherche quand on s'est trompé et qu'on est pressé. */
 .vt-moins{border-color:var(--R);border-width:2px}
+.vt-plus{border-color:var(--G);border-width:2px}
 .vt-moins:active{transform:scale(.9);background:var(--R);color:#fff}
 
 /* ══ ☰ LISTE ══ Une variante par ligne, cible large. C'est la présentation
@@ -1151,6 +1197,7 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 .v-liste .vt-stk{font-size:10.5px}
 .v-liste .vt-badge{position:static;margin-left:auto;flex:none}
 .v-liste .vt-moins{position:static;flex:none}
+.v-liste .vt-plus{position:static;flex:none;margin-left:6px}
 
 /* ══ ⭕ CERCLE ══ Les variantes jaillissent autour de la carte touchée.
    ⚠️ Limite de PLACE, pas de goût : chaque satellite occupe ~80 px d'arc.
@@ -1731,7 +1778,7 @@ body{max-width:min(100%,1200px)}
    Ce qui change ne change que là où il y a la place. */
 .pnm,.pnm-ov{font-size:clamp(10px,0.80vw + 6px,13px)}
 .ppr,.ppr-ov{font-size:clamp(12px,1.00vw + 7.2px,16px)}
-.pmedia{width:clamp(62px,7.5vw + 26px,86px);height:clamp(62px,7.5vw + 26px,86px)}
+.pmedia,.pcard.has-photo::before,.pemoji{width:clamp(62px,7.5vw + 26px,86px);height:clamp(62px,7.5vw + 26px,86px)}
 .pemoji{font-size:clamp(44px,5.5vw + 17.6px,60px)}
 .pcard-img{width:clamp(52px,6.2vw + 22.2px,72px);height:clamp(52px,6.2vw + 22.2px,72px)}
 /* Les contenances d'une famille s'ouvrent dans la MÊME grille, au même
@@ -5103,7 +5150,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.73'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.74'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -9551,19 +9598,25 @@ function renderProd(lst){
     d.innerHTML=
       (((role==='patron'||hasPerm('produits'))&&!venteVerrouillee())?'<button class="pedit" onclick="quickEditPrix(event,'+p.id+')" title="'+(lang==='fr'?'Modifier prix':'Edit price')+'">✎</button>':'')+
       '<div class="qbdg '+(pq>0?'show':'')+'" id="qb-'+p.id+'" onclick="retirerUn(event,'+p.id+')">'+'<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">✕</span></div>'+
-      (p.img?
-        '<img class="pcard-img" src="'+p.img+'" loading="lazy" onerror="this.parentElement.classList.remove(\'has-photo\');this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pemoji\',textContent:\''+p.e+'\'}))">'+
-        '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+prixTxt+'</div>'+_chipGros(p)+(hasV?_badgeVariantes(p):'')+'</div>'
-        :
-        (DB.cfg&&DB.cfg.noEmoji
-          ?'<div class="pmedia pmono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)
-          :(function(){var _m=mediaArtInner(p,32);return '<div class="pmedia" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg;})()
-        )+'</div>'+
-        '<div class="pnm">'+p.nm+'</div>'+
-        '<div class="ppr">'+prixTxt+'</div>'+
-        _chipGros(p)+
-        (hasV?_badgeVariantes(p):'')
+      // ⚠️⚠️ UNE SEULE CARTE, DEUX VIGNETTES. Avant, la carte à photo et la
+      // carte sans photo étaient DEUX MISES EN PAGE DIFFÉRENTES : l'une
+      // écrivait son nom en bas sur un voile, sur UNE ligne coupée par des
+      // points de suspension ; l'autre au milieu, sur deux lignes entières.
+      // Résultat dans une même rangée : deux noms à deux hauteurs, deux
+      // longueurs, deux alignements. L'œil ne trouvait plus de ligne de
+      // lecture, et c'est ce qu'il voyait comme « des noms en double ».
+      // Désormais les deux branches ne diffèrent QUE par la vignette —
+      // la photo, ou la pastille. Tout ce qui se LIT vient ensuite, et
+      // c'est exactement le même bloc, au même endroit, à la même taille.
+      (p.img
+        ?'<img class="pcard-img" src="'+p.img+'" loading="lazy" onerror="this.parentElement.classList.remove(\'has-photo\');this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pemoji\',textContent:\''+p.e+'\'}))">'
+        :(DB.cfg&&DB.cfg.noEmoji
+          ?'<div class="pmedia pmono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</div>'
+          :(function(){var _m=mediaArtInner(p,32);return '<div class="pmedia" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</div>';})()
+        )
       )+
+      '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+prixTxt+'</div>'
+        +_chipGros(p)+(hasV?_badgeVariantes(p):'')+'</div>'+
       (inc?'<div class="sinc">✏️ '+(lang==='fr'?'À compléter':'To complete')+'</div>':'')+
       (isLow&&!inc?'<div class="slow">⚠️ '+(lang==='fr'?'Bas':'Low')+'</div>':'')+
       (isOut&&!isNeg?'<div class="sout">⛔ '+(lang==='fr'?'Épuisé':'Out')+'</div>':'')+
@@ -12168,6 +12221,9 @@ function _brancherVar(d,p,v){
     if(ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-moins')){
       chgVQ(v.id,p.id,-1,!!p.rt);return;
     }
+    if(ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-plus')){
+      chgVQ(v.id,p.id,1,!!p.rt);return;
+    }
     // ⭐ Toucher le repère 📦 vend LE LOT, pas l'unité — exactement comme
     // dehors. Sans ce test, il ajouterait une bouteille au lieu du casier.
     // ⭐ Le repère effacé : il n'y a pas encore de carton pour cette forme,
@@ -12408,7 +12464,13 @@ function renderVarLst(p){
     // exactement comme une carte d'article. C'est ce qui rend les deux grilles
     // indiscernables — le reproche de fond.
     d.className='vtile'+(i.q>0?' hq':'')+(i.out?' out':'')+(v.img?' has-photo':'');
-    d.innerHTML=(i.q>0?('<span class="vt-badge">'+fmtQ(i.q)+'</span><span class="vt-moins" data-moins="1">−</span>'):'')
+    // ⚠️⚠️ SA CAPTURE DES HUILES : trois contenances, chacune avec un « 1 »
+    // rouge et un « − », et AUCUN « + » nulle part. La tuile entière EST le
+    // « + » — mais rien ne le dit, et quand on vient d'en retirer une, le
+    // seul bouton visible ne sait que retirer. Le vendeur hésite devant son
+    // client. Le « + » se met donc à côté du « − » : la paire se lit d'un
+    // coup, et la tuile continue d'ajouter comme avant.
+    d.innerHTML=(i.q>0?('<span class="vt-badge">'+fmtQ(i.q)+'</span><span class="vt-moins" data-moins="1">−</span><span class="vt-plus" data-plus="1">+</span>'):'')
       // ⚠️ Toutes les variantes sans photo affichaient l'émoji du PARENT :
       // six « Savon » donnaient six vignettes identiques, impossible de les
       // distinguer d'un coup d'œil. vignetteArt donne à chacune la sienne —
@@ -12640,7 +12702,7 @@ function _chipGrosVariante(p,v,cercle){
   if(_etv.length>1)
     return '<span class="'+cls+'" data-etage="'+v.id+'" title="'
       +_etv.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-      +_htmlGros((lang==='fr'?'gros ▾':'bulk ▾'),0,false)+'</span>';
+      +'<i class="g-e">'+_emojiCont(_etv[0].mot)+'</i><span class="g-mot">'+_etv[0].mot+' ▾</span></span>';
   var mid='';
   if(cd.par>0&&cd.parTaille>1&&cd.parMot)
     {var _mv=_milieuDe(p,v);
@@ -12874,7 +12936,7 @@ function _chipGros(p){
     if(_et.length>1)
       return '<button class="pgros" onclick="choisirEtageGros(event,'+p.id+')" title="'
              +_et.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-             +_MARQUE_GROS+'<span>'+(lang==='fr'?'gros':'bulk')+' ▾</span></button>';
+             +_emojiCont(_et[0].mot)+'<span>'+_et[0].mot+' ▾</span></button>';
     if(_et.length===1&&_et[0].px>0)
       return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_et[0].mot+' de '+fmtQ(_et[0].n)+'">'
              +_MARQUE_GROS+'<span>'+_texteGros(_et[0].mot,_et[0].px)+'</span></button>';
@@ -12932,7 +12994,7 @@ function _chipGros(p){
     if(_ef.length&&_ef[0].n>1)
       return '<button class="pgros vide" onclick="grosOuvrirFamille(event,'+p.id+')" title="'
              +_ef.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-             +_MARQUE_GROS+'<span>'+(lang==='fr'?'gros':'bulk')+'</span></button>';
+             +_emojiCont(_ef[0].mot)+'<span>'+_ef[0].mot+'</span></button>';
     return '';
   }
   var n=Number(p.umSac)||0;
@@ -12949,7 +13011,7 @@ function _chipGros(p){
     if(_e1.length>1)
       return '<button class="pgros" onclick="choisirEtageGros(event,'+p.id+')" title="'
              +_e1.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-             +_MARQUE_GROS+'<span>'+(lang==='fr'?'gros':'bulk')+' ▾</span></button>';
+             +_emojiCont(_e1[0].mot)+'<span>'+_e1[0].mot+' ▾</span></button>';
     return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_libelleCond(p,null)+'">'+_MARQUE_GROS+'<span>'+mot+'</span></button>';
   }
   // ⚠️ « JE VOIS PARTOUT VENTE EN CARTON. CE N'EST PAS TOUS LES ARTICLES
