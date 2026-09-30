@@ -1426,6 +1426,14 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
   transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%}
 /* Le − doit aussi se VOIR : c'est le geste de correction, celui qu'on
    cherche quand on s'est trompé et qu'on est pressé. */
+/* ⚠️⚠️ SA CAPTURE, « Boisson predator » : dès qu'une contenance est dans
+   le panier, son étiquette (« 1,25 L », « 50 cl ») se posait EXACTEMENT
+   sur le − et le + — même coin, même hauteur, et l'étiquette par-dessus.
+   On voyait deux demi-ronds dépasser ; le geste de correction était caché.
+   L'étiquette descend sous les deux boutons tant qu'il y a une quantité.
+   (En liste, les boutons sont dans la ligne : rien à déplacer.) */
+.vtile.hq .vt-fmt{top:38px}
+.v-liste .vtile.hq .vt-fmt{top:6px}
 .vt-moins{border-color:var(--R);border-width:2px}
 .vt-plus{border-color:var(--G);border-width:2px}
 .vt-moins:active{transform:scale(.9);background:var(--R);color:#fff}
@@ -5595,7 +5603,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.85'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.86'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -12686,10 +12694,11 @@ function _majMultiFormats(){
   var base=p?_nomSansFormat(p.nm):'';
   var stkAct=Number(p&&p.stk)||0;
   // On garde ce qu'il a deja tape si la liste change
-  var dejaSaisi={};
+  var dejaSaisi={},dejaAchat={};
   box.querySelectorAll('[data-fmtpx]').forEach(function(i){dejaSaisi[i.dataset.fmtpx]=i.value;});
+  box.querySelectorAll('[data-fmtpa]').forEach(function(i){dejaAchat[i.dataset.fmtpa]=i.value;});
   box.innerHTML='<div style="font-size:10.5px;font-weight:800;color:var(--M);margin-bottom:7px">'
-    +(fr?'LE PRIX DE CHAQUE FORMAT':'PRICE OF EACH SIZE')+'</div>'
+    +(fr?'PRIX D\'UNE BOUTEILLE, EN FRANCS':'PRICE OF ONE BOTTLE')+'</div>'
     // Sa ligne à lui d'abord, avec son prix déjà écrit et son stock rappelé :
     // il doit VOIR que ses bouteilles ne sont pas perdues en route.
     +(actuel?('<div style="display:flex;gap:8px;align-items:center;margin-bottom:7px;background:#FFF8E1;border-radius:9px;padding:6px 8px">'
@@ -12702,8 +12711,10 @@ function _majMultiFormats(){
     +_fmtSel.map(function(f){
       return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">'
         +'<span style="flex:0 0 74px;font-size:13px;font-weight:900;color:var(--T)">'+f+'</span>'
-        +'<input class="pi sm" style="flex:1;margin:0" type="number" inputmode="numeric" data-fmtpx="'+f+'" '
-        +'value="'+(dejaSaisi[f]||'')+'" placeholder="'+(fr?'Prix de vente':'Sell price')+'">'
+        +'<input class="pi sm" style="flex:1;min-width:0;margin:0" type="number" inputmode="numeric" data-fmtpx="'+f+'" '
+        +'value="'+(dejaSaisi[f]||'')+'" placeholder="'+(fr?'Vente F':'Sell')+'" aria-label="'+(fr?'Prix de vente':'Sell price')+' '+f+'">'
+        +'<input class="pi sm" style="flex:1;min-width:0;margin:0" type="number" inputmode="numeric" data-fmtpa="'+f+'" '
+        +'value="'+(dejaAchat[f]||'')+'" placeholder="'+(fr?'Achat F':'Cost')+'" aria-label="'+(fr?'Prix d\'achat':'Cost price')+' '+f+'">'
         +'<button type="button" onclick="choisirFormatVariante(\''+f+'\')" title="'+(fr?'Retirer':'Remove')+'" '
         +'style="flex:0 0 30px;height:30px;border:none;border-radius:8px;background:#FFEBEE;color:var(--R);font-size:13px;cursor:pointer">✕</button>'
         +'</div>';
@@ -12732,6 +12743,26 @@ function choisirFormatVariante(f){
 // la fois d'avant reviendraient sur un autre article.
 function _resetFormats(){_fmtSel=[];_fmtActuel='';}
 // ⭐ Créer TOUS les formats cochés, chacun avec SON prix.
+// ⚠️⚠️ SA CAPTURE : « Boisson Predator » 33 cl à F 33, 1,25 L à F 125,
+// 1,5 L à F 150, 50 cl à F 50, 25 cl à F 25 — lu sur le serveur, chaque
+// prix est la contenance en centilitres, et le prix d'achat est à 0. La
+// feuille écrit « 33 cl » juste à gauche d'un champ vide : on y tape la
+// taille. Un prix qui vaut exactement la contenance (en cl ou en ml) est
+// presque toujours cette erreur-là : on le demande avant d'enregistrer.
+function _prixEgalContenance(px,f){
+  var m=String(f||'').replace(',','.').match(/(\d+(?:\.\d+)?)\s*(cl|ml|l)\b/i);
+  if(!m||!(px>0))return false;
+  var v=parseFloat(m[1]),u=m[2].toLowerCase();
+  var cl=u==='l'?v*100:(u==='ml'?v/10:v);
+  return Math.abs(px-cl)<0.01||Math.abs(px-cl*10)<0.01||(u==='l'&&Math.abs(px-v)<0.01);
+}
+function _confirmerPrixContenance(liste){
+  if(!liste.length)return true;
+  var fr=(lang==='fr');
+  return confirm(fr
+    ?('⚠️ '+liste.join(', ')+'\n\nCe prix est le même nombre que la contenance. C\'est bien le PRIX DE VENTE d\'une bouteille, en francs ?\n\nOK = oui, c\'est le prix · Annuler = je corrige')
+    :('⚠️ '+liste.join(', ')+'\n\nThis price equals the size. Is it really the selling price of one bottle?'));
+}
 function _saveVarFormats(){
   var p=varArtCours,fr=(lang==='fr');
   if(!p)return;
@@ -12751,6 +12782,16 @@ function _saveVarFormats(){
   // Son format à lui naît EN PREMIER, et il emporte tout ce que l'article
   // avait : son prix, son prix d'achat, sa photo, son conditionnement, son
   // stock — et son passé.
+  // ⚠️ Le garde-fou passe AVANT TOUTE écriture — y compris la conversion de
+  // l'article en famille juste en dessous. Placé plus bas (première version,
+  // attrapée par t149), « Annuler » laissait l'article à moitié converti.
+  var _douteux=[];
+  lignes.forEach(function(inp){
+    if(inp.dataset.fmtactuel)return;
+    var f=inp.dataset.fmtpx,px=parseFloat(String(inp.value||'').replace(',','.'))||0;
+    if(_prixEgalContenance(px,f))_douteux.push(f+' → '+fmt(px));
+  });
+  if(!_confirmerPrixContenance(_douteux))return;
   var ligneAct=lignes.filter(function(i){return i.dataset.fmtactuel;})[0]||null;
   if(ligneAct&&_besoinFmtActuel(p)){
     var pxAct=parseFloat(String(ligneAct.value||'').replace(',','.'))||Number(p.px)||0;
@@ -12775,7 +12816,11 @@ function _saveVarFormats(){
     // ⚠️ Sans prix, on ne crée RIEN. Un format annoncé « créé » et invendable
     // est précisément ce qu'on a réparé en 21.14.
     if(!(px>0)){sansPrix.push(f);return;}
-    p.vr.push({id:nid++,nm:(base?(base+' '):'')+f,px:px,pa:0,stk:0,stk0:0,rt:true,qBase:1});
+    // ⚠️ Le prix d'ACHAT était écrit à 0 en dur : tout le prix de vente
+    // comptait comme bénéfice. Il se demande maintenant, sur la même ligne.
+    var _pa=box.querySelector('[data-fmtpa="'+f+'"]');
+    var pa=_pa?(parseFloat(String(_pa.value||'').replace(',','.'))||0):0;
+    p.vr.push({id:nid++,nm:(base?(base+' '):'')+f,px:px,pa:pa,stk:0,stk0:0,rt:true,qBase:1});
     faits.push(f);
   });
   if(!faits.length){
@@ -17315,6 +17360,10 @@ var _phCache=null,_phCacheIdx=null;
 // aussi le prix d'achat, le prix de vente, l'unité et le conditionnement.
 // On le rend donc réutilisable au lieu d'en écrire un second qui divergerait.
 // `garde` dit ce qu'on cherche : une photo, ou un prix.
+function _eauUnEtDemi(nm){
+  var t=txtNorm(nm||'');
+  return /^eau\b/.test(t)&&!/javel|toilette|oxygen|gazeuse|de vie|de coco/.test(t)&&/\b1[.,]5\s*l\b/.test(t);
+}
 function _chercherEntree600(cle,idx,garde){
   // Le nom exact d'abord : c'est la seule réponse qui ne se discute pas.
   var trouve=null;
@@ -17872,6 +17921,10 @@ function catalogueIndex(){
   // 661 × 361 = deux cent trente-huit mille txtNorm() pour dessiner un écran.
   // Les noms de l'index ne changent jamais : on les normalise ici, une fois.
   _catIdx.forEach(function(e){
+    // ⚠️ 22.86 — « 6 bouteilles de 1,5 L » : la palette d'eau de 1,5 L en
+    // porte 6, pas 12. Une seule règle, posée sur l'index : elle vaut pour
+    // les deux catalogues, les propositions et la boutique d'exemple.
+    if(_eauUnEtDemi((e.plein||e.nm||'')+' '+(e.contenance||''))&&e.sac>0)e.sac=6;
     e._nf=txtNorm(e.nm||'');
     e._ff=txtNorm(e.fam||'');
     e._pf=txtNorm(e.plein||'');
@@ -20032,7 +20085,8 @@ function validerFormats(){
   c.formats.forEach(function(f){ delete _chaSel[c.cle+'#'+f]; });
   c.formats.forEach(function(f){
     if(!_fmtChoix[f])return;
-    _chaSel[c.cle+'#'+f]={nm:c.base+' '+f,img:c.img,e:c.e,cat:c.cat,sac:c.sac,cont:c.cont,fmt:f};
+    _chaSel[c.cle+'#'+f]={nm:c.base+' '+f,img:c.img,e:c.e,cat:c.cat,
+      sac:(_eauUnEtDemi(c.base+' '+f)&&c.sac>0)?6:c.sac,cont:c.cont,fmt:f};
   });
   closeSheet('ov-format');
   _fmtCible=null;_fmtChoix={};
@@ -21295,6 +21349,10 @@ function saveVar(){
   // Plusieurs formats cochés : c'est l'autre chemin, et il demande un prix
   // par format avant de créer quoi que ce soit.
   if(_fmtSel.length>=2||(_fmtSel.length>=1&&_fmtActuel&&_besoinFmtActuel(varArtCours))){_saveVarFormats();return;}
+  try{
+    var _nmV=(document.getElementById('var-nm')||{}).value||'',_pvV=parseFloat((document.getElementById('var-pv')||{}).value)||0,_cV=_contenanceDe(_nmV);
+    if(_cV&&_prixEgalContenance(_pvV,_cV)&&!_confirmerPrixContenance([_cV+' → '+fmt(_pvV)]))return;
+  }catch(e){}
   var nm=document.getElementById('var-nm').value.trim(),pa=_varPaUnitaire(),pv=parseFloat(document.getElementById('var-pv').value)||0,stk=parseInt(document.getElementById('var-stk').value)||0;if(pa<0){showToast('📦 '+(lang==='fr'?"Combien d'unités dans 1 carton ? Sans ce nombre je ne peux pas calculer le prix à l'unité":'How many per box?'));var _c=document.getElementById('var-parc');if(_c)_c.focus();return;}if(!nm||!pv){showToast(t('errNom'));return;}if(!varArtCours)return;var nid=_prochainIdVariante(varArtCours);var qBase=1;if(varArtCours.stk>0){var msg=lang==='fr'?'Quantité de stock de base consommée par cette variante ?\\n(1 pour unité simple, 100 pour 100g, 1000 pour 1kg, 0.5 pour une demi-unité, etc.)':'Base stock units consumed by this variant?\\n(1 for single unit, 100 for 100g, 1000 for 1kg, 0.5 for half a unit, etc.)';var rep=prompt(msg,'1');if(rep===null)return;qBase=Math.max(0.001,parseFloat((rep||'1').replace(',','.'))||1);}var nv={id:nid,nm,px:pv,pa,stk,rt:true,qBase:qBase};if(typeof selVarImg!=='undefined'&&selVarImg)nv.img=selVarImg;varArtCours.vr.push(nv);if(stk>0){nv.stk0=stk;}save();renderProd(DB.articles);renderStock(DB.articles);closeSheet('ov-addvar');
   // Si la fiche famille est ouverte derrière, on la rafraîchit avec la nouvelle variante
   if(typeof _cmpArt!=='undefined'&&_cmpArt===varArtCours&&document.getElementById('ov-completer').classList.contains('show'))cmpRenderFamRows();
