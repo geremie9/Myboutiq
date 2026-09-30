@@ -855,6 +855,24 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    carte), même bloc de texte. Plus aucune hauteur propre : la ligne de la
    grille les met toutes à la même taille, et les noms tombent au même
    endroit, photo ou pas. */
+/* ⚠️⚠️⚠️ « LE TEXTE EN DOUBLE » — LA VRAIE CAUSE, ENFIN.
+   Sa capture : « Riz » écrit en blanc, et derrière, en gros et en noir,
+   « Papier à rouler — paquet ». « Sucre (kg) » sur « Biscuit sucré — paquet
+   — ALIMENTATION ». Mes diagnostics de 22.74 et 22.81 (un défaut
+   d'alignement) étaient FAUX : le second texte est ÉCRIT DANS L'IMAGE.
+   Les 600 images du dossier catalogue/ du serveur sont des cartes : l'objet
+   en haut, puis son nom, son contenant et son rayon, en toutes lettres.
+   Posée en plein sur la tuile (object-fit:cover), la carte montrait son
+   texte sous le nôtre, rogné sur les côtés (« avon vaisselle en pâ »).
+   Une carte n'est pas une photo : elle va dans la PASTILLE, comme une
+   icône, et on n'en montre que l'objet (`object-view-box`, recadrage fait
+   par le navigateur, sans toucher au fichier). Les vraies photos des
+   commerçants (dossier products/) restent en plein, comme avant.
+   Recadrage mesuré sur sa capture : l'objet occupe 30–70 % en largeur et
+   17–53 % en hauteur ; le texte commence vers 60 %. */
+img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
+.pmedia.pcat{background:#fff;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(16,24,40,.06)}
+.pmedia.pcat img{width:100%;height:100%;object-fit:cover;display:block}
 .pcard.has-photo{overflow:hidden;background:#2B2733}
 .pcard.has-photo::before{content:"";display:block;width:58px;height:58px;margin:1px auto 7px}
 .pcard.has-photo .pcard-img{position:absolute;inset:0;width:100%;height:100%;border-radius:14.5px;margin:0;box-shadow:none;transition:transform .15s}
@@ -880,7 +898,12 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
    carte (15/13 → 11/10) et j'ai OUBLIÉ ceux-ci : le voile dépassait de
    3 px en bas. C'est le test du débordement qui l'a attrapé, pas moi.
    Si `.pcard{padding}` change, CES DEUX LIGNES CHANGENT AVEC. */
-.pcard.has-photo .pcard-overlay{margin:-11px -8px -13px;padding:11px 7px 13px;background:linear-gradient(to top,rgba(0,0,0,.75) 8%,rgba(0,0,0,.4) 55%,transparent 100%);border-radius:0 0 14.5px 14.5px;text-align:center}
+.pcard.has-photo .pcard-overlay{margin:-11px -8px -13px;padding:11px 7px 13px;
+  /* ⚠️ 22.83 : `width:100%` + marges négatives ne donne PAS une largeur
+     plus grande — le voile glissait de 8 px vers la gauche et laissait
+     16 px nus à droite (sa capture, et 17 px mesurés au banc à 360 px).
+     La largeur doit rendre les deux marges : 2 × 8 px. */
+  width:calc(100% + 16px);background:linear-gradient(to top,rgba(0,0,0,.75) 8%,rgba(0,0,0,.4) 55%,transparent 100%);border-radius:0 0 14.5px 14.5px;text-align:center}
 /* ⚠️ `white-space:nowrap` coupait « Adaptateur de prise » en « Adaptateur
    de pr… » sur la carte à photo pendant que la carte d'à côté, sans photo,
    l'écrivait EN ENTIER sur deux lignes. Deux traitements du même nom dans
@@ -2015,6 +2038,13 @@ body{max-width:min(100%,1200px)}
    pastille grandissait dès 444 px, sur de vrais téléphones. 7,5 × 4,8 + 22
    = 58 : le palier retombe exactement sur 480. */
 .pmedia,.pcard.has-photo::before,.pemoji{width:clamp(58px,7.5vw + 22px,86px);height:clamp(58px,7.5vw + 22px,86px)}
+/* Le compteur « ≡ N » d'une famille, posé sur le coin bas-droit de la
+   vignette (12 px = marge intérieure 11 + marge de la vignette 1). Mêmes
+   formules que la vignette : il la suit à toutes les largeurs. */
+.pcard>.pvbdg.pvn{position:absolute;margin:0;z-index:2;
+  top:calc(12px + clamp(58px,7.5vw + 22px,86px) - 13px);
+  left:calc(50% + clamp(58px,7.5vw + 22px,86px) / 2 - 20px);
+  background:#fff;box-shadow:0 1px 4px rgba(16,24,40,.16)}
 .pemoji{font-size:clamp(42px,5.5vw + 15.6px,60px)}   /* 5,5 × 4,8 + 15,6 = 42 à 480 px */
 .pcard-img{width:clamp(52px,6.2vw + 22.2px,72px);height:clamp(52px,6.2vw + 22.2px,72px)}
 /* Les contenances d'une famille s'ouvrent dans la MÊME grille, au même
@@ -5559,7 +5589,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.82'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.83'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7377,8 +7407,12 @@ function majEntreeRapide(){
   _erPremierPassage=false;
   // Le clavier doit être là tout de suite : il tape son PIN, il vend.
   try{poserClavier();}catch(x){}
-  try{p.focus();}catch(x){}
-  setTimeout(function(){try{p.focus();}catch(x){}},60);
+  // Le focus n'a de sens que pour le clavier du téléphone : avec celui de
+  // l'app, c'est lui qui ouvrait Android par-dessus nos chiffres.
+  if(!clavierAppActif()){
+    try{p.focus();}catch(x){}
+    setTimeout(function(){try{p.focus();}catch(x){}},60);
+  }
   // ⭐ LE GESTE GARDÉ PENDANT QUE L'APP SE CHARGEAIT (voir le bloc de tête).
   // Il a touché « Ouvrir » avant que quoi que ce soit existe : on ne le lui
   // fait pas refaire. Une seule fois — le drapeau tombe ici.
@@ -7506,6 +7540,37 @@ var _CLAV='mb_clavier',_CLAV_VU='mb_clavier_vu';
 function clavierAppActif(){
   try{return localStorage.getItem(_CLAV)!=='tel';}catch(e){return true;}
 }
+// ⚠️⚠️ « L'APP APPELLE LE CLAVIER DE L'APPAREIL » — SA CAPTURE : les gros
+// chiffres de l'app sont là, et PAR-DESSUS le clavier d'Android, avec la
+// barre des mots de passe enregistrés (« 689335380 •••••• »…).
+// `inputmode="none"` ne suffisait pas : la porte donnait le focus au champ
+// en s'ouvrant, c'est un champ MOT DE PASSE, et le gestionnaire de mots de
+// passe d'Android ouvre alors le clavier pour proposer les siens.
+// Tant que le clavier de l'app est choisi, le champ est en LECTURE SEULE :
+// le téléphone ne l'ouvre plus, rien ne se propose, et personne ne lui
+// donne le focus. Un vrai clavier (PC, tablette) tape toujours : ses
+// touches passent par `_clavierTape`, exactement comme les nôtres.
+function _champClavierTel(ch,app){
+  if(!ch)return;
+  try{ch.setAttribute('inputmode',app?'none':'numeric');}catch(e){}
+  try{ch.readOnly=!!app;}catch(e){}
+  if(ch.id==='er-pin')try{ch.setAttribute('autocomplete',app?'off':'new-password');}catch(e){}
+  if(app)try{if(document.activeElement===ch)ch.blur();}catch(e){}
+}
+document.addEventListener('keydown',function(ev){
+  try{
+    if(ev.ctrlKey||ev.metaKey||ev.altKey)return;
+    var ch=document.getElementById(_champClavier);
+    if(!ch||!ch.readOnly||!ch.offsetParent)return;
+    var a=document.activeElement;
+    // Il écrit ailleurs (une recherche, une note) : ce n'est pas pour nous.
+    if(a&&a!==ch&&(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)))return;
+    var k=ev.key;
+    if(/^[0-9]$/.test(k)){ev.preventDefault();_clavierTape(k);}
+    else if(k==='Backspace'){ev.preventDefault();_clavierTape('eff');}
+    else if(k==='Enter'){ev.preventDefault();_clavierTape('ok');}
+  }catch(e){}
+});
 function poserClavier(){
   var kp=document.getElementById('er-clavier'),kb=document.getElementById('er-kb'),
       ch=document.getElementById('er-pin'),mot=document.getElementById('er-kb-mot');
@@ -7517,7 +7582,7 @@ function poserClavier(){
   // ⚠️ `inputmode="none"` et PAS `readonly` : le champ reste vivant pour un
   // clavier physique (PC, tablette avec clavier), seul le clavier À L'ÉCRAN
   // du téléphone reste fermé.
-  try{ch.setAttribute('inputmode',app?'none':'numeric');}catch(e){}
+  _champClavierTel(ch,app);
   if(kb)kb.setAttribute('title',app?(fr?'Utiliser le clavier du téléphone':'Use the phone keyboard')
                                    :(fr?'Utiliser le clavier de l\'app':'Use the app keypad'));
   if(!mot)return;
@@ -7533,7 +7598,7 @@ function poserClavier(){
 function clavierCompris(){
   try{localStorage.setItem(_CLAV_VU,'1');}catch(e){}
   var m=document.getElementById('er-kb-mot');if(m)m.style.display='none';
-  var ch=document.getElementById('er-pin');if(ch)try{ch.focus();}catch(e){}
+  var ch=document.getElementById('er-pin');if(ch&&!clavierAppActif())try{ch.focus();}catch(e){}
 }
 function basculerClavier(){
   try{localStorage.setItem(_CLAV,clavierAppActif()?'tel':'app');}catch(e){}
@@ -7547,12 +7612,12 @@ function basculerClavier(){
   var _ov=document.getElementById('ov-nego');
   if(_nk&&_ov&&_ov.classList.contains('show')){
     _nk.style.display=_app?'grid':'none';
-    if(_ni){try{_ni.setAttribute('inputmode',_app?'none':'numeric');}catch(e){}
+    if(_ni){_champClavierTel(_ni,_app);
             if(!_app)try{_ni.focus();}catch(e){}}
     return;
   }
   var ch=document.getElementById('er-pin');
-  if(ch)try{ch.focus();}catch(e){}
+  if(ch&&!_app)try{ch.focus();}catch(e){}
 }
 // ⚠️⚠️ « L'APP APPELLE LE CLAVIER DU SMARTPHONE ET ÇA PERTURBE. »
 // Le clavier d'Android montait par-dessus la feuille du prix négocié — une
@@ -10526,7 +10591,8 @@ function renderProd(lst){
     var ts=getStk(p),hasV=p.vr.length>0,isOut=ts<=0,isNeg=ts<0,isLow=!isOut&&!isNeg&&ts<=p.al&&p.al>0,inc=articleIncomplet(p);
     var pq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
     var d=document.createElement('div');
-    d.className='pcard'+(p.img?' has-photo':'')+(inc?' incomplete':'')+(pq>0?' sel':'')+(hasV?' hasv':'')+(isNeg?' neg':'')+(isOut&&p.rt?' out-ok':'');
+    var _carte=_estCarteCatalogue(p.img);
+    d.className='pcard'+((p.img&&!_carte)?' has-photo':'')+(inc?' incomplete':'')+(pq>0?' sel':'')+(hasV?' hasv':'')+(isNeg?' neg':'')+(isOut&&p.rt?' out-ok':'');
     d.id='pc-'+p.id;
     var ignoreNextTap=false;
     d.onclick=function(){
@@ -10567,15 +10633,26 @@ function renderProd(lst){
       // Désormais les deux branches ne diffèrent QUE par la vignette —
       // la photo, ou la pastille. Tout ce qui se LIT vient ensuite, et
       // c'est exactement le même bloc, au même endroit, à la même taille.
-      (p.img
+      (_carte
+        ?'<div class="pmedia pcat"><img src="'+p.img+'" loading="lazy" alt="" onerror="var m=this.parentElement;m.classList.remove(\'pcat\');m.textContent=\''+(p.e||'📦')+'\'"></div>'
+        :p.img
         ?'<img class="pcard-img" src="'+p.img+'" loading="lazy" onerror="this.parentElement.classList.remove(\'has-photo\');this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pemoji\',textContent:\''+p.e+'\'}))">'
         :(DB.cfg&&DB.cfg.noEmoji
           ?'<div class="pmedia pmono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</div>'
           :(function(){var _m=mediaArtInner(p,32);return '<div class="pmedia" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</div>';})()
         )
       )+
-      '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+prixTxt+'</div>'
-        +_chipGros(p)+(hasV?_badgeVariantes(p):'')+'</div>'+
+      // ⚠️⚠️ « LA LONGUEUR DES ARTICLES ». Mesuré sur sa grille à 360 px :
+      // 180 px pour « Savon vaisselle » contre 161 pour ses voisines — la
+      // puce « carton » et le « ≡ 4 » ne tiennent pas côte à côte (104 px
+      // pour 88) et le compteur prenait une ligne à lui. Et une seule tuile
+      // haute allonge TOUTE sa rangée. Le compteur se pose maintenant sur
+      // le coin de la vignette, comme une pastille : il ne prend plus de
+      // ligne. Les contenances (« 50 cl · 1,5 L ») restent sous le prix :
+      // elles se LISENT, elles ont droit à leur ligne.
+      (function(){var _bv=hasV?_badgeVariantes(p):'',_coin=_bv.indexOf('pvn')>=0;
+        return '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+prixTxt+'</div>'
+          +_chipGros(p)+(_coin?'':_bv)+'</div>'+(_coin?_bv:'');})()+
       (inc?'<div class="sinc">✏️ '+(lang==='fr'?'À compléter':'To complete')+'</div>':'')+
       (isLow&&!inc?'<div class="slow">⚠️ '+(lang==='fr'?'Bas':'Low')+'</div>':'')+
       (isOut&&!isNeg?'<div class="sout">⛔ '+(lang==='fr'?'Épuisé':'Out')+'</div>':'')+
@@ -13141,7 +13218,10 @@ function _replierPhotoVar(d,html){
   im.onerror=function(){
     d.classList.remove('has-photo');
     var s=document.createElement('span');s.innerHTML=html;
-    try{im.replaceWith(s.firstElementChild||s);}catch(e){}
+    // Une carte du catalogue vit dans sa pastille : c'est la pastille entière
+    // qu'on remplace, pas l'image seule (sinon deux pastilles l'une dans l'autre).
+    var cible=(im.parentElement&&im.parentElement.classList.contains('pcat'))?im.parentElement:im;
+    try{cible.replaceWith(s.firstElementChild||s);}catch(e){}
   };
 }
 // Variante SANS photo : exactement la pastille de la carte d'article
@@ -13181,6 +13261,11 @@ function _formatDeVariante(p,v){
   if(reste&&fam&&reste!==fam)return '';
   return m[1].replace('.',',')+' '+m[2].toLowerCase().replace('cl','cl').replace(/^l$/,'L');
 }
+// Une image du dossier catalogue/ est une CARTE (objet + nom écrit dessous),
+// jamais une photo : voir `.pmedia.pcat`. Les photos des commerçants sont
+// rangées ailleurs (products/) — vérifié sur le serveur : 600 fichiers d'un
+// côté, tous des cartes ; 141 de l'autre, toutes des photos.
+function _estCarteCatalogue(u){return !!u&&String(u).indexOf('/APP/catalogue/')>=0;}
 function _imgVar(p,v){
   if(v&&v.img)return v.img;
   return _formatDeVariante(p,v)?(p&&p.img)||'':'';
@@ -13441,7 +13526,8 @@ function renderVarLst(p){
     // has-photo : la photo remplit la tuile et le texte passe sur le dégradé,
     // exactement comme une carte d'article. C'est ce qui rend les deux grilles
     // indiscernables — le reproche de fond.
-    d.className='vtile'+(i.q>0?' hq':'')+(i.out?' out':'')+(v.img?' has-photo':'');
+    var _imT=_imgVar(p,v),_carteV=_estCarteCatalogue(_imT);
+    d.className='vtile'+(i.q>0?' hq':'')+(i.out?' out':'')+((v.img&&!_carteV)?' has-photo':'');
     // ⚠️⚠️ SA CAPTURE DES HUILES : trois contenances, chacune avec un « 1 »
     // rouge et un « − », et AUCUN « + » nulle part. La tuile entière EST le
     // « + » — mais rien ne le dit, et quand on vient d'en retirer une, le
@@ -13453,7 +13539,7 @@ function renderVarLst(p){
       // six « Savon » donnaient six vignettes identiques, impossible de les
       // distinguer d'un coup d'œil. vignetteArt donne à chacune la sienne —
       // sa photo, sinon son icône de rayon, avec sa propre couleur.
-      +(function(){var _im=_imgVar(p,v),_f=_formatDeVariante(p,v);return (_im?('<img src="'+_im+'" loading="lazy" alt="">'):_mediaVar(p,v))+(_f?('<span class="vt-fmt">'+_f+'</span>'):'');})()
+      +(function(){var _im=_imgVar(p,v),_f=_formatDeVariante(p,v);return (_im?(_estCarteCatalogue(_im)?('<div class="pmedia pcat"><img src="'+_im+'" loading="lazy" alt=""></div>'):('<img src="'+_im+'" loading="lazy" alt="">')):_mediaVar(p,v))+(_f?('<span class="vt-fmt">'+_f+'</span>'):'');})()
       +'<span class="vt-ov">'
       +'<span class="vt-nm">'+(v.nm||'?')+'</span>'
       +'<span class="vt-px">'+i.px+'</span>'
@@ -13592,7 +13678,7 @@ function _badgeVariantes(p){
     var vus=tailles.slice(0,2).join(' · ')+(n>2?(' +'+(n-2)):'');
     return '<div class="pvbdg" title="'+titre+'">'+vus+'</div>';
   }
-  return '<div class="pvbdg" title="'+titre+'"><i></i>'+n+'</div>';
+  return '<div class="pvbdg pvn" title="'+titre+'"><i></i>'+n+'</div>';
 }
 // ══════════════════════════════════════════════════════════════════
 //  LE REPÈRE DU GROS, SUR UNE VARIANTE
@@ -17228,11 +17314,22 @@ function _chercherEntree600(cle,idx,garde){
   var trouve=null;
   idx.some(function(e){
     if(!garde(e))return false;
-    if(e._pf===cle||e._nf===cle){trouve=e;return true;}
+    // ⚠️ Le nom COURT d'une variante (« sucré » dans Biscuit, « tomate »
+    // dans Jus) n'est pas un nom : « Sucre » tombait EXACTEMENT sur lui et
+    // recevait le biscuit, « Tomate » le jus. Hors de sa famille, seule la
+    // fiche sans famille peut répondre à son nom court.
+    if(e._pf===cle||(e._nf===cle&&!e.fam)){trouve=e;return true;}
     return false;
   });
   if(!trouve){
     var mots=Object.keys(_motsDe(cle));
+    // ⚠️⚠️ « SUCRE » DONNAIT « BISCUIT SUCRÉ », « TOMATE » LE JUS DE TOMATE.
+    // Mesuré dans les boutiques : « Sucre (kg) » portait la photo du biscuit.
+    // Les deux fiches ont le mot dans leur nom — égalité — et l'ordre
+    // alphabétique tranchait : B avant S. En français le mot qui dit CE
+    // QU'EST la chose vient en premier (« Sucre en poudre », « Biscuit
+    // sucré ») : la fiche qui COMMENCE par son premier mot l'emporte.
+    var tete=String(cle).split(' ')[0]||'';
     if(mots.length){
       var meilleur=-1;
       idx.forEach(function(e){
@@ -17242,6 +17339,10 @@ function _chercherEntree600(cle,idx,garde){
           if(!e._km[mots[i]])return;          // un mot manque : ce n'est pas elle
           sc+=(e._nm&&e._nm[mots[i]])?2:1;    // dans son nom, ou seulement dans sa queue
         }
+        // Le nom COMPLET seulement : « Biscuit » est une famille dont la
+        // variante s'appelle « sucré » — son nom court commence aussi par
+        // « sucre », et l'égalité revenait.
+        if(tete.length>=3&&(e._pf||'').indexOf(tete)===0)sc+=1;
         // À égalité, l'ordre de l'index tranche, comme avant.
         if(sc>meilleur){meilleur=sc;trouve=e;}
       });
@@ -17622,6 +17723,42 @@ function appliquerConditionnementCatalogue(liste,neuf){
     if(!p.umCont&&m.cont&&p.umSac>0){p.umCont=m.cont;}
   });
   return n;
+}
+// ⚠️⚠️ « RIZ » PORTAIT LA PHOTO DU PAPIER À ROULER. Mesuré sur le serveur :
+// sur une centaine de photos du catalogue posées dans les boutiques, deux
+// étaient fausses, et ce sont les deux de sa capture — « Riz » → papier à
+// rouler (un mot-clé « rizla » d'une ancienne version du chercheur) et
+// « Sucre (kg) » → biscuit sucré (l'égalité tranchée par l'alphabet).
+// ⚠️ « On n'applique rien tout seul » tient toujours pour SES choix. Ici on
+// ne touche QU'À une image du catalogue (jamais à sa photo à lui), QUE si
+// son nom ne commence même pas par le premier mot de l'article, et QUE si
+// le catalogue a mieux — une image qui, elle, commence par ce mot. C'est
+// réparer une erreur de l'app, pas décider à sa place ; et on le lui dit.
+function _slugCarte(u){var m=String(u||'').match(/\/APP\/catalogue\/([^\/?#]+?)(\.[a-z]+)?(?:[?#].*)?$/i);return m?m[1]:'';}
+function _photoCatalogueFausse(nm,u){
+  if(!_estCarteCatalogue(u))return '';
+  var tete=(txtNorm(nm||'').split(/[^a-z0-9]+/).filter(function(w){return w.length>=3;})[0])||'';
+  if(!tete)return '';
+  var slug=_slugCarte(u).replace(/-/g,' ');
+  if(!slug||slug.indexOf(tete)===0)return '';
+  var mieux='';try{mieux=photoCatalogue(nm);}catch(e){}
+  if(!mieux||mieux===u||_slugCarte(mieux).replace(/-/g,' ').indexOf(tete)!==0)return '';
+  return mieux;
+}
+function _corrigerPhotosCatalogue(){
+  if(!DB||!DB.articles||role!=='patron')return 0;
+  var noms=[];
+  DB.articles.forEach(function(a){
+    var m=_photoCatalogueFausse(a.nm,a.img);
+    if(m){a.img=m;a._imgCat=true;noms.push(a.nm);}
+  });
+  if(!noms.length)return 0;
+  var fr=(lang==='fr');
+  try{save();}catch(e){}
+  try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+  try{journalAjouter('photos',fr?'Photos du catalogue corrigées':'Catalogue photos fixed','',noms.join(', '));}catch(e){}
+  showToast('🖼️ '+(fr?('Photo corrigée : '+noms.slice(0,3).join(', ')+(noms.length>3?'…':'')):('Photo fixed: '+noms.slice(0,3).join(', '))));
+  return noms.length;
 }
 function appliquerPhotosCatalogue(liste){
   var n=0;
@@ -24272,7 +24409,7 @@ function ouvrirNego(key){
   var _kp=document.getElementById('ng-clavier'),_kb=document.getElementById('ng-kb');
   if(_kp)_kp.style.display=_app?'grid':'none';
   if(_kb)_kb.style.display='block';
-  try{i.setAttribute('inputmode',_app?'none':'numeric');}catch(e){}
+  _champClavierTel(i,_app);
   _clavierVers('ng-inp');
   // Quand le clavier de l'app est là, on n'appelle personne.
   if(!_app)setTimeout(function(){try{i.focus();}catch(e){}},150);
@@ -29004,7 +29141,8 @@ if('serviceWorker' in navigator){
       setTimeout(function(){chercherAnnonces(true);verifierAdmin();},4000);
       // Le manifeste des photos : un seul fichier, servi avec l'app et gardé
       // par le service worker. Ensuite tout se décide hors ligne.
-      setTimeout(function(){chargerCatalogue600();},1200);
+      setTimeout(function(){chargerCatalogue600().then(function(){
+        try{_corrigerPhotosCatalogue();}catch(e){}});},1200);
       // ⚠️ ON N'APPLIQUE PLUS RIEN TOUT SEUL. Sa boutique lui appartient :
       // même une photo ne s'ajoute pas sans qu'il l'ait voulu. On se contente
       // de compter ce qui pourrait changer et de le lui PROPOSER une fois.
