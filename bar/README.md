@@ -60,15 +60,20 @@ Deux choses varient, et **elles ne se rangent pas au même endroit** :
 
 | | Où ça vit | Qui ça concerne |
 |---|---|---|
-| **La forme du bar** — tables, vidanges, cuisine, plusieurs personnes | `cfg.forme`, dans la base | Tout le bar. Partagé, sauvegardé. |
+| **La forme du bar** — tables, vidanges, cuisine, plusieurs personnes | `cfg.forme`, dans la base | Tout le bar. Sauvegardé avec lui (partagé entre téléphones le jour où la synchronisation existera). |
 | **Le poste du téléphone** — tout / comptoir / stock | `localStorage`, clé `mybar_poste` | **Ce téléphone seul.** Jamais dans la sauvegarde. |
 
-C'est cette séparation qui permet au téléphone du comptoir de s'ouvrir sur
-la carte pendant que celui de la cave s'ouvre sur le stock — le même bar,
-les mêmes chiffres, deux métiers ce soir-là. Mettre le poste dans la base
-l'aurait imposé à tout le monde à la première synchronisation ; le
-restaurer depuis une sauvegarde aurait changé le métier du téléphone qui
-restaure.
+C'est cette séparation qui permettra, avec la synchronisation, au téléphone du
+comptoir de s'ouvrir sur la carte pendant que celui de la cave s'ouvre sur le
+stock. Mettre le poste dans la base l'imposerait à tout le monde à la première
+synchronisation ; le restaurer depuis une sauvegarde changerait le métier du
+téléphone qui restaure.
+
+> ⚠️ **Aujourd'hui, deux téléphones ne partagent rien.** Il n'y a aucune ligne
+> réseau dans l'application : chaque téléphone a SA base, ses ventes, son stock.
+> Ce texte a longtemps promis « le même bar, les mêmes chiffres » — c'était
+> faux, et l'app le dit maintenant. Le poste sert donc à UN téléphone, selon ce
+> qu'il fait ce soir.
 
 **Les onglets du bas ne sont plus écrits en dur.** `onglets()` les
 calcule, `majNavs()` les pose sur toutes les barres à la fois :
@@ -188,6 +193,32 @@ chaîne libre, affichée telle qu'il l'a écrite.
    n'apparaissent qu'**en mode comptoir** : la carte ouverte depuis une
    table reste un outil de service, pas un tableau de bord, et un
    serveur qui monte une tournée n'a pas à lire l'état du dépôt.
+
+## La mémoire d'un bar est finie
+
+`localStorage` a un quota **par adresse**, pas par téléphone : libérer de la
+place sur l'appareil n'y change rien. Mesuré : ~5 M de caractères, 478 par vente
+— un bar de 120 ventes par jour le sature en ~90 jours, et les ventes suivantes ne
+s'enregistrent plus. Le message d'erreur disait « libère de la place » : une
+consigne impossible. Il dit désormais que la vente n'est PAS enregistrée, et quoi faire.
+
+- **Jauge** (Paramètres → Données) : le vrai quota du navigateur est mesuré une fois
+  (`sondeQuota`, 6 s après le démarrage, sans rien laisser derrière), car les navigateurs
+  diffèrent. Estimation des jours restants au rythme des 30 derniers jours.
+- **Alerte à 70 %**, rouge à 90 %.
+- **Archiver** : les ventes de plus de 60 jours partent dans un fichier, téléchargé
+  AVANT d'effacer quoi que ce soit (annuler ne supprime rien) ; il reste un résumé
+  par mois (nombre, recette, coût, dépenses), visible dans Rapports. Patron seulement.
+  Ardoises, stock, produits et clôtures ne bougent pas.
+- **`storage.persist()`** est demandé à la connexion ; si le navigateur refuse, la carte
+  Données le dit (sur iPhone, hors de l'écran d'accueil, Safari peut effacer les
+  données d'un site après quelques jours sans visite).
+- **Rappel de sauvegarde** au patron après 7 jours sans sauvegarde.
+- **Écran allumé** (Wake Lock) : réglage propre à CE téléphone, allumé par défaut au
+  comptoir et sans tables, éteint sinon ; relâché à la déconnexion.
+
+Ce qui reste : l'archive se relit à la main (il n'y a pas d'import), et le quota
+n'est qu'un délai, pas une réponse — la réponse est la sauvegarde en ligne.
 
 ## Les deux adresses, et ce que ça coûte
 
