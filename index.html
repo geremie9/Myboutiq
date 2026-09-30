@@ -1287,6 +1287,51 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
   font-size:11px;font-weight:900;line-height:1;position:relative;z-index:3}
 /* Le mot se rogne, le prix jamais : un prix à moitié lu est un prix faux. */
 .g-e{font-style:normal;flex:0 0 auto}
+/* ── LA PREMIÈRE VENTE GUIDÉE (boutique d'exemple) ─────────────────── */
+/* ⚠️⚠️ LA BULLE POINTAIT LA MAUVAISE TUILE. Première version : posée en
+   bas au milieu, flèche vers le bas — vu au banc, la flèche tombait sur
+   « Sucre en poudre » pendant que c'était Coca-Cola, tout en haut, qu'il
+   fallait toucher. Et à l'étape suivante elle visait le milieu du panier,
+   pas « Encaisser » à droite. Une flèche qui montre la mauvaise chose est
+   pire que pas de flèche.
+   Elle est maintenant ACCROCHÉE à sa cible (`_guidePlacer`) : en dessous
+   si la place le permet, au-dessus sinon, et sa flèche tombe pile sur le
+   milieu de ce qu'il faut toucher. */
+/* ⚠️ Transparente au doigt, sauf son ✕ : posée sur la rangée d'en dessous,
+   elle avalait les tapes destinées aux tuiles qu'elle recouvre. */
+#demo-bulle{position:fixed;left:12px;top:12px;z-index:950;pointer-events:none;
+  display:flex;align-items:center;gap:10px;max-width:min(88vw,330px);
+  background:#241257;color:#fff;border-radius:16px;padding:12px 8px 12px 16px;
+  font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;line-height:1.3;
+  box-shadow:0 10px 28px rgba(36,18,87,.38);animation:dbEntre .35s cubic-bezier(.22,1.2,.36,1)}
+#demo-bulle::after{content:"";position:absolute;left:var(--fl,50%);bottom:-7px;width:14px;height:14px;
+  background:#241257;transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0}
+#demo-bulle.en-dessous::after{bottom:auto;top:-7px;border-radius:3px 0 0 0}
+#demo-bulle button{pointer-events:auto;flex:0 0 auto;width:44px;height:44px;border:none;border-radius:12px;
+  background:rgba(255,255,255,.12);color:#fff;font-size:15px;font-weight:900;cursor:pointer}
+/* ⚠️ L'entrée n'utilise plus `translate(-50%)` : la bulle est placée par
+   left/top, et le rond vert de la carte de fin partageait cette animation —
+   il glissait d'une demi-largeur vers la gauche avant de se remettre en
+   place, le temps de l'animation. */
+@keyframes dbEntre{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* La cible respire : un anneau doré qui s'élargit et s'efface. Doux — il
+   indique, il ne clignote pas. (« Réduire les animations » l'arrête.) */
+.demo-cible{position:relative;z-index:2;animation:dbRespire 1.8s ease-out infinite}
+@keyframes dbRespire{0%{box-shadow:0 0 0 0 rgba(240,169,62,.75)}70%{box-shadow:0 0 0 12px rgba(240,169,62,0)}100%{box-shadow:0 0 0 0 rgba(240,169,62,0)}}
+.db-ok{width:64px;height:64px;margin:4px auto 12px;border-radius:50%;background:var(--G);color:#fff;
+  font-size:34px;font-weight:900;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 22px rgba(0,200,83,.35);animation:dbEntre .4s cubic-bezier(.22,1.2,.36,1)}
+.db-tit{font-family:'Nunito',sans-serif;font-size:21px;font-weight:900;color:var(--T);margin-bottom:14px}
+.db-lignes{background:var(--BG);border-radius:14px;padding:4px 14px;margin-bottom:14px;text-align:left}
+.db-l{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;
+  font-size:13.5px;font-weight:700;color:var(--M);border-bottom:1px solid var(--BD)}
+.db-l:last-child{border-bottom:none}
+.db-l b{font-size:16px;font-weight:900;color:var(--T);white-space:nowrap}
+.db-l.vert b{color:#00A846}
+.db-mot{font-size:13.5px;font-weight:700;color:var(--B);line-height:1.45;margin:0 4px 16px}
+/* Le casier dessiné : même encombrement qu'un emoji, couleur de la puce. */
+.g-svg{width:14px;height:14px;display:inline-block;vertical-align:-2px;flex:0 0 auto;overflow:visible}
+.pgros .g-svg{width:15px;height:15px}
 .g-mot{overflow:hidden;text-overflow:ellipsis;min-width:0;white-space:nowrap}
 .g-px{flex:0 0 auto;font-weight:900}
 .g-mot+.g-px::before{content:'· ';opacity:.65}
@@ -2273,6 +2318,49 @@ body{max-width:min(100%,1200px)}
            font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">Créer ma boutique</button>
 </div>
 <div class="toast" id="toast"></div>
+<!-- ══════════════════════════════════════════════════════════════════
+     ⭐ LA PREMIÈRE VENTE GUIDÉE — « quelque chose qui pourrait retenir
+        un visiteur »
+
+     Ce qu'il y avait : un toast (« 15 articles — vends, tout est faux ! »)
+     posé PAR-DESSUS les chiffres du haut, puis rien. Le visiteur regardait
+     une grille, ne savait pas quoi toucher, et repartait sans avoir vu la
+     seule chose qui compte : qu'une vente se fait en deux gestes et que la
+     caisse calcule SEULE le bénéfice et le stock.
+
+     Maintenant : trois temps, et un seul à la fois.
+       1. une bulle en bas : « Touche un article pour le vendre », et une
+          tuile qui respire doucement ;
+       2. dès qu'il y a quelque chose au panier, la bulle passe au bouton
+          « Encaisser », qui respire à son tour ;
+       3. la vente faite, une carte lui montre CE QUE L'APP A FAIT POUR
+          LUI : le montant, le bénéfice calculé tout seul, le stock qui a
+          baissé — ses vrais chiffres, lus sur la vente qu'il vient de
+          faire, jamais des chiffres écrits d'avance — et la porte vers sa
+          propre boutique.
+     ⚠️ UNE SEULE FOIS PAR TÉLÉPHONE, et un ✕ pour passer. Un guide qui
+     revient à chaque visite devient une barrière.
+     ══════════════════════════════════════════════════════════════════ -->
+<div id="demo-bulle" style="display:none" role="status" aria-live="polite">
+  <span id="demo-bulle-t"></span>
+  <button type="button" onclick="_guideDemoFin(true)" aria-label="Passer">✕</button>
+</div>
+<div class="ov" id="ov-demo-bravo" onclick="closeOv(event,'ov-demo-bravo')">
+  <div class="bsht"><div class="shndl"></div>
+    <div style="padding:6px 22px 24px;text-align:center">
+      <div class="db-ok">✓</div>
+      <div class="db-tit" id="db-tit">Vente enregistrée</div>
+      <div class="db-lignes">
+        <div class="db-l"><span id="db-l1">Encaissé</span><b id="db-v1"></b></div>
+        <div class="db-l vert"><span id="db-l2">Bénéfice, calculé tout seul</span><b id="db-v2"></b></div>
+        <div class="db-l" id="db-row3"><span id="db-l3">Stock mis à jour</span><b id="db-v3"></b></div>
+      </div>
+      <div class="db-mot" id="db-mot">Chez toi, c'est exactement ça, tous les jours — et même sans réseau.</div>
+      <button class="bpay" onclick="_bravoCreer()" id="db-b1">Créer ma boutique — c'est gratuit</button>
+      <button class="bvid" onclick="closeSheet('ov-demo-bravo')" id="db-b2" style="margin-top:9px">Continuer à essayer</button>
+    </div>
+  </div>
+</div>
 <!-- ⚠️⚠️ « IL FAUT QUE LES VARIANTES SOIENT MODIFIABLES, COMME LES ARTICLES
      QUI NE SONT PAS EN VARIANTE. IL FAUT QU'ILS AIENT LES MÊMES
      CONDITIONS, MÊMES POSSIBILITÉS DE MODIFIER, D'ANNULER OU TOUT AUTRE. »
@@ -5471,7 +5559,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.81'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.82'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6917,6 +7005,12 @@ function _demarrerApp(){
       try{majBlocAuteur();}catch(e){}
       try{majCommunaute();}catch(e){}
       goScreen('s-landing');
+      try{
+        if(sessionStorage.getItem('mb_apres_demo')==='new'){
+          sessionStorage.removeItem('mb_apres_demo');
+          setTimeout(function(){try{ouvrirDepuisVitrine('new');}catch(e){}},80);
+        }
+      }catch(e){}
     }
 }
 // Invitation reçue : onglet Vendeur, code pré-rempli, curseur sur le prénom
@@ -8064,7 +8158,10 @@ function _arreterCanauxBoutique(){
   _pendingRemoteDB=null;
 }
 function _resetEtatSession(){
+  // ⚠️ Montants libres, gros et prix négociés AUSSI : sinon la « Recharge
+  // 5 000 » de la boutique A attend dans le panier de la boutique B.
   panier={};varQtys={};negEnCours=null;
+  try{panierLibre=[];_grosPanier={};_negoLigne={};}catch(e){}
   clientVente=null;remisePoints=0;remiseVente=0;
   artCours=null;artCtx=null;artStkCours=null;varArtCours=null;cliCours=null;
   dernierRecu=null;totalV=0;totalB=0;nbT=0;nomVendeur='';
@@ -10524,8 +10621,27 @@ function renderTopVentes(){
     +(lang==='fr'?'Ventes rapides':'Quick sell')+'</span>'
     +'<button class="tv-x" onclick="masquerVentesRapides()" title="'+(lang==='fr'?'Masquer':'Hide')+'">✕</button></div>'
     +'<div class="tv-row">'+top.map(function(p){
-    var media=p.img?'<img src="'+p.img+'" loading="lazy">':
-      (DB.cfg&&DB.cfg.noEmoji?'<span class="tv-mono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="tv-e" style="background:'+_m.bg+';color:'+_m.fg+';display:flex;align-items:center;justify-content:center">'+_m.svg+'</span>';})());
+    // ⚠️⚠️ L'IMAGE N'AVAIT AUCUN REPLI. Vu au banc sur la boutique
+    // d'exemple : quand la photo ne vient pas — et le premier jour, hors
+    // ligne, elle ne vient pas — la rangée montrait quatre cadres vides
+    // avec l'icône d'image cassée du navigateur, EN HAUT de la caisse,
+    // première chose qu'on voit. La grille juste en dessous, elle, retombe
+    // proprement sur son icône depuis toujours. Même repli ici : l'icône est
+    // posée d'avance, cachée, et prend la place de la photo si elle échoue.
+    var _ic=(DB.cfg&&DB.cfg.noEmoji?'<span class="tv-mono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="tv-e" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</span>';})());
+    // ⚠️ Le repli caché s'écrivait avec un SECOND attribut style="…" : le
+    // navigateur n'en garde qu'un, le premier — la pastille perdait sa
+    // couleur et ne montrait plus qu'un trait de bouteille, même pour l'Œuf.
+    // Et la grille, elle, retombe sur l'EMOJI de l'article quand sa photo
+    // ne vient pas : la rangée du haut fait pareil, la même image au même
+    // article, en haut comme en bas.
+    var _repli=(p.e&&!(DB.cfg&&DB.cfg.noEmoji))
+      ?'<span class="tv-e" style="display:none">'+p.e+'</span>'
+      :_ic.replace(' style="',' style="display:none;');
+    var media=p.img
+      ?('<img src="'+p.img+'" loading="lazy" onerror="this.style.display=\'none\';var n=this.nextElementSibling;if(n)n.style.display=\'flex\'">'
+        +_repli)
+      :_ic;
     return '<button class="tv-chip" onclick="venteRapide('+p.id+')">'+media+'<span class="tv-nm">'+p.nm+'</span><span class="tv-px">'+prixCarte(p)+'</span></button>';
   }).join('')+'</div>';
 }
@@ -13564,7 +13680,7 @@ function _chipGrosVariante(p,v,cercle){
   if(_etv.length>1)
     return '<span class="'+cls+'" data-etage="'+v.id+'" title="'
       +_etv.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-      +'<i class="g-e">'+_emojiCont(_etv[0].mot)+'</i><span class="g-mot">'+_etv[0].mot+' ▾</span></span>';
+      +'<i class="g-e">'+_iconeCont(_etv[0].mot)+'</i><span class="g-mot">'+_etv[0].mot+' ▾</span></span>';
   var mid='';
   if(cd.par>0&&cd.parTaille>1&&cd.parMot)
     {var _mv=_milieuDe(p,v);
@@ -13798,10 +13914,10 @@ function _chipGros(p){
     if(_et.length>1)
       return '<button class="pgros" onclick="choisirEtageGros(event,'+p.id+')" title="'
              +_et.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-             +_emojiCont(_et[0].mot)+'<span>'+_et[0].mot+' ▾</span></button>';
+             +_iconeCont(_et[0].mot)+'<span>'+_et[0].mot+' ▾</span></button>';
     if(_et.length===1&&_et[0].px>0)
       return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_et[0].mot+' de '+fmtQ(_et[0].n)+'">'
-             +_MARQUE_GROS+'<span>'+_texteGros(_et[0].mot,_et[0].px)+'</span></button>';
+             +_iconeCont(_et[0].mot)+'<span>'+_texteGros(_et[0].mot,_et[0].px)+'</span></button>';
   }
   // ⚠️ DÉFAUT QUE J'ALLAIS INTRODUIRE : le repère disparaissait dès que
   // l'article avait des variantes — donc juste après que le commerçant ait
@@ -13856,7 +13972,7 @@ function _chipGros(p){
     if(_ef.length&&_ef[0].n>1)
       return '<button class="pgros vide" onclick="grosOuvrirFamille(event,'+p.id+')" title="'
              +_ef.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-             +_emojiCont(_ef[0].mot)+'<span>'+_ef[0].mot+'</span></button>';
+             +_iconeCont(_ef[0].mot)+'<span>'+_ef[0].mot+'</span></button>';
     return '';
   }
   var n=Number(p.umSac)||0;
@@ -13873,8 +13989,8 @@ function _chipGros(p){
     if(_e1.length>1)
       return '<button class="pgros" onclick="choisirEtageGros(event,'+p.id+')" title="'
              +_e1.map(function(x){return x.mot+' de '+fmtQ(x.n);}).join(' · ')+'">'
-             +_emojiCont(_e1[0].mot)+'<span>'+_e1[0].mot+' ▾</span></button>';
-    return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_libelleCond(p,null)+'">'+_MARQUE_GROS+'<span>'+mot+'</span></button>';
+             +_iconeCont(_e1[0].mot)+'<span>'+_e1[0].mot+' ▾</span></button>';
+    return '<button class="pgros" onclick="vendreGros(event,'+p.id+')" title="'+_libelleCond(p,null)+'">'+_iconeCont(mot)+'<span>'+mot+'</span></button>';
   }
   // ⚠️ « JE VOIS PARTOUT VENTE EN CARTON. CE N'EST PAS TOUS LES ARTICLES
   //     OÙ ON ACHÈTE EN CARTON. »
@@ -14694,6 +14810,42 @@ function _emojiCont(mot){
 //   le prix ensuite quand il est connu ;
 //   « gros ▾ » dès qu'il y a plusieurs étages à choisir.
 var _MARQUE_GROS='📦';
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ « LA BIÈRE EN CARTON » — LES DONNÉES ÉTAIENT JUSTES, LE DESSIN
+//         MENTAIT.
+//
+//  Vérifié avant de toucher : le catalogue dit bien « Bière 65 cl — casier
+//  de 12 », et la boutique d'exemple le recopie fidèlement. Mais la règle
+//  ci-dessus (« une seule marque, 📦, pour tous les contenants ») pose un
+//  CARTON devant chaque mot : « 📦 casier », « 📦 sac », « 📦 bidon »,
+//  « 📦 plateau ». 📦 n'est pas un symbole abstrait, c'est littéralement
+//  une boîte en carton — donc « 📦 casier » se lit « carton ». Et dedans,
+//  la famille disait « 🧃 casier » : une brique de jus. Aucun des deux
+//  n'est un casier, et il n'existe AUCUN emoji de casier.
+//
+//  On le DESSINE donc : un bac à compartiments, trait simple, à la couleur
+//  de la puce. Le casier SEUL : c'est lui que tout le monde voit sur une
+//  caisse de boissons, et c'est lui qui mentait le plus.
+//  ⚠️ Tout le reste garde 📦, la marque unique de 21.95 (« quatre emojis
+//  différents faisaient bazar », et t21 le fige). Une première version de
+//  ce correctif rendait à chaque mot son emoji — 🧺 sac, 🧰 boîte — et
+//  défaisait donc SA décision sans le lui demander. Même la famille, qui
+//  disait « 🧃 casier », passe par ici : plus de brique de jus.
+//
+//  ⚠️ `_iconeCont` rend du HTML : il ne sert QUE dans des puces et des
+//  lignes dessinées. Les reçus WhatsApp, la voix et les messages restent
+//  sur `_emojiCont`, qui ne rend que du texte — un <svg> imprimé dans un
+//  reçu serait du charabia.
+// ══════════════════════════════════════════════════════════════════
+var _SVG_CASIER='<svg class="g-svg" viewBox="0 0 16 16" aria-hidden="true">'
+  +'<rect x="1.4" y="4.6" width="13.2" height="9" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/>'
+  +'<path d="M5.8 4.6v9M10.2 4.6v9" stroke="currentColor" stroke-width="1.3"/>'
+  +'<path d="M5.2 4.6V2.8h5.6v1.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+function _iconeCont(mot){
+  var k='';try{k=txtNorm(mot||'');}catch(e){k=String(mot||'').toLowerCase();}
+  if(k==='casier'||k==='crate')return _SVG_CASIER;
+  return _MARQUE_GROS;
+}
 // « carton · 6 000 », ou « carton » seul tant que le prix n'est pas posé.
 // ⚠️ SANS LA DEVISE. Avec elle, « casier · FCFA 6 000 » ne tenait pas dans
 // la puce et finissait en « casier · FCF… » — le prix, c'est-à-dire la
@@ -14738,7 +14890,7 @@ function _texteGros(mot,px){
 // ══════════════════════════════════════════════════════════════════
 function _htmlGros(mot,px,etroit){
   var m=String(mot||'').trim();
-  var e=_emojiCont(m)||_MARQUE_GROS;
+  var e=_iconeCont(m)||_MARQUE_GROS;
   if(!(px>0))return '<i class="g-e">'+e+'</i><span class="g-mot">'+m+'</span>';
   // ⚠️ MESURÉ : « 📦 carton · 9 500 » en 11 px demande 130 px ; une carte
   // de variante en offre 98, un satellite 82. Le mot ressortait donc en
@@ -15353,6 +15505,7 @@ function updatePUI(pid){
   if(badge){badge.innerHTML='<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">✕</span>';badge.classList.toggle('show',pq>0);}
   if(card)card.classList.toggle('sel',pq>0);
   var fc=document.getElementById('fcart');
+  try{_guidePanier();}catch(e){}
   if(nb>0){fc.classList.remove('hide');document.getElementById('cc').textContent=fmtQ(nb);
     // Les contenants d'abord quand il y en a : c'est le chiffre de la vente
     // en gros. Sans contenant, le compte de pièces, comme avant.
@@ -15450,7 +15603,7 @@ function ouvrirPanier(){
         return fmt(G.px)+' × '+fmtQ(G.nb)+' '+G.mot+(G.nb>1?'s':'');});
       if(_mo.qDetail>0)_pts.push(fmt(px)+' × '+fmtQ(_mo.qDetail));
       _sous=_pts.join(' + ');
-    }else _sous=(_mg?(_mg.emo+' '+_mg.txt):(fmt(px)+' × '+fmtQ(qty)+(estMesure(p)&&!v?' '+uniteArt(p):'')));
+    }else _sous=(_mg?(((_mg.mot?_iconeCont(_mg.mot):_mg.emo))+' '+_mg.txt):(fmt(px)+' × '+fmtQ(qty)+(estMesure(p)&&!v?' '+uniteArt(p):'')));
     // ⭐ LE PRIX SE TOUCHE. Un grossiste négocie article par article, et la
     // remise, elle, s'applique au total de la vente : s'il prend aussi du
     // riz, il fallait calculer le montant de tête.
@@ -15586,6 +15739,7 @@ function chgQLot(key,sens){
   chgQ(key,-n);
 }
 function chgQ(key,d){panier[key]=Math.round(((panier[key]||0)+d)*100)/100;if(panier[key]<=0){delete panier[key];_oublierNego(key);}updatePUI(parseInt(key.split('-')[0]));document.getElementById('pan-tot').textContent=fmt(calcTotal());if(panierVide())closeSheet('ov-pan');else ouvrirPanier();}
+// ⚠️ Remplacée plus bas (`viderPanier=function`) : c'est l'autre qui tourne.
 function viderPanier(){panier={};_grosPanier={};_negoLigne={};panierLibre=[];renderProd(DB.articles);document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');}
 function procederPmt(){
   closeSheet('ov-pan');
@@ -25606,7 +25760,16 @@ async function entrerDemo(){
   DB=migrateDBData({
     cfg:{nom:(fr?'Boutique d\'exemple':'Example shop'),code:DEMO_CODE,pin:'0000',
          d:anc.d||'FCFA',s:anc.s||'FCFA',pays:anc.pays||'CM',lang:anc.lang||lang,
-         secteur:anc.secteur||'boutique',venteDeverrouillee:true,demo:true},
+         // ⚠️⚠️ « LE BOUTON MODIFICATION QUI RESTE ACTIVÉ PAR DÉFAUT ».
+         // C'était écrit ici en dur : `venteDeverrouillee:true`. Un visiteur
+         // arrivait donc sur une caisse hérissée d'un ✎ sur chaque tuile, le
+         // crayon du haut allumé, et un appui un peu long l'emmenait dans un
+         // écran de réglage au lieu de vendre. Mesuré au banc : 15 crayons
+         // sur 15 tuiles. Or ce qu'il vient voir, c'est une VENTE.
+         // Une vraie boutique s'ouvre déjà verrouillée (21.x, « on vend, on
+         // ne modifie pas ») ; l'exemple fait maintenant pareil. Le crayon du
+         // haut reste là : qui veut voir les réglages les ouvre d'une tape.
+         secteur:anc.secteur||'boutique',venteDeverrouillee:false,demo:true},
     articles:arts,ventes:_ventesDemo(arts),appros:[],depenses:[],clients:[],equipe:[],suppr:[],
     nextId:100+arts.length+1
   });
@@ -25614,15 +25777,171 @@ async function entrerDemo(){
   try{persistDB(false);}catch(e){}
   try{lancerApp();}catch(e){}
   majBandeauDemo();
-  showToast('👀 '+(fr?arts.length+' articles — vends, tout est faux !':arts.length+' items — sell away, it is all fake!'));
+  // ⚠️ Le toast s'écrivait PAR-DESSUS les chiffres du haut (vu au banc).
+  // La première fois, c'est le guide qui parle ; ensuite, le toast revient.
+  if(_guideDejaFait())
+    showToast('👀 '+(fr?arts.length+' articles — vends, tout est faux !':arts.length+' items — sell away, it is all fake!'));
+  else setTimeout(function(){try{_guideDemo(1);}catch(e){}},900);
   try{parler(fr?'Voici une boutique d\'exemple. Touche un article pour le vendre.'
                 :'Here is an example shop. Tap an item to sell it.');}catch(e){}
 }
 
-function quitterDemo(){
+// ── LE GUIDE DE LA PREMIÈRE VENTE ────────────────────────────────────
+var _guide=0,_guideAvant=null;            // 0 éteint · 1 toucher · 2 encaisser
+var _CLE_GUIDE='mb_demo_guide_fait';
+function _guideDejaFait(){try{return localStorage.getItem(_CLE_GUIDE)==='1';}catch(e){return false;}}
+function _guideCible(el){
+  document.querySelectorAll('.demo-cible').forEach(function(x){x.classList.remove('demo-cible');});
+  if(el)el.classList.add('demo-cible');
+}
+function _guideDire(t){
+  var b=document.getElementById('demo-bulle'),x=document.getElementById('demo-bulle-t');
+  if(!b||!x)return;
+  x.textContent=t; b.style.display='flex';
+  _guidePlacer();
+  // La tuile désignée peut être en train de glisser vers le centre : on se
+  // recale une fois le glissement fini.
+  setTimeout(_guidePlacer,480);
+}
+// Sous la cible s'il y a la place (au-dessus de la barre du bas), au-dessus
+// sinon ; la flèche tombe sur le milieu de la cible, même quand la bulle
+// doit se pousser pour ne pas sortir de l'écran.
+function _guidePlacer(){
+  var b=document.getElementById('demo-bulle'),c=document.querySelector('.demo-cible');
+  if(!b||!c||b.style.display==='none')return;
+  // ⚠️ Vu au banc : il touche « Bière » au lieu de Coca-Cola, le panneau
+  // des bières s'ouvre… et la bulle restait PAR-DESSUS, sur « 33 Export »,
+  // en montrant une tuile cachée derrière. Pendant qu'un panneau est
+  // ouvert, la bulle se tait ; elle revient quand il se ferme.
+  // Une famille s'ouvre en panneau flottant (`_varBox`) ou en cercle
+  // (`_varCercle`), pas en feuille : le cercle ne pose AUCUNE classe sur la
+  // page (vu par t128), on lit donc leur état directement.
+  var fam=false;try{fam=!!(_varBox||_varCercle);}catch(e){}
+  var cache=fam||!!document.querySelector('.ov.show');
+  b.style.visibility=cache?'hidden':'visible';
+  if(cache)return;
+  var r=c.getBoundingClientRect(),vw=window.innerWidth||360,vh=window.innerHeight||640;
+  var bw=b.offsetWidth,bh=b.offsetHeight,cx=r.left+r.width/2;
+  var left=Math.max(12,Math.min(vw-bw-12,cx-bw/2));
+  var nav=70;                                        // la barre de navigation du bas
+  var dessous=(r.bottom+12+bh)<(vh-nav);
+  var top=dessous?(r.bottom+12):(r.top-bh-12);
+  if(top<8)top=8;
+  b.style.left=Math.round(left)+'px';
+  b.style.top=Math.round(top)+'px';
+  b.classList.toggle('en-dessous',dessous);
+  var fl=Math.max(18,Math.min(bw-18,cx-left));
+  b.style.setProperty('--fl',Math.round(fl)+'px');
+}
+// Un panneau s'ouvre ou se ferme sans prévenir personne : on regarde, trois
+// fois par seconde, et seulement tant que le guide est allumé.
+var _guideVeille=null;
+function _guideVeiller(on){
+  if(on&&!_guideVeille)_guideVeille=setInterval(function(){if(_guide)_guidePlacer();},300);
+  if(!on&&_guideVeille){clearInterval(_guideVeille);_guideVeille=null;}
+}
+var _guideRAF=false;
+window.addEventListener('scroll',function(){
+  if(!_guide||_guideRAF)return; _guideRAF=true;
+  requestAnimationFrame(function(){_guideRAF=false;_guidePlacer();});
+},{passive:true});
+window.addEventListener('resize',function(){if(_guide)_guidePlacer();});
+function _guideDemo(etape){
+  if(!estDemo()||_guideDejaFait())return;
+  var fr=(lang==='fr');
+  _guide=etape;
+  _guideVeiller(true);
+  if(etape===1){
+    // On désigne une tuile SIMPLE — un article sans famille, qui se vend
+    // d'une seule tape. Une famille ouvrirait d'abord un panneau, et le
+    // premier geste deviendrait deux.
+    var cible=null;
+    try{
+      var a=(DB.articles||[]).find(function(x){return !(x.vr&&x.vr.length)&&getStk(x)>0&&/coca/i.test(x.nm);})
+          ||(DB.articles||[]).find(function(x){return !(x.vr&&x.vr.length)&&getStk(x)>0;});
+      if(a)cible=document.getElementById('pc-'+a.id);
+    }catch(e){}
+    _guideCible(cible);
+    // ⚠️ On ne fait défiler QUE si la tuile est hors de vue. Au banc,
+    // Coca-Cola était déjà dans la première rangée et le défilement
+    // « au centre » cachait les chiffres du haut — Ventes, Bénéfice — ce
+    // que le visiteur doit voir bouger après sa vente.
+    if(cible)try{
+      var _r=cible.getBoundingClientRect();
+      if(_r.top<0||_r.bottom>(window.innerHeight||640)-150)
+        cible.scrollIntoView({block:'center',behavior:'smooth'});
+    }catch(e){}
+    _guideDire(fr?'👆 Touche un article pour le vendre':'👆 Tap an item to sell it');
+  }else if(etape===2){
+    _guideCible(document.getElementById('btn-enc'));
+    _guideDire(fr?'💵 Maintenant, encaisse':'💵 Now, check out');
+  }
+}
+// Appelé par updatePUI : le panier vient de changer.
+function _guidePanier(){
+  if(!_guide)return;
+  var vide=true;try{vide=panierVide();}catch(e){}
+  if(_guide===1&&!vide)_guideDemo(2);
+  else if(_guide===2&&vide)_guideDemo(1);     // il a tout retiré : on reprend
+}
+function _guideDemoFin(passe){
+  _guide=0;_guideCible(null);_guideVeiller(false);
+  var b=document.getElementById('demo-bulle');if(b)b.style.display='none';
+  try{localStorage.setItem(_CLE_GUIDE,'1');}catch(e){}
+}
+// Appelé par encaisser, APRÈS l'enregistrement : les chiffres sont ceux de
+// la vente qui vient d'avoir lieu, relus sur elle. Rien d'écrit d'avance.
+function _guideApresVente(total,ben,lignes){
+  if(_guide!==2)return;
+  var fr=(lang==='fr');
+  _guideDemoFin(false);
+  var stockTxt='';
+  try{
+    var l=(lignes||[])[0];
+    if(l){
+      var a=(DB.articles||[]).find(function(x){return x.id==l.pid;});
+      var v=(a&&l.vid)?(a.vr||[]).find(function(x){return String(x.id)===String(l.vid);}):null;
+      var reste=v?stockVarDispo(a,v):(a?getStk(a):null);
+      var pris=Math.round((Number(l.qte)||0)*(Number(l.qBase)||1)*100)/100;
+      if(a&&reste!=null)stockTxt=fmtQ(reste+pris)+' → '+fmtQ(reste);
+    }
+  }catch(e){}
+  var set=function(id,t){var e=document.getElementById(id);if(e)e.textContent=t;};
+  set('db-tit',fr?'Vente enregistrée':'Sale recorded');
+  set('db-l1',fr?'Encaissé':'Taken');
+  set('db-l2',fr?'Bénéfice, calculé tout seul':'Profit, worked out for you');
+  set('db-l3',fr?'Stock mis à jour':'Stock updated');
+  set('db-v1',fmt(total));
+  set('db-v2',fmt(ben));
+  set('db-v3',stockTxt);
+  var r3=document.getElementById('db-row3');if(r3)r3.style.display=stockTxt?'flex':'none';
+  set('db-mot',fr?'Chez toi, c\'est exactement ça, tous les jours — et même sans réseau.'
+                 :'In your shop, it is exactly this, every day — even with no network.');
+  // ⚠️ Un commerçant qui a DÉJÀ sa boutique peut passer par l'exemple (comme
+  // le bandeau, 22.x) : « Créer ma boutique » l'enverrait vers une inscription
+  // dont il n'a pas besoin. Le bouton lui rend la sienne.
+  set('db-b1',_demoSien()?(fr?'Retrouver ma boutique':'Back to my shop')
+                         :(fr?'Créer ma boutique — c\'est gratuit':'Create my shop — it is free'));
+  set('db-b2',fr?'Continuer à essayer':'Keep trying');
+  // L'écran de succès de la caisse passe d'abord : on ne lui vole pas son
+  // moment, on le prolonge.
+  setTimeout(function(){
+    try{var sc=document.getElementById('succ');if(sc)sc.classList.remove('show');}catch(e){}
+    var o=document.getElementById('ov-demo-bravo');if(o)o.classList.add('show');
+  },1300);
+}
+// « Créer ma boutique » depuis la carte : il vient de le décider, on ne lui
+// repose pas la question, et il arrive DIRECTEMENT sur l'inscription au lieu
+// de retomber sur la vitrine et de devoir retoucher le même bouton.
+function _demoSien(){try{return !!localStorage.getItem('myboutiq_v6_avant_demo');}catch(e){return false;}}
+function _bravoCreer(){
+  if(!_demoSien())try{sessionStorage.setItem('mb_apres_demo','new');}catch(e){}
+  quitterDemo(true);
+}
+function quitterDemo(sansDemander){
   var fr=(lang==='fr');
   if(!estDemo())return;
-  if(!confirm(fr?'Fermer la boutique d\'exemple ?\n\nTout ce que tu as fait dedans sera effacé — c\'était pour essayer.\n\nTu retrouveras ta vraie boutique.'
+  if(!sansDemander&&!confirm(fr?'Fermer la boutique d\'exemple ?\n\nTout ce que tu as fait dedans sera effacé — c\'était pour essayer.\n\nTu retrouveras ta vraie boutique.'
                 :'Close the example shop?\n\nEverything you did in it will be erased — it was only a trial.\n\nYour real shop comes back.'))return;
   // ⚠️ On EFFACE, on ne convertit pas. Un faux prix ne doit jamais devenir
   // un vrai prix : c'est exactement ce qui rend un mauvais prix d'achat
@@ -26151,7 +26470,17 @@ function ensureNotifPermission(){
   DB.cfg.notifAsked=true;
   Notification.requestPermission().then(function(res){DB.cfg.notifOk=(res==='granted');save(true);});
 }
-function addLocalNotif(msg,aid){DB.notifs.unshift({ts:new Date().toISOString(),msg:msg,aid:aid||null});DB.notifs=DB.notifs.slice(0,30);renderNotifPanel();updateNotifBadge();showToast(msg);if(DB.cfg.notifOk&&typeof Notification!=='undefined'){try{new Notification('MyBoutiQ',{body:msg});}catch(e){}}}
+// ⚠️ Vu au banc sur la boutique d'exemple : « 📦 Ampoule LED 9 W : stock
+// faible » s'écrivait par-dessus les onglets à la seconde où le visiteur
+// arrivait — un article volontairement presque vide, pour que « À
+// commander » ait quelque chose à dire. La cloche garde l'alerte (c'est tout
+// son intérêt) ; seul le toast se tait, et seulement pendant la PREMIÈRE
+// visite guidée, quand une autre bulle lui parle déjà.
+function _toastNotifPermis(){
+  try{ if(estDemo()&&!_guideDejaFait())return false; }catch(e){}
+  return true;
+}
+function addLocalNotif(msg,aid){DB.notifs.unshift({ts:new Date().toISOString(),msg:msg,aid:aid||null});DB.notifs=DB.notifs.slice(0,30);renderNotifPanel();updateNotifBadge();if(_toastNotifPermis())showToast(msg);if(DB.cfg.notifOk&&typeof Notification!=='undefined'){try{new Notification('MyBoutiQ',{body:msg});}catch(e){}}}
 function sendNotifOnce(key,msg,aid){var sent=DB.cfg.lastNotifCheck.sent||{};if(sent[key])return false;sent[key]=new Date().toISOString();DB.cfg.lastNotifCheck.sent=sent;addLocalNotif(msg,aid);return true;}
 function checkNotifications(skipPersist){
   if(!DB||_notifRunning)return;
@@ -26159,7 +26488,7 @@ function checkNotifications(skipPersist){
   try{
     DB=migrateDBData(DB);
     var changed=false,day=isoJour(new Date()),todaySales=getTodaySales(),todayTotal=todaySales.reduce(function(s,v){return s+Number(v.total||0);},0),todayCount=todaySales.length;
-    (DB.articles||[]).forEach(function(p){var ts=getStk(p);if(p.rt&&ts<=0){if(sendNotifOnce(day+'-out-'+p.id,'⚠️ '+p.nm+' est épuisé !',p.id))changed=true;}else if(p.al>0&&ts<=p.al){if(sendNotifOnce(day+'-low-'+p.id,'📦 '+p.nm+' : stock faible ('+ts+' restants)',p.id))changed=true;}});
+    (DB.articles||[]).forEach(function(p){var ts=getStk(p);if(p.rt&&ts<=0){if(sendNotifOnce(day+'-out-'+p.id,'⚠️ '+p.nm+' est épuisé !',p.id))changed=true;}else if(p.al>0&&ts<=p.al){if(sendNotifOnce(day+'-low-'+p.id,'📦 '+p.nm+' : stock faible ('+ts+' restant'+(Math.abs(ts)>1?'s':'')+')',p.id))changed=true;}});
     // ⚠️ La cloche du patron, et seulement la sienne : un vendeur n'a pas à
     // être averti de ce qu'il vient lui-même d'écrire.
     if(role==='patron'){
@@ -26252,7 +26581,12 @@ function suggererArchivage(){
   setTimeout(function(){showToast('🧹 '+(lang==='fr'?'Beaucoup de ventes en mémoire — Réglages › Alléger l\'application pour rester rapide':'Many sales in memory — Settings › Lighten the app'));},2500);
 }
 var _logoutBase=logout;logout=function(){clientVente=null;remisePoints=0;remiseVente=0;_logoutBase();};
-viderPanier=function(){panier={};_grosPanier={};_negoLigne={};remisePoints=0;remiseVente=0;consignePrises=0;consigneRendues=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');};
+// ⚠️⚠️ C'EST CETTE VERSION-CI QUI VIDE LE PANIER (elle remplace celle du
+// haut) — et elle oubliait les MONTANTS LIBRES. Reproduit au banc : « 💰
+// Recharge 5 000 », 🗑️ Vider, le panier disparaît… puis un savon à 500 F
+// s'encaisse à 5 500 F. Le montant était resté caché, et même sauvé sur le
+// téléphone pour revenir au prochain démarrage.
+viderPanier=function(){panier={};panierLibre=[];_grosPanier={};_negoLigne={};remisePoints=0;remiseVente=0;consignePrises=0;consigneRendues=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');try{_panierOublier();}catch(e){}try{_guidePanier();}catch(e){}};
 function renderClientVenteList(){var c=document.getElementById('client-vente-list');if(!c||!DB)return;c.innerHTML=DB.clients.length?DB.clients.map(function(cl){majNiveauClient(cl);return '<div class="hist-sale" onclick="choisirClientVente('+cl.id+')"><div class="hist-h"><div><div class="hist-d">'+cl.nm+'</div><div class="hist-s">'+cl.niveau+' · '+(cl.points||0)+' pts</div></div><div class="hist-t">'+fmt(cl.credit||0)+'</div></div></div>';}).join(''):'<div class="dash-empty">Aucun client enregistré</div>'; }
 // ⚠️⚠️ « LE CARNET EST VIDE » — MESURÉ DANS L'ÉTUDE DE PARCOURS :
 // une vente comptant coûte 4 gestes, la première vente à crédit en coûtait
@@ -26442,6 +26776,7 @@ encaisser=function(){
   document.getElementById('succ-amt').textContent=fmt(total);
   var sc=document.getElementById('succ');sc.classList.add('show');if(navigator.vibrate)navigator.vibrate([50,30,50]);
   planifierFermetureSucces(sc);
+  try{_guideApresVente(total,ben,lignes);}catch(e){}
 };
 confirmerAnnulVente=function(){
   if(ventAnnulEnCours===null)return;
@@ -27681,7 +28016,12 @@ function majBoutonsInstaller(){
   var c=document.getElementById('cai-install');
   if(c){
     var ferme=false;try{ferme=localStorage.getItem('myboutiq_install_ferme')==='1';}catch(e){}
-    c.style.display=(montrer&&!ferme)?'flex':'none';
+    // ⚠️ Dans la boutique d'exemple, la barre orange du haut porte DÉJÀ
+    // « 📲 Installer ». Vu au banc : deux fois le même bouton sur le même
+    // écran, dont une grande carte verte au milieu des articles — là où le
+    // visiteur devrait voir ce qu'il vient essayer.
+    var _dm=false;try{_dm=estDemo();}catch(e){}
+    c.style.display=(montrer&&!ferme&&!_dm)?'flex':'none';
     var ct=document.getElementById('cai-install-t');
     if(ct)ct.textContent=fr?'Garde MyBoutiQ sur ton écran d\'accueil — elle s\'ouvre plus vite, et sans réseau.'
                            :'Keep MyBoutiQ on your home screen — faster, and offline.';
