@@ -351,6 +351,9 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .inst-band.adr{background:var(--Na);border-color:var(--NaD)}
 .inst-band.adr .ib-t{color:var(--NaT)}
 .inst-band.adr .ib-b{background:#8A6100}
+.jauge{height:9px;border-radius:6px;background:var(--BD);overflow:hidden;margin:6px 0 4px}
+.jauge i{display:block;height:100%;border-radius:6px;background:var(--B);transition:width .4s}
+.jauge.mid i{background:var(--A)}.jauge.haut i{background:var(--R)}
 .vit-adr{margin:0 0 14px;padding:12px 14px;border-radius:13px;background:rgba(246,185,59,.14);
   border:1.5px solid rgba(246,185,59,.42);text-align:left}
 .vit-adr b{display:block;color:#F6B93B;font-size:12.5px;font-weight:900;letter-spacing:.2px;margin-bottom:5px}
@@ -849,7 +852,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
      déchet.
    • on achète en casiers, on vend à la bouteille.
    ══════════════════════════════════════════════════════════════════ */
-var BUILD='1.6';
+var BUILD='1.8';
 
 /* ══════════════════════════════════════════════════════════════════
    LA LANGUE
@@ -920,7 +923,7 @@ var PAYS=[
  {c:'GH',nm:'Ghana',ne:'Ghana',f:'🇬🇭',d:'GHS',s:'GH₵',k:0.025,cc:'233'},
  {c:'NG',nm:'Nigéria',ne:'Nigeria',f:'🇳🇬',d:'NGN',s:'₦',k:2.6,cc:'234'},
  {c:'KE',nm:'Kenya',ne:'Kenya',f:'🇰🇪',d:'KES',s:'KSh',k:0.21,cc:'254'},
- {c:'ZA',nm:'Afrique du Sud',ne:'South Africa',f:'🇿🇦',d:'ZAR',s:'R',k:0.031}
+ {c:'ZA',nm:'Afrique du Sud',ne:'South Africa',f:'🇿🇦',d:'ZAR',s:'R',k:0.031,cc:'27'}
 ];
 function paysNm(p){return L(p.nm,p.ne);}
 function paysDe(code){for(var i=0;i<PAYS.length;i++)if(PAYS[i].c===code)return PAYS[i];return PAYS[0];}
@@ -1003,7 +1006,7 @@ function telJoli(num,cc){
 }
 
 var TYPES=[
- {c:'bar',nm:'Bar / Buvette',ne:'Bar / Pub',e:'🍻',fams:['biere','sucr','eau','energ','vin','cuis','div'],cc:'27'},
+ {c:'bar',nm:'Bar / Buvette',ne:'Bar / Pub',e:'🍻',fams:['biere','sucr','eau','energ','vin','cuis','div']},
  {c:'snack',nm:'Snack-bar',ne:'Snack bar',e:'🍢',fams:['biere','sucr','eau','energ','cuis','cock','div']},
  {c:'cave',nm:'Cave à boissons',ne:'Drinks shop',e:'🏪',fams:['biere','sucr','eau','energ','vin','div']},
  {c:'resto',nm:'Restaurant-bar',ne:'Restaurant & bar',e:'🍽️',fams:['biere','sucr','eau','vin','cock','cuis','div']},
@@ -1095,7 +1098,7 @@ function poserForme(c,v){
   /* Éteindre les tables depuis le plan de salle laisserait le patron sur
      un écran qui n'a plus d'onglet. On le ramène sur le premier. */
   if(onglets().indexOf(ongletCourant)<0)ongletCourant=onglets()[0];
-  majNavs();
+  veille();majNavs();
   var on=document.querySelector('.scr.on');
   if(on&&on.id!=='s-settings')rendreEcran(on.id);
   rendreSettings();
@@ -1119,7 +1122,7 @@ function poste(){
 function poserPoste(p){
   try{localStorage.setItem(POSTEKEY,p);}catch(e){}
   if(onglets().indexOf(ongletCourant)<0)ongletCourant=onglets()[0];
-  majNavs();rendreSettings();
+  veille();majNavs();rendreSettings();
   var x=POSTES.filter(function(z){return z.c===p;})[0]||POSTES[0];
   toast(x.e+' '+L('Ce téléphone : ','This phone: ')+L(x.nm,x.ne).toLowerCase());
 }
@@ -1177,7 +1180,7 @@ function majNavs(){
   var b=document.querySelectorAll('.bnav[data-nav]');
   for(var i=0;i<b.length;i++)b[i].innerHTML=h;
 }
-function ouvrirDepart(){ongletCourant=onglets()[0];navTo(ongletCourant);}
+function ouvrirDepart(){ongletCourant=onglets()[0];navTo(ongletCourant);demanderStockageDurable();veille();}
 
 /* ══════════════════════════════════════════════════════════════════
    LE COMPTOIR — vendre sans ouvrir de table
@@ -1386,8 +1389,8 @@ function rendreVitrine(){
          L("Chaque serveur a son code. À la clôture, chacun rend ce qu'il a encaissé — et l'écart se voit.",
            'Each server has their own code. At closing, each hands back what they took — and the gap shows.')],
     ['⚙️',L("Ton bar n'est pas celui d'à côté",'Your bar is not the one next door'),
-         L("Avec ou sans tables, avec ou sans cuisine, seul ou à six. Et chaque téléphone a son poste : celui du comptoir s'ouvre sur la carte, celui de la cave sur le stock.",
-           'With or without tables, with or without a kitchen, alone or six-handed. And each phone has its post: the counter one opens on the menu, the store-room one on the stock.')],
+         L("Avec ou sans tables, avec ou sans cuisine, seul ou à six. Et ton téléphone a son poste : au comptoir il s'ouvre sur la carte, à la cave sur le stock.",
+           'With or without tables, with or without a kitchen, alone or six-handed. And your phone has its post: at the counter it opens on the menu, in the store room on the stock.')],
     ['🌙',L('La clôture du soir','Closing the night'),
          L("Recette, dépenses, ardoises, espèces comptées, vidanges à rendre. Une page, à la fermeture.",
            'Takings, expenses, tabs, cash counted, empties to return. One page, at closing time.')]
@@ -1591,9 +1594,41 @@ function arrondi(v,k){if(k>=1)return Math.max(50,Math.round(v*k/50)*50);
   return Math.max(0.5,Math.round(v*k*2)/2);}
 
 /* ── Stockage ─────────────────────────────────────────────────────── */
+/* ⚠️ UNE BASE ILLISIBLE DEVENAIT UN BAR NEUF, ET LE PREMIER
+   ENREGISTREMENT L'ÉCRASAIT. `loadDB` renvoyait null sur la moindre
+   erreur, et null veut dire « nouvelle installation » : la vitrine, puis
+   « Ouvrir mon bar », puis save() — la base précédente disparaissait sans
+   un mot, alors qu'elle était peut-être récupérable à la main. On en garde
+   désormais une copie à part, AVANT toute écriture, et on le dit. */
+var COPIEKEY='mybar_v1_illisible';
+var BASE_ILLISIBLE=false;
+function garderCopieIllisible(brut){
+  BASE_ILLISIBLE=true;
+  try{if(!localStorage.getItem(COPIEKEY))localStorage.setItem(COPIEKEY,brut);}catch(e){}
+}
+function telechargerCopieIllisible(){
+  var brut=null;
+  try{brut=localStorage.getItem(COPIEKEY)||localStorage.getItem(DBKEY);}catch(e){}
+  if(!brut){toast(L('Aucune copie trouvée.','No copy found.'));return;}
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([brut],{type:'application/json'}));
+  a.download='mybar-base-illisible-'+jour()+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+function avertirBaseIllisible(){
+  modal(mhead(L('⚠️ Les données de ce bar n\'ont pas pu être lues','⚠️ This bar\'s data could not be read'),
+              L('Rien n\'a été effacé','Nothing has been erased'))+
+    '<div class="ovc"><div class="note rouge" style="margin:0 0 12px">'+L(
+      "Une copie brute est gardée sur ce téléphone. N'ouvre PAS un nouveau bar avant de l'avoir téléchargée : elle se récupère à la main, et un nouveau bar ne l'efface pas mais la rend plus difficile à retrouver.",
+      "A raw copy is kept on this phone. Do NOT open a new bar before downloading it: it can be recovered by hand, and a new bar does not erase it but makes it harder to find.")+'</div>'+
+    '<button class="bpr" onclick="telechargerCopieIllisible()">'+L('💾 Télécharger la copie','💾 Download the copy')+'</button>'+
+    '<button class="bse" onclick="fermerModal()">'+L('Plus tard','Later')+'</button></div>');
+}
+var REVKEY='mybar_v1_rev',revLocale=0;
 function loadDB(){
+  var d=null;
   try{
-    var d=localStorage.getItem(DBKEY);
+    d=localStorage.getItem(DBKEY);
     /* ⚠️ Le produit s'est appelé MyBarQ le temps d'une version. Changer la
        clé sans aller chercher l'ancienne, c'est effacer le service d'un
        patron qui a déjà saisi son stock : il rouvre l'app et son bar est
@@ -1603,11 +1638,166 @@ function loadDB(){
       var vieux=localStorage.getItem(DBKEY_ANCIEN);
       if(vieux){localStorage.setItem(DBKEY,vieux);localStorage.removeItem(DBKEY_ANCIEN);d=vieux;}
     }
+    revLocale=+localStorage.getItem(REVKEY)||0;derniereTaille=d?d.length:0;
     return d?migrer(JSON.parse(d)):null;
-  }catch(e){return null;}
+  }catch(e){if(d)garderCopieIllisible(d);return null;}
 }
-function save(){try{localStorage.setItem(DBKEY,JSON.stringify(DB));}catch(e){
-  toast(L("⚠️ Mémoire du téléphone pleine — libère de la place, sinon la soirée ne sera pas enregistrée.","⚠️ Phone storage full — free some space, or tonight will not be saved."));}}
+/* ⚠️ DEUX FENÊTRES, UNE VENTE DISPARUE. Chaque fenêtre garde toute la base
+   en mémoire et réécrit la clé entière : la seconde à enregistrer effaçait la
+   première (mesuré : 5 000 F encaissés dans l'une, 3 000 F dans l'autre,
+   il restait 3 000 F). Deux garde-fous : le navigateur prévient l'autre
+   fenêtre à chaque écriture (événement `storage`), qui relit ; et, si elle a
+   manqué l'avis, save() s'en aperçoit à un numéro de révision plus récent
+   et rapatrie ce qui lui manque avant d'écrire. */
+var FUSION=['ventes','depenses','appros','clotures','reglements'];
+function fusionnerStocke(){
+  var s=null;try{s=JSON.parse(localStorage.getItem(DBKEY));}catch(e){}
+  if(!s||!DB)return;
+  FUSION.forEach(function(k){
+    DB[k]=DB[k]||[];
+    var vus={};DB[k].forEach(function(x){vus[x.id+'|'+(x.ts||'')]=1;});
+    (s[k]||[]).forEach(function(x){if(!vus[x.id+'|'+(x.ts||'')])DB[k].push(x);});
+  });
+  DB.nextId=Math.max(DB.nextId||0,s.nextId||0);
+}
+window.addEventListener('storage',function(e){
+  if(e.key!==DBKEY||!DB||!e.newValue)return;
+  var n=loadDB();if(!n)return;
+  var id=moi&&moi.id;DB=n;
+  if(id)moi=membre(id)||moi;
+  var on=document.querySelector('.scr.on');
+  if(on&&typeof rendreEcran==='function')rendreEcran(on.id);
+});
+/* ⚠️ LA MÉMOIRE D'UN BAR EST FINIE, ET ELLE NE LE DISAIT PAS. `localStorage` a un
+   quota par ADRESSE (~5 M de caractères mesurés), pas par téléphone : libérer
+   de la place sur l'appareil n'y change rien. À 478 caractères la vente, un bar
+   de 120 ventes par jour le sature en ~90 jours — et les ventes suivantes
+   ne s'enregistrent plus, avec pour seul avis un message qui donnait une
+   consigne impossible. On mesure donc le vrai quota une fois (les navigateurs
+   diffèrent), on affiche une jauge, on prévient à 70 %, et on sait archiver. */
+var derniereTaille=0,QUOTA_CHARS=0,QUOTAKEY='mybar_quota',QUOTA_DEFAUT=4500000;
+function tailleUtilisee(){
+  var n=0;try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);n+=k.length+(localStorage.getItem(k)||'').length;}}catch(e){}
+  return n;
+}
+function sondeQuota(){
+  var cle='__mybar_sonde',deja=tailleUtilisee(),bon=0,pas=[1e6,2e6,2.6e6,3e6,4e6,5e6,5.3e6,6e6,8e6,1e7];
+  try{
+    for(var i=0;i<pas.length;i++){
+      try{localStorage.setItem(cle,new Array(pas[i]+1).join('x'));bon=pas[i];}catch(e){break;}
+    }
+  }finally{try{localStorage.removeItem(cle);}catch(e){}}
+  return deja+bon;
+}
+function quotaMemoire(){
+  if(QUOTA_CHARS)return QUOTA_CHARS;
+  try{var q=+localStorage.getItem(QUOTAKEY);if(q>500000){QUOTA_CHARS=q;return q;}}catch(e){}
+  return QUOTA_DEFAUT;
+}
+function lancerSonde(){
+  try{if(+localStorage.getItem(QUOTAKEY)>500000)return;}catch(e){return;}
+  var q=sondeQuota();
+  if(q>500000)try{localStorage.setItem(QUOTAKEY,String(q));QUOTA_CHARS=q;}catch(e){}
+}
+function memoire(){
+  var u=derniereTaille||(DB?JSON.stringify(DB).length:0),q=quotaMemoire();
+  var pct=Math.min(100,Math.round(100*u/q));
+  var jours=null;
+  if(DB&&DB.ventes&&DB.ventes.length>=10){
+    var l30=now()-30*86400000,rec=DB.ventes.filter(function(v){return v.ts>=l30;});
+    if(rec.length>=10){
+      var moy=Math.round(u/Math.max(1,DB.ventes.length+DB.depenses.length));   // ce que coute une ligne, en moyenne
+      var parJour=rec.length/30*moy;
+      jours=Math.max(0,Math.floor((q-u)/Math.max(1,parJour)));
+    }
+  }
+  return {utilise:u,quota:q,pct:pct,jours:jours};
+}
+
+/* ╔═ ARCHIVER ═════════════════════════════════════════════════
+   Les ventes de plus de GARDE_JOURS jours partent dans un FICHIER (qu'on
+   télécharge avant d'effacer quoi que ce soit) ; il ne reste dans le téléphone
+   qu'un résumé par mois (nombre, recette, coût, dépenses), assez pour voir
+   l'année sans en porter chaque addition. Les ardoises, le stock, les produits
+   et les clôtures ne bougent pas. */
+var GARDE_JOURS=60;
+function aArchiver(jours){
+  var lim=now()-(jours||GARDE_JOURS)*86400000;
+  return {lim:lim,ventes:DB.ventes.filter(function(v){return v.ts<lim;}),depenses:DB.depenses.filter(function(d){return d.ts<lim;})};
+}
+function archiver(jours){
+  if(!estPatron()){toast(L('🔒 Réservé au patron.','🔒 Owner only.'));return;}
+  jours=jours||GARDE_JOURS;
+  var a=aArchiver(jours);
+  if(!a.ventes.length&&!a.depenses.length){toast(L('Rien de plus vieux que '+jours+' jours.','Nothing older than '+jours+' days.'));return;}
+  var blob=new Blob([JSON.stringify({mybarArchive:1,bar:DB.cfg.nom||'',avant:jour(a.lim),ventes:a.ventes,depenses:a.depenses})],{type:'application/json'});
+  var lien=document.createElement('a');
+  lien.href=URL.createObjectURL(blob);lien.download='mybar-archive-avant-'+jour(a.lim)+'.json';
+  document.body.appendChild(lien);lien.click();document.body.removeChild(lien);
+  if(!confirm(L('Le fichier « '+lien.download+' » vient d\'être téléchargé ('+a.ventes.length+' ventes).\n\nVérifie qu\'il est bien dans tes téléchargements, puis valide pour libérer la mémoire. Annuler ne supprime rien.',
+                'The file "'+lien.download+'" has just been downloaded ('+a.ventes.length+' sales).\n\nCheck it is in your downloads, then confirm to free the memory. Cancelling deletes nothing.')))return;
+  DB.archive=DB.archive||[];
+  var par={};
+  DB.archive.forEach(function(m){par[m.mois]=m;});
+  a.ventes.forEach(function(v){
+    var mois=String(v.jour||jour(v.ts)).slice(0,7),m=par[mois];
+    if(!m){m=par[mois]={mois:mois,nb:0,ca:0,cout:0,dep:0};DB.archive.push(m);}
+    m.nb++;m.ca+=v.total||0;m.cout+=v.cout||0;
+  });
+  depExploitation(a.depenses).forEach(function(d){
+    var mois=jour(d.ts).slice(0,7),m=par[mois];
+    if(!m){m=par[mois]={mois:mois,nb:0,ca:0,cout:0,dep:0};DB.archive.push(m);}
+    m.dep+=d.montant||0;
+  });
+  DB.archive.sort(function(x,y){return x.mois<y.mois?-1:1;});
+  var lim=a.lim;
+  DB.ventes=DB.ventes.filter(function(v){return v.ts>=lim;});
+  DB.depenses=DB.depenses.filter(function(d){return d.ts>=lim;});
+  save();
+  toast('🗄️ '+a.ventes.length+L(' ventes archivées — mémoire libérée.',' sales archived — memory freed.'));
+  if(document.querySelector('.scr.on'))rendreEcran(document.querySelector('.scr.on').id);
+}
+
+/* ╔═ ÉCRAN ALLUMÉ ═════════════════════════════════════════════════════
+   Un téléphone posé au comptoir s'éteint entre deux clients : il faut le
+   réveiller, se reconnecter, pendant que le suivant attend. Réglage PROPRE
+   À CE TÉLÉPHONE (un téléphone de poche n'a aucune raison de rester allumé et
+   de vider sa batterie) : allumé par défaut au comptoir et dans un bar sans
+   tables, éteint sinon. */
+var ECRANKEY='mybar_ecran',_veille=null;
+function ecranAllume(){
+  try{var v=localStorage.getItem(ECRANKEY);if(v==='1')return true;if(v==='0')return false;}catch(e){}
+  return poste()==='comptoir'||!forme('tables');
+}
+function libererVeille(){try{if(_veille&&!_veille.released)_veille.release();}catch(e){}_veille=null;}
+function veille(){
+  if(!('wakeLock' in navigator))return;
+  if(!moi||!ecranAllume()||document.visibilityState!=='visible'){libererVeille();return;}
+  if(_veille&&!_veille.released)return;
+  try{navigator.wakeLock.request('screen').then(function(l){_veille=l;}).catch(function(){});}catch(e){}
+}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')veille();});
+function poserEcran(v){
+  try{localStorage.setItem(ECRANKEY,v?'1':'0');}catch(e){}
+  veille();rendreSettings();
+  toast((v?'🔆 ':'🌑 ')+L(v?'L\'écran restera allumé.':'L\'écran pourra s\'éteindre.',v?'The screen will stay on.':'The screen may turn off.'));
+}
+/* Demande au navigateur de ne pas effacer ces données de lui-même. */
+var _persisteDemande=false;
+function demanderStockageDurable(){
+  if(_persisteDemande)return;_persisteDemande=true;
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().then(function(ok){
+    try{localStorage.setItem('mybar_persist',ok?'1':'0');}catch(e){}
+  }).catch(function(){});}catch(e){}
+}
+function save(){try{
+  var r=+localStorage.getItem(REVKEY)||0;
+  if(r>revLocale)fusionnerStocke();
+  revLocale=Math.max(r,revLocale)+1;
+  localStorage.setItem(REVKEY,String(revLocale));   // la révision d'abord : l'autre fenêtre la lit en recevant l'avis
+  var js=JSON.stringify(DB);derniereTaille=js.length;
+  localStorage.setItem(DBKEY,js);}catch(e){
+  toast(L("⚠️ Mémoire de MyBar pleine — la vente N'EST PAS enregistrée. Paramètres → Données → Archiver les anciennes ventes (libérer de la place sur le téléphone ne change rien).","⚠️ MyBar storage full — the sale is NOT saved. Settings → Data → Archive old sales (freeing phone space changes nothing)."));}}
 function migrer(d){
   if(!d)return d;
   d.produits=d.produits||[];d.tables=d.tables||[];d.ventes=d.ventes||[];
@@ -1869,12 +2059,13 @@ function loginServeur(){
   var id=parseInt($('v-nm').value,10),p=$('v-pin').value.trim();
   var m=DB.equipe.filter(function(x){return x.id===id;})[0];
   if(!m){toast(L('Choisis ton nom dans la liste.','Pick your name from the list.'));return;}
+  if(!m.pin){toast(L("🔐 Ton code n'est pas encore défini. Demande-le au patron.",'🔐 Your code is not set yet. Ask the owner.'));return;}
   if(String(m.pin||'')!==p){toast(L('🔐 Code incorrect. Demande au patron.','🔐 Wrong code. Ask the owner.'));return;}
   moi=m;$('v-pin').value='';
   ouvrirDepart();
 }
 function logout(){
-  moi=null;tableCourante=null;hist=[];
+  libererVeille();moi=null;tableCourante=null;hist=[];
   $('p-pin').value='';
   goScreen('s-login');
   remplirServeurs();
@@ -1893,8 +2084,9 @@ function demarrer(){
   if(DB&&DB.cfg&&DB.cfg.lang&&DB.cfg.lang!==lang)setLang(DB.cfg.lang,true);
   appliquerLangue();
   if(DB){goScreen('s-login');remplirServeurs();switchLogin('patron');}
-  else goScreen('s-vitrine');
+  else{goScreen('s-vitrine');if(BASE_ILLISIBLE)avertirBaseIllisible();}
   majBoutonsInstaller();
+  if(DB)setTimeout(lancerSonde,6000);      // une fois, au calme : le quota réel de CE navigateur
 }
 /* ══════════════════════════════════════════════════════════════════
    « INSTALLER » DOIT INSTALLER, PAS EXPLIQUER
@@ -2212,6 +2404,16 @@ function reglementsDuSoir(){var j=jourService();return (DB.reglements||[]).filte
 
 function alertes(){
   var a=[];
+  var mem=memoire();
+  if(mem.pct>=70)a.push({e:'🗄️',cls:mem.pct>=90?'rouge':'',
+    txt:L('La mémoire de MyBar est pleine à '+mem.pct+' %'+(mem.jours!=null?' — environ '+mem.jours+' jours avant qu\'elle refuse d\'enregistrer.':'.')+' Archive les anciennes ventes.',
+          'MyBar storage is '+mem.pct+'% full'+(mem.jours!=null?' — about '+mem.jours+' days before it refuses to save.':'.')+' Archive old sales.'),go:'goSt()'});
+  if(estPatron()){
+    var ref=DB.cfg.derniereSauv||DB.cfg.cree||0,ecart=ref?Math.floor((now()-ref)/86400000):0;
+    if(ref&&ecart>=7)a.push({e:'💾',cls:'',
+      txt:DB.cfg.derniereSauv?L('Pas de sauvegarde depuis '+ecart+' jours. Un téléphone perdu, c\'est le bar perdu.','No backup for '+ecart+' days. A lost phone is a lost bar.')
+                             :L('Ce bar n\'a jamais été sauvegardé. Un téléphone perdu, c\'est le bar perdu.','This bar has never been backed up. A lost phone is a lost bar.'),go:'sauvegarder()'});
+  }
   var froid=DB.produits.filter(function(p){return p.actif&&p.suivi&&(p.frais||0)===0&&stockTotal(p)>0;});
   if(froid.length)a.push({e:'🧊',cls:'',txt:froid.length+L(' produit'+(froid.length>1?'s':'')+' sans rien au frais — ',' product'+(froid.length>1?'s':'')+' with nothing cold — ')+
       froid.slice(0,3).map(function(p){return p.nm;}).join(', ')+(froid.length>3?'…':''),go:"navTo('stock')"});
@@ -2259,7 +2461,7 @@ function rendreService(){
   DB.tables.forEach(function(t){if(zones.indexOf(t.zone)<0)zones.push(t.zone);});
   $('svc-zones').innerHTML=zones.map(function(z){
     var n=z==='*'?tablesOuvertes().length:DB.tables.filter(function(t){return t.zone===z&&t.lignes.length;}).length;
-    return '<button class="tpil'+(vueZone===z?' on':'')+'" onclick="filtreZone(\''+z+'\')">'+
+    return '<button class="tpil'+(vueZone===z?' on':'')+'" data-z="'+esc(z)+'" onclick="filtreZone(this.getAttribute(\'data-z\'))">'+
       (z==='*'?L('Toutes','All'):esc(zoneNm(z)))+(n?' · '+n:'')+'</button>';
   }).join('');
 
@@ -3260,6 +3462,12 @@ function rendreRapports(){
        return '<div class="kv"><span class="kv-l">'+depE(k)+' '+esc(depNm(k))+'</span><span class="kv-v">'+fmt(parDep[k])+'</span></div>';
      }).join('')+'</div>';
   var cls=DB.clotures.slice(-5).reverse();
+  if(DB.archive&&DB.archive.length)h+='<div class="rcard"><div class="rct">'+L('🗄️ Mois archivés','🗄️ Archived months')+'</div>'+
+     DB.archive.slice().reverse().map(function(m){
+       var net=m.ca-m.cout-m.dep;
+       return '<div class="kv"><span class="kv-l">'+esc(m.mois)+' · '+m.nb+L(' ventes',' sales')+'</span><span class="kv-v">'+fmt(m.ca)+
+         (estPatron()?' <span style="color:'+(net>=0?'#1B7A3A':'var(--R)')+'">('+fmt(net)+')</span>':'')+'</span></div>';}).join('')+
+     '<div class="note" style="margin:10px 0 0">'+L('Les détails sont dans les fichiers d\'archive téléchargés. Entre parenthèses : le net du mois.','Details are in the archive files you downloaded. In brackets: the month\'s net.')+'</div></div>';
   if(cls.length)h+='<div class="rcard"><div class="rct">'+L('🌙 Dernières clôtures','🌙 Latest closings')+'</div>'+
      cls.map(function(c){
        return '<div class="kv"><span class="kv-l">'+c.jour+'</span><span class="kv-v">'+fmt(c.ca)+
@@ -3560,6 +3768,7 @@ function rendreSettings(){
      '<div class="chips">'+THEMES.map(function(t){
        return '<div class="chip'+(themeChoisi()===t.c?' on':'')+'" onclick="poserTheme(\''+t.c+'\')">'+t.e+' '+L(t.nm,t.ne)+'</div>';
      }).join('')+'</div>'+
+     ('wakeLock' in navigator?'<div class="chips" style="margin-top:10px"><div class="chip'+(ecranAllume()?' on':'')+'" onclick="poserEcran('+(ecranAllume()?0:1)+')">🔆 '+L('Garder l\'écran allumé (ce téléphone)','Keep the screen on (this phone)')+'</div></div>':'')+
      '<div class="note" style="margin:10px 0 0">'+L(
        "En automatique, l'écran passe au sombre de 18 h à 6 h. Un bar travaille la nuit : un plan de salle blanc éblouit le serveur, se voit depuis la rue, et vide la batterie du seul téléphone qui tient la caisse.",
        'On automatic, the screen goes dark from 6 pm to 6 am. A bar works at night: a white floor plan dazzles the server, is visible from the street, and drains the battery of the one phone holding the till.')+'</div></div>';
@@ -3605,8 +3814,8 @@ function rendreSettings(){
   if(estPatron()){
     c+='<div class="rcard"><div class="rct">'+L('🍻 Comment marche ton bar','🍻 How your bar works')+'</div>'+
      '<div class="note" style="margin:0 0 12px">'+L(
-       "Aucun bar ne ressemble au voisin. Éteins ce que tu ne fais pas : l'app cesse d'en parler, et les écrans s'allègent d'autant. Ce réglage est celui du BAR — il vaut pour tous les téléphones, et il part avec la sauvegarde.",
-       'No two bars are alike. Switch off what you do not do: the app stops bringing it up, and the screens get lighter for it. This setting belongs to the BAR — it holds for every phone, and it travels with the backup.')+'</div>'+
+       "Aucun bar ne ressemble au voisin. Éteins ce que tu ne fais pas : l'app cesse d'en parler, et les écrans s'allègent d'autant. Ce réglage est celui du BAR, et il part avec la sauvegarde.",
+       'No two bars are alike. Switch off what you do not do: the app stops bringing it up, and the screens get lighter for it. This setting belongs to the BAR, and it travels with the backup.')+'</div>'+
      FORMES.map(function(x){
        var on=forme(x.c);
        return '<div class="strow" style="margin:0 0 10px"><div class="row-b"><div class="row-t">'+x.e+' '+L(x.nm,x.ne)+'</div>'+
@@ -3622,18 +3831,27 @@ function rendreSettings(){
      }).join('')+'</div>'+
      '<div class="note bleu" style="margin:12px 0 0">'+esc(L(pc.d,pc.de))+'</div>'+
      '<div class="note" style="margin:8px 0 0">'+L(
-       "Ce réglage-ci n'appartient qu'à CE téléphone : il n'est pas dans la sauvegarde, et il ne change rien chez tes serveurs. Celui du comptoir peut s'ouvrir sur la carte pendant que celui de la cave s'ouvre sur le stock — c'est le même bar, les mêmes chiffres.",
-       "This one belongs to THIS phone only: it is not in the backup, and it changes nothing for your servers. The counter phone can open on the menu while the store-room phone opens on the stock — same bar, same figures.")+'</div></div>';
+       "Ce réglage-ci n'appartient qu'à CE téléphone : il n'est pas dans la sauvegarde, et il ne change rien chez tes serveurs. \n\n⚠️ Deux téléphones ne partagent pas encore leurs données : chacun a SA base, ses ventes et son stock. Ce réglage sert aujourd'hui à un seul téléphone — le vôtre — selon ce qu'il fait ce soir.",
+       "This one belongs to THIS phone only: it is not in the backup, and it changes nothing for your servers. \n\n⚠️ Two phones do not share their data yet: each has ITS OWN database, sales and stock. Today this setting serves a single phone — yours — depending on what it does tonight.")+'</div></div>';
   }
+  var mem=memoire(),ar=estPatron()?aArchiver():null;
+  var persiste=null;try{persiste=localStorage.getItem('mybar_persist');}catch(e){}
   c+='<div class="rcard"><div class="rct">'+L('📦 Données','📦 Data')+'</div>'+
+     '<div class="kv"><span class="kv-l">'+L('Mémoire de MyBar','MyBar storage')+'</span><span class="kv-v">'+mem.pct+' %</span></div>'+
+     '<div class="jauge'+(mem.pct>=90?' haut':(mem.pct>=70?' mid':''))+'"><i style="width:'+mem.pct+'%"></i></div>'+
+     '<div style="font-size:11.5px;font-weight:700;color:var(--M);line-height:1.45;margin-bottom:8px">'+
+       (mem.jours!=null?L('Au rythme des 30 derniers jours : environ '+mem.jours+' jours avant saturation. ','At the last 30 days\' pace: about '+mem.jours+' days until full. '):'')+
+       L('Cette limite est celle de MyBar sur cette adresse, pas celle de ton téléphone.','This limit is MyBar\'s on this address, not your phone\'s.')+'</div>'+
+     (persiste==='0'?'<div class="note" style="margin:0 0 10px">'+L('🔒 Le navigateur ne garantit pas la conservation de ces données : s\'il manque de place, il peut les effacer (sur iPhone, hors de l\'écran d\'accueil, après quelques jours sans visite). Installe l\'app et sauvegarde.','🔒 The browser does not guarantee keeping this data: if it runs short of space it may erase it (on iPhone, outside the home screen, after a few days unused). Install the app and back up.')+'</div>':'')+
      '<div class="kv"><span class="kv-l">'+L('Produits sur la carte','Products on the menu')+'</span><span class="kv-v">'+DB.produits.filter(function(p){return p.actif;}).length+'</span></div>'+
      '<div class="kv"><span class="kv-l">'+L('Additions enregistrées','Bills recorded')+'</span><span class="kv-v">'+DB.ventes.length+'</span></div>'+
      '<div class="kv"><span class="kv-l">'+L('Clôtures','Closings')+'</span><span class="kv-v">'+DB.clotures.length+'</span></div>'+
      '<div style="height:10px"></div>'+
      '<button class="bse" onclick="exporterCSV()">'+L('📥 Exporter les ventes (Excel)','📥 Export sales (Excel)')+'</button>'+
-     '<button class="bse" onclick="sauvegarder()">'+L('💾 Sauvegarde complète (fichier)','💾 Full backup (file)')+'</button>'+
+     (estPatron()?'<button class="bse" onclick="archiver()">'+L('🗄️ Archiver les ventes de plus de '+GARDE_JOURS+' jours ('+ar.ventes.length+')','🗄️ Archive sales older than '+GARDE_JOURS+' days ('+ar.ventes.length+')')+'</button>':'')+
+     (estPatron()?'<button class="bse" onclick="sauvegarder()">'+L('💾 Sauvegarde complète (fichier)','💾 Full backup (file)')+'</button>'+
      '<button class="bse" onclick="document.getElementById(\'fic-restore\').click()">'+
-       L('📂 Restaurer une sauvegarde','📂 Restore a backup')+'</button>'+
+       L('📂 Restaurer une sauvegarde','📂 Restore a backup')+'</button>':'')+
      (estPatron()?'<button class="bse bdg2" onclick="toutEffacer()">'+L('🗑️ Effacer et recommencer','🗑️ Erase and start over')+'</button>':'')+
      '</div>';
   c+='<div class="rcard"><div class="rct">'+L('📲 Application','📲 App')+'</div>'+
@@ -3675,8 +3893,24 @@ function changerPin(){
   var p=DB.equipe.filter(function(m){return m.role==='patron';})[0];if(p)p.pin=a;
   save();rendreSettings();toast(L('🔐 Code patron changé.','🔐 Owner code changed.'));
 }
+/* ⚠️ LA SAUVEGARDE CONTENAIT LE CODE PATRON EN CLAIR. Et n'importe
+   quel serveur voyait le bouton : un code de quatre chiffres lu dans un
+   fichier, et il devenait patron — recette, marges, clôture. Les
+   rôles n'existaient que dans l'écran. Un code à quatre chiffres ne se
+   protège pas par hachage (dix mille essais) : on ne l'exporte pas. La
+   restauration redemande un code patron, et les serveurs se voient
+   redonner le leur par le patron. */
+function copieSansCodes(){
+  var c=JSON.parse(JSON.stringify(DB));
+  if(c.cfg)delete c.cfg.pin;
+  (c.equipe||[]).forEach(function(m){delete m.pin;});
+  c.cfg.sansCodes=1;
+  return c;
+}
 function sauvegarder(){
-  var blob=new Blob([JSON.stringify(DB)],{type:'application/json'});
+  if(!estPatron()){toast(L('🔒 Réservé au patron.','🔒 Owner only.'));return;}
+  DB.cfg.derniereSauv=now();save();
+  var blob=new Blob([JSON.stringify(copieSansCodes())],{type:'application/json'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='mybar-sauvegarde-'+jour()+'.json';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
@@ -3714,8 +3948,21 @@ function restaurer(input){
     var actuel=DB?((DB.ventes||[]).length+L(' additions',' bills')):L('rien','nothing');
     if(!confirm(L('Restaurer « '+(d.cfg.nom||'?')+' » ('+quoi+') ?\n\nCe qui est sur ce téléphone ('+actuel+') sera REMPLACÉ.',
                   'Restore "'+(d.cfg.nom||'?')+'" ('+quoi+')?\n\nWhat is on this phone ('+actuel+') will be REPLACED.')))return;
+    if(!estPatron()&&DB){toast(L('🔒 Réservé au patron.','🔒 Owner only.'));return;}
+    if(!d.cfg.pin){
+      var code='';
+      while(!/^\d{4}$/.test(code)){
+        code=prompt(L('Cette sauvegarde ne contient pas les codes. Choisis ton code patron (4 chiffres) :',
+                      'This backup holds no codes. Choose your owner code (4 digits):'));
+        if(code===null){toast(L('📂 Restauration annulée.','📂 Restore cancelled.'));return;}
+        code=String(code).trim();
+      }
+      d.cfg.pin=code;
+      (d.equipe||[]).forEach(function(m){m.pin=(m.role==='patron')?code:'';});
+    }
     try{
       DB=migrer(d);
+      DB.cfg.derniereSauv=now();
       save();
       moi=DB.equipe.filter(function(m){return m.role==='patron';})[0]||DB.equipe[0];
       if(DB.cfg.lang&&DB.cfg.lang!==lang)setLang(DB.cfg.lang,true);
@@ -3731,8 +3978,8 @@ function restaurer(input){
 function toutEffacer(){
   if(!confirm(L("Effacer TOUT : carte, tables, ventes, clients ? C'est définitif.",'Erase EVERYTHING: menu, tables, sales, customers? This cannot be undone.')))return;
   if(!confirm(L('Vraiment ? Fais une sauvegarde avant si tu hésites.','Really? Take a backup first if you are unsure.')))return;
-  try{localStorage.removeItem(DBKEY);localStorage.removeItem(DBKEY_ANCIEN);}catch(e){}
-  DB=null;moi=null;hist=[];goScreen('s-vitrine');
+  try{localStorage.removeItem(DBKEY);localStorage.removeItem(DBKEY_ANCIEN);localStorage.removeItem(COPIEKEY);localStorage.removeItem(REVKEY);}catch(e){}
+  revLocale=0;DB=null;moi=null;hist=[];goScreen('s-vitrine');
   toast(L('🗑️ Tout a été effacé.','🗑️ Everything has been erased.'));
 }
 

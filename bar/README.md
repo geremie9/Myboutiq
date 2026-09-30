@@ -60,15 +60,20 @@ Deux choses varient, et **elles ne se rangent pas au même endroit** :
 
 | | Où ça vit | Qui ça concerne |
 |---|---|---|
-| **La forme du bar** — tables, vidanges, cuisine, plusieurs personnes | `cfg.forme`, dans la base | Tout le bar. Partagé, sauvegardé. |
+| **La forme du bar** — tables, vidanges, cuisine, plusieurs personnes | `cfg.forme`, dans la base | Tout le bar. Sauvegardé avec lui (partagé entre téléphones le jour où la synchronisation existera). |
 | **Le poste du téléphone** — tout / comptoir / stock | `localStorage`, clé `mybar_poste` | **Ce téléphone seul.** Jamais dans la sauvegarde. |
 
-C'est cette séparation qui permet au téléphone du comptoir de s'ouvrir sur
-la carte pendant que celui de la cave s'ouvre sur le stock — le même bar,
-les mêmes chiffres, deux métiers ce soir-là. Mettre le poste dans la base
-l'aurait imposé à tout le monde à la première synchronisation ; le
-restaurer depuis une sauvegarde aurait changé le métier du téléphone qui
-restaure.
+C'est cette séparation qui permettra, avec la synchronisation, au téléphone du
+comptoir de s'ouvrir sur la carte pendant que celui de la cave s'ouvre sur le
+stock. Mettre le poste dans la base l'imposerait à tout le monde à la première
+synchronisation ; le restaurer depuis une sauvegarde changerait le métier du
+téléphone qui restaure.
+
+> ⚠️ **Aujourd'hui, deux téléphones ne partagent rien.** Il n'y a aucune ligne
+> réseau dans l'application : chaque téléphone a SA base, ses ventes, son stock.
+> Ce texte a longtemps promis « le même bar, les mêmes chiffres » — c'était
+> faux, et l'app le dit maintenant. Le poste sert donc à UN téléphone, selon ce
+> qu'il fait ce soir.
 
 **Les onglets du bas ne sont plus écrits en dur.** `onglets()` les
 calcule, `majNavs()` les pose sur toutes les barres à la fois :
@@ -189,6 +194,32 @@ chaîne libre, affichée telle qu'il l'a écrite.
    table reste un outil de service, pas un tableau de bord, et un
    serveur qui monte une tournée n'a pas à lire l'état du dépôt.
 
+## La mémoire d'un bar est finie
+
+`localStorage` a un quota **par adresse**, pas par téléphone : libérer de la
+place sur l'appareil n'y change rien. Mesuré : ~5 M de caractères, 478 par vente
+— un bar de 120 ventes par jour le sature en ~90 jours, et les ventes suivantes ne
+s'enregistrent plus. Le message d'erreur disait « libère de la place » : une
+consigne impossible. Il dit désormais que la vente n'est PAS enregistrée, et quoi faire.
+
+- **Jauge** (Paramètres → Données) : le vrai quota du navigateur est mesuré une fois
+  (`sondeQuota`, 6 s après le démarrage, sans rien laisser derrière), car les navigateurs
+  diffèrent. Estimation des jours restants au rythme des 30 derniers jours.
+- **Alerte à 70 %**, rouge à 90 %.
+- **Archiver** : les ventes de plus de 60 jours partent dans un fichier, téléchargé
+  AVANT d'effacer quoi que ce soit (annuler ne supprime rien) ; il reste un résumé
+  par mois (nombre, recette, coût, dépenses), visible dans Rapports. Patron seulement.
+  Ardoises, stock, produits et clôtures ne bougent pas.
+- **`storage.persist()`** est demandé à la connexion ; si le navigateur refuse, la carte
+  Données le dit (sur iPhone, hors de l'écran d'accueil, Safari peut effacer les
+  données d'un site après quelques jours sans visite).
+- **Rappel de sauvegarde** au patron après 7 jours sans sauvegarde.
+- **Écran allumé** (Wake Lock) : réglage propre à CE téléphone, allumé par défaut au
+  comptoir et sans tables, éteint sinon ; relâché à la déconnexion.
+
+Ce qui reste : l'archive se relit à la main (il n'y a pas d'import), et le quota
+n'est qu'un délai, pas une réponse — la réponse est la sauvegarde en ligne.
+
 ## Les deux adresses, et ce que ça coûte
 
 MyBar est servie à deux endroits : la racine de son sous-domaine, et le
@@ -246,7 +277,43 @@ Vitrine → **« Voir une soirée d'exemple »** : une buvette de 12 tables,
 vidanges accumulées et des dépenses de glace et de carburant.
 Code patron de la démo : `1234`.
 
+## Les six garde-fous du diagnostic
+
+Un diagnostic d'architecture (mesures, pas impressions) a trouvé six défauts.
+Chacun est rejoué tel qu'il avait été mesuré par `tests/mybar/durcissement.test.js`.
+
+1. **L'indicatif était sur le mauvais objet.** `cc:'27'` (Afrique du Sud) avait
+   atterri sur la ligne « Bar / Buvette » des types, pas sur celle du pays :
+   `0821234567` devenait `+237821234567`, un numéro camerounais, sans erreur
+   visible. Le banc exige un indicatif valide pour les 24 pays et aucun sur un type.
+2. **Un nom de zone avec apostrophe tuait son filtre.** Le nom était collé dans
+   un `onclick` : « Terrasse de l'hôtel » → erreur de syntaxe. Il passe désormais par
+   `data-z` + `esc()`, et un nom contenant du code ne s'exécute pas.
+3. **La sauvegarde contenait le code patron en clair**, et tout serveur voyait le
+   bouton. Un code à quatre chiffres ne se protège pas par hachage (dix mille
+   essais) : on ne l'exporte pas. Réservé au patron ; la restauration redemande
+   un code patron ; un serveur sans code défini ne peut pas entrer avec un champ vide.
+4. **Une base illisible devenait un bar neuf, puis était écrasée.** Copie brute
+   gardée à part (`mybar_v1_illisible`) avant toute écriture, avertissement,
+   téléchargement possible.
+5. **Deux fenêtres, une vente disparue.** Chacune gardait toute la base et
+   réécrivait la clé entière (5 000 F + 3 000 F encaissés → 3 000 F en mémoire).
+   L'événement `storage` fait relire l'autre fenêtre ; un numéro de révision
+   (`mybar_v1_rev`) fait rapatrier ce qui manque si l'avis a été manqué.
+6. **Un réseau présent qui ne débite rien.** Le service worker attendait le
+   réseau sans limite : avec la copie locale, 12 s de réseau = 13,4 s avant de
+   vendre. Il sert désormais la copie après 2,5 s, et met à jour en arrière-plan.
+
+**Ce que ces garde-fous ne font pas**, pour ne pas le croire : deux téléphones
+restent deux bars séparés (aucune synchronisation), et la base reste bornée par
+le quota de `localStorage` (~5,2 M de caractères mesurés, soit ~90 jours pour un
+bar de 120 ventes par jour). Les deux se traitent avec la phase Supabase.
+
 ## Développement
+
+Bancs : `cd tests/mybar && npm install && npx playwright install chromium && node run.js`
+(`node run.js cave` pour une seule suite). Le CI (`mybar-ci.yml`) les lance à chaque
+modification de `bar/`.
 
 ```bash
 npx -y serve -l 8777 .        # depuis la racine du dépôt
