@@ -246,7 +246,43 @@ Vitrine → **« Voir une soirée d'exemple »** : une buvette de 12 tables,
 vidanges accumulées et des dépenses de glace et de carburant.
 Code patron de la démo : `1234`.
 
+## Les six garde-fous du diagnostic
+
+Un diagnostic d'architecture (mesures, pas impressions) a trouvé six défauts.
+Chacun est rejoué tel qu'il avait été mesuré par `tests/mybar/durcissement.test.js`.
+
+1. **L'indicatif était sur le mauvais objet.** `cc:'27'` (Afrique du Sud) avait
+   atterri sur la ligne « Bar / Buvette » des types, pas sur celle du pays :
+   `0821234567` devenait `+237821234567`, un numéro camerounais, sans erreur
+   visible. Le banc exige un indicatif valide pour les 24 pays et aucun sur un type.
+2. **Un nom de zone avec apostrophe tuait son filtre.** Le nom était collé dans
+   un `onclick` : « Terrasse de l'hôtel » → erreur de syntaxe. Il passe désormais par
+   `data-z` + `esc()`, et un nom contenant du code ne s'exécute pas.
+3. **La sauvegarde contenait le code patron en clair**, et tout serveur voyait le
+   bouton. Un code à quatre chiffres ne se protège pas par hachage (dix mille
+   essais) : on ne l'exporte pas. Réservé au patron ; la restauration redemande
+   un code patron ; un serveur sans code défini ne peut pas entrer avec un champ vide.
+4. **Une base illisible devenait un bar neuf, puis était écrasée.** Copie brute
+   gardée à part (`mybar_v1_illisible`) avant toute écriture, avertissement,
+   téléchargement possible.
+5. **Deux fenêtres, une vente disparue.** Chacune gardait toute la base et
+   réécrivait la clé entière (5 000 F + 3 000 F encaissés → 3 000 F en mémoire).
+   L'événement `storage` fait relire l'autre fenêtre ; un numéro de révision
+   (`mybar_v1_rev`) fait rapatrier ce qui manque si l'avis a été manqué.
+6. **Un réseau présent qui ne débite rien.** Le service worker attendait le
+   réseau sans limite : avec la copie locale, 12 s de réseau = 13,4 s avant de
+   vendre. Il sert désormais la copie après 2,5 s, et met à jour en arrière-plan.
+
+**Ce que ces garde-fous ne font pas**, pour ne pas le croire : deux téléphones
+restent deux bars séparés (aucune synchronisation), et la base reste bornée par
+le quota de `localStorage` (~5,2 M de caractères mesurés, soit ~90 jours pour un
+bar de 120 ventes par jour). Les deux se traitent avec la phase Supabase.
+
 ## Développement
+
+Bancs : `cd tests/mybar && npm install && npx playwright install chromium && node run.js`
+(`node run.js cave` pour une seule suite). Le CI (`mybar-ci.yml`) les lance à chaque
+modification de `bar/`.
 
 ```bash
 npx -y serve -l 8777 .        # depuis la racine du dépôt

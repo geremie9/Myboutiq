@@ -1,7 +1,8 @@
 /* MyBar — service worker.
    Même principe que celui de MyBoutiQ : la coquille est gardée une fois
    pour toutes, et l'app s'ouvre à 2 h du matin sans réseau. */
-const CACHE_NAME='mybar-v6';
+const CACHE_NAME='mybar-v7';
+const DELAI_RESEAU=2500;   // au-delà, on sert la copie locale
 const FONT_CACHE='mybar-polices-v1';
 const APP_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png','./icon-maskable-512.png'];
 
@@ -46,18 +47,32 @@ self.addEventListener('fetch',function(e){
 
   if(url.origin!==self.location.origin)return;
 
-  // Coquille : le réseau d'abord quand il répond, le cache dès qu'il tousse.
+  // Coquille : le réseau d'abord, mais pas plus de DELAI_RESEAU ms quand une
+  // copie locale existe.
+  //
+  // ⚠️ « Le réseau d'abord » attendait le réseau SANS LIMITE. Or le cas le plus
+  // courant chez nous n'est pas l'absence de réseau (le cache répond alors
+  // tout de suite) : c'est un réseau PRÉSENT QUI NE DÉBITE RIEN. Mesuré sur
+  // l'app déjà installée, copie locale comprise : réseau à 5 s → 6,5 s avant
+  // de pouvoir vendre ; à 12 s → 13,4 s. La copie locale est là : on la sert
+  // après 2,5 s, et la mise à jour continue en arrière-plan pour l'ouverture
+  // suivante. Sans copie (première visite), il n'y a rien à servir : on attend.
+  var req=e.request;
+  var reseau=fetch(req).then(function(res){
+    if(res&&res.status===200){
+      var copy=res.clone();
+      caches.open(CACHE_NAME).then(function(c){c.put(req,copy);});
+    }
+    return res;
+  });
+  e.waitUntil(reseau.catch(function(){}));   // appelé tout de suite : plus tard, le navigateur le refuse
   e.respondWith(
-    fetch(e.request).then(function(res){
-      if(res&&res.status===200){
-        var copy=res.clone();
-        caches.open(CACHE_NAME).then(function(c){c.put(e.request,copy);});
+    caches.match(req).then(function(hit){
+      if(!hit){
+        return reseau.catch(function(){return caches.match('./index.html');});
       }
-      return res;
-    }).catch(function(){
-      return caches.match(e.request).then(function(hit){
-        return hit||caches.match('./index.html');
-      });
+      var minuteur=new Promise(function(ok){setTimeout(function(){ok(hit);},DELAI_RESEAU);});
+      return Promise.race([reseau.catch(function(){return hit;}),minuteur]);
     })
   );
 });

@@ -1,0 +1,33 @@
+name: MyBar CI
+# MyBar n'avait aucun contrôle : ni syntaxe, ni parcours. Ses bancs vivaient dans
+# un dossier temporaire. Ils sont désormais ici, et une régression bloque la fusion.
+on:
+  push:
+    branches: [main, dev]
+    paths: ['bar/**', 'tests/mybar/**', '.github/workflows/mybar-ci.yml']
+  pull_request:
+    branches: [main, dev]
+    paths: ['bar/**', 'tests/mybar/**', '.github/workflows/mybar-ci.yml']
+
+jobs:
+  banc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Syntaxe des blocs <script> et du service worker
+        run: |
+          node -e "const fs=require('fs');const h=fs.readFileSync('bar/index.html','utf8');const re=/<script>([\\s\\S]*?)<\\/script>/g;let m,i=0;while((m=re.exec(h))!==null){fs.writeFileSync('tmp-mybar-'+i+'.js',m[1]);i++;}if(!i){console.error('aucun bloc <script>');process.exit(1);}console.log(i+' blocs');"
+          for f in tmp-mybar-*.js; do node --check "$f"; done
+          node --check bar/sw.js
+      - name: Installer Playwright
+        working-directory: tests/mybar
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Bancs (parcours FR/EN, mode expert, cave, recherche, adresse, durcissement…)
+        working-directory: tests/mybar
+        run: node run.js

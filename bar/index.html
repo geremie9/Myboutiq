@@ -849,7 +849,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
      déchet.
    • on achète en casiers, on vend à la bouteille.
    ══════════════════════════════════════════════════════════════════ */
-var BUILD='1.6';
+var BUILD='1.7';
 
 /* ══════════════════════════════════════════════════════════════════
    LA LANGUE
@@ -920,7 +920,7 @@ var PAYS=[
  {c:'GH',nm:'Ghana',ne:'Ghana',f:'🇬🇭',d:'GHS',s:'GH₵',k:0.025,cc:'233'},
  {c:'NG',nm:'Nigéria',ne:'Nigeria',f:'🇳🇬',d:'NGN',s:'₦',k:2.6,cc:'234'},
  {c:'KE',nm:'Kenya',ne:'Kenya',f:'🇰🇪',d:'KES',s:'KSh',k:0.21,cc:'254'},
- {c:'ZA',nm:'Afrique du Sud',ne:'South Africa',f:'🇿🇦',d:'ZAR',s:'R',k:0.031}
+ {c:'ZA',nm:'Afrique du Sud',ne:'South Africa',f:'🇿🇦',d:'ZAR',s:'R',k:0.031,cc:'27'}
 ];
 function paysNm(p){return L(p.nm,p.ne);}
 function paysDe(code){for(var i=0;i<PAYS.length;i++)if(PAYS[i].c===code)return PAYS[i];return PAYS[0];}
@@ -1003,7 +1003,7 @@ function telJoli(num,cc){
 }
 
 var TYPES=[
- {c:'bar',nm:'Bar / Buvette',ne:'Bar / Pub',e:'🍻',fams:['biere','sucr','eau','energ','vin','cuis','div'],cc:'27'},
+ {c:'bar',nm:'Bar / Buvette',ne:'Bar / Pub',e:'🍻',fams:['biere','sucr','eau','energ','vin','cuis','div']},
  {c:'snack',nm:'Snack-bar',ne:'Snack bar',e:'🍢',fams:['biere','sucr','eau','energ','cuis','cock','div']},
  {c:'cave',nm:'Cave à boissons',ne:'Drinks shop',e:'🏪',fams:['biere','sucr','eau','energ','vin','div']},
  {c:'resto',nm:'Restaurant-bar',ne:'Restaurant & bar',e:'🍽️',fams:['biere','sucr','eau','vin','cock','cuis','div']},
@@ -1591,9 +1591,41 @@ function arrondi(v,k){if(k>=1)return Math.max(50,Math.round(v*k/50)*50);
   return Math.max(0.5,Math.round(v*k*2)/2);}
 
 /* ── Stockage ─────────────────────────────────────────────────────── */
+/* ⚠️ UNE BASE ILLISIBLE DEVENAIT UN BAR NEUF, ET LE PREMIER
+   ENREGISTREMENT L'ÉCRASAIT. `loadDB` renvoyait null sur la moindre
+   erreur, et null veut dire « nouvelle installation » : la vitrine, puis
+   « Ouvrir mon bar », puis save() — la base précédente disparaissait sans
+   un mot, alors qu'elle était peut-être récupérable à la main. On en garde
+   désormais une copie à part, AVANT toute écriture, et on le dit. */
+var COPIEKEY='mybar_v1_illisible';
+var BASE_ILLISIBLE=false;
+function garderCopieIllisible(brut){
+  BASE_ILLISIBLE=true;
+  try{if(!localStorage.getItem(COPIEKEY))localStorage.setItem(COPIEKEY,brut);}catch(e){}
+}
+function telechargerCopieIllisible(){
+  var brut=null;
+  try{brut=localStorage.getItem(COPIEKEY)||localStorage.getItem(DBKEY);}catch(e){}
+  if(!brut){toast(L('Aucune copie trouvée.','No copy found.'));return;}
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([brut],{type:'application/json'}));
+  a.download='mybar-base-illisible-'+jour()+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+function avertirBaseIllisible(){
+  modal(mhead(L('⚠️ Les données de ce bar n\'ont pas pu être lues','⚠️ This bar\'s data could not be read'),
+              L('Rien n\'a été effacé','Nothing has been erased'))+
+    '<div class="ovc"><div class="note rouge" style="margin:0 0 12px">'+L(
+      "Une copie brute est gardée sur ce téléphone. N'ouvre PAS un nouveau bar avant de l'avoir téléchargée : elle se récupère à la main, et un nouveau bar ne l'efface pas mais la rend plus difficile à retrouver.",
+      "A raw copy is kept on this phone. Do NOT open a new bar before downloading it: it can be recovered by hand, and a new bar does not erase it but makes it harder to find.")+'</div>'+
+    '<button class="bpr" onclick="telechargerCopieIllisible()">'+L('💾 Télécharger la copie','💾 Download the copy')+'</button>'+
+    '<button class="bse" onclick="fermerModal()">'+L('Plus tard','Later')+'</button></div>');
+}
+var REVKEY='mybar_v1_rev',revLocale=0;
 function loadDB(){
+  var d=null;
   try{
-    var d=localStorage.getItem(DBKEY);
+    d=localStorage.getItem(DBKEY);
     /* ⚠️ Le produit s'est appelé MyBarQ le temps d'une version. Changer la
        clé sans aller chercher l'ancienne, c'est effacer le service d'un
        patron qui a déjà saisi son stock : il rouvre l'app et son bar est
@@ -1603,10 +1635,42 @@ function loadDB(){
       var vieux=localStorage.getItem(DBKEY_ANCIEN);
       if(vieux){localStorage.setItem(DBKEY,vieux);localStorage.removeItem(DBKEY_ANCIEN);d=vieux;}
     }
+    revLocale=+localStorage.getItem(REVKEY)||0;
     return d?migrer(JSON.parse(d)):null;
-  }catch(e){return null;}
+  }catch(e){if(d)garderCopieIllisible(d);return null;}
 }
-function save(){try{localStorage.setItem(DBKEY,JSON.stringify(DB));}catch(e){
+/* ⚠️ DEUX FENÊTRES, UNE VENTE DISPARUE. Chaque fenêtre garde toute la base
+   en mémoire et réécrit la clé entière : la seconde à enregistrer effaçait la
+   première (mesuré : 5 000 F encaissés dans l'une, 3 000 F dans l'autre,
+   il restait 3 000 F). Deux garde-fous : le navigateur prévient l'autre
+   fenêtre à chaque écriture (événement `storage`), qui relit ; et, si elle a
+   manqué l'avis, save() s'en aperçoit à un numéro de révision plus récent
+   et rapatrie ce qui lui manque avant d'écrire. */
+var FUSION=['ventes','depenses','appros','clotures','reglements'];
+function fusionnerStocke(){
+  var s=null;try{s=JSON.parse(localStorage.getItem(DBKEY));}catch(e){}
+  if(!s||!DB)return;
+  FUSION.forEach(function(k){
+    DB[k]=DB[k]||[];
+    var vus={};DB[k].forEach(function(x){vus[x.id+'|'+(x.ts||'')]=1;});
+    (s[k]||[]).forEach(function(x){if(!vus[x.id+'|'+(x.ts||'')])DB[k].push(x);});
+  });
+  DB.nextId=Math.max(DB.nextId||0,s.nextId||0);
+}
+window.addEventListener('storage',function(e){
+  if(e.key!==DBKEY||!DB||!e.newValue)return;
+  var n=loadDB();if(!n)return;
+  var id=moi&&moi.id;DB=n;
+  if(id)moi=membre(id)||moi;
+  var on=document.querySelector('.scr.on');
+  if(on&&typeof rendreEcran==='function')rendreEcran(on.id);
+});
+function save(){try{
+  var r=+localStorage.getItem(REVKEY)||0;
+  if(r>revLocale)fusionnerStocke();
+  revLocale=Math.max(r,revLocale)+1;
+  localStorage.setItem(REVKEY,String(revLocale));   // la révision d'abord : l'autre fenêtre la lit en recevant l'avis
+  localStorage.setItem(DBKEY,JSON.stringify(DB));}catch(e){
   toast(L("⚠️ Mémoire du téléphone pleine — libère de la place, sinon la soirée ne sera pas enregistrée.","⚠️ Phone storage full — free some space, or tonight will not be saved."));}}
 function migrer(d){
   if(!d)return d;
@@ -1869,6 +1933,7 @@ function loginServeur(){
   var id=parseInt($('v-nm').value,10),p=$('v-pin').value.trim();
   var m=DB.equipe.filter(function(x){return x.id===id;})[0];
   if(!m){toast(L('Choisis ton nom dans la liste.','Pick your name from the list.'));return;}
+  if(!m.pin){toast(L("🔐 Ton code n'est pas encore défini. Demande-le au patron.",'🔐 Your code is not set yet. Ask the owner.'));return;}
   if(String(m.pin||'')!==p){toast(L('🔐 Code incorrect. Demande au patron.','🔐 Wrong code. Ask the owner.'));return;}
   moi=m;$('v-pin').value='';
   ouvrirDepart();
@@ -1893,7 +1958,7 @@ function demarrer(){
   if(DB&&DB.cfg&&DB.cfg.lang&&DB.cfg.lang!==lang)setLang(DB.cfg.lang,true);
   appliquerLangue();
   if(DB){goScreen('s-login');remplirServeurs();switchLogin('patron');}
-  else goScreen('s-vitrine');
+  else{goScreen('s-vitrine');if(BASE_ILLISIBLE)avertirBaseIllisible();}
   majBoutonsInstaller();
 }
 /* ══════════════════════════════════════════════════════════════════
@@ -2259,7 +2324,7 @@ function rendreService(){
   DB.tables.forEach(function(t){if(zones.indexOf(t.zone)<0)zones.push(t.zone);});
   $('svc-zones').innerHTML=zones.map(function(z){
     var n=z==='*'?tablesOuvertes().length:DB.tables.filter(function(t){return t.zone===z&&t.lignes.length;}).length;
-    return '<button class="tpil'+(vueZone===z?' on':'')+'" onclick="filtreZone(\''+z+'\')">'+
+    return '<button class="tpil'+(vueZone===z?' on':'')+'" data-z="'+esc(z)+'" onclick="filtreZone(this.getAttribute(\'data-z\'))">'+
       (z==='*'?L('Toutes','All'):esc(zoneNm(z)))+(n?' · '+n:'')+'</button>';
   }).join('');
 
@@ -3631,9 +3696,9 @@ function rendreSettings(){
      '<div class="kv"><span class="kv-l">'+L('Clôtures','Closings')+'</span><span class="kv-v">'+DB.clotures.length+'</span></div>'+
      '<div style="height:10px"></div>'+
      '<button class="bse" onclick="exporterCSV()">'+L('📥 Exporter les ventes (Excel)','📥 Export sales (Excel)')+'</button>'+
-     '<button class="bse" onclick="sauvegarder()">'+L('💾 Sauvegarde complète (fichier)','💾 Full backup (file)')+'</button>'+
+     (estPatron()?'<button class="bse" onclick="sauvegarder()">'+L('💾 Sauvegarde complète (fichier)','💾 Full backup (file)')+'</button>'+
      '<button class="bse" onclick="document.getElementById(\'fic-restore\').click()">'+
-       L('📂 Restaurer une sauvegarde','📂 Restore a backup')+'</button>'+
+       L('📂 Restaurer une sauvegarde','📂 Restore a backup')+'</button>':'')+
      (estPatron()?'<button class="bse bdg2" onclick="toutEffacer()">'+L('🗑️ Effacer et recommencer','🗑️ Erase and start over')+'</button>':'')+
      '</div>';
   c+='<div class="rcard"><div class="rct">'+L('📲 Application','📲 App')+'</div>'+
@@ -3675,8 +3740,23 @@ function changerPin(){
   var p=DB.equipe.filter(function(m){return m.role==='patron';})[0];if(p)p.pin=a;
   save();rendreSettings();toast(L('🔐 Code patron changé.','🔐 Owner code changed.'));
 }
+/* ⚠️ LA SAUVEGARDE CONTENAIT LE CODE PATRON EN CLAIR. Et n'importe
+   quel serveur voyait le bouton : un code de quatre chiffres lu dans un
+   fichier, et il devenait patron — recette, marges, clôture. Les
+   rôles n'existaient que dans l'écran. Un code à quatre chiffres ne se
+   protège pas par hachage (dix mille essais) : on ne l'exporte pas. La
+   restauration redemande un code patron, et les serveurs se voient
+   redonner le leur par le patron. */
+function copieSansCodes(){
+  var c=JSON.parse(JSON.stringify(DB));
+  if(c.cfg)delete c.cfg.pin;
+  (c.equipe||[]).forEach(function(m){delete m.pin;});
+  c.cfg.sansCodes=1;
+  return c;
+}
 function sauvegarder(){
-  var blob=new Blob([JSON.stringify(DB)],{type:'application/json'});
+  if(!estPatron()){toast(L('🔒 Réservé au patron.','🔒 Owner only.'));return;}
+  var blob=new Blob([JSON.stringify(copieSansCodes())],{type:'application/json'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='mybar-sauvegarde-'+jour()+'.json';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
@@ -3714,6 +3794,18 @@ function restaurer(input){
     var actuel=DB?((DB.ventes||[]).length+L(' additions',' bills')):L('rien','nothing');
     if(!confirm(L('Restaurer « '+(d.cfg.nom||'?')+' » ('+quoi+') ?\n\nCe qui est sur ce téléphone ('+actuel+') sera REMPLACÉ.',
                   'Restore "'+(d.cfg.nom||'?')+'" ('+quoi+')?\n\nWhat is on this phone ('+actuel+') will be REPLACED.')))return;
+    if(!estPatron()&&DB){toast(L('🔒 Réservé au patron.','🔒 Owner only.'));return;}
+    if(!d.cfg.pin){
+      var code='';
+      while(!/^\d{4}$/.test(code)){
+        code=prompt(L('Cette sauvegarde ne contient pas les codes. Choisis ton code patron (4 chiffres) :',
+                      'This backup holds no codes. Choose your owner code (4 digits):'));
+        if(code===null){toast(L('📂 Restauration annulée.','📂 Restore cancelled.'));return;}
+        code=String(code).trim();
+      }
+      d.cfg.pin=code;
+      (d.equipe||[]).forEach(function(m){m.pin=(m.role==='patron')?code:'';});
+    }
     try{
       DB=migrer(d);
       save();
@@ -3731,8 +3823,8 @@ function restaurer(input){
 function toutEffacer(){
   if(!confirm(L("Effacer TOUT : carte, tables, ventes, clients ? C'est définitif.",'Erase EVERYTHING: menu, tables, sales, customers? This cannot be undone.')))return;
   if(!confirm(L('Vraiment ? Fais une sauvegarde avant si tu hésites.','Really? Take a backup first if you are unsure.')))return;
-  try{localStorage.removeItem(DBKEY);localStorage.removeItem(DBKEY_ANCIEN);}catch(e){}
-  DB=null;moi=null;hist=[];goScreen('s-vitrine');
+  try{localStorage.removeItem(DBKEY);localStorage.removeItem(DBKEY_ANCIEN);localStorage.removeItem(COPIEKEY);localStorage.removeItem(REVKEY);}catch(e){}
+  revLocale=0;DB=null;moi=null;hist=[];goScreen('s-vitrine');
   toast(L('🗑️ Tout a été effacé.','🗑️ Everything has been erased.'));
 }
 
