@@ -367,5 +367,25 @@ footer a{color:var(--B);font-weight:700}
   <div style="margin-top:6px"><a href="/conseils/vendre-sans-reseau">Vendre quand le réseau coupe →</a></div>
 </footer>
 </div>
+<script>
+/* Ouverte DANS l'app (un lien qu'Android lui confie) : retour à la caisse. Facultatif — la page vit sans. */
+(function(){try{
+  var mm=function(q){try{return window.matchMedia&&window.matchMedia(q).matches;}catch(e){return false;}};
+  var app=mm('(display-mode: standalone)')||mm('(display-mode: minimal-ui)')||/^android-app:\/\//.test(document.referrer||'');
+  if(!app)return;
+  var aller=function(){location.replace('/index.html');};
+  var b=document.createElement('a');b.href='/index.html';b.id='mb-retour-app';
+  b.textContent='\ud83c\udfea Retour \u00e0 ma caisse';
+  b.setAttribute('style','position:fixed;left:12px;right:12px;bottom:max(14px,env(safe-area-inset-bottom));z-index:9999;display:block;text-align:center;background:#00C853;color:#fff;font:800 15px/1.2 Outfit,system-ui,sans-serif;padding:15px 16px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);text-decoration:none');
+  b.addEventListener('click',function(e){e.preventDefault();aller();});
+  var poser=function(){document.body.appendChild(b);document.body.style.paddingBottom='84px';};
+  if(document.body)poser();else document.addEventListener('DOMContentLoaded',poser);
+  var parti=0;
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){parti=Date.now();return;}
+    if(parti&&Date.now()-parti>120000)aller();
+  });
+}catch(e){}})();
+</script>
 </body>
 </html>
