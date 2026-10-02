@@ -14,6 +14,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <script>
+/* ══ 22.88 — LE JOURNAL DES ERREURS : LE CAPTEUR ══════════════════════
+   Jusqu'ici, un bug n'existait que si LUI le voyait et envoyait une
+   capture. Les commerçants, eux, ne disent rien : ils ferment l'app.
+   Ce capteur est posé AVANT tout le reste, pour attraper aussi ce qui
+   casse au démarrage ; il ne fait que mettre de côté. C'est `_journalErr`
+   (plus bas) qui trie, nettoie et envoie. */
+(function(){try{
+  window.__mbErrQ=[];
+  var noter=function(type,msg,ou,pile){
+    try{
+      if(window._journalErr)return window._journalErr(type,msg,ou,pile);
+      if(window.__mbErrQ.length<20)window.__mbErrQ.push([type,msg,ou,pile]);
+    }catch(x){}
+  };
+  window.addEventListener('error',function(e){
+    try{noter('erreur',e.message,(e.filename||'')+':'+(e.lineno||0)+':'+(e.colno||0),e.error&&e.error.stack);}catch(x){}
+  });
+  window.addEventListener('unhandledrejection',function(e){
+    try{var r=e.reason;noter('promesse',(r&&(r.name?r.name+': ':'')+(r.message||''))||String(r),'',r&&r.stack);}catch(x){}
+  });
+}catch(x){}})();
+</script>
+<script>
 /* ══════════════════════════════════════════════════════════════════
    DEMANDER L'EMPREINTE AVANT MÊME D'AVOIR LU L'APPLICATION
 
@@ -1589,6 +1612,7 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .pi:focus{border-color:var(--B)}.pi.sm{font-size:14px;font-weight:600}
 .shcts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .shct{background:var(--P);color:var(--A);border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif}
+#bug-jours .shct.on{background:var(--B);color:#fff}
 .shct:active{transform:scale(.93)}
 .cauto{background:linear-gradient(135deg,#E8F5E9,#F0FFF4);border-radius:14px;padding:12px 14px;margin:13px 0;border:1.5px solid rgba(0,200,83,.2)}
 .crow{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
@@ -3361,6 +3385,7 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" id="row-repin" style="display:none" onclick="ouvrirReinitPin()"><div class="stico" style="background:#FFEBEE">🔑</div><div class="stii"><div class="stitl">Réinitialiser le PIN d'un commerçant</div><div class="stisub">Quand il t'écrit depuis son numéro — sa boutique ne bouge pas</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-modele" style="display:none" onclick="ouvrirModele()"><div class="stico" style="background:#E8F5E9">📋</div><div class="stii"><div class="stitl">Préparer un modèle de boutique</div><div class="stisub">Envoyer tes articles et leurs prix à un commerçant, par WhatsApp</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-annonce" style="display:none" onclick="ouvrirEcrireAnnonce()"><div class="stico" style="background:#E8EAF6">📣</div><div class="stii"><div class="stitl">Écrire une annonce</div><div class="stisub">Un message à tous les commerçants</div></div><span class="starr">›</span></div>
+        <div class="stit2" id="row-bugs" style="display:none" onclick="ouvrirBugs()"><div class="stico" style="background:#FFEBEE">🐞</div><div class="stii"><div class="stitl">Erreurs des téléphones</div><div class="stisub">Ce qui a cassé chez les commerçants, sans qu'ils le disent</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-abonnes" style="display:none" onclick="ouvrirAbonnes()"><div class="stico" style="background:#FFF8E1">🗂️</div><div class="stii"><div class="stitl">Abonnements</div><div class="stisub">Qui a payé, jusqu'à quand — et rouvrir d'une tape</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-photos-prop" style="display:none" onclick="ouvrirPhotosProposees()"><div class="stico" style="background:#E0F2F1">📷</div><div class="stii"><div class="stitl">Photos proposées</div><div class="stisub" id="pp-sub">Ce que les commerçants offrent à tous</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-equiper" style="display:none" onclick="ouvrirEquiperCatalogue()"><div class="stico" style="background:#FFF8E1">🏅</div><div class="stii"><div class="stitl">Équiper le catalogue</div><div class="stisub" id="eq-sub">Certifier d'un coup les vraies photos de cette boutique</div></div><span class="starr">›</span></div>
@@ -4892,6 +4917,21 @@ body{max-width:min(100%,1200px)}
 </div>
 
 <!-- ABONNEMENTS (administrateurs MyBoutiQ seulement) -->
+<div class="ov" id="ov-bugs" onclick="closeOv(event,'ov-bugs')">
+  <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">🐞 <span>Erreurs des téléphones</span></div><button class="bcl" onclick="closeSheet('ov-bugs')">✕</button></div>
+    <div style="padding:8px 19px 24px">
+      <div id="bug-jours" style="display:flex;gap:7px;margin-bottom:10px">
+        <button type="button" class="shct" data-j="1" onclick="ouvrirBugs(1)">24 h</button>
+        <button type="button" class="shct on" data-j="7" onclick="ouvrirBugs(7)">7 jours</button>
+        <button type="button" class="shct" data-j="30" onclick="ouvrirBugs(30)">30 jours</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--M);font-weight:700;margin-bottom:10px" id="bug-resume"></div>
+      <div id="bug-lst"></div>
+      <div style="font-size:10.5px;color:var(--M);font-weight:600;margin-top:12px;line-height:1.45">Aucun code de boutique, numéro ni PIN n'est envoyé : chaque téléphone porte un identifiant au hasard. Touche une erreur pour voir où elle s'est produite.</div>
+    </div>
+  </div>
+</div>
 <div class="ov" id="ov-abonnes" onclick="closeOv(event,'ov-abonnes')">
   <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">🗂️ <span>Abonnements</span></div><button class="bcl" onclick="closeSheet('ov-abonnes')">✕</button></div>
@@ -5603,7 +5643,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.87'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.88'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -28474,6 +28514,149 @@ function basculerActif(code,rendre){
                         :'Suspend this shop? Nothing is deleted, and you can reopen it in one tap.'))return;
   _ecrireAbonnement(code,null,!!rendre,false);
 }
+// ══════════════════════════════════════════════════════════════════
+//  🐞 LE JOURNAL DES ERREURS (22.88)
+//
+//  Ce qui part : le message, l'endroit dans le code, la version, l'écran
+//  ouvert, le rôle (patron / vendeur), « app » ou « navigateur », le
+//  modèle de navigateur — et un identifiant AU HASARD propre à cette
+//  installation, pour compter les téléphones touchés.
+//  ⚠️ Ce qui ne part JAMAIS : le code de la boutique, un numéro, un PIN,
+//  un nom. Toute suite de 5 chiffres ou plus est remplacée par « # »
+//  AVANT l'envoi — un message d'erreur peut citer ce qu'on lui a donné.
+//  ⚠️ Et un journal d'erreurs ne doit jamais en provoquer, ni rien
+//  ralentir : tout est entouré, l'envoi attend le réseau et se fait en
+//  lot, au plus 15 erreurs différentes par ouverture.
+// ══════════════════════════════════════════════════════════════════
+var _ERR_CLE='mb_err_q',_errVus={},_errNbDiff=0,_errDedans=false,_errEnvoi=false;
+// Le bruit qui n'est pas un bug de l'app : réseau coupé, empreinte
+// annulée, scripts d'extensions, et le fameux « Script error. » sans rien.
+function _errBruit(msg,ou){
+  var m=String(msg||'');
+  if(!m||/^Script error\.?$/i.test(m))return true;
+  if(/Failed to fetch|NetworkError|Load failed|network error|ERR_INTERNET|Network request failed/i.test(m))return true;
+  if(/NotAllowedError|AbortError|The operation was aborted|ResizeObserver loop/i.test(m))return true;
+  if(/^(chrome|moz|safari)-extension:/.test(String(ou||'')))return true;
+  return false;
+}
+function _errPropre(t,max){
+  // ⚠️ Les POSITIONS dans le code (« index.html:26326:14 ») sont mises à
+  // l'abri d'abord : la première version les passait au « # » comme un
+  // numéro de téléphone — attrapé par t151 — et l'erreur ne disait plus où.
+  var abri=[];
+  var x=String(t==null?'':t)
+    .replace(/https?:\/\/[^\s)'"]*?\/([^\/\s)'"?#]+)(\?[^\s)'"]*)?(?=[:\s)'"]|$)/g,'$1')   // l'adresse → le fichier
+    .replace(/(\.(?:html|js|mjs)):(\d+)(?::(\d+))?/g,function(m){abri.push(m);return '\u0001'+(abri.length-1)+'\u0001';})
+    .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g,'@')                   // une adresse mail
+    .replace(/\+?\d[\d\s]{3,}\d/g,function(y){return y.replace(/\D/g,'').length>=5?'#':y;})
+    .replace(/\u0001(\d+)\u0001/g,function(m,i){return abri[+i]||'';});
+  return x.slice(0,max||300);
+}
+function _errAppareil(){
+  try{
+    var a=localStorage.getItem('mb_appareil');
+    if(!a){a=Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);localStorage.setItem('mb_appareil',a);}
+    return a;
+  }catch(e){return 'inconnu';}
+}
+function _errNavigateur(){
+  var u=navigator.userAgent||'';
+  return ((u.match(/Android [\d.]+/)||u.match(/iPhone OS [\d_]+/)||u.match(/Windows NT [\d.]+|Mac OS X [\d_]+|Linux/)||[''])[0]
+    +' · '+((u.match(/(Chrome|Firefox|Version)\/\d+/)||[''])[0])).slice(0,80);
+}
+function _errEcran(){
+  try{
+    var s=document.querySelector('.scr.on'),o=document.querySelector('.ov.show');
+    return ((s&&s.id)||'?')+(o&&o.id?(' › '+o.id):'');
+  }catch(e){return '?';}
+}
+function _errFile(){try{return JSON.parse(localStorage.getItem(_ERR_CLE)||'[]')||[];}catch(e){return [];}}
+function _errGarder(l){try{localStorage.setItem(_ERR_CLE,JSON.stringify(l.slice(-30)));}catch(e){}}
+function _journalErr(type,msg,ou,pile){
+  if(_errDedans)return;
+  _errDedans=true;
+  try{
+    if(_errBruit(msg,ou))return;
+    var m=_errPropre(msg,300),o=_errPropre(ou,200);
+    var cle=type+'|'+m+'|'+o;
+    var l=_errFile();
+    if(_errVus[cle]){
+      // La même erreur répétée : on compte, on n'empile pas.
+      for(var i=l.length-1;i>=0;i--){if(l[i].cle===cle){l[i].nb=Math.min(1000,(l[i].nb||1)+1);break;}}
+      _errGarder(l);return;
+    }
+    if(_errNbDiff>=15)return;
+    _errVus[cle]=1;_errNbDiff++;
+    var mode='navigateur';
+    try{if(window.matchMedia&&(matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: minimal-ui)').matches))mode='app';}catch(e){}
+    l.push({cle:cle,type:type,message:m,ou:o,pile:_errPropre(pile,1500),nb:1,
+      version:(typeof APP_BUILD!=='undefined'?APP_BUILD:'?'),ecran:_errEcran(),
+      role:(typeof role!=='undefined'&&role)?String(role):'',mode:mode,
+      navigateur:_errNavigateur(),appareil:_errAppareil()});
+    _errGarder(l);
+    setTimeout(_errEnvoyer,4000);
+  }catch(e){}
+  finally{_errDedans=false;}
+}
+async function _errEnvoyer(){
+  if(_errEnvoi)return;
+  var l=_errFile();if(!l.length)return;
+  try{if(typeof assurerConnexionSupa==='function')assurerConnexionSupa();}catch(e){}
+  if(!supa||!navigator.onLine)return;          // il repartira au retour du réseau
+  _errEnvoi=true;
+  try{
+    var lot=l.slice(0,10).map(function(x){var y={};for(var k in x)if(k!=='cle')y[k]=x[k];return y;});
+    var r=await supa.rpc('noter_erreurs',{p_lignes:lot});
+    if(!r.error){
+      // On ne retire QUE ce qui est parti ; ce qui est arrivé entre-temps reste.
+      var envoyees={};l.slice(0,10).forEach(function(x){envoyees[x.cle]=1;});
+      _errGarder(_errFile().filter(function(x){return !envoyees[x.cle];}));
+    }
+  }catch(e){}
+  finally{_errEnvoi=false;}
+}
+// Ce que le capteur du haut a mis de côté avant que tout ceci existe.
+try{(window.__mbErrQ||[]).forEach(function(x){_journalErr(x[0],x[1],x[2],x[3]);});window.__mbErrQ=[];}catch(e){}
+window.addEventListener('online',function(){setTimeout(_errEnvoyer,3000);});
+setTimeout(_errEnvoyer,15000);
+
+// ── L'écran de l'administrateur ─────────────────────────────────────
+var _bugJours=7;
+async function ouvrirBugs(j){
+  var fr=(lang!=='en');
+  if(!(await verifierAdmin())){showToast('⛔ '+(fr?'Réservé à MyBoutiQ':'MyBoutiQ staff only'));return;}
+  if(j)_bugJours=j;
+  document.getElementById('ov-bugs').classList.add('show');
+  document.querySelectorAll('#bug-jours button').forEach(function(b){b.classList.toggle('on',+b.dataset.j===_bugJours);});
+  var c=document.getElementById('bug-lst');
+  c.innerHTML='<div style="text-align:center;color:var(--M);font-size:12px;font-weight:700;padding:16px">'+(fr?'Lecture…':'Loading…')+'</div>';
+  var r=null;
+  try{r=await supa.rpc('admin_erreurs',{p_jours:_bugJours});if(r.error)throw r.error;}
+  catch(e){c.innerHTML='<div class="dash-empty">'+(fr?'Impossible de lire le journal — réseau, ou ce compte n’est pas administrateur.':'Cannot read the log.')+'</div>';return;}
+  var l=r.data||[];
+  var tel=0;l.forEach(function(x){tel+=Number(x.telephones)||0;});
+  var res=document.getElementById('bug-resume');
+  if(res)res.textContent=fr?(l.length+' erreur'+(l.length>1?'s':'')+' différente'+(l.length>1?'s':'')+' sur '+_bugJours+' jour'+(_bugJours>1?'s':''))
+                           :(l.length+' distinct errors, last '+_bugJours+' days');
+  if(!l.length){c.innerHTML='<div class="dash-empty">✅ '+(fr?'Aucune erreur remontée. Les téléphones tournent sans accroc.':'No error reported.')+'</div>';return;}
+  var esc=function(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  var quand=function(d){try{return new Date(d).toLocaleString(fr?'fr-FR':'en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return '';}};
+  c.innerHTML=l.map(function(x,i){
+    var nbT=Number(x.telephones)||0;
+    return '<div class="hist-sale" onclick="var p=document.getElementById(\'bug-p'+i+'\');p.style.display=p.style.display===\'none\'?\'block\':\'none\'">'
+      +'<div style="display:flex;gap:10px;align-items:flex-start">'
+      +'<div style="flex:0 0 auto;min-width:44px;text-align:center;background:'+(nbT>1?'#FFEBEE':'#FFF8E1')+';border-radius:10px;padding:6px 4px">'
+      +'<div style="font-size:17px;font-weight:900;color:'+(nbT>1?'var(--R)':'#8D6E63')+'">'+nbT+'</div>'
+      +'<div style="font-size:9px;font-weight:800;color:var(--M)">'+(fr?'tél.':'phones')+'</div></div>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:800;color:var(--T);word-break:break-word">'+esc(x.message)+'</div>'
+      +'<div style="font-size:10.5px;color:var(--M);font-weight:700;margin-top:3px">'+esc(x.ou||'')+'</div>'
+      +'<div style="font-size:10.5px;color:var(--M);font-weight:600;margin-top:3px">'+(Number(x.nb)||0)+'× · v'+esc((x.versions||[]).join(', v'))
+      +' · '+esc((x.ecrans||[]).join(', '))+' · '+esc((x.modes||[]).join(', '))+'</div>'
+      +'<div style="font-size:10px;color:var(--M);font-weight:600;margin-top:2px">'+(fr?'dernière : ':'last: ')+quand(x.derniere)+' · '+esc(x.navigateur||'')+'</div>'
+      +'<pre id="bug-p'+i+'" style="display:none;white-space:pre-wrap;word-break:break-word;font-size:10px;background:var(--BG);border-radius:8px;padding:8px;margin:7px 0 0;max-height:220px;overflow:auto">'+esc(x.pile||(fr?'(pas de pile)':'(no stack)'))+'</pre>'
+      +'</div></div></div>';
+  }).join('');
+}
 async function verifierAdmin(){
   try{
     if(typeof assurerConnexionSupa==='function')assurerConnexionSupa();
@@ -28488,6 +28671,8 @@ async function verifierAdmin(){
     if(rowP)rowP.style.display=ok?'':'none';
     var rowA=document.getElementById('row-abonnes');
     if(rowA)rowA.style.display=ok?'':'none';
+    var rowBug=document.getElementById('row-bugs');
+    if(rowBug)rowBug.style.display=ok?'':'none';
     // Le modèle part de la boutique OUVERTE : il faut être patron ici, en
     // plus d'être administrateur — on n'envoie pas les prix d'une boutique
     // depuis le compte d'un vendeur.
