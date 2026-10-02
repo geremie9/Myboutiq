@@ -3066,6 +3066,12 @@ body{max-width:min(100%,1200px)}
       <button onclick="_bioOui()" style="flex-shrink:0;background:#1565C0;color:#fff;border:none;border-radius:9px;padding:10px 12px;font-size:11.5px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap" id="cai-bio-b">Activer</button>
       <button onclick="_bioPlusTard()" aria-label="Plus tard" style="flex-shrink:0;background:transparent;border:none;color:#0D47A1;font-size:15px;font-weight:900;cursor:pointer;padding:8px 4px">✕</button>
     </div>
+    <!-- ⭐ LE DÉMARRAGE GUIDÉ (22.89). Mesuré sur le serveur : au moins six
+         boutiques créées ce mois-ci n'ont JAMAIS reçu un article, et sur les
+         sept derniers jours une seule boutique a vendu — celle du patron.
+         Il ne savait pas où il en était. Trois pas, celui à faire en gros,
+         et la carte disparaît à la première vraie vente. -->
+    <div id="demarrage" style="display:none;margin:0 15px 10px"></div>
     <div class="pgrid" id="pgrid"></div>
     <div style="height:20px"></div>
   </div>
@@ -5643,7 +5649,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.88'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.89'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -10378,6 +10384,23 @@ function _stkVendable(p){
     return s+(_estGrosDeVariante(v)?0:Math.max(0,Number(v.stk)||0));
   },0);
 }
+// ⚠️⚠️ « ÉPUISÉ » N'EST PAS « PAS ENCORE COMPTÉ ». Vu en refaisant le
+// démarrage d'un nouveau commerçant : il choisit 5 articles en photos, met
+// leurs prix (« le stock se met après », dit la feuille), touche son premier
+// article… et l'app lui répond « ⚠️ Stock épuisé », un toast « Coca est
+// épuisé ! » et une cloche rouge. À sa TOUTE PREMIÈRE vente. Ce stock n'a
+// jamais été compté : rien n'est épuisé. Un article sans stock de départ
+// ni AUCUNE entrée de stock se vend donc sans alarme ; dès qu'il compte son
+// stock une fois, l'article redevient surveillé comme les autres.
+function _stockJamaisCompte(p){
+  try{
+    if(!p||(p.vr&&p.vr.length))return false;
+    if(Number(p.stk0)>0)return false;
+    var a=(DB&&DB.appros)||[];
+    for(var i=0;i<a.length;i++){if(a[i]&&String(a[i].pid)===String(p.id))return false;}
+    return true;
+  }catch(e){return false;}
+}
 function getStk(p){
   if(!p.vr.length)return p.stk;
   if(utiliseStockBase(p))return p.stk||0;
@@ -10576,7 +10599,56 @@ function enregPrixVite(){
   showToast('✅ '+n+' '+(fr?('prix enregistré'+(n>1?'s':'')):('price'+(n>1?'s':'')+' saved'))
     +(reste?(' · '+reste+' '+(fr?'restant'+(reste>1?'s':''):'left')):''));
 }
+function _demarrageEtat(){
+  var a=(DB&&DB.articles)||[];
+  var vendu=(DB&&DB.ventes||[]).some(function(v){return v&&!v.annulee;});
+  var sansPrix=0;try{sansPrix=_articlesSansPrix().length;}catch(e){}
+  return {nb:a.length,sansPrix:sansPrix,vendu:vendu,
+    pas:a.length?(sansPrix?2:3):1};
+}
+function majDemarrage(){
+  var c=document.getElementById('demarrage');if(!c)return;
+  var fr=(lang==='fr');
+  var montrer=false;
+  try{montrer=role==='patron'&&!estDemo()&&!(DB&&DB.cfg&&DB.cfg.demarrageFini);}catch(e){}
+  var e=_demarrageEtat();
+  if(!montrer||e.vendu||!e.nb){c.style.display='none';c.innerHTML='';return;}
+  var etape=function(n,titre,fait,sous){
+    var actif=(e.pas===n);
+    return '<div style="display:flex;align-items:center;gap:9px;padding:5px 0;opacity:'+(fait||actif?1:.55)+'">'
+      +'<span style="flex:0 0 26px;height:26px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;'
+      +(fait?'background:var(--G);color:#fff':actif?'background:var(--A);color:#2E1065':'background:var(--BG);color:var(--M)')+'">'+(fait?'✓':n)+'</span>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:900;color:var(--T)">'+titre+'</div>'
+      +(sous?'<div style="font-size:10.5px;font-weight:700;color:var(--M)">'+sous+'</div>':'')+'</div></div>';
+  };
+  var bouton='';
+  if(e.pas===2)bouton='<button type="button" class="bpay" style="margin-top:8px" onclick="ouvrirPrixVite()">💰 '
+    +(fr?('Mettre '+(e.sansPrix>1?'les '+e.sansPrix+' prix':'le prix')):'Set the prices')+'</button>';
+  else if(e.pas===3)bouton='<button type="button" class="bpay" style="margin-top:8px" onclick="demarrageVendre()">👆 '
+    +(fr?'Montre-moi comment vendre':'Show me how to sell')+'</button>';
+  c.innerHTML='<div style="background:var(--C);border:1.5px solid var(--A);border-radius:14px;padding:11px 13px 12px;box-shadow:0 2px 10px rgba(46,16,101,.08)">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+    +'<div style="flex:1;font-size:13.5px;font-weight:900;color:var(--T)">🚀 '+(fr?'Ta boutique en 3 pas':'Your shop in 3 steps')+'</div>'
+    +'<button type="button" onclick="finirDemarrage()" aria-label="'+(fr?'Masquer':'Hide')+'" style="background:none;border:none;color:var(--M);font-size:15px;font-weight:900;cursor:pointer;padding:6px">✕</button></div>'
+    +etape(1,fr?'Tes articles':'Your items',e.nb>0,e.nb>0?(e.nb+' '+(fr?('article'+(e.nb>1?'s':'')+' — tu en ajoutes quand tu veux'):'items')):'')
+    +etape(2,fr?'Leurs prix':'Their prices',e.nb>0&&!e.sansPrix,e.sansPrix?(e.sansPrix+' '+(fr?('sans prix — on ne peut pas les vendre'):'without a price')):'')
+    +etape(3,fr?'Ta première vente':'Your first sale',false,e.pas===3?(fr?'Touche un article, puis « Encaisser »':'Tap an item, then “Check out”'):'')
+    +bouton+'</div>';
+  c.style.display='block';
+}
+function finirDemarrage(){
+  try{DB.cfg.demarrageFini=true;save();}catch(e){}
+  majDemarrage();
+}
+// Le pas 3 : la même bulle que la boutique d'exemple, sur SES articles.
+var _guideReel=false;
+function demarrageVendre(){
+  _guideReel=true;
+  try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}
+  setTimeout(function(){try{_guideDemo(1);}catch(e){}},350);
+}
 function renderProd(lst){
+  try{majDemarrage();}catch(e){}
   // La grille est reconstruite : le panneau des variantes n'y survivrait pas,
   // on le referme proprement plutôt que d'en garder une référence morte.
   try{fermerVarInline();}catch(e){}
@@ -10595,6 +10667,7 @@ function renderProd(lst){
       // en photos. Les cinq portes restent, sous un lien discret.
       g.innerHTML='<div class="empty-guide" style="grid-column:1/-1">'+
         '<div class="eg-ico">🛍️</div>'+
+        '<div style="font-size:11px;font-weight:900;color:var(--B);letter-spacing:.3px;margin-bottom:3px">'+(fr?'PAS 1 SUR 3':'STEP 1 OF 3')+'</div>'+
         '<div class="eg-t">'+(fr?'Qu\'est-ce que tu vends ?':'What do you sell?')+'</div>'+
         '<button class="eg-btn" onclick="ouvrirChoixArticles()">🖼️ '+(fr?'Choisir en photos':'Choose from photos')+'</button>'+
         '<div><button class="eg-btn2" onclick="ouvrirPorteArticles()">'+(fr?'Autres façons d\'ajouter':'Other ways to add')+'</button></div>'+
@@ -10643,6 +10716,8 @@ function renderProd(lst){
   }
   lst.forEach(function(p){
     var ts=getStk(p),hasV=p.vr.length>0,isOut=ts<=0,isNeg=ts<0,isLow=!isOut&&!isNeg&&ts<=p.al&&p.al>0,inc=articleIncomplet(p);
+    // Jamais compté : ni « ⛔ Épuisé » ni « 📦 -3 » — il n'y a rien à épuiser.
+    if(p.rt&&_stockJamaisCompte(p)){isOut=false;isNeg=false;isLow=false;}
     var pq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
     var d=document.createElement('div');
     var _carte=_estCarteCatalogue(p.img);
@@ -10661,7 +10736,7 @@ function renderProd(lst){
       if(isOut&&!p.rt){_direPourquoiVide(p);return;}
       if(hasV){ouvrirVarInline(p,d);return;} // famille -> les variantes sortent SOUS la carte
       if(estMesure(p)){ouvrirQteMesure(p);return;}
-      if(isOut&&p.rt&&livePq===0){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
+      if(isOut&&p.rt&&livePq===0&&!_stockJamaisCompte(p)){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
       addPanier(p,null);
     };
     // Modifications bloquées pendant la vente : l'appui long ouvrait le menu au
@@ -10821,7 +10896,7 @@ function venteRapide(pid){
   if(p.vr.length){ouvrirVar(p);return;}
   if(estMesure(p)){ouvrirQteMesure(p);return;}
   var livePq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
-  if(ts<=0&&p.rt&&livePq===0){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
+  if(ts<=0&&p.rt&&livePq===0&&!_stockJamaisCompte(p)){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
   addPanier(p,null);
 }
 // ── Article incomplet : nom jamais personnalisé -> INTERDIT de vente, la caisse
@@ -13699,7 +13774,7 @@ function addPanier(p,v){
   }else{
     maxS=p.stk;
   }
-  if(cur>=maxS){
+  if(cur>=maxS&&!(!v&&p.rt&&_stockJamaisCompte(p))){
     if(!p.rt){showToast(t('stockInsuf'));return;}
     if(cur===maxS){ouvrirNeg(p,v);return;}
   }
@@ -15920,6 +15995,7 @@ function chgQ(key,d){panier[key]=Math.round(((panier[key]||0)+d)*100)/100;if(pan
 function viderPanier(){panier={};_grosPanier={};_negoLigne={};panierLibre=[];renderProd(DB.articles);document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');}
 function procederPmt(){
   closeSheet('ov-pan');
+  try{if(panierVide()){showToast('🛒 '+(lang==='fr'?'Le panier est vide':'The basket is empty'));return;}}catch(e){}
   var total=calcTotal();
   document.getElementById('calc-tot').textContent=fmt(total);
   document.getElementById('calc-recu').value='';document.getElementById('calc-res').style.display='none';
@@ -16391,6 +16467,8 @@ function _alertesStock(){
     // Une famille dont les formes partagent une réserve commune se compte
     // comme un seul article : c'est le même tas.
     if(!(p.vr&&p.vr.length)||utiliseStockBase(p)){
+      // Jamais compté : la cloche n'a rien à dire (voir _stockJamaisCompte).
+      if(_stockJamaisCompte(p))return;
       var ts=getStk(p);
       if(ts<=0)vides.push({p:p,v:null,q:0});
       else if(seuil>0&&ts<=seuil)bas.push({p:p,v:null,q:ts});
@@ -19603,6 +19681,32 @@ function expBasculeDetail(i){
   expRender();
 }
 var _expOuvert=-1;
+// ⭐ « METS LES PRIX MAINTENANT » — DEVANT UNE LISTE DE CHAMPS VIDES.
+// Le catalogue connaît un ordre de grandeur pour ~170 articles (Coca 60 cl :
+// acheté 450, vendu 600). On ne l'écrit PAS à sa place — les prix se font
+// par ville, et un prix proposé validé sans regarder est un prix faux. On
+// le MONTRE, et une tape le prend : il garde la main, il gagne la frappe.
+function _expSuggestion(a,i){
+  try{
+    var f=ficheCatalogue(a.nm);
+    if(!f||!(f.px>0))return '';
+    var fr=(lang==='fr');
+    return '<button type="button" onclick="event.stopPropagation();expPrendreSugg('+i+')" '
+      +'style="display:block;margin-top:4px;background:#FFF8E1;border:1px dashed #F9A825;color:#8D6E00;border-radius:8px;'
+      +'padding:5px 8px;font-size:11px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;text-align:left">💡 '
+      +(fr?'Prix habituel : ':'Usual price: ')+fmt(f.px)+(f.pa>0?(' · '+(fr?'achat ':'cost ')+fmt(f.pa)):'')
+      +' — '+(fr?'toucher pour le prendre':'tap to use')+'</button>';
+  }catch(e){return '';}
+}
+function expPrendreSugg(i){
+  var a=_expListe[i];if(!a)return;
+  var f=null;try{f=ficheCatalogue(a.nm);}catch(e){}
+  if(!f||!(f.px>0))return;
+  a.px=f.px;
+  if(!(a.pa>0)&&f.pa>0)a.pa=f.pa;
+  a._sugg=1;
+  expRender();
+}
 function expRender(){
   var fr=lang==='fr',box=document.getElementById('exp-liste'),c=document.getElementById('exp-compte');
   var btn=document.getElementById('exp-valider'),lbl=document.getElementById('exp-valider-l');
@@ -19663,7 +19767,8 @@ function expRender(){
           ? ('<input class="pi sm" type="number" inputmode="numeric" value="" '
              +'placeholder="'+(fr?'Prix de vente':'Sell price')+'" '
              +'onclick="event.stopPropagation()" oninput="expPrixDirect('+i+',this.value)" '
-             +'style="margin-top:3px;height:34px;font-size:13px;border-color:var(--O)">')
+             +'style="margin-top:3px;height:34px;font-size:13px;border-color:var(--O)">'
+             +_expSuggestion(a,i))
           : ('<div style="font-size:10.5px;font-weight:700;color:'+(perte?'var(--R)':sansPa?'var(--O)':'var(--M)')+'">'+
               fmt(a.px)+'/'+u+
               (sansPa?(' · '+(fr?'bénéfice inconnu':'profit unknown'))
@@ -20152,6 +20257,23 @@ function _chaTuile(cle,nm,img,emo,cat,sous,onclick){
     +(sous?('<div style="font-size:9.5px;color:var(--M);font-weight:700;text-align:center">'+sous+'</div>'):'')
     +'</div>';
 }
+// (« Sardines » et « Concentré » et non « Sardine » / « Tomate » : le plus
+// court qui commence par « sardine » est la Sardinelle, le poisson frais, et
+// « tomate » donnait la tomate fraîche — une boutique vend la boîte.)
+var _CHA_COURANTS=['Riz','Huile','Sucre','Savon','Sardines','Lait','Pain','Farine','Cube','Allumettes','Bougie',
+  'Lessive','Café','Bière','Jus','Coca','Eau','Sel','Concentré','Biscuit','Bonbon'];
+// Les courants d'une boutique d'alimentation. Une boutique de mode n'a que
+// faire du riz en tête de son catalogue.
+function _chaCourantsPermis(){
+  var sct='';try{sct=(DB&&DB.cfg&&DB.cfg.secteur)||'';}catch(e){}
+  return ['mode','pharmacie','menage'].indexOf(sct)<0;
+}
+function _chaTuileDe(e,i,fr){
+  var cat=CAT_IDX_N[e[1]]||'Autre',vr=e[6];
+  if(vr&&vr.length)return _chaTuile('f'+i,e[0],e[3],e[2],cat,vr.length+(fr?' sortes':' kinds'),'chaOuvrirFamille('+i+')');
+  return _chaTuile('a'+i,e[0],e[3],e[2],cat,e[4],
+    'chaFormats(\'a'+i+'\',\''+e[0].replace(/'/g,"\\'")+'\',\''+e[0].replace(/'/g,"\\'")+'\',\''+e[3]+'\',\''+e[2]+'\',\''+cat.replace(/'/g,"\\'")+'\','+(+e[7]||0)+',\''+String(e[8]||'').replace(/'/g,"\\'")+'\')');
+}
 function chaRendre(){
   var fr=(lang==='fr'),E=_chaEntrees(),g=document.getElementById('cha-grid');
   if(!g)return;
@@ -20178,7 +20300,23 @@ function chaRendre(){
     g.innerHTML=h;majChaBouton();return;
   }
 
-  var n=0;
+  // ⚠️⚠️ « RIZ » DONNAIT D'ABORD « PAPIER À ROULER », « SUCRE » D'ABORD
+  // « BISCUIT ». Vu en refaisant le parcours d'un nouveau commerçant : le
+  // filtre gardait l'ordre alphabétique, et un mot-clé (« rizla ») valait
+  // un nom. Il touche le premier résultat — c'est ainsi que SON « Riz » a
+  // reçu la photo du papier à rouler. Les résultats se rangent maintenant :
+  // le nom qui commence par ce qu'il tape, puis un mot du nom, puis une
+  // sorte de la famille, puis le reste.
+  var _score=function(e){
+    var nm=txtNorm(e[0]);
+    if(nm.indexOf(_chaQ)===0)return 0;
+    if((' '+nm).indexOf(' '+_chaQ)>=0)return 1;
+    var vr=e[6]||[];
+    for(var k=0;k<vr.length;k++){var vn=txtNorm(vr[k][0]);if(vn.indexOf(_chaQ)===0||(' '+vn).indexOf(' '+_chaQ)>=0)return 2;}
+    if(nm.indexOf(_chaQ)>=0)return 3;
+    return 4;
+  };
+  var ordre=[];
   E.forEach(function(e,i){
     var cat=CAT_IDX_N[e[1]]||'Autre';
     if(_chaCat&&cat!==_chaCat)return;
@@ -20186,14 +20324,42 @@ function chaRendre(){
     if(_chaQ){
       var texte=txtNorm(e[0]+' '+(e[5]||'')+' '+(vr?vr.map(function(v){return v[0]+' '+(v[4]||'');}).join(' '):''));
       if(texte.indexOf(_chaQ)<0)return;
-    }
+      ordre.push({i:i,sc:_score(e)});
+    }else ordre.push({i:i,sc:0});
+  });
+  if(_chaQ)ordre.sort(function(a,b){return a.sc-b.sc||a.i-b.i;});
+  // ⭐ RIEN TAPÉ, AUCUN RAYON CHOISI : LES PLUS COURANTS D'ABORD.
+  // Avant, le catalogue s'ouvrait sur « Acide chlorhydrique », « Adaptateur
+  // de prise », « Aérosol anti-mouches »… 700 articles par ordre
+  // alphabétique. La liste ci-dessous n'est pas devinée : c'est ce que les
+  // boutiques de sa base ont VRAIMENT mis en rayon, compté sur le serveur
+  // (huile et jus 26 boutiques, riz 24, bière et savon 23, pain, sardine et
+  // bougie 21, allumettes, café, farine, lait, sucre 20, cube et lessive 19).
+  var _courants=[];
+  if(!_chaQ&&!_chaCat&&_chaCourantsPermis()){
+    _CHA_COURANTS.forEach(function(mot){
+      var q=txtNorm(mot),best=-1,bl=1e9;
+      E.forEach(function(e,i){
+        var nm=txtNorm(e[0]);
+        if(nm===q){if(bl>-1){best=i;bl=-1;}return;}
+        if(nm.indexOf(q)===0&&nm.length<bl&&bl>-1){best=i;bl=nm.length;}
+      });
+      if(best>=0&&_courants.indexOf(best)<0)_courants.push(best);
+    });
+  }
+  if(_courants.length){
+    h+='<div style="grid-column:1/-1;font-size:12px;font-weight:900;color:var(--T);margin:2px 0 -2px">⭐ '
+      +(fr?'Les plus courants dans les boutiques':'Most common in shops')+'</div>';
+    _courants.forEach(function(i){h+=_chaTuileDe(E[i],i,fr);});
+    h+='<div style="grid-column:1/-1;font-size:12px;font-weight:900;color:var(--T);margin:10px 0 -2px;padding-top:10px;border-top:1px solid var(--BD)">'
+      +(fr?'Tout le catalogue — ou cherche en haut':'Whole catalogue — or search above')+'</div>';
+  }
+  var n=0;
+  ordre.forEach(function(o){
+    var i=o.i,e=E[i];
+    if(_courants.indexOf(i)>=0)return;
     if(n++>=180)return;                       // on ne noie pas l'écran
-    if(vr&&vr.length){
-      h+=_chaTuile('f'+i,e[0],e[3],e[2],cat,vr.length+(fr?' sortes':' kinds'),'chaOuvrirFamille('+i+')');
-    }else{
-      h+=_chaTuile('a'+i,e[0],e[3],e[2],cat,e[4],
-        'chaFormats(\'a'+i+'\',\''+e[0].replace(/'/g,"\\'")+'\',\''+e[0].replace(/'/g,"\\'")+'\',\''+e[3]+'\',\''+e[2]+'\',\''+cat.replace(/'/g,"\\'")+'\','+(+e[7]||0)+',\''+String(e[8]||'').replace(/'/g,"\\'")+'\')');
-    }
+    h+=_chaTuileDe(e,i,fr);
   });
   // ⚠️ « RIEN TROUVÉ » ÉTAIT UN CUL-DE-SAC, et c'est ce qui rendait ce
   // parcours incohérent : mesuré, seuls 31 % des articles de son pays sont
@@ -26088,7 +26254,7 @@ window.addEventListener('scroll',function(){
 },{passive:true});
 window.addEventListener('resize',function(){if(_guide)_guidePlacer();});
 function _guideDemo(etape){
-  if(!estDemo()||_guideDejaFait())return;
+  if(!_guideReel&&(!estDemo()||_guideDejaFait()))return;
   var fr=(lang==='fr');
   _guide=etape;
   _guideVeiller(true);
@@ -26099,7 +26265,10 @@ function _guideDemo(etape){
     var cible=null;
     try{
       var a=(DB.articles||[]).find(function(x){return !(x.vr&&x.vr.length)&&getStk(x)>0&&/coca/i.test(x.nm);})
-          ||(DB.articles||[]).find(function(x){return !(x.vr&&x.vr.length)&&getStk(x)>0;});
+          ||(DB.articles||[]).find(function(x){return !(x.vr&&x.vr.length)&&getStk(x)>0;})
+          // Une boutique neuve n'a souvent pas encore compté son stock : un
+          // article simple qui a son prix fait l'affaire.
+          ||(DB.articles||[]).find(function(x){return !(x.vr&&x.vr.length)&&Number(x.px)>0;});
       if(a)cible=document.getElementById('pc-'+a.id);
     }catch(e){}
     _guideCible(cible);
@@ -26125,14 +26294,28 @@ function _guidePanier(){
   if(_guide===1&&!vide)_guideDemo(2);
   else if(_guide===2&&vide)_guideDemo(1);     // il a tout retiré : on reprend
 }
-function _guideDemoFin(passe){
+function _guideArret(){
   _guide=0;_guideCible(null);_guideVeiller(false);
   var b=document.getElementById('demo-bulle');if(b)b.style.display='none';
+}
+function _guideDemoFin(passe){
+  // Le ✕ d'un guide demandé dans SA boutique ne doit pas éteindre celui de
+  // la boutique d'exemple, qu'il n'a peut-être jamais vue.
+  if(_guideReel){_guideReel=false;_guideArret();return;}
+  _guideArret();
   try{localStorage.setItem(_CLE_GUIDE,'1');}catch(e){}
 }
 // Appelé par encaisser, APRÈS l'enregistrement : les chiffres sont ceux de
 // la vente qui vient d'avoir lieu, relus sur elle. Rien d'écrit d'avance.
 function _guideApresVente(total,ben,lignes){
+  // Dans une vraie boutique, c'est la carte de la PREMIÈRE vente qui parle.
+  if(!estDemo()){
+    if(_guideReel){_guideReel=false;_guideArret();}
+    try{_premiereVente(total,ben,lignes);}catch(e){}
+    return;
+  }
+  _bravoMode='demo';
+  try{var _b2=document.getElementById('db-b2');if(_b2)_b2.style.display='';}catch(e){}
   if(_guide!==2)return;
   var fr=(lang==='fr');
   _guideDemoFin(false);
@@ -26175,7 +26358,52 @@ function _guideApresVente(total,ben,lignes){
 // repose pas la question, et il arrive DIRECTEMENT sur l'inscription au lieu
 // de retomber sur la vitrine et de devoir retoucher le même bouton.
 function _demoSien(){try{return !!localStorage.getItem('myboutiq_v6_avant_demo');}catch(e){return false;}}
+// ⭐ LA PREMIÈRE VRAIE VENTE. Celle-là, on la fête — avec SES chiffres, relus
+// sur la vente qui vient d'avoir lieu, comme la carte de la boutique
+// d'exemple. Une fois dans la vie de la boutique, et la carte des 3 pas
+// s'en va avec elle.
+var _bravoMode='demo';
+function _premiereVente(total,ben,lignes){
+  if(!DB||!DB.cfg||role!=='patron'||DB.cfg.premiereVenteVue)return;
+  var n=(DB.ventes||[]).filter(function(v){return v&&!v.annulee;}).length;
+  if(n!==1)return;
+  DB.cfg.premiereVenteVue=true;DB.cfg.demarrageFini=true;
+  try{save();}catch(e){}
+  try{majDemarrage();}catch(e){}
+  var fr=(lang==='fr'),stockTxt='';
+  try{
+    var l=(lignes||[])[0];
+    if(l){
+      var a=(DB.articles||[]).find(function(x){return x.id==l.pid;});
+      var v=(a&&l.vid)?(a.vr||[]).find(function(x){return String(x.id)===String(l.vid);}):null;
+      var reste=v?stockVarDispo(a,v):(a?getStk(a):null);
+      var pris=Math.round((Number(l.qte)||0)*(Number(l.qBase)||1)*100)/100;
+      if(a&&!(!v&&_stockJamaisCompte(a))&&reste!=null&&(reste+pris)>0)stockTxt=fmtQ(reste+pris)+' → '+fmtQ(reste);
+    }
+  }catch(e){}
+  var set=function(id,t){var e=document.getElementById(id);if(e)e.textContent=t;};
+  set('db-tit',fr?'Ta première vente ! 🎉':'Your first sale! 🎉');
+  set('db-l1',fr?'Encaissé':'Taken');
+  set('db-l2',fr?'Bénéfice, calculé tout seul':'Profit, worked out for you');
+  set('db-l3',fr?'Stock mis à jour':'Stock updated');
+  set('db-v1',fmt(total));set('db-v2',fmt(ben));set('db-v3',stockTxt);
+  // Sans prix d'achat, le bénéfice n'est pas « 0 » : il est inconnu. Lui
+  // annoncer 0 F à sa première vente serait faux, et décourageant.
+  var _paConnu=(lignes||[]).some(function(l){return Number(l.pa)>0;});
+  if(!_paConnu){set('db-l2',fr?'Bénéfice : mets ton prix d\'achat':'Profit: add your cost');set('db-v2','—');}
+  var r3=document.getElementById('db-row3');if(r3)r3.style.display=stockTxt?'flex':'none';
+  set('db-mot',fr?'Chaque vente est gardée, même sans réseau. Ce soir, « Clôturer la journée » te dira ce que tu as gagné.'
+                 :'Every sale is kept, even offline. Tonight, “Close the day” tells you what you earned.');
+  set('db-b1',fr?'Continuer':'Continue');
+  var b2=document.getElementById('db-b2');if(b2)b2.style.display='none';
+  _bravoMode='premiere';
+  setTimeout(function(){
+    try{var sc=document.getElementById('succ');if(sc)sc.classList.remove('show');}catch(e){}
+    var o=document.getElementById('ov-demo-bravo');if(o)o.classList.add('show');
+  },1300);
+}
 function _bravoCreer(){
+  if(_bravoMode==='premiere'){closeSheet('ov-demo-bravo');return;}
   if(!_demoSien())try{sessionStorage.setItem('mb_apres_demo','new');}catch(e){}
   quitterDemo(true);
 }
@@ -26729,7 +26957,7 @@ function checkNotifications(skipPersist){
   try{
     DB=migrateDBData(DB);
     var changed=false,day=isoJour(new Date()),todaySales=getTodaySales(),todayTotal=todaySales.reduce(function(s,v){return s+Number(v.total||0);},0),todayCount=todaySales.length;
-    (DB.articles||[]).forEach(function(p){var ts=getStk(p);if(p.rt&&ts<=0){if(sendNotifOnce(day+'-out-'+p.id,'⚠️ '+p.nm+' est épuisé !',p.id))changed=true;}else if(p.al>0&&ts<=p.al){if(sendNotifOnce(day+'-low-'+p.id,'📦 '+p.nm+' : stock faible ('+ts+' restant'+(Math.abs(ts)>1?'s':'')+')',p.id))changed=true;}});
+    (DB.articles||[]).forEach(function(p){var ts=getStk(p);if(_stockJamaisCompte(p))return;if(p.rt&&ts<=0){if(sendNotifOnce(day+'-out-'+p.id,'⚠️ '+p.nm+' est épuisé !',p.id))changed=true;}else if(p.al>0&&ts<=p.al){if(sendNotifOnce(day+'-low-'+p.id,'📦 '+p.nm+' : stock faible ('+ts+' restant'+(Math.abs(ts)>1?'s':'')+')',p.id))changed=true;}});
     // ⚠️ La cloche du patron, et seulement la sienne : un vendeur n'a pas à
     // être averti de ce qu'il vient lui-même d'écrire.
     if(role==='patron'){
@@ -26739,7 +26967,9 @@ function checkNotifications(skipPersist){
       });
     }
     if(DB.objectif>0&&todayTotal>=DB.objectif){if(sendNotifOnce(day+'-goal','🎯 Objectif atteint !'))changed=true;}
-    if(new Date().getHours()>=20){if(sendNotifOnce(day+'-summary','📊 Résumé du jour : '+todayCount+' ventes, '+fmt(todayTotal)+' de chiffre d\'affaires'))changed=true;}
+    // ⚠️ « 📊 Résumé du jour : 0 ventes » à quelqu'un qui n'a encore rien
+    // vendu de sa vie : l'app commençait par lui annoncer zéro.
+    if(new Date().getHours()>=20&&(DB.ventes||[]).length){if(sendNotifOnce(day+'-summary','📊 Résumé du jour : '+todayCount+' vente'+(todayCount>1?'s':'')+', '+fmt(todayTotal)+' de chiffre d\'affaires'))changed=true;}
     if(changed&&!skipPersist)persistDB();
   }finally{_notifRunning=false;}
 }
@@ -26747,7 +26977,9 @@ setInterval(function(){if(DB)checkNotifications();},60000);
 updateNotifBadge=function(){
   var badge=document.getElementById('notif-badge');
   if(!badge||!DB)return;
-  var al=(DB.articles||[]).filter(function(p){var ts=getStk(p);return p.al>0&&ts<=p.al;});
+  // (22.89 : un stock jamais compté ne fait pas sonner la cloche — c'est
+  // CETTE version-ci qui tourne, celle du haut est remplacée.)
+  var al=(DB.articles||[]).filter(function(p){if(_stockJamaisCompte(p))return false;var ts=getStk(p);return p.al>0&&ts<=p.al;});
   var cr=(DB.clients||[]).filter(function(c){var d=Math.ceil((new Date(c.date)-new Date())/864e5);return c.credit>0&&d<=3;});
   // ⚠️⚠️ J'AVAIS ÉCRIT ÇA DANS UNE VERSION MORTE. updateNotifBadge et
   // showNotifs sont toutes deux REDÉFINIES ici, plus bas dans le fichier :
@@ -26765,6 +26997,7 @@ function renderNotifPanel(){
     if(!n.aid)return true; // annonces generales (objectif, resume du jour) : toujours affichees
     var p=DB.articles.find(function(x){return x.id===n.aid;});
     if(!p)return false; // article supprime depuis -> alerte obsolete, on la retire
+    if(_stockJamaisCompte(p))return false; // jamais compté : rien n'est épuisé (22.89)
     var ts=getStk(p);
     if(p.rt&&ts<=0)return true; // toujours epuise
     if(p.al>0&&ts<=p.al)return true; // toujours en stock faible
@@ -26898,6 +27131,11 @@ saveCli=function(){
 ouvrirDetCli=function(id){cliCours=DB.clients.find(function(c){return c.id===id;});if(!cliCours)return;majNiveauClient(cliCours);var pg=clientProgressData(cliCours);document.getElementById('cli-det-nm').textContent=cliCours.nm;document.getElementById('cli-d-dette').textContent=fmt(cliCours.credit);document.getElementById('cli-d-date').textContent=cliCours.date?new Date(cliCours.date).toLocaleDateString('fr-FR'):'N/A';document.getElementById('cli-d-tel').textContent=cliCours.tel||'N/A';var info=document.getElementById('lbl-info-cred');if(info)info.textContent='Info crédit & fidélité';var hist=document.getElementById('cli-hist');hist.innerHTML='<div class="lv-badge" style="margin:0 0 8px 0">'+pg.lvl+' · '+pg.cur+'</div><div class="lv-bar"><div class="lv-fill" style="width:'+pg.pct+'%"></div></div><div class="lv-meta"><span>'+pg.cur+'</span><span>'+pg.next+'</span></div><div style="height:10px"></div>'+histClientHTML(cliCours);document.getElementById('cli-pmt').value='';document.getElementById('reste-card').style.display='none';document.getElementById('ov-cli-det').classList.add('show');};
 enregPmt=function(){var amt=parseFloat(document.getElementById('cli-pmt').value)||0;if(!amt||!cliCours){showToast(t('errQte'));return;}cliCours.credit=Math.max(0,cliCours.credit-amt);if(!cliCours.hist)cliCours.hist=[];cliCours.hist.push({date:new Date().toLocaleDateString('fr-FR'),type:'payment',amt:amt});save();closeSheet('ov-cli-det');renderClients();showToast(cliCours.credit<=0?'✅ '+(lang==='fr'?'Crédit soldé !':'Credit cleared!'):'✅ '+(lang==='fr'?'Paiement enregistré !':'Payment recorded!'));};
 encaisser=function(){
+  // ⚠️⚠️ UNE VENTE VIDE S'ENREGISTRAIT. Vu au banc pendant le démarrage
+  // guidé : la feuille de paiement s'ouvre même panier vide, et « Encaisser »
+  // écrivait une vente à 0 F sans une ligne — elle comptait dans les
+  // transactions du jour et déclenchait « ta première vente ».
+  try{if(panierVide()){closeSheet('ov-calc');showToast('🛒 '+(lang==='fr'?'Le panier est vide':'The basket is empty'));return;}}catch(e){}
   // La DERNIÈRE permission qui ne protégeait rien : le patron pouvait couper
   // « Encaisser des ventes » et le vendeur encaissait quand même.
   if(role!=='patron'&&!hasPerm('vente')){
@@ -28262,7 +28500,10 @@ function majBoutonsInstaller(){
     // écran, dont une grande carte verte au milieu des articles — là où le
     // visiteur devrait voir ce qu'il vient essayer.
     var _dm=false;try{_dm=estDemo();}catch(e){}
-    c.style.display=(montrer&&!ferme&&!_dm)?'flex':'none';
+    // Une boutique sans article n'a qu'une chose à faire : choisir ce
+    // qu'elle vend. La carte verte attend le premier article.
+    var _vide=false;try{_vide=!(DB&&DB.articles&&DB.articles.length);}catch(e){}
+    c.style.display=(montrer&&!ferme&&!_dm&&!_vide)?'flex':'none';
     var ct=document.getElementById('cai-install-t');
     if(ct)ct.textContent=fr?'Garde MyBoutiQ sur ton écran d\'accueil — elle s\'ouvre plus vite, et sans réseau.'
                            :'Keep MyBoutiQ on your home screen — faster, and offline.';
