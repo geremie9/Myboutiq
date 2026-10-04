@@ -3323,6 +3323,7 @@ body{max-width:min(100%,1200px)}
         <div class="stit2" onclick="ouvrirDep()"><div class="stico" style="background:#FFEBEE">💸</div><div class="stii"><div class="stitl" id="st-dep">Dépenses boutique</div><div class="stisub" id="st-dep-s">Loyer, électricité...</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="ouvrirFourn()"><div class="stico" style="background:#E3F2FD">🚚</div><div class="stii"><div class="stitl" id="st-fourn">Fournisseurs</div><div class="stisub" id="st-fourn-s">Gérer et commander</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirClot();goBack()"><div class="stico" style="background:#E8F5E9">🌙</div><div class="stii"><div class="stitl" id="st-clot">Clôture journée</div><div class="stisub" id="st-clot-s">Rapport du soir</div></div><span class="starr">›</span></div>
+        <div class="stit2" id="row-push" style="display:none" onclick="ouvrirNotifs()"><div class="stico" style="background:#FFF8E1">🔔</div><div class="stii"><div class="stitl" id="st-push">Notifications</div><div class="stisub" id="st-push-s">—</div></div><span class="starr">›</span></div>
       </div>
       <div class="sttit">🏪 Type de commerce</div>
       <div class="stcd">
@@ -5054,9 +5055,20 @@ body{max-width:min(100%,1200px)}
           <div class="cbtn on" id="ann-n-info" onclick="selAnnNiveau('info',this)">💬 Information</div>
           <div class="cbtn" id="ann-n-imp" onclick="selAnnNiveau('important',this)">❗ Important</div>
         </div>
+        <label id="ann-push-l" style="display:flex;align-items:center;gap:10px;margin:14px 0 2px;min-height:44px;font-size:13px;font-weight:800;color:var(--T);cursor:pointer">
+          <input type="checkbox" id="ann-push" checked style="width:20px;height:20px;accent-color:var(--B)">
+          <span>📲 Aussi en notification sur les téléphones<span id="ann-push-stats" style="display:block;font-size:11px;font-weight:700;color:var(--M)"></span></span>
+        </label>
         <button class="bnxt" onclick="publierAnnonce()" id="btn-pub-ann">📣 Publier</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-push" onclick="closeOv(event,'ov-push')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="push-tit">🔔 Notifications</div><button class="bcl" onclick="closeSheet('ov-push')">✕</button></div>
+    <div style="padding:15px 19px 22px" id="push-corps"></div>
   </div>
 </div>
 
@@ -5649,7 +5661,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.89'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.90'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -10633,7 +10645,7 @@ function majDemarrage(){
     +etape(1,fr?'Tes articles':'Your items',e.nb>0,e.nb>0?(e.nb+' '+(fr?('article'+(e.nb>1?'s':'')+' — tu en ajoutes quand tu veux'):'items')):'')
     +etape(2,fr?'Leurs prix':'Their prices',e.nb>0&&!e.sansPrix,e.sansPrix?(e.sansPrix+' '+(fr?('sans prix — on ne peut pas les vendre'):'without a price')):'')
     +etape(3,fr?'Ta première vente':'Your first sale',false,e.pas===3?(fr?'Touche un article, puis « Encaisser »':'Tap an item, then “Check out”'):'')
-    +bouton+'</div>';
+    +bouton+_htmlRappelDemain()+'</div>';
   c.style.display='block';
 }
 function finirDemarrage(){
@@ -10687,6 +10699,7 @@ function renderProd(lst){
         // déjà arrêté — 21 boutiques sur 57 dans sa base, dont 15 revenues
         // un autre jour sans jamais rien poser.
         _htmlAideCreation()+
+        _htmlRappelDemain()+
       '</div>';
       // L'app SAIT parler depuis la 19.74 et ne disait rien sur tout ce
       // parcours. Elle pose la question à voix haute — c'est la seule chose
@@ -26925,6 +26938,8 @@ window.addEventListener('online',function(){
   reconnecterTempsReel(true);
 });
 window.addEventListener('offline',function(){try{majEtatConnexion();}catch(e){}});
+// Le réseau revient : un téléphone qui a dit oui hors ligne s'inscrit enfin.
+window.addEventListener('online',function(){setTimeout(function(){try{_pushSynchro();}catch(e){}},3000);});
 // Au chargement COMPLET de la page : si la bibliothèque du serveur est arrivée
 // en retard (réseau lent), on rattrape ici. Sans cela, l'app restait déconnectée
 // toute la session sans le dire.
@@ -26934,6 +26949,214 @@ window.addEventListener('load',function(){
 window.addEventListener('focus',function(){
   if(document.visibilityState==='visible')reconnecterTempsReel(false);
 });
+// ═════════════════════════════════════════════════════════════════
+//  🔔 LES NOTIFICATIONS PUSH — l'app fermée, le téléphone sonne quand même.
+//
+//  « Y a-t-il une possibilité de notifier les utilisateurs ?
+//    Automatiquement, sans être en[ligne]. »
+//
+//  Le téléphone donne au serveur une ADRESSE DE LIVRAISON (chez Google
+//  pour Android) ; chaque matin le serveur y dépose au plus UN message
+//  chiffré. Sans réseau, Google le garde trois jours et le livre dès que
+//  le réseau revient. L'app n'a pas besoin d'être ouverte.
+//
+//  ⚠️ PLUS DE DEMANDE À L'AVEUGLE. L'ancienne `ensureNotifPermission`
+//  posait la question système au premier lancement, avant qu'il ait vu
+//  quoi que ce soit : 21 « oui » sur 48 demandes, mesuré en base. Un
+//  « non » système est DÉFINITIF — on ne peut plus jamais redemander. On
+//  ne demande donc plus qu'au moment où ça a un sens pour lui : « Pas le
+//  temps ? Rappelle-moi demain », ou Réglages › Notifications.
+//  Ceux qui ont déjà dit oui sont inscrits sans un mot.
+// ═════════════════════════════════════════════════════════════════
+var _PUSH_MARQUE='mb_push',_PUSH_COUPE='mb_push_coupe',_PUSH_CLE='mb_vapid';
+function _pushPossible(){
+  try{ if(estDemo())return false; }catch(e){}
+  return ('serviceWorker' in navigator)&&('PushManager' in window)&&typeof Notification!=='undefined';
+}
+function _pushLire(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch(e){return null;}}
+function _pushEcrire(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function _b64uOctets(s){
+  s=String(s).replace(/-/g,'+').replace(/_/g,'/');s+='==='.slice((s.length+3)%4);
+  var b=atob(s),o=new Uint8Array(b.length);for(var i=0;i<b.length;i++)o[i]=b.charCodeAt(i);return o;
+}
+function _octetsB64u(buf){
+  var b=new Uint8Array(buf),s='';for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function _pushAppareil(){
+  var ua=String(navigator.userAgent||''),m=ua.match(/Android\s*([\d.]+)?;?\s*([^;)]*)/);
+  return (m?('Android '+(m[1]||'')+' '+(m[2]||'')):(/iPhone|iPad/.test(ua)?'iOS':(/Windows/.test(ua)?'Windows':'Autre'))).replace(/\s+/g,' ').trim().slice(0,80);
+}
+function _pushMode(){try{return matchMedia('(display-mode: standalone)').matches?'app':'site';}catch(e){return 'site';}}
+function _attendre(p,ms){return Promise.race([p,new Promise(function(r){setTimeout(function(){r(null);},ms);})]);}
+// ⚠️ LE SERVICE WORKER EN PLACE SAIT-IL AFFICHER UNE NOTIFICATION ?
+// La nouvelle version attend « Recharger » (on ne casse jamais une vente).
+// Inscrit pendant ce temps, le téléphone recevrait les messages par
+// l'ANCIEN worker, qui ne sait pas les montrer : Chrome afficherait à la
+// place « ce site a été mis à jour en arrière-plan ». On lui demande donc
+// d'abord s'il sait faire ; l'ancien ne répond pas, on attend la suite.
+function _swSaitPush(reg){
+  return new Promise(function(ok){
+    try{
+      var w=reg&&reg.active;if(!w){ok(false);return;}
+      var ch=new MessageChannel(),fini=false;
+      ch.port1.onmessage=function(e){fini=true;ok(!!(e.data&&e.data.push));};
+      w.postMessage({type:'CAPACITES'},[ch.port2]);
+      setTimeout(function(){if(!fini)ok(false);},1500);
+    }catch(e){ok(false);}
+  });
+}
+async function _pushCle(){
+  var c=null;try{c=localStorage.getItem(_PUSH_CLE);}catch(e){}
+  if(c)return c;
+  if(!supa)return null;
+  var r=await supa.rpc('notif_cle_publique');
+  if(r.error||!r.data)return null;
+  try{localStorage.setItem(_PUSH_CLE,r.data);}catch(e){}
+  return r.data;
+}
+var _pushEnCours=false;
+// Silencieuse : n'interroge JAMAIS l'utilisateur. Elle inscrit (ou
+// rafraîchit, une fois par semaine) un téléphone qui a déjà dit oui.
+async function _pushSynchro(force){
+  if(_pushEnCours)return false;
+  try{
+    if(!_pushPossible()||role!=='patron'||Notification.permission!=='granted')return false;
+    if(_pushLire(_PUSH_COUPE)||!supa||!navigator.onLine)return false;
+  }catch(e){return false;}
+  _pushEnCours=true;
+  try{
+    var user=await getAuthUser();if(!user)return false;
+    var reg=await _attendre(navigator.serviceWorker.ready,8000);if(!reg||!reg.pushManager)return false;
+    if(!(await _swSaitPush(reg)))return false;
+    // Geste explicite (Activer, Tester) : on relit la clé du serveur plutôt
+    // que la copie gardée — une clé changée un jour se rattrape d'une tape.
+    if(force){try{localStorage.removeItem(_PUSH_CLE);}catch(e){}}
+    var cle=await _pushCle();if(!cle)return false;
+    var abo=await reg.pushManager.getSubscription();
+    // Une adresse prise avec une AUTRE clé ne recevrait plus rien : on la refait.
+    if(abo&&abo.options&&abo.options.applicationServerKey&&_octetsB64u(abo.options.applicationServerKey)!==cle){
+      try{await abo.unsubscribe();}catch(e){}abo=null;
+    }
+    if(!abo)abo=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:_b64uOctets(cle)});
+    var m=_pushLire(_PUSH_MARQUE)||{};
+    if(!force&&m.e===abo.endpoint&&m.u===user.id&&Date.now()-(m.t||0)<7*864e5)return true;
+    var j=abo.toJSON(),k=j.keys||{};
+    var r=await supa.rpc('notif_abonner',{p_endpoint:j.endpoint,p_p256dh:k.p256dh,p_auth:k.auth,
+      p_langue:lang,p_appareil:_pushAppareil(),p_mode:_pushMode()});
+    if(r.error)return false;
+    _pushEcrire(_PUSH_MARQUE,{e:abo.endpoint,u:user.id,t:Date.now()});
+    return true;
+  }catch(e){return false;}
+  finally{_pushEnCours=false;try{majLignePush();}catch(e){}}
+}
+function _pushEtat(){
+  if(!_pushPossible())return 'impossible';
+  if(Notification.permission==='denied')return 'bloque';
+  if(_pushLire(_PUSH_COUPE))return 'coupe';
+  if(Notification.permission!=='granted')return 'off';
+  var m=_pushLire(_PUSH_MARQUE);return (m&&m.e)?'on':'attente';
+}
+function _pushDemandable(){
+  try{return _pushPossible()&&role==='patron'&&Notification.permission==='default'&&!_pushLire(_PUSH_COUPE);}catch(e){return false;}
+}
+// Rend true si le téléphone est (ou sera, au retour du réseau) inscrit.
+async function pushActiver(msgOk){
+  var fr=(lang==='fr');
+  if(!_pushPossible()){showToast('📵 '+(fr?'Ce téléphone ne peut pas recevoir les notifications de l\'app':'This phone cannot receive app notifications'));return false;}
+  _pushEcrire(_PUSH_COUPE,null);
+  var p=Notification.permission;
+  if(p==='default'){
+    try{p=await Notification.requestPermission();}catch(e){}
+    try{DB.cfg.notifAsked=true;DB.cfg.notifOk=(p==='granted');save(true);}catch(e){}
+  }
+  if(p==='denied'){
+    showToast('🔕 '+(fr?'Bloquées sur ce téléphone. Réglages du téléphone › Applications › MyBoutiQ (ou Chrome) › Notifications':'Blocked on this phone. Phone settings › Apps › MyBoutiQ (or Chrome) › Notifications'));
+    majLignePush();return false;
+  }
+  if(p!=='granted'){majLignePush();return false;}
+  try{DB.cfg.notifOk=true;save(true);}catch(e){}
+  var ok=await _pushSynchro(true);
+  showToast('🔔 '+(ok?(msgOk||(fr?'Notifications activées sur ce téléphone':'Notifications on for this phone'))
+                    :(fr?'Activées — le téléphone s\'inscrira dès que le réseau revient':'On — this phone will register when the network is back')));
+  majLignePush();
+  return true;
+}
+async function pushCouper(){
+  var fr=(lang==='fr');
+  _pushEcrire(_PUSH_COUPE,true);
+  try{
+    var reg=await _attendre(navigator.serviceWorker.ready,5000);
+    var abo=reg&&reg.pushManager?await reg.pushManager.getSubscription():null;
+    if(abo){
+      try{if(supa)await supa.rpc('notif_desabonner',{p_endpoint:abo.endpoint});}catch(e){}
+      // Même hors ligne : l'adresse détruite, le serveur la retire au prochain envoi.
+      try{await abo.unsubscribe();}catch(e){}
+    }
+  }catch(e){}
+  _pushEcrire(_PUSH_MARQUE,null);
+  showToast('🔕 '+(fr?'Notifications coupées sur ce téléphone':'Notifications off for this phone'));
+  majLignePush();try{ouvrirNotifs();}catch(e){}
+}
+async function pushTester(){
+  var fr=(lang==='fr');
+  if(!supa||!navigator.onLine){showToast('📴 '+(fr?'Il faut du réseau pour tester':'Network needed to test'));return;}
+  var ok=await _pushSynchro(true);
+  if(!ok){showToast('⏳ '+(fr?'Ce téléphone n\'est pas encore inscrit. Rouvre l\'app, puis réessaie.':'This phone is not registered yet. Reopen the app and try again.'));return;}
+  showToast('📨 '+(fr?'Envoyé — la notification arrive dans quelques secondes':'Sent — the notification arrives in a few seconds'));
+  try{
+    var r=await supa.functions.invoke('notifier',{body:{action:'essai',langue:lang}});
+    if(r.error){
+      var st=0;try{st=r.error.context&&r.error.context.status;}catch(e){}
+      showToast('⚠️ '+(st===429?(fr?'Assez d\'essais pour aujourd\'hui':'Enough tests for today'):(fr?'Le serveur n\'a pas pu envoyer':'The server could not send')));
+    }else if(r.data&&!r.data.recus){
+      showToast('⚠️ '+(fr?'Le serveur n\'a pas pu joindre ce téléphone':'The server could not reach this phone'));
+    }
+  }catch(e){showToast('⚠️ '+(fr?'Le serveur n\'a pas pu envoyer':'The server could not send'));}
+}
+function majLignePush(){
+  var row=document.getElementById('row-push');if(!row)return;
+  var vis=false;try{vis=_pushPossible()&&role==='patron';}catch(e){}
+  row.style.display=vis?'':'none';if(!vis)return;
+  var fr=(lang==='fr'),e=_pushEtat(),sub=document.getElementById('st-push-s'),tit=document.getElementById('st-push');
+  if(tit)tit.textContent=fr?'Notifications':'Notifications';
+  var t={on:fr?'✅ Activées — même app fermée':'✅ On — even when the app is closed',
+         attente:fr?'⏳ Activées — inscription au retour du réseau':'⏳ On — registering when the network is back',
+         off:fr?'Désactivées — touche pour activer':'Off — tap to turn on',
+         coupe:fr?'🔕 Coupées':'🔕 Off',
+         bloque:fr?'🔕 Bloquées dans les réglages du téléphone':'🔕 Blocked in phone settings'}[e]||'—';
+  if(sub)sub.textContent=t;
+}
+function ouvrirNotifs(){
+  var fr=(lang==='fr'),e=_pushEtat(),c=document.getElementById('push-corps');if(!c)return;
+  var btn=function(cls,f,txt){return '<button type="button" class="'+cls+'" style="margin-top:9px" onclick="'+f+'">'+txt+'</button>';};
+  var h='<div style="font-size:13.5px;font-weight:700;color:var(--T);line-height:1.5">'
+    +(fr?'MyBoutiQ te prévient <b>même quand l\'app est fermée</b> : fin d\'abonnement, rappels pour démarrer, nouvelles importantes. <b>Jamais plus d\'une par jour.</b> Sans réseau, elles arrivent dès qu\'il revient.'
+        :'MyBoutiQ tells you <b>even when the app is closed</b>: subscription ending, reminders to get started, important news. <b>Never more than one a day.</b> Without network, they arrive as soon as it is back.')
+    +'</div>';
+  if(e==='on'||e==='attente')h+=btn('bpay','pushTester()','📨 '+(fr?'Envoyer une notification d\'essai':'Send a test notification'))+btn('bvid','pushCouper()','🔕 '+(fr?'Couper sur ce téléphone':'Turn off on this phone'));
+  else if(e==='bloque')h+='<div style="margin-top:12px;padding:11px 12px;border-radius:12px;background:#FFF3E0;font-size:12.5px;font-weight:800;color:#8A4B00">'
+    +(fr?'Elles sont bloquées par le téléphone. Pour les rouvrir : Réglages du téléphone › Applications › MyBoutiQ (ou Chrome) › Notifications › Autoriser.':'They are blocked by the phone. To allow them: Phone settings › Apps › MyBoutiQ (or Chrome) › Notifications › Allow.')+'</div>';
+  else if(e==='impossible')h+='<div style="margin-top:12px;font-size:12.5px;font-weight:800;color:var(--M)">'+(fr?'Ce téléphone ne permet pas les notifications de l\'app.':'This phone does not allow app notifications.')+'</div>';
+  else h+=btn('bpay','pushActiver().then(function(){ouvrirNotifs();})','🔔 '+(fr?'Activer les notifications':'Turn on notifications'));
+  c.innerHTML=h;
+  document.getElementById('ov-push').classList.add('show');
+}
+// « Pas le temps ? Rappelle-moi demain » : LA bonne question, au bon moment —
+// celui où il s'en va sans avoir fini. Le serveur tient la promesse le
+// lendemain matin (règles « vide » et « premiere »).
+function _htmlRappelDemain(){
+  if(!_pushDemandable())return '';
+  var fr=(lang==='fr');
+  return '<div style="margin-top:6px"><button type="button" onclick="rappelDemain()" style="background:none;border:none;min-height:44px;padding:8px 10px;color:var(--B);font-family:Outfit,sans-serif;font-size:12.5px;font-weight:800;text-decoration:underline;cursor:pointer">🔔 '
+    +(fr?'Pas le temps ? Rappelle-moi demain':'No time? Remind me tomorrow')+'</button></div>';
+}
+async function rappelDemain(){
+  var fr=(lang==='fr');
+  var ok=await pushActiver(fr?'C\'est noté : MyBoutiQ te fera signe demain matin':'Noted: MyBoutiQ will remind you tomorrow morning');
+  // Oui OU non : la question a eu sa réponse, le lien s'en va (redessin dans les deux cas).
+  void ok;try{renderProd(DB.articles);}catch(e){}try{majDemarrage();}catch(e){}
+}
 function ensureNotifPermission(){
   if(!DB||!DB.cfg||DB.cfg.notifAsked||typeof Notification==='undefined')return;
   DB.cfg.notifAsked=true;
@@ -27027,7 +27250,8 @@ var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBouton
   if(_suite)try{_suite();}catch(e){}
   try{renderNotifPanel();}catch(e){}
   try{_creerCompteEnAttente();}catch(e){}
-  try{ensureNotifPermission();}catch(e){}
+  try{majLignePush();}catch(e){}
+  try{_pushSynchro();}catch(e){}
   try{checkNotifications();}catch(e){}
   try{suggererArchivage();}catch(e){}
 };})();try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneGrille();}catch(e){}try{majLigneReleve();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}
@@ -29376,7 +29600,7 @@ function renderReleve(){
   var fr=(lang!=='en'),d=_relDonnees;
   var b=document.getElementById('rel-actions');
   if(!d||!d.ok){
-    c.innerHTML='<div class="empty"><div class="empty-e">\U0001F4C4</div><div class="empty-t">'
+    c.innerHTML='<div class="empty"><div class="empty-e">📄</div><div class="empty-t">'
       +(fr?'Pas encore de relevé':'No statement yet')+'</div>'
       +'<div style="font-size:12.5px;color:var(--M);font-weight:600;margin-top:7px;line-height:1.6;max-width:32ch;margin-left:auto;margin-right:auto">'
       +(fr?'Le relevé se construit tout seul à partir de tes ventes. Enregistre quelques journées et il apparaîtra ici.'
@@ -29470,7 +29694,7 @@ function partagerReleve(){
     +(fr?'MyBoutiQ atteste que ces ventes ont été enregistrées aux dates indiquées.':'MyBoutiQ certifies these sales were recorded on those dates.');
   try{ if(navigator.share){navigator.share({text:t});return;} }catch(e){}
   try{ navigator.clipboard.writeText(t);
-       showToast('\U0001F4CB '+(fr?'Relevé copié — colle-le dans WhatsApp':'Statement copied')); return; }catch(e){}
+       showToast('📋 '+(fr?'Relevé copié — colle-le dans WhatsApp':'Statement copied')); return; }catch(e){}
   try{ window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank'); }catch(e){}
 }
 var _annCible='tous',_annNiveau='info';
@@ -29480,6 +29704,27 @@ async function ouvrirEcrireAnnonce(){
   if(!(await verifierAdmin())){showToast('⛔ '+(lang==='fr'?'Réservé à MyBoutiQ':'MyBoutiQ staff only'));return;}
   document.getElementById('ov-annonce').classList.add('show');
   renderAnnoncesEnCours();
+  _annPushStats();
+}
+async function _annPushStats(){
+  var el=document.getElementById('ann-push-stats');if(!el||!supa)return;
+  var fr=(lang==='fr');
+  try{
+    var r=await supa.rpc('notif_stats');if(r.error||!r.data)return;
+    var d=r.data;
+    el.textContent=(fr?(d.telephones+' téléphone'+(d.telephones>1?'s':'')+' inscrit'+(d.telephones>1?'s':'')+' · 7 j : '+d.envois_7j+' envoyées, '+d.recus_7j+' reçues, '+d.ouverts_7j+' ouvertes')
+                      :(d.telephones+' phones · 7 d: '+d.envois_7j+' sent, '+d.recus_7j+' received, '+d.ouverts_7j+' opened'));
+  }catch(e){}
+}
+async function _annDiffuser(titre,msg){
+  var fr=(lang==='fr');
+  try{
+    var ref='a'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    var r=await supa.functions.invoke('notifier',{body:{action:'diffuser',titre:titre,message:msg,ref:ref}});
+    if(r.error||!r.data){showToast('⚠️ '+(fr?'Annonce publiée, mais la notification n\'est pas partie':'Published, but the notification was not sent'));return;}
+    showToast('📲 '+(fr?('Notification reçue par '+r.data.recus+' compte'+(r.data.recus>1?'s':'')+' sur '+r.data.comptes):('Notification received by '+r.data.recus+' of '+r.data.comptes+' accounts')));
+    _annPushStats();
+  }catch(e){}
 }
 async function renderAnnoncesEnCours(){
   var c=document.getElementById('ann-encours');if(!c)return;
@@ -29522,6 +29767,9 @@ async function publierAnnonce(){
     if(r.error){showToast('❌ '+(fr?'Refusé : ':'Refused: ')+(r.error.message||''));}
     else{
       showToast('📣 '+(fr?'Annonce publiée':'Published'));
+      // Les inscrits sont des PATRONS : une annonce « vendeurs » reste dans l'app.
+      var _cp=document.getElementById('ann-push');
+      if(_cp&&_cp.checked&&_annCible!=='vendeur')_annDiffuser(titre,msg);
       document.getElementById('ann-titre').value='';document.getElementById('ann-msg').value='';
       renderAnnoncesEnCours();
     }

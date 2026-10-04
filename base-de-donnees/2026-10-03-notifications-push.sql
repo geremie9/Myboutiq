@@ -104,12 +104,14 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 
+-- Le patron coupe : l'abonnement s'éteint (gardé éteint, jamais servi).
 create or replace function public.notif_desabonner(p_endpoint text)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare n integer;
 begin
   if auth.uid() is null then return false; end if;
-  delete from public.notif_abonnements where endpoint = p_endpoint and user_id = auth.uid();
+  update public.notif_abonnements set actif = false
+   where endpoint = p_endpoint and user_id = auth.uid() and actif;
   get diagnostics n = row_count;
   return n > 0;
 end $$;
@@ -123,6 +125,8 @@ $$;
 -- ── La tournée du matin : QUI reçoit QUOI aujourd'hui ──
 -- Une seule notification automatique par compte et par jour, la plus
 -- utile d'abord. Jamais la boutique d'exemple.
+-- « Pas le temps ? Rappelle-moi demain » : vide ET première vente partent
+-- dès le lendemain (20 h après la création), pour tenir la promesse.
 create or replace function public.notif_tournee_candidats()
 returns table(user_id uuid, code text, nom text, langue text, type text, cle text, jours integer)
 language sql stable security definer set search_path = '' as $$
@@ -155,7 +159,7 @@ language sql stable security definer set search_path = '' as $$
     union all
     select uid, code, nom, langue, 'premiere', 'premiere:' || current_date, 3, 0
       from b where nb_art > 0 and nb_ventes = 0 and not archive
-       and created_at < now() - interval '2 days' and created_at > now() - interval '30 days'
+       and created_at < now() - interval '20 hours' and created_at > now() - interval '30 days'
     union all
     select uid, code, nom, langue, 'absent', 'absent:' || current_date, 4, 0
       from b where nb_ventes > 0 and updated_at < now() - interval '7 days' and updated_at > now() - interval '60 days'
@@ -200,3 +204,21 @@ grant execute on function public.notif_desabonner(text) to authenticated;
 grant execute on function public.notif_ouvert(uuid) to anon, authenticated;
 grant execute on function public.notif_stats() to authenticated;
 grant execute on function public.notif_tournee_candidats() to service_role;
+
+-- ⚠️ Supabase donne EXÉCUTER à anon/authenticated sur toute fonction
+-- neuve, directement (pas via PUBLIC) : le `revoke ... from public` n'y
+-- suffit pas. Vu au banc : un compte connecté lisait la tournée (noms et
+-- CODES des boutiques). On retire nommément.
+revoke execute on function public.notif_tournee_candidats() from anon, authenticated;
+revoke execute on function public.notif_abonner(text, text, text, text, text, text) from anon;
+revoke execute on function public.notif_desabonner(text) from anon;
+revoke execute on function public.notif_stats() from anon;
+
+-- La tournée du matin : 8 h UTC = 9 h à Douala. Le secret est lu dans la
+-- table au moment de l'appel ; il n'est écrit nulle part ailleurs.
+select cron.schedule('myboutiq-notifier', '0 8 * * *', $$ select net.http_post(
+  url := 'https://bbncilovxzkcvlxvoqtg.supabase.co/functions/v1/notifier',
+  headers := jsonb_build_object('Content-Type', 'application/json',
+               'x-tournee', (select secret_tournee from public.notif_cles where id = 1)),
+  body := jsonb_build_object('action', 'tournee'),
+  timeout_milliseconds := 120000) $$);
