@@ -2315,6 +2315,8 @@ body{max-width:min(100%,1200px)}
    liens sont la seule porte vers /conseils/. */
 .vt-gui{margin-top:30px;padding:17px 18px;background:var(--C);border:1px solid var(--BD);
   border-radius:17px}
+.vt-gui-tous{display:block;text-align:center;margin-top:10px;padding:13px;min-height:44px;border-radius:14px;
+  background:var(--C);border:1px solid var(--BD);color:var(--B);font-weight:900;font-size:14px;text-decoration:none}
 .vt-gui-t{font-size:12px;font-weight:900;color:var(--M);letter-spacing:.06em;
   text-transform:uppercase;margin-bottom:10px}
 .vt-gui a{display:flex;align-items:center;gap:10px;padding:10px 0;text-decoration:none;
@@ -2710,7 +2712,15 @@ body{max-width:min(100%,1200px)}
       <a href="/conseils/savoir-quoi-racheter"><em>🛒</em><span id="vg-6">Savoir quoi racheter chez le grossiste, sans se tromper</span><b>→</b></a>
       <a href="/conseils/vendre-au-kilo-au-tas"><em>⚖️</em><span id="vg-7">Vendre au kilo, au litre, ou au tas</span><b>→</b></a>
       <a href="/conseils/changer-de-telephone-sans-perdre-sa-boutique"><em>📲</em><span id="vg-8">Changer de téléphone sans perdre sa boutique</span><b>→</b></a>
+      <a href="/conseils/orange-money-mtn-momo-dans-la-caisse"><em>🟠</em><span id="vg-9">Orange Money, MTN MoMo et espèces : savoir où est l'argent</span><b>→</b></a>
+      <a href="/conseils/compter-sa-caisse-le-soir"><em>💰</em><span id="vg-10">Compter sa caisse le soir et trouver les écarts</span><b>→</b></a>
+      <a href="/conseils/fixer-ses-prix-de-vente"><em>🏷️</em><span id="vg-11">Fixer son prix de vente sans vendre à perte</span><b>→</b></a>
+      <a href="/conseils/noter-ses-depenses"><em>💸</em><span id="vg-12">Loyer, ENEO, transport : noter ses dépenses</span><b>→</b></a>
+      <a href="/conseils/gerer-les-consignes-de-bouteilles"><em>🍾</em><span id="vg-13">Consignes de bouteilles : l'argent qui n'est pas à toi</span><b>→</b></a>
+      <a href="/conseils/application-caisse-boutique-cameroun"><em>✅</em><span id="vg-14">Application de caisse : les 8 points à vérifier</span><b>→</b></a>
     </div>
+    <!-- Le sommaire n'est PAS un guide de plus dans la liste : il la prolonge. -->
+    <a class="vt-gui-tous" href="/conseils" id="vg-tous">📚 Tous les guides →</a>
 
     <div class="vt-pied">
       <div id="vt-pied-l1">MyBoutiQ · Cameroun</div>
@@ -5661,7 +5671,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.90'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.91'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -16029,6 +16039,10 @@ function procederPmt(){
   var shcts=document.getElementById('calc-shcts');shcts.innerHTML='';
   var rds=[Math.ceil(total/500)*500,Math.ceil(total/1000)*1000,Math.ceil(total/2000)*2000,Math.ceil(total/5000)*5000].filter(function(v,i,a){return a.indexOf(v)===i&&v>=total;}).slice(0,4);
   rds.forEach(function(r){var b=document.createElement('button');b.className='calc-shct';b.textContent=fmt(r);b.onclick=function(){document.getElementById('calc-recu').value=r;calcMonnaie(true);};shcts.appendChild(b);});
+  // ⚠️ Le cadre « Consigne » gardait la vente PRÉCÉDENTE : après 2 bières
+  // consignées, un sac de riz s'ouvrait sur « Emballages emportés : 2 ».
+  // Les compteurs étaient bien remis à zéro, seul l'affichage restait.
+  try{majConsigneUI();}catch(e){}
   document.getElementById('ov-calc').classList.add('show');
 }
 var pmntModeVente='especes',splitVenteOn=false,splitModeVente='orange',remiseVente=0;
@@ -22628,7 +22642,7 @@ function renderRpt(){
       ].filter(function(r){return r[2]>0;});
       // La consigne est dans le tiroir mais ne t'appartient pas : on la montre
       // à part, jamais mélangée au chiffre d'affaires.
-      var cons=pb.consignes||0;
+      var cons=pb.consTiroir||0;
       var ligneCons=cons!==0
         ?('<div class="rrow"><span class="rlbl" style="color:var(--O)">🍾 '+(lang==='fr'?'dont consignes (dans le tiroir)':'incl. deposits (in the drawer)')+'</span>'
           +'<span class="rval" style="color:var(--O)">'+(cons>0?'+':'')+fmt(cons)+'</span></div>')
@@ -22636,7 +22650,7 @@ function renderRpt(){
       if(!rows.length)return '';
       return '<div class="rcd"><div class="rctit">💳 '+(lang==='fr'?'Répartition par moyen de paiement':'Breakdown by payment method')+'</div>'+
         rows.map(function(r){return '<div class="rrow"><span class="rlbl">'+r[0]+' '+r[1]+'</span><span class="rval">'+fmt(r[2])+'</span></div>';}).join('')+ligneCons+
-        ((_rptPer==='jour')?('<div class="rrow" style="border-top:1px solid var(--BD);margin-top:6px;padding-top:9px"><span class="rlbl" style="font-weight:800">'+(lang==='fr'?'💰 Espèces en caisse (à compter)':'💰 Cash in drawer (to count)')+'</span><span class="rval a" style="font-weight:900">'+fmt(pb.especes)+'</span></div>'):'')+
+        ((_rptPer==='jour')?('<div class="rrow" style="border-top:1px solid var(--BD);margin-top:6px;padding-top:9px"><span class="rlbl" style="font-weight:800">'+(lang==='fr'?'💰 Espèces en caisse (à compter)':'💰 Cash in drawer (to count)')+_rptDetailCaisse(pb.especes)+'</span><span class="rval a" style="font-weight:900">'+fmt(caisseAttendue())+'</span></div>'):'')+
         '</div>';
     })()+
     evoHtml+
@@ -23863,7 +23877,7 @@ function paiementBreakdownJour(){return paiementBreakdown(getCaisseSales());}
 // Le même calcul, sur la liste qu'on lui donne : la clôture garde le jour,
 // les rapports prennent leur période.
 function paiementBreakdown(liste){
-  var b={especes:0,orange:0,mtn:0,moov:0,credit:0,remises:0,consignes:0};
+  var b={especes:0,orange:0,mtn:0,moov:0,credit:0,remises:0,consignes:0,consTiroir:0};
   (liste||[]).forEach(function(v){
     var p=v.paiement,c=Number(v.consigne)||0;
     b.remises+=(v.remise||0);
@@ -23871,7 +23885,13 @@ function paiementBreakdown(liste){
     if(!p||p.mode==='especes')b.especes+=v.total+c;
     else if(p.mode==='mixte'){b.especes+=(p.especes||0)+c;b[p.moyenMobile]=(b[p.moyenMobile]||0)+(p.mobile||0);}
     else if(p.mode==='credit'){b.especes+=(p.avance||0)+c;b.credit+=(p.du||0);}
-    else {b[p.mode]=(b[p.mode]||0)+v.total;b.especes+=c;}
+    // ⚠️ Vente Mobile Money : le client paie marchandise + consigne PAR
+    // MOBILE MONEY (l'écran affiche calcAPayer). Ici la consigne partait
+    // dans les ESPÈCES, alors que la clôture (totalEspecesJour) ne l'y
+    // mettait pas : deux montants « à compter » différents pour le même
+    // tiroir. Elle va au compte qui l'a reçue.
+    else {b[p.mode]=(b[p.mode]||0)+v.total+c;}
+    if(!p||p.mode==='especes'||p.mode==='mixte'||p.mode==='credit')b.consTiroir+=c;
   });
   return b;
 }
@@ -23880,6 +23900,20 @@ function paiementBreakdown(liste){
 // l'app lui annonçait un DÉFICIT de 5 000 F — de quoi soupçonner son vendeur
 // pour une dépense qu'il avait lui-même faite.
 function caisseAttendue(){return DB.fondsDepart+totalEspecesJour()-totalDepCaisseJour();}
+// ⚠️ LE RAPPORT ET LA CLÔTURE DISAIENT DEUX CHIFFRES pour le même tiroir.
+// Rapports › « Espèces en caisse (à compter) » montrait les seules ventes en
+// espèces : ni le fonds de départ, ni les dépenses payées avec l'argent du
+// tiroir. Mesuré au banc : 8 200 F annoncés, 2 700 F réellement attendus
+// après 5 500 F d'électricité et de transport. Il compte son tiroir, il
+// trouve 5 500 F de moins — et soupçonne son vendeur. Le rapport donne
+// maintenant le montant de la clôture, et dit d'où il vient.
+function _rptDetailCaisse(esp){
+  var fr=(lang==='fr'),f=Number(DB.fondsDepart)||0,d=totalDepCaisseJour();
+  if(!f&&!d)return '';
+  return '<div style="font-size:9.5px;font-weight:600;color:var(--M)">'
+    +(f?(fr?'fonds de départ ':'opening cash ')+fmt(f)+' + ':'')+(fr?'espèces ':'cash ')+fmt(esp)
+    +(d?' − '+(fr?'dépenses payées de la caisse ':'expenses paid from the till ')+fmt(d):'')+'</div>';
+}
 function ouvrirClot(){var att=caisseAttendue(),_dc=totalDepCaisseJour(),_dh=totalDepJour()-_dc;document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div>'+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+((_dc>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Dépenses payées de la caisse':'Expenses paid from till')+'</span><span class="rval r">-'+fmt(_dc)+'</span></div>'):'')+((_dh>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'dépenses hors caisse (le tiroir n\'y touche pas)':'expenses not from till')+'</span><span class="rval" style="color:var(--M)">-'+fmt(_dh)+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+(totalDepJour()>0?(lang==='fr'?' NET (dépenses déduites)':' NET'):'')+'</span><span class="rval '+((totalB-totalDepJour())<0?'r':'g')+'">'+fmt(totalB-totalDepJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';document.getElementById('ov-clot').classList.add('show');}
 function calcEcart(){var compt=parseFloat(document.getElementById('inp-compt').value)||0,att=caisseAttendue(),ec=compt-att,el=document.getElementById('ecart-cd');el.style.display='flex';el.className='bcard '+(Math.abs(ec)<100?'bon':'bad');document.getElementById('ecart-lbl').textContent=ec===0?'✅ '+(lang==='fr'?'Équilibrée':'Balanced'):ec>0?'📈 '+(lang==='fr'?'Excédent':'Surplus'):'⚠️ '+(lang==='fr'?'Déficit':'Deficit');document.getElementById('ecart-amt').textContent=(ec>=0?'+':'')+fmt(ec);}
 function validerClot(){
@@ -23938,6 +23972,12 @@ function saveDep(){if(!(role==='patron'||hasPerm('depenses'))){showToast('⛔ '+
 // la clôture était toujours trop haute, et le patron voyait un déficit là où
 // il n'avait fait que payer son électricité.
 DB.depenses.push({id:genVenteId(),nm:nm,amt:amt,cat:selDCur,date:new Date().toLocaleDateString('fr-FR'),ts:new Date().toISOString(),caisse:_depCaisse,vendeur:role==='vendeur'?(nomVendeur||'Vendeur'):'Patron'});journalAjouter('depense',nm,'',fmt(amt)+(_depCaisse?'':' ('+(lang==='fr'?'hors caisse':'not from till')+')'));save();renderDepLst();document.getElementById('dep-nm').value='';document.getElementById('dep-amt').value='';showToast(t('depOk'));}
+// La liste affichait la clé interne (« elec », « transp », « sal »).
+function _depCatNom(c){
+  var fr=(lang==='fr'),n={loyer:['🏠 Loyer','🏠 Rent'],elec:['⚡ Électricité','⚡ Electricity'],sal:['👤 Salaire','👤 Salary'],
+    transp:['🚚 Transport','🚚 Transport'],tel:['📱 Téléphone','📱 Phone'],autre:['📦 Autre','📦 Other']}[c];
+  return n?n[fr?0:1]:String(c||'');
+}
 function renderDepLst(){
   var c=document.getElementById('dep-lst-cont'),fr=lang==='fr';
   // Le jour en cours, comme la clôture. Le total du mois est rappelé à côté,
@@ -23948,7 +23988,7 @@ function renderDepLst(){
     var j=d&&d.ts?String(d.ts).slice(0,7):null;
     return s+((j===mois)?(Number(d.amt)||0):0);
   },0);
-  c.innerHTML=duJour.length?'<div class="rcd" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px"><div><div style="font-size:11px;font-weight:700;color:var(--M)">'+(fr?'Dépenses du jour':'Today\'s expenses')+'</div><div style="font-size:20px;font-weight:900;color:var(--R)">'+fmt(tot)+'</div></div>'+(totMois>tot?('<div style="text-align:right"><div style="font-size:11px;font-weight:700;color:var(--M)">'+(fr?'Ce mois-ci':'This month')+'</div><div style="font-size:14px;font-weight:800;color:var(--M)">'+fmt(totMois)+'</div></div>'):'')+'</div>'+duJour.map(function(d){return '<div class="dep-it"><div class="dep-ico">💸</div><div class="dep-inf"><div class="dep-nm">'+d.nm+(d.vendeur&&d.vendeur!=='Patron'?' · '+d.vendeur:'')+'</div><div class="dep-dt">'+d.cat+' · '+d.date+' — '+((d.caisse===false)?(fr?'hors caisse':'not from till'):(fr?'de la caisse':'from till'))+'</div></div><div class="dep-amt">-'+fmt(d.amt)+'</div></div>';}).join(''):'';}
+  c.innerHTML=duJour.length?'<div class="rcd" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px"><div><div style="font-size:11px;font-weight:700;color:var(--M)">'+(fr?'Dépenses du jour':'Today\'s expenses')+'</div><div style="font-size:20px;font-weight:900;color:var(--R)">'+fmt(tot)+'</div></div>'+(totMois>tot?('<div style="text-align:right"><div style="font-size:11px;font-weight:700;color:var(--M)">'+(fr?'Ce mois-ci':'This month')+'</div><div style="font-size:14px;font-weight:800;color:var(--M)">'+fmt(totMois)+'</div></div>'):'')+'</div>'+duJour.map(function(d){return '<div class="dep-it"><div class="dep-ico">💸</div><div class="dep-inf"><div class="dep-nm">'+d.nm+(d.vendeur&&d.vendeur!=='Patron'?' · '+d.vendeur:'')+'</div><div class="dep-dt">'+_depCatNom(d.cat)+' · '+d.date+' — '+((d.caisse===false)?(fr?'hors caisse':'not from till'):(fr?'de la caisse':'from till'))+'</div></div><div class="dep-amt">-'+fmt(d.amt)+'</div></div>';}).join(''):'';}
 
 // ═══════════════════════════════════════════
 // OBJECTIF
@@ -26120,6 +26160,13 @@ function _vitrineLangue(){
     'vg-6':'Knowing what to restock, without guessing',
     'vg-7':'Selling by the kilo, the litre, or the heap',
     'vg-8':'Changing phone without losing your shop',
+    'vg-9':'Orange Money, MTN MoMo and cash: knowing where the money is',
+    'vg-10':'Counting your till in the evening',
+    'vg-11':'Setting your selling price without selling at a loss',
+    'vg-12':'Rent, electricity, transport: recording your expenses',
+    'vg-13':'Bottle deposits: money that is not yours',
+    'vg-14':'Shop till app: the 8 things to check',
+    'vg-tous':'📚 All guides (in French) →',
     'vt-pied-bar':'🍻 MyBar — for bars and pubs',
     'vf-t':'What it actually does',
     'vf-s':'Six things you already do by hand. Here they take one tap.',
