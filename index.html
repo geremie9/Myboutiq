@@ -188,6 +188,32 @@
     // Dans le doute, la PORTE. Un habitué qui voit la porte tape son PIN ;
     // un nouveau qui voit la porte touche « Nouvelle inscription ». Personne
     // ne croit avoir tout perdu.
+    // ⚠️⚠️ « QUAND JE VEUX NAVIGUER SUR LE SITE, ÇA ME RENVOIE SUR L'APP EN
+    // ME DEMANDANT LE CODE. » Sur un téléphone qui a déjà une boutique, la
+    // racine du site ouvrait TOUJOURS la porte du PIN — même en arrivant de
+    // Google, même en cliquant « MyBoutiQ » depuis un guide. Le patron ne
+    // pouvait plus voir son propre site. Voir `_veutLeSite()` : mêmes règles.
+    var site=false;
+    try{
+      var q=location.search||'',rf=document.referrer||'',pa=location.pathname||'/';
+      var rech=false;try{var nv=performance.getEntriesByType('navigation')[0];rech=!!nv&&nv.type==='reload';}catch(x){}
+      var dern=null;try{dern=rech?sessionStorage.getItem('mb_site'):null;}catch(x){}
+      if(/[?&]site(=|&|$)/.test(q)||location.hash==='#site')site=true;
+      else if(dern==='1')site=true;
+      else if(dern==='0')site=false;
+      else if(pa==='/'&&!/[?&](code|nom)=/.test(q)){
+        var rh='',ro='',rp='';
+        try{var ru=new URL(rf);rh=ru.hostname;ro=ru.origin;rp=ru.pathname;}catch(x){}
+        if(/(^|\.)(google|bing|yahoo|duckduckgo|ecosia|qwant|yandex|baidu|brave|startpage)\.[a-z.]+$/i.test(rh))site=true;
+        else if(ro===location.origin&&!/^\/(index\.html)?$/.test(rp))site=true;
+        else{try{if(window.matchMedia('(display-mode: standalone)').matches)site=true;}catch(x){}
+             if(/^android-app:\/\//.test(rf))site=true;}
+      }
+    }catch(x){}
+    if(site){
+      h.className+=' porte-vitrine'+((db||deja)?' site-connu':'');
+      return;
+    }
     h.className+=((db||deja||muet)?' porte-login':' porte-vitrine');
     if(muet)try{h.setAttribute('data-muet','1');}catch(x){}
     // La clé d'empreinte est déjà lue plus haut : si elle existe, le signe
@@ -614,6 +640,19 @@ html.porte-rapide #entree-rapide,html.porte-rapide #er-pin-wrap{display:block}
   border:1px solid rgba(255,255,255,.22);border-radius:11px;padding:8px 12px;color:rgba(255,255,255,.86);
   font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;cursor:pointer;min-height:36px}
 .lg-retour:active{background:rgba(255,255,255,.20)}
+/* 🌐 Depuis la porte : le site, à une tape (guides, présentation). */
+.lg-site{display:block;margin:18px auto 4px;background:none;border:none;min-height:44px;padding:10px 12px;
+  color:rgba(255,255,255,.66);font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+/* 🏪 Sur le site, pour qui a déjà sa boutique sur ce téléphone. */
+.vt-connu{display:none;align-items:center;gap:10px;width:100%;padding:10px 14px;
+  background:#1B0D45;color:#fff;font-family:'Outfit',sans-serif;position:relative;z-index:6}
+html.site-connu .vt-connu{display:flex}
+.vt-connu-t{flex:1;min-width:0;font-size:12.5px;font-weight:700;color:rgba(255,255,255,.78);line-height:1.3}
+.vt-connu-t b{display:block;color:#fff;font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vt-connu button{flex:0 0 auto;background:var(--A);color:#2E1065;border:none;border-radius:12px;min-height:44px;
+  padding:10px 14px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:900;cursor:pointer}
+html.site-connu #vt-b2{display:none}
 /* ⚠️ « À CHAQUE FOIS, UN PEU PARTOUT » — il en manquait un, et pas le
    moindre : l'écran d'entrée est celui que voit CHAQUE JOUR quelqu'un qui
    n'a pas encore posé l'icône sur son écran d'accueil. C'est exactement là
@@ -2495,6 +2534,10 @@ body{max-width:min(100%,1200px)}
   <!-- ⭐ LA BARRE DU SITE. Elle ne descend qu'une fois le héros passé : en
        haut de la page elle ne servirait à rien et mangerait un dixième de
        l'écran. « Essayer » remonte aux portes ; rien ici n'ouvre l'app. -->
+  <div class="vt-connu" id="vt-connu">
+    <div class="vt-connu-t"><span id="vt-connu-s">Ta boutique est sur ce téléphone</span><b id="vt-connu-nm">🏪 Ma boutique</b></div>
+    <button type="button" onclick="ouvrirMaCaisse()" id="vt-connu-b">Ouvrir ma caisse →</button>
+  </div>
   <nav class="vt-nav" id="vt-nav" aria-label="Sections">
     <div class="vt-nav-m" onclick="allerSection('v-top')">My<span>BoutiQ</span></div>
     <div class="vt-liens" id="vt-liens">
@@ -2960,6 +3003,7 @@ body{max-width:min(100%,1200px)}
     <button class="btn-login" onclick="setModeEntree('old')" style="margin-top:8px;background:rgba(255,255,255,.12);color:#fff">↩️ Déjà inscrit ? Se connecter</button>
   </div>
   <div class="login-hint" id="login-hint" style="display:none">💡 Appuie directement sur Connexion pour la démo</div>
+  <button type="button" class="lg-site" id="lg-site" onclick="voirLeSite()">🌐 Voir le site MyBoutiQ — guides et présentation</button>
 </div>
 
 <!-- CAISSE -->
@@ -5671,7 +5715,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.91'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.92'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -7039,6 +7083,10 @@ function _demarrerApp(){
         try{majBandeauDemo();}catch(e){}
         return;
       }
+      // 🌐 Il est venu voir le SITE (Google, un guide, un lien) : on le lui
+      // montre, sa caisse à une tape. L'icône de l'app ouvre /index.html —
+      // donc la porte, comme avant. Voir `_veutLeSite()`.
+      if(!_invitationCode&&_veutLeSite()){_montrerVitrine(true);return;}
       setModeEntree('old');
       goScreen('s-login');
       // ══════════════════════════════════════════════════════════════
@@ -7075,7 +7123,7 @@ function _demarrerApp(){
       // ÉCHOUE ne se signalait jamais, et la garde ne servait à rien dans le
       // cas où seul le cookie est muet. On distingue bien « il répond que
       // non » (vitrine) de « il ne répond pas » (porte).
-      _habitueConnu=_dejaVenu(); return _stockageMuet;
+      _habitueConnu=_dejaVenu(); return _stockageMuet&&!_veutLeSite();
     })()){
       // ⚠️ LE TÉLÉPHONE N'A PAS RÉPONDU. On ne conclut rien : ni « il est
       // neuf », ni « il a tout perdu ». La porte, un mot honnête, et une
@@ -7099,6 +7147,8 @@ function _demarrerApp(){
           },1400);
         }
       }catch(e){}
+    } else if(_habitueConnu&&_veutLeSite()){
+      _montrerVitrine(true);
     } else if(_habitueConnu){
       // ⚠️ IL A DÉJÀ EU SA BOUTIQUE SUR CE TÉLÉPHONE, et elle n'y est plus.
       // Lui montrer la page de pub, c'est lui dire qu'il a tout perdu. Ce
@@ -7109,14 +7159,7 @@ function _demarrerApp(){
       try{_direDonneesEffacees();}catch(e){}
     } else {
       // Pas de DB locale : montrer la page vitrine pour un nouveau visiteur
-      renderPaysLst('pays-lst','pays-src',PAYS,null);
-      renderSecGrid('sec-grid','boutique');
-      try{_vitrineLangue();}catch(e){}
-      try{majBandeVitrine();}catch(e){}
-      try{majBoutonsInstaller();}catch(e){}
-      try{majBlocAuteur();}catch(e){}
-      try{majCommunaute();}catch(e){}
-      goScreen('s-landing');
+      _montrerVitrine(false);
       try{
         if(sessionStorage.getItem('mb_apres_demo')==='new'){
           sessionStorage.removeItem('mb_apres_demo');
@@ -7125,6 +7168,108 @@ function _demarrerApp(){
       }catch(e){}
     }
 }
+// ═════════════════════════════════════════════════════════════════
+//  🌐 LE SITE OU LA CAISSE ?
+//
+//  « Quand je veux naviguer sur le site, ça me renvoie uniquement sur
+//  l'App en me demandant le code — or quand j'écris MyBoutiQ à Google,
+//  c'est pour voir mon site, mes pages. »
+//
+//  La racine du site servait les deux : la vitrine aux inconnus, la porte
+//  du PIN à tout téléphone qui avait déjà une boutique. Le patron ne
+//  pouvait donc plus voir son propre site, ni personne qui a un jour
+//  ouvert une boutique — même en venant de Google, même en touchant
+//  « MyBoutiQ » depuis un guide.
+//
+//  LA RÈGLE, la même que la peinture du premier instant (dans <head>) :
+//    · `?site` (ou #site), partout : le site ;
+//    · la RACINE « / », en venant d'un moteur de recherche, d'une autre
+//      page du site (un guide), ou ouverte DANS l'app par un lien (l'icône
+//      de l'app ouvre /index.html, jamais « / ») : le site ;
+//    · tout le reste — l'icône, /index.html, l'adresse tapée, « Retour à
+//      ma caisse » — : la porte, exactement comme avant.
+//  Sur le site, qui a déjà sa boutique voit en haut « 🏪 Ouvrir ma
+//  caisse », et « Créer ma boutique » disparaît (sa boutique est là).
+//  Dans l'app, parti plus de 2 minutes : on revient à la porte (22.87).
+// ═════════════════════════════════════════════════════════════════
+function _veutLeSite(){
+  try{
+    var q=location.search||'',rf=document.referrer||'',pa=location.pathname||'/';
+    if(/[?&]site(=|&|$)/.test(q)||location.hash==='#site')return true;
+    // Rechargée (« Recharger », nouvelle version) : son DERNIER choix tient,
+    // le site (« Voir le site ») ou la caisse (« Ouvrir ma caisse »).
+    try{var nv=performance.getEntriesByType('navigation')[0];
+        if(nv&&nv.type==='reload'){var dern=sessionStorage.getItem('mb_site');
+          if(dern==='1')return true;if(dern==='0')return false;}}catch(x){}
+    if(pa!=='/'||/[?&](code|nom)=/.test(q))return false;
+    var rh='',ro='',rp='';
+    try{var ru=new URL(rf);rh=ru.hostname;ro=ru.origin;rp=ru.pathname;}catch(x){}
+    if(/(^|\.)(google|bing|yahoo|duckduckgo|ecosia|qwant|yandex|baidu|brave|startpage)\.[a-z.]+$/i.test(rh))return true;
+    if(ro===location.origin&&!/^\/(index\.html)?$/.test(rp))return true;
+    return _estDansApp();
+  }catch(e){return false;}
+}
+function _estDansApp(){
+  try{if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)return true;}catch(e){}
+  return /^android-app:\/\//.test(document.referrer||'');
+}
+var _siteConnu=false,_siteCache=0;
+function _montrerVitrine(connu){
+  _siteConnu=!!connu;
+  try{renderPaysLst('pays-lst','pays-src',PAYS,null);}catch(e){}
+  try{renderSecGrid('sec-grid','boutique');}catch(e){}
+  try{_vitrineLangue();}catch(e){}
+  try{majBandeVitrine();}catch(e){}
+  try{majBoutonsInstaller();}catch(e){}
+  try{majBlocAuteur();}catch(e){}
+  try{majCommunaute();}catch(e){}
+  try{_majVitrineConnu();}catch(e){}
+  try{if(_siteConnu)sessionStorage.setItem('mb_site','1');}catch(e){}
+  goScreen('s-landing');
+  try{window.scrollTo(0,0);}catch(e){}
+}
+function _majVitrineConnu(){
+  var h=document.documentElement;
+  h.classList.toggle('site-connu',_siteConnu);
+  if(!_siteConnu)return;
+  var en=false;try{en=/^en/i.test(navigator.language||(navigator.languages||[])[0]||'');}catch(e){}
+  var nm='';
+  try{nm=(DB&&DB.cfg&&DB.cfg.nom)||'';}catch(e){}
+  if(!nm){try{var e0=lireEntree();nm=(e0&&(e0.nom||(e0.boutiques&&e0.boutiques[0]&&e0.boutiques[0].nm)))||'';}catch(e){}}
+  var set=function(id,t){var x=document.getElementById(id);if(x)x.textContent=t;};
+  set('vt-connu-s',en?'Your shop is on this phone':'Ta boutique est sur ce téléphone');
+  set('vt-connu-nm','🏪 '+(nm||(en?'My shop':'Ma boutique')));
+  set('vt-connu-b',en?'Open my till →':'Ouvrir ma caisse →');
+  var b3=document.getElementById('vt-b3');
+  if(b3){b3.textContent='🏪 '+(en?'Open my till':'Ouvrir ma caisse');b3.setAttribute('onclick','ouvrirMaCaisse()');}
+  var cta=document.getElementById('nv-cta');
+  if(cta){cta.textContent='🏪 '+(en?'My till':'Ma caisse');cta.setAttribute('onclick','ouvrirMaCaisse()');}
+}
+// Du site à la caisse : la même porte que l'icône de l'app.
+function ouvrirMaCaisse(){
+  _siteCache=0;
+  try{sessionStorage.setItem('mb_site','0');}catch(e){}
+  setModeEntree('old');
+  goScreen('s-login');
+  var r=document.getElementById('lg-retour');if(r)r.style.display='block';
+  if(DB&&DB.cfg&&!DB.cfg.demo){
+    try{if(bioActif())requestAnimationFrame(function(){setTimeout(guetterEmpreinte,60);});}catch(e){}
+  }else if(!DB&&_dejaVenu()){try{_direDonneesEffacees();}catch(e){}}
+}
+// De la porte au site.
+function voirLeSite(){
+  _montrerVitrine(!!DB||_dejaVenu()||!!lireEntree());
+}
+// Dans l'app, le site ne garde pas le commerçant : rouvert après plus de
+// deux minutes, c'est sa caisse qu'il veut (même règle que les guides, 22.87).
+document.addEventListener('visibilitychange',function(){
+  try{
+    var vit=document.getElementById('s-landing');
+    if(!vit||!vit.classList.contains('on')||!_siteConnu||!_estDansApp())return;
+    if(document.hidden){_siteCache=Date.now();return;}
+    if(_siteCache&&Date.now()-_siteCache>120000)ouvrirMaCaisse();
+  }catch(e){}
+});
 // Invitation reçue : onglet Vendeur, code pré-rempli, curseur sur le prénom
 function ouvrirInvitationVendeur(){
   var tv=document.getElementById('lt-v'); if(tv)swTab(tv,'fv');
@@ -29939,7 +30084,17 @@ if('serviceWorker' in navigator){
       window.addEventListener('online',function(){chercherAnnonces();});
     }).catch(function(e){console.warn('SW:',e);});
     var _swReloaded=false;
+    // ⚠️⚠️ LA PREMIÈRE VISITE SE RECHARGEAIT TOUTE SEULE, quelques secondes
+    // après l'arrivée. Le service worker, tout neuf, prenait la main sur la
+    // page (`clients.claim`) et ce changement déclenchait le rechargement
+    // prévu pour « Recharger » (nouvelle version). Mesuré au banc : un
+    // vendeur qui ouvre son lien d'invitation sur un téléphone neuf voyait
+    // le code et son prénom remplis… puis la page repartait, sans eux, sur
+    // la vitrine. Et le site oubliait d'où l'on venait (Google, un guide).
+    // On ne recharge plus que quand un worker en REMPLACE un autre.
+    var _gardien=!!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange',function(){
+      if(!_gardien){_gardien=true;return;}
       if(_swReloaded)return;_swReloaded=true;location.reload();
     });
   });

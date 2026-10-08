@@ -8,8 +8,8 @@
 <meta property="og:title" content="Rejoins ma boutique sur MyBoutiQ">
 <meta property="og:description" content="Ouvre MyBoutiQ et connecte-toi comme vendeur avec le code de la boutique.">
 <meta property="og:type" content="website">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -66,7 +66,7 @@ body::before{content:'';position:absolute;width:340px;height:340px;border-radius
     <div class="code" id="code">—</div>
   </div>
 
-  <a class="btn btn-main" id="open" href="./">📲 Ouvrir MyBoutiQ</a>
+  <a class="btn btn-main" id="open" href="/">📲 Ouvrir MyBoutiQ</a>
   <a class="btn btn-wa" id="wa" href="#" target="_blank" rel="noopener">💬 Nous écrire sur WhatsApp</a>
 
   <div class="steps">
@@ -79,7 +79,7 @@ body::before{content:'';position:absolute;width:340px;height:340px;border-radius
   </div>
 
   <div class="foot">Astuce : dans ton navigateur, « Ajouter à l'écran d'accueil » installe l'app.<br>
-    <a href="./politique-confidentialite.html">Politique de confidentialité</a></div>
+    <a href="/politique-confidentialite.html">Politique de confidentialité</a></div>
 </div>
 
 <script>
@@ -100,9 +100,13 @@ body::before{content:'';position:absolute;width:340px;height:340px;border-radius
   var prenom=String(new URLSearchParams(location.search).get('n')||'').trim().slice(0,24);
 
   document.getElementById('code').textContent=formate||'—';
-  var cible='./';
+  // ⚠️⚠️ ADRESSES ABSOLUES. Cette page est servie à /join/CODE : « ./ » y
+  // voulait dire /join/, et « Ouvrir MyBoutiQ » ramenait le vendeur… ici
+  // même, sur « Code manquant ». L'icône et la politique de
+  // confidentialité tombaient pareil sur cette page.
+  var cible='/';
   if(digits){
-    cible='./?code='+encodeURIComponent(digits);
+    cible='/?code='+encodeURIComponent(digits);
     if(prenom)cible+='&nom='+encodeURIComponent(prenom);
   }
   document.getElementById('open').href=cible;
