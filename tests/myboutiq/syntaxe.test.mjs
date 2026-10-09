@@ -36,8 +36,18 @@ for (const f of ['manifest.json', 'vercel.json', 'catalogue-600.json', 'photos-c
   try { JSON.parse(fs.readFileSync(path.join(RACINE, f), 'utf8')); } catch (e) { ok = false; err = e.message; }
   t(ok, f + ' est du JSON valide' + (err ? ' : ' + err : ''));
 }
+// Les scripts de la session (hook de démarrage, skills du projet) : un
+// script cassé ne se voit qu'au moment où on en a besoin.
 {
-  const r = spawnSync('bash', ['-n', path.join(RACINE, '.claude/hooks/session-start.sh')], { encoding: 'utf8' });
-  t(r.status === 0, '.claude/hooks/session-start.sh : syntaxe bash' + (r.status ? ' : ' + (r.stderr || '').trim() : ''));
+  const scripts = [path.join(RACINE, '.claude/hooks/session-start.sh')];
+  const sk = path.join(RACINE, '.claude/skills');
+  if (fs.existsSync(sk)) for (const d of fs.readdirSync(sk)) {
+    const sd = path.join(sk, d, 'scripts');
+    if (fs.existsSync(sd)) for (const f of fs.readdirSync(sd)) if (f.endsWith('.sh')) scripts.push(path.join(sd, f));
+  }
+  for (const f of scripts) {
+    const r = spawnSync('bash', ['-n', f], { encoding: 'utf8' });
+    t(r.status === 0, path.relative(RACINE, f) + ' : syntaxe bash' + (r.status ? ' : ' + (r.stderr || '').trim() : ''));
+  }
 }
 fin();

@@ -76,6 +76,8 @@ cd tests/mybar && node run.js                         # MyBar bench (CommonJS)
 
 ## Releasing a version
 
+The project skill `publier-version` (`.claude/skills/publier-version/`) walks through these steps, and its `scripts/bump.sh` bumps the version and the cache together.
+
 1. For any change to the app, bump `var APP_BUILD='22.NN'` in `index.html` **and** `CACHE_NAME='myboutiq-v2NN'` in `sw.js`. Without the cache bump, installed phones keep the old version. Changes to tests, docs or CI need no bump.
 2. Run the full bench twice. Both runs must be clean.
 3. Write the commit message in French. Title: `22.NN — <what changes for the shopkeeper>`. Then the story (the owner's words, the bug as measured), bullet points, a "Trouvé en route, corrigé" section, and `Banc : tNNN (n)`.
