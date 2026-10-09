@@ -5724,7 +5724,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.93'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.94'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5869,6 +5869,13 @@ function _reancrerFiches(){
   }catch(e){}
 }
 function _applyRemoteDB(data,silent){
+  // ⚠️ UNE LECTURE PARTIE AVANT UN CHANGEMENT DE BOUTIQUE revenait après.
+  // `_rtRefetch` vérifie le code AVANT d'attendre le serveur, pas après ;
+  // et mergeDB, devant deux boutiques différentes, rend… la boutique du
+  // serveur. Le patron passé de A à B retrouvait A à la place de B, et les
+  // ventes de B pas encore envoyées étaient écrasées dans le téléphone.
+  // Des données d'une autre boutique que celle ouverte ne s'appliquent pas.
+  if(!_memeBoutique(data,DB)){try{console.warn('[MyBoutiQ] données d\'une autre boutique ignorées');}catch(e){}return;}
   _rtDerniereMaj=Date.now();
   // Des données arrivent d'un AUTRE téléphone et se mélangent aux siennes.
   // La fusion a déjà effacé des modifications d'articles par le passé : on
@@ -6846,6 +6853,66 @@ var planSel='pro',durSel='m',pmntSel='wave',planSelAbo=null;
 
 function t(k){return (TR[lang]&&TR[lang][k])||TR.fr[k]||k;}
 function fmt(n){var s=DB&&DB.cfg?DB.cfg.s:'F';return s+' '+(Math.round(n)||0).toLocaleString('fr-FR');}
+// ══════════════════════════════════════════════════════════════════
+//  🛡️ UN TEXTE VENU D'AILLEURS N'EST JAMAIS DU CODE
+//
+//  Le nom d'une boutique, d'un article, l'adresse d'une photo : écrits par
+//  d'autres, ils finissaient tels quels dans innerHTML. Une boutique nommée
+//  « <img src=x onerror=…> » exécutait son code sur le téléphone de
+//  l'administrateur à l'ouverture de la liste des abonnés — avec ses
+//  droits : remettre à zéro le PIN de n'importe quelle boutique. Et la file
+//  des photos proposées était ouverte à tous, même sans compte.
+//  `escH` pour un texte, `srcSure` pour une adresse d'image : notre
+//  stockage, une image embarquée, ou un fichier du site — rien d'autre.
+// ══════════════════════════════════════════════════════════════════
+function escH(s){return String(s==null?'':s).replace(/[&<>"'`]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c];});}
+// Une valeur posée comme CHAÎNE JS dans un attribut (onerror="…'x'…") :
+// une apostrophe dans l'emoji d'un article suffisait à en sortir.
+function jsStr(s){return escH(JSON.stringify(String(s==null?'':s)));}
+function srcSure(u){
+  u=String(u==null?'':u);
+  if(/^https:\/\/bbncilovxzkcvlxvoqtg\.supabase\.co\/storage\//.test(u)||/^data:image\/[a-z0-9.+-]+;base64,/i.test(u)||/^(\.?\/)?[A-Za-z0-9_\/.%-]+$/.test(u))return escH(u);
+  return '';
+}
+// Les noms écrits par l'équipe arrivent chez le patron par la synchro et
+// s'affichent partout. Un vendeur qui nommait un article « <img src=x
+// onerror=…> » exécutait son code chez le patron. Les trois caractères qui
+// fabriquent une balise ou sortent d'un attribut deviennent leurs sosies
+// typographiques ‹ › ″ : le nom reste lisible, il ne peut plus rien lancer.
+var _RE_BALISE=/[<>"]/;
+function _neutraliserObjet(o){
+  if(!o||typeof o!=='object')return;
+  for(var k in o){if(Object.prototype.hasOwnProperty.call(o,k)){var v=o[k];
+    if(typeof v==='string'&&_RE_BALISE.test(v))o[k]=v.replace(/</g,'‹').replace(/>/g,'›').replace(/"/g,'″');}}
+}
+// Les identifiants vont SANS guillemets dans les onclick (« ouvrirDetCli(12) ») :
+// un identifiant fabriqué « 1);fetch(…) » s'exécutait sans un seul chevron.
+// Ils ne gardent que ce qu'un vrai identifiant contient.
+var _CLES_ID=['id','pid','vid','clientId'],_RE_ID_SUR=/[^A-Za-z0-9_.-]/;
+function _neutraliserIds(o){
+  if(!o||typeof o!=='object')return;
+  for(var i=0;i<_CLES_ID.length;i++){var v=o[_CLES_ID[i]];
+    if(typeof v==='string'&&_RE_ID_SUR.test(v))o[_CLES_ID[i]]=v.replace(/[^A-Za-z0-9_.-]/g,'');}
+}
+// Une vente ne change plus après son enregistrement (seulement ses marques
+// annulée/clôturée, des booléens) : vérifiée une fois, on ne la relit pas à
+// chaque sauvegarde. Ce qui arrive du réseau est un objet neuf, donc relu.
+var _ventesNeutres=(typeof WeakSet==='function')?new WeakSet():null;
+function _neutraliserTextes(d){
+  if(!d)return;
+  _neutraliserObjet(d.cfg);
+  ['articles','clients','equipe','fournisseurs','depenses','boutiques','journal','encaissements','erreurs','ventes'].forEach(function(cle){
+    (Array.isArray(d[cle])?d[cle]:[]).forEach(function(x){
+      if(cle==='ventes'&&_ventesNeutres&&x&&typeof x==='object'){if(_ventesNeutres.has(x))return;_ventesNeutres.add(x);}
+      _neutraliserObjet(x);_neutraliserIds(x);
+      if(x&&typeof x.e==='string'&&/['\\`]/.test(x.e))x.e=x.e.replace(/['\\`]/g,'');
+      if(cle==='boutiques'&&x&&typeof x.code==='string'&&/[^A-Za-z0-9 _-]/.test(x.code))x.code=x.code.replace(/[^A-Za-z0-9 _-]/g,'');
+      if(x&&Array.isArray(x.vr))x.vr.forEach(function(v){_neutraliserObjet(v);_neutraliserIds(v);if(v&&typeof v.e==='string')v.e=v.e.replace(/['\\`]/g,'');});
+      if(x&&Array.isArray(x.lignes))x.lignes.forEach(function(l){_neutraliserObjet(l);_neutraliserIds(l);});
+      if(x&&Array.isArray(x.hist))x.hist.forEach(_neutraliserObjet);
+    });
+  });
+}
 // Couleur douce et stable dérivée d'un texte (pour la pastille "sans emoji")
 function couleurMono(s){var h=0;s=String(s||'?');for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;return h;}
 function initialeArticle(nm){return (String(nm||'?').trim().charAt(0)||'?').toUpperCase();}
@@ -10943,9 +11010,9 @@ function renderProd(lst){
       // la photo, ou la pastille. Tout ce qui se LIT vient ensuite, et
       // c'est exactement le même bloc, au même endroit, à la même taille.
       (_carte
-        ?'<div class="pmedia pcat"><img src="'+p.img+'" loading="lazy" alt="" onerror="var m=this.parentElement;m.classList.remove(\'pcat\');m.textContent=\''+(p.e||'📦')+'\'"></div>'
+        ?'<div class="pmedia pcat"><img src="'+p.img+'" loading="lazy" alt="" onerror="var m=this.parentElement;m.classList.remove(\'pcat\');m.textContent='+jsStr(p.e||'📦')+'"></div>'
         :p.img
-        ?'<img class="pcard-img" src="'+p.img+'" loading="lazy" onerror="this.parentElement.classList.remove(\'has-photo\');this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pemoji\',textContent:\''+p.e+'\'}))">'
+        ?'<img class="pcard-img" src="'+p.img+'" loading="lazy" onerror="this.parentElement.classList.remove(\'has-photo\');this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pemoji\',textContent:'+jsStr(p.e)+'}))">'
         :(DB.cfg&&DB.cfg.noEmoji
           ?'<div class="pmedia pmono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</div>'
           :(function(){var _m=mediaArtInner(p,32);return '<div class="pmedia" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</div>';})()
@@ -16050,7 +16117,7 @@ function ouvrirPanier(){
     var _affPrix=(_ng!==null)
       ?('<span class="pinego">'+fmt(_ng)+'</span><span class="pibarre">'+fmt(_mo.total)+'</span>')
       :fmt(_mo.total);
-    d.innerHTML=(p.img?'<img class="piemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'piemo\',textContent:\''+p.e+'\'}))">':'<span class="piemo">'+p.e+'</span>')+'<div class="piinf"><div class="pinm">'+p.nm+(v?' — '+v.nm:'')+'</div><div class="piun">'+_sous+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="pisub'+(_peut?' touchable':'')+'"'+(_peut?(' onclick="ouvrirNego(\''+key+'\')"'):'')+'>'+_affPrix+'</span><div class="qctl"><button class="qb m" onclick="chgQLot(\''+key+'\',-1)">−</button><span class="qnum">'+_qnum+'</span><button class="qb p" onclick="chgQLot(\''+key+'\',1)">+</button></div></div>';
+    d.innerHTML=(p.img?'<img class="piemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'piemo\',textContent:'+jsStr(p.e)+'}))">':'<span class="piemo">'+p.e+'</span>')+'<div class="piinf"><div class="pinm">'+p.nm+(v?' — '+v.nm:'')+'</div><div class="piun">'+_sous+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="pisub'+(_peut?' touchable':'')+'"'+(_peut?(' onclick="ouvrirNego(\''+key+'\')"'):'')+'>'+_affPrix+'</span><div class="qctl"><button class="qb m" onclick="chgQLot(\''+key+'\',-1)">−</button><span class="qnum">'+_qnum+'</span><button class="qb p" onclick="chgQLot(\''+key+'\',1)">+</button></div></div>';
     l.appendChild(d);
     // ⭐ « 12 = un casier à 6 500 — 700 de moins ». Elle n'apparaît que
     // lorsqu'un étage ferait BAISSER ce total-là. Voir _offreGros.
@@ -17980,7 +18047,7 @@ function _rafRendre(l,demandes){
       +(fr?(l.length+' article(s) recevront leur photo'):(l.length+' item(s) will get a photo'))+'</div>'
       +l.slice(0,40).map(function(x){
         return '<div style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--BD)">'
-          +'<img src="'+x.url+'" loading="lazy" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.2">'
+          +'<img src="'+srcSure(x.url)+'" loading="lazy" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.2">'
           +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:800;color:var(--T)">'+x.p.nm+'</div>'
           +'<div style="font-size:10.5px;color:var(--M);font-weight:600">'+fmt(x.p.px||0)+' · '+(fr?'prix inchangé':'price unchanged')+'</div></div></div>';
       }).join('')
@@ -19482,7 +19549,7 @@ function renderCatalogueRegional(){
     c2.className='pcard has-photo'+(m._pris?' sel':'');
     c2.style.cursor='pointer';
     c2.dataset.idx=i;
-    c2.innerHTML='<img class="pcard-img" src="'+m.img+'" loading="lazy"><div class="pcard-overlay"><div class="pnm-ov">'+m.nm+'</div></div>'
+    c2.innerHTML='<img class="pcard-img" src="'+srcSure(m.img)+'" loading="lazy"><div class="pcard-overlay"><div class="pnm-ov">'+escH(m.nm)+'</div></div>'
       +(m._deja?'<div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.6);color:#fff;font-size:9px;font-weight:800;border-radius:8px;padding:2px 6px">'+(fr?'déjà chez toi':'yours')+'</div>':'')
       +(m._pris?'<div style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:var(--B);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900">✓</div>':'');
     c2.onclick=function(){m._pris=!m._pris;renderCatalogueRegional();};
@@ -22125,7 +22192,7 @@ ti.innerHTML='<span>'+(replie?'▸':'▾')+' '+(CE[cat]||'📦')+' '+cat+'</span
 ti.onclick=function(){toggleCatStock(cat);};
 c.appendChild(ti);
 if(replie)return;
-var card=document.createElement('div');card.className='scd';items.forEach(function(p){var ts=getStk(p),_tsv=_stkVendable(p),_dette=Math.max(0,_tsv-ts),dc=(role==='patron')?depCount(p):0,pct=Math.min(100,_tsv<=0?0:_tsv/Math.max(_tsv+10,20)*100),cls=_tsv<=0?'out':_tsv<=p.al?'low':'ok';var d=document.createElement('div');d.className='sit';d.onclick=function(){if(role==='patron'){selArtStk(p);document.getElementById('ov-stk').classList.add('show');}};d.innerHTML=(p.img?'<img class="siemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'siemo\',textContent:\''+p.e+'\'}))">':'<div class="siemo-wrap">'+(DB.cfg&&DB.cfg.noEmoji?'<span class="siemo simono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="siemo simono" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</span>';})())+((role==='patron'||hasPerm('produits'))?'<button class="siphoto" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">📷</button>':'')+'</div>')+'<div class="siinf"><div class="sinm">'+p.nm+(p.vr.length?' <span style="font-size:9px;color:var(--B);font-weight:700">('+p.vr.length+')</span>':'')+'</div><div class="sidet">'+prixCarte(p)+' · '+(lang==='fr'?'Vendu 30 j':'Sold 30 d')+' : '+fmtQ(_q30[p.id]||0)+(( !p.vr.length&&p.px>0&&!(p.pa>0))?(' · <span style="color:var(--O);font-weight:800">'+(lang==='fr'?'⚠️ prix d\'achat à mettre':'⚠️ cost missing')+'</span>'):'')
+var card=document.createElement('div');card.className='scd';items.forEach(function(p){var ts=getStk(p),_tsv=_stkVendable(p),_dette=Math.max(0,_tsv-ts),dc=(role==='patron')?depCount(p):0,pct=Math.min(100,_tsv<=0?0:_tsv/Math.max(_tsv+10,20)*100),cls=_tsv<=0?'out':_tsv<=p.al?'low':'ok';var d=document.createElement('div');d.className='sit';d.onclick=function(){if(role==='patron'){selArtStk(p);document.getElementById('ov-stk').classList.add('show');}};d.innerHTML=(p.img?'<img class="siemo-img" src="'+p.img+'" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'siemo\',textContent:'+jsStr(p.e)+'}))">':'<div class="siemo-wrap">'+(DB.cfg&&DB.cfg.noEmoji?'<span class="siemo simono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="siemo simono" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</span>';})())+((role==='patron'||hasPerm('produits'))?'<button class="siphoto" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">📷</button>':'')+'</div>')+'<div class="siinf"><div class="sinm">'+p.nm+(p.vr.length?' <span style="font-size:9px;color:var(--B);font-weight:700">('+p.vr.length+')</span>':'')+'</div><div class="sidet">'+prixCarte(p)+' · '+(lang==='fr'?'Vendu 30 j':'Sold 30 d')+' : '+fmtQ(_q30[p.id]||0)+(( !p.vr.length&&p.px>0&&!(p.pa>0))?(' · <span style="color:var(--O);font-weight:800">'+(lang==='fr'?'⚠️ prix d\'achat à mettre':'⚠️ cost missing')+'</span>'):'')
 +(p._sugg?(' · <span style="color:var(--B);font-weight:800">'+(lang==='fr'?'💡 prix indicatif — vérifie':'💡 suggested price — check')+'</span>'):'')+'</div>'+(p.vr.length&&!utiliseStockBase(p)?'<div class="svlist">'+p.vr.map(function(v){var vs=v.stk||0;return '<span class="svchip" style="color:'+(vs<=0?'var(--R)':vs<=2?'var(--O)':'var(--G)')+'">'+(v.nm||'?')+' : '+fmtQ(Math.max(0,vs))+(vs<=0?' ⛔':'')+'</span>';}).join('')+'</div>':'')+'<div class="sbb"><div class="sbf" style="width:'+pct+'%;background:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'"></div></div></div><div class="sistock"><div class="siqty '+cls+'">'+fmtQ(_tsv)+'</div><div class="siu">'+uniteArt(p)+'</div>'+(_dette>0?'<div style="font-size:9px;color:var(--R);font-weight:800;margin-top:2px">−'+fmtQ(_dette)+' '+(lang==='fr'?'à rattraper':'to catch up')+'</div>':'')+(dc>0?'<div style="font-size:9px;color:var(--PU);font-weight:800;margin-top:2px">🔁 '+dc+' '+(lang==='fr'?'dépannage':'stopgap')+'</div>':'')+(role==='patron'?'<div style="font-size:9px;color:var(--B);font-weight:700;margin-top:2px">+ '+(lang==='fr'?'Entrée':'Entry')+'</div>':'')+'</div>';if(_stkFiltre==='cmd'){var _sg='';try{_sg=_suggestionCommande(p,_q30);}catch(e){}
 if(_sg){var _if=d.querySelector('.siinf');if(_if){var _dc=document.createElement('div');_dc.className='sicmd';_dc.textContent=_sg;_if.appendChild(_dc);}}}
 card.appendChild(d);});c.appendChild(card);});}
@@ -25871,6 +25938,7 @@ function definirStock(a,v,desired){
 function migrateDBData(d){
   if(!d)return d;
   d.cfg=d.cfg||{};
+  try{_neutraliserTextes(d);}catch(e){}
   if(!Array.isArray(d.suppr))d.suppr=[]; // tombstones : articles supprimés (survit à la fusion)
   if(!Array.isArray(d.journal))d.journal=[]; // S4 : journal des gestes sensibles (prix/stock/suppression)
   if(!Array.isArray(d.erreurs))d.erreurs=[]; // ventes qu'un vendeur dit avoir ratées, en attente du patron
@@ -28413,7 +28481,7 @@ function renderPhotosEtrangeres(){
   c.innerHTML=l.map(function(x){
     return '<div style="display:flex;align-items:center;gap:11px;background:var(--C);border:1px solid var(--BD);'
       +'border-radius:14px;padding:9px 11px;margin-bottom:8px">'
-      +'<img src="'+x.url+'" loading="lazy" style="width:46px;height:46px;object-fit:cover;border-radius:11px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.2">'
+      +'<img src="'+srcSure(x.url)+'" loading="lazy" style="width:46px;height:46px;object-fit:cover;border-radius:11px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.2">'
       +'<div style="flex:1;min-width:0;font-size:12.5px;font-weight:800;color:var(--T);overflow:hidden;text-overflow:ellipsis">'+x.nm+'</div>'
       +'<button class="mini-btn" style="background:#FFEBEE;color:var(--R)" onclick="retirerPhotoEtrangere('+x.id+','+(x.vid===null?'null':x.vid)+')">'
       +(fr?'Retirer':'Remove')+'</button></div>';
@@ -29229,14 +29297,14 @@ function renderAbonnes(){
                            :(_abonnes.length+' shops · '+payants+' with a subscription');
   if(!l.length){c.innerHTML='<div class="dash-empty">'+(fr?'Rien ne correspond.':'No match.')+'</div>';return;}
   c.innerHTML=l.map(function(b){
-    var e=_etatBoutique(b),cd=(b.code||'').replace(/'/g,'');
+    var e=_etatBoutique(b),cd=String(b.code||'').replace(/[^A-Za-z0-9 _-]/g,'');
     return '<div class="hist-sale"><div class="hist-h"><div style="min-width:0">'
-      +'<div class="hist-d">'+(b.nom||'—')+'</div>'
-      +'<div class="hist-s">'+(b.code||'')+(b.telephone?(' · '+b.telephone):'')+'</div>'
+      +'<div class="hist-d">'+(b.nom?escH(b.nom):'—')+'</div>'
+      +'<div class="hist-s">'+escH(b.code||'')+(b.telephone?(' · '+escH(b.telephone)):'')+'</div>'
       +'<div style="font-size:11.5px;font-weight:900;color:'+e.c+';margin-top:3px">'+e.t+'</div>'
       +'<div style="font-size:10.5px;font-weight:700;color:var(--M);margin-top:2px">'
-        +b.nb_ventes+' '+(fr?('vente'+(b.nb_ventes>1?'s':'')):('sale'+(b.nb_ventes>1?'s':'')))
-        +' · '+b.nb_articles+' '+(fr?('article'+(b.nb_articles>1?'s':'')):('item'+(b.nb_articles>1?'s':'')))+'</div>'
+        +(Number(b.nb_ventes)||0)+' '+(fr?('vente'+(b.nb_ventes>1?'s':'')):('sale'+(b.nb_ventes>1?'s':'')))
+        +' · '+(Number(b.nb_articles)||0)+' '+(fr?('article'+(b.nb_articles>1?'s':'')):('item'+(b.nb_articles>1?'s':'')))+'</div>'
       +'</div></div><div class="hist-actions" style="flex-wrap:wrap;gap:6px">'
       // ⚠️ UN SEUL BOUTON, PAS CINQ. « +1 · +3 · +6 · +9 · +1 an » sur la
       // ligne d'une boutique, c'est cinq cibles de 28 px collées sur un
@@ -29517,24 +29585,24 @@ async function ouvrirPhotosProposees(){
 // moitié, il approuve à l'aveugle et ne sait jamais qu'une de ses photos est
 // contestée sur le terrain.
 function _ligPhotoAdmin(p,fr,publiee){
-  var g=+(p.nb_garde||0),sg=+(p.nb_signale||0);
+  var g=+(p.nb_garde||0),sg=+(p.nb_signale||0),pid=String(p.id||'').replace(/[^A-Za-z0-9-]/g,'');
   var retiree=publiee&&_photoRetiree(p);
   var note=publiee
     ?('<span style="font-size:10.5px;font-weight:800;color:'+(sg?'#C62828':'var(--M)')+'">👍 '+g+' · 🚩 '+sg+'</span>'
       +(retiree?('<span style="font-size:10px;font-weight:800;color:#C62828;margin-left:7px">'+(fr?'RETIRÉE PAR LES COMMERÇANTS':'PULLED BY SHOPS')+'</span>'):''))
-    :('<span style="font-size:10.5px;color:var(--M);font-weight:600">'+p.slug+'</span>');
+    :('<span style="font-size:10.5px;color:var(--M);font-weight:600">'+escH(p.slug)+'</span>');
   return '<div style="display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--BD)'+(retiree?';opacity:.62':'')+'">'
-    +'<img src="'+p.url+'" style="width:56px;height:56px;object-fit:cover;border-radius:12px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.25">'
+    +'<img src="'+srcSure(p.url)+'" style="width:56px;height:56px;object-fit:cover;border-radius:12px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.25">'
     +'<div style="flex:1;min-width:0">'
-    +'<div style="font-size:13px;font-weight:800;color:var(--T)">'+p.article_nm+'</div>'
+    +'<div style="font-size:13px;font-weight:800;color:var(--T)">'+escH(p.article_nm)+'</div>'
     +'<div style="margin-top:3px">'+note+'</div></div>'
     +'<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">'
-    +(publiee?'':'<button class="shct" style="min-height:36px;background:#E8F5E9;color:#2E7D32" onclick="deciderPhoto(\''+p.id+'\',\'approuvee\')">✓ '+(fr?'Publier':'Publish')+'</button>')
+    +(publiee?'':'<button class="shct" style="min-height:36px;background:#E8F5E9;color:#2E7D32" onclick="deciderPhoto(\''+pid+'\',\'approuvee\')">✓ '+(fr?'Publier':'Publish')+'</button>')
     // ⭐ CERTIFIER : celle-là devient LA photo du produit, devant le
     // catalogue embarqué, et aucun vote ne la détrône.
-    +'<button class="shct" style="min-height:36px;'+(p.certifiee?'background:#FFF8E1;color:#8A6100':'')+'" onclick="certifierPhoto(\''+p.id+'\','+(p.certifiee?'false':'true')+')">'
+    +'<button class="shct" style="min-height:36px;'+(p.certifiee?'background:#FFF8E1;color:#8A6100':'')+'" onclick="certifierPhoto(\''+pid+'\','+(p.certifiee?'false':'true')+')">'
       +(p.certifiee?('🏅 '+(fr?'Certifiée':'Certified')):('🏅 '+(fr?'Certifier':'Certify')))+'</button>'
-    +'<button class="shct" style="min-height:36px" onclick="deciderPhoto(\''+p.id+'\',\'refusee\')">✕ '+(fr?(publiee?'Retirer':'Refuser'):'Refuser')+'</button>'
+    +'<button class="shct" style="min-height:36px" onclick="deciderPhoto(\''+pid+'\',\'refusee\')">✕ '+(fr?(publiee?'Retirer':'Refuser'):'Refuser')+'</button>'
     +'</div></div>';
 }
 async function renderPhotosProposees(){
@@ -29708,7 +29776,7 @@ async function renderEquiper(){
     else badge='<span style="font-size:10px;font-weight:700;color:var(--M)">'+l.slug+'</span>';
     h+='<div style="display:flex;gap:11px;align-items:center;padding:10px 0;border-bottom:1px solid var(--BD)'+(l.etat==='deja'?';opacity:.55':'')+'" onclick="basculerEquiper('+i+')">'
       +'<div id="eq-ck-'+i+'" style="width:23px;height:23px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;border:2px solid '+(_eqSel[i]?'var(--B)':'var(--BD)')+';background:'+(_eqSel[i]?'var(--B)':'transparent')+';color:#fff">'+(_eqSel[i]?'✓':'')+'</div>'
-      +'<img src="'+l.url+'" style="width:48px;height:48px;object-fit:cover;border-radius:11px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.25">'
+      +'<img src="'+srcSure(l.url)+'" style="width:48px;height:48px;object-fit:cover;border-radius:11px;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.25">'
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:13px;font-weight:800;color:var(--T);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+l.nm+'</div>'
       +'<div style="margin-top:2px">'+badge+'</div></div></div>';
