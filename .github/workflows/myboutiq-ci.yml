@@ -14,3 +14,24 @@ jobs:
         run: |
           node -e "const fs=require('fs');const html=fs.readFileSync('index.html','utf8');const re=/<script>([\\s\\S]*?)<\\/script>/g;let m,i=0;while((m=re.exec(html))!==null){fs.writeFileSync('tmp-check-'+i+'.js',m[1]);i++;}if(i===0){console.error('No inline <script> block found in index.html');process.exit(1);}console.log('Found '+i+' inline script block(s)');"
           for f in tmp-check-*.js; do echo "checking $f"; node --check "$f"; done
+
+  # Les bancs de la caisse : vente, annulation, carton, porte, fusion de deux
+  # téléphones, démo, persistance, clôture du soir, notifications, site.
+  # Ils vivaient dans un dossier temporaire et sont partis avec lui le
+  # 9 octobre 2026 : ils sont ici maintenant, et une régression bloque la fusion.
+  banc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Installer Playwright
+        working-directory: tests/myboutiq
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Bancs MyBoutiQ
+        working-directory: tests/myboutiq
+        run: node run.mjs
