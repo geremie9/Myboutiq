@@ -4677,6 +4677,15 @@ body{max-width:min(100%,1200px)}
         <div id="cli-hist"></div>
       </div>
       <div class="pig"><label class="pl" id="lbl-pmt-amt">Montant payé maintenant</label><input class="pi" type="number" id="cli-pmt" inputmode="numeric" oninput="calcReste()"></div>
+      <!-- Payé comment ? Les espèces vont dans le tiroir, le mobile money non :
+           sans ça, la clôture du soir ne pouvait pas savoir quoi compter. -->
+      <div class="pl" style="margin:2px 0 6px" id="lbl-remb-mode">Payé comment ?</div>
+      <div class="pmnt-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:11px">
+        <div class="pmnt-btn on" id="remb-m-especes" onclick="selModeRemb('especes')" style="padding:9px 4px"><span class="pmnt-emo">💵</span><div class="pmnt-nm" id="lbl-remb-esp">Espèces</div></div>
+        <div class="pmnt-btn" id="remb-m-orange" onclick="selModeRemb('orange')" style="padding:9px 4px"><span class="pmnt-emo">🟠</span><div class="pmnt-nm">Orange</div></div>
+        <div class="pmnt-btn" id="remb-m-mtn" onclick="selModeRemb('mtn')" style="padding:9px 4px"><span class="pmnt-emo">🟡</span><div class="pmnt-nm">MTN</div></div>
+        <div class="pmnt-btn" id="remb-m-moov" onclick="selModeRemb('moov')" style="padding:9px 4px"><span class="pmnt-emo">🔵</span><div class="pmnt-nm">Moov</div></div>
+      </div>
       <div class="cauto" id="reste-card" style="display:none">
         <div class="crow"><span class="clbl" id="lbl-recu-pmt">Reçu</span><span class="cval" id="reste-recu">0</span></div>
         <div class="crow"><span class="clbl" id="lbl-reste">Reste dû</span><span class="cval" id="reste-val">0</span></div>
@@ -5715,7 +5724,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.92'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.93'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6721,11 +6730,14 @@ function attentePinRestante(){
 // De quoi savoir si une fusion a réellement apporté quelque chose.
 function _tailleDB(d){
   try{return {ventes:((d&&d.ventes)||[]).length, articles:((d&&d.articles)||[]).length,
-              clients:((d&&d.clients)||[]).length, depenses:((d&&d.depenses)||[]).length};}
-  catch(e){return {ventes:0,articles:0,clients:0,depenses:0};}
+              clients:((d&&d.clients)||[]).length, depenses:((d&&d.depenses)||[]).length,
+              encaissements:((d&&d.encaissements)||[]).length};}
+  catch(e){return {ventes:0,articles:0,clients:0,depenses:0,encaissements:0};}
 }
+// Un remboursement reçu d'un autre téléphone compte aussi : sans lui, la
+// dette affichée et le tiroir « à compter » restaient ceux d'avant.
 function _plusGrand(a,b){
-  return b.ventes>a.ventes||b.articles>a.articles||b.clients>a.clients||b.depenses>a.depenses;
+  return b.ventes>a.ventes||b.articles>a.articles||b.clients>a.clients||b.depenses>a.depenses||(b.encaissements||0)>(a.encaissements||0);
 }
 // ══════════════════════════════════════════════════════════════════
 //  ⚠️⚠️ « SUR L'AUTRE APPAREIL LES DERNIÈRES VENTES SONT AU COMPLET
@@ -22792,7 +22804,9 @@ function renderRpt(){
         ?('<div class="rrow"><span class="rlbl" style="color:var(--O)">🍾 '+(lang==='fr'?'dont consignes (dans le tiroir)':'incl. deposits (in the drawer)')+'</span>'
           +'<span class="rval" style="color:var(--O)">'+(cons>0?'+':'')+fmt(cons)+'</span></div>')
         :'';
-      if(!rows.length)return '';
+      // Un jour sans vente mais avec un remboursement ou une dépense de la
+      // caisse : le tiroir a bougé, la ligne « à compter » doit rester.
+      if(!rows.length&&!(_rptPer==='jour'&&(totalRembEspecesJour()>0||totalDepCaisseJour()>0)))return '';
       return '<div class="rcd"><div class="rctit">💳 '+(lang==='fr'?'Répartition par moyen de paiement':'Breakdown by payment method')+'</div>'+
         rows.map(function(r){return '<div class="rrow"><span class="rlbl">'+r[0]+' '+r[1]+'</span><span class="rval">'+fmt(r[2])+'</span></div>';}).join('')+ligneCons+
         ((_rptPer==='jour')?('<div class="rrow" style="border-top:1px solid var(--BD);margin-top:6px;padding-top:9px"><span class="rlbl" style="font-weight:800">'+(lang==='fr'?'💰 Espèces en caisse (à compter)':'💰 Cash in drawer (to count)')+_rptDetailCaisse(pb.especes)+'</span><span class="rval a" style="font-weight:900">'+fmt(caisseAttendue())+'</span></div>'):'')+
@@ -22851,7 +22865,7 @@ function renderClients(){
 function ouvrirAddCli(){var d=new Date();d.setDate(d.getDate()+7);document.getElementById('cli-date').value=d.toISOString().split('T')[0];['cli-nm','cli-tel','cli-cred'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('ov-cli').classList.add('show');}
 function saveCli(){var nm=document.getElementById('cli-nm').value.trim(),tel=document.getElementById('cli-tel').value.trim(),cred=parseFloat(document.getElementById('cli-cred').value)||0,date=document.getElementById('cli-date').value;if(!nm||!cred){showToast(t('errMontant'));return;}var bgs=[['#E3F2FD','#2979FF'],['#FCE4EC','#E91E63'],['#E8F5E9','#00C853'],['#FFF8E1','#F5A623'],['#F3E5F5','#7C4DFF']];var c=bgs[DB.clients.length%bgs.length];DB.clients.push({id:DB.clients.length+1,nm,tel:tel||'N/A',credit:cred,date,bg:c[0],tc:c[1],hist:[{date:new Date().toLocaleDateString('fr-FR'),type:'credit',amt:cred}]});save();closeSheet('ov-cli');renderClients();showToast(t('clientAjoute'));}
 function ouvrirDetCli(id){cliCours=DB.clients.find(function(c){return c.id===id;});if(!cliCours)return;document.getElementById('cli-det-nm').textContent=cliCours.nm;document.getElementById('cli-d-dette').textContent=fmt(cliCours.credit);document.getElementById('cli-d-date').textContent=cliCours.date?new Date(cliCours.date).toLocaleDateString('fr-FR'):'N/A';document.getElementById('cli-d-tel').textContent=cliCours.tel||'N/A';var hist=document.getElementById('cli-hist');hist.innerHTML=(cliCours.hist||[]).map(function(h){return '<div class="hist-it"><span class="hist-dt">'+h.date+'</span><span class="hist-tp '+(h.type==='credit'?'cr':'pm')+'">'+(h.type==='credit'?'💳':'💵')+'</span><span class="hist-amt" style="color:'+(h.type==='credit'?'var(--R)':'var(--G)')+'">'+(h.type==='credit'?'+':'-')+fmt(h.amt)+'</span></div>';}).join('')||'<div style="color:var(--M);font-size:12px;font-weight:600">N/A</div>';document.getElementById('cli-pmt').value='';document.getElementById('reste-card').style.display='none';document.getElementById('ov-cli-det').classList.add('show');}
-function calcReste(){var amt=parseFloat(document.getElementById('cli-pmt').value)||0;if(!cliCours)return;var reste=Math.max(0,cliCours.credit-amt);document.getElementById('reste-card').style.display='block';document.getElementById('reste-recu').textContent=fmt(amt);document.getElementById('reste-val').textContent=fmt(reste);}
+function calcReste(){var amt=parseFloat(document.getElementById('cli-pmt').value)||0;if(!cliCours)return;var du=Number(cliCours.credit)||0,reste=Math.max(0,du-amt),rendu=Math.max(0,amt-du);document.getElementById('reste-card').style.display='block';document.getElementById('reste-recu').textContent=fmt(Math.min(amt,du));document.getElementById('reste-val').textContent=fmt(reste)+(rendu>0?(' · '+(lang==='fr'?'rends ':'give back ')+fmt(rendu)):'');}
 function enregPmt(){var amt=parseFloat(document.getElementById('cli-pmt').value)||0;if(!amt||!cliCours){showToast(t('errQte'));return;}cliCours.credit=Math.max(0,cliCours.credit-amt);if(!cliCours.hist)cliCours.hist=[];cliCours.hist.push({date:new Date().toLocaleDateString('fr-FR'),type:'payment',amt});save();closeSheet('ov-cli-det');renderClients();showToast(cliCours.credit<=0?'✅ '+(lang==='fr'?'Crédit soldé !':'Credit cleared!'):'✅ '+(lang==='fr'?'Paiement enregistré !':'Payment recorded!'));}
 function appelCli(){if(cliCours&&cliCours.tel&&cliCours.tel!=='N/A')window.open('tel:'+cliCours.tel);else showToast('📞 '+cliCours?.tel||'N/A');}
 
@@ -24044,7 +24058,111 @@ function paiementBreakdown(liste){
 // Le patron sortait 5 000 F pour le transport, comptait sa caisse le soir, et
 // l'app lui annonçait un DÉFICIT de 5 000 F — de quoi soupçonner son vendeur
 // pour une dépense qu'il avait lui-même faite.
-function caisseAttendue(){return DB.fondsDepart+totalEspecesJour()-totalDepCaisseJour();}
+function caisseAttendue(){return DB.fondsDepart+totalEspecesJour()+totalRembEspecesJour()-totalDepCaisseJour();}
+// ══════════════════════════════════════════════════════════════════
+//  💵 LES REMBOURSEMENTS DE CRÉDIT
+//
+//  Awa rembourse 1 000 F en espèces : l'argent entre dans le tiroir. La
+//  caisse attendue l'ignorait, et le soir la clôture annonçait un
+//  « Excédent » de 1 000 F. Pire : un vendeur qui notait le remboursement
+//  et gardait les billets laissait une caisse… équilibrée. Le vol était
+//  invisible. Maintenant le remboursement en espèces est attendu dans le
+//  tiroir ; le mobile money, lui, n'y entre pas (on l'affiche à part).
+//
+//  Chaque remboursement fait DEUX écritures :
+//   · une ligne dans l'historique du client (sa dette, ce qu'il voit) ;
+//   · un « encaissement » dans DB.encaissements, que la fusion traite comme
+//     une vente : union par identifiant, et une clôture ne se défait jamais.
+//  Le client, lui, fusionne d'un bloc (la fiche d'un seul téléphone
+//  gagne) : deux remboursements notés sur deux téléphones, et l'un des
+//  deux disparaissait — la dette remontait. Après chaque fusion, un
+//  encaissement absent de la fiche de son client y est remis, et la dette
+//  baisse d'autant (`_reconcilierEncaissements`).
+//
+//  ⚠️ ANNULER UNE VENTE À CRÉDIT écrivait aussi un « paiement » dans
+//  l'historique du client (la dette s'efface) — indiscernable d'un vrai
+//  remboursement. Le livre de trésorerie en faisait une recette fantôme.
+//  Depuis 22.93 ces écritures portent `annul` ; les anciennes sont
+//  marquées une fois pour toutes (`_marquerAnnulationsCredit`), tant que la
+//  vente annulée est encore là pour les reconnaître.
+// ══════════════════════════════════════════════════════════════════
+// Ceux d'aujourd'hui, pas encore clôturés — la règle des dépenses.
+function remboursementsDuJour(){return (DB.encaissements||[]).filter(_ouvertDuJour);}
+function totalRembEspecesJour(){return remboursementsDuJour().reduce(function(s,e){return s+((e.mode||'especes')==='especes'?(Number(e.amt)||0):0);},0);}
+function totalRembMobileJour(){return remboursementsDuJour().reduce(function(s,e){return s+((e.mode||'especes')!=='especes'?(Number(e.amt)||0):0);},0);}
+function _reconcilierEncaissements(d){
+  if(!d||!Array.isArray(d.encaissements)||!d.encaissements.length||!Array.isArray(d.clients))return;
+  var cById={},vus={};
+  d.clients.forEach(function(c){
+    if(!c||c.id==null)return;cById[c.id]=c;
+    (c.hist||[]).forEach(function(h){if(h&&h.enc)vus[h.enc]=1;});
+  });
+  d.encaissements.forEach(function(e){
+    var c=e&&cById[e.clientId];if(!c||vus[e.id])return;
+    // Deux téléphones peuvent donner le même numéro à deux clients créés
+    // hors ligne : on ne baisse pas la dette de Paul avec l'argent de Fatou.
+    if(e.nm&&c.nm&&String(e.nm).trim().toLowerCase()!==String(c.nm).trim().toLowerCase())return;
+    if(!Array.isArray(c.hist))c.hist=[];
+    c.hist.push({date:e.date,ts:e.ts,type:'payment',amt:Number(e.amt)||0,mode:e.mode||'especes',vendeur:e.vendeur||'',enc:e.id});
+    c.credit=Math.max(0,(Number(c.credit)||0)-(Number(e.amt)||0));
+    vus[e.id]=1;
+  });
+}
+// Les annulations d'avant 22.93, sans marque. Chaque vente à crédit a écrit
+// une ligne « crédit », dans l'ordre des ventes : la k-ième vente d'un jour
+// et d'un montant donnés a la k-ième ligne de ce jour et de ce montant. On
+// aligne par la FIN (l'archivage retire les plus vieilles ventes, jamais les
+// lignes). L'annulation est alors le premier « paiement » du même montant
+// qui SUIT la ligne de sa vente — pas un remboursement d'avant. Une vente
+// sans ligne retrouvée n'est pas devinée : on ne marque rien.
+function _marquerAnnulationsCredit(d){
+  if(!d||!Array.isArray(d.clients)||!Array.isArray(d.ventes))return;
+  var parClient={};
+  d.ventes.forEach(function(v){
+    if(v&&v.clientId!=null&&v.paiement&&v.paiement.mode==='credit'&&(Number(v.paiement.du)||0)>0)
+      (parClient[v.clientId]=parClient[v.clientId]||[]).push(v);
+  });
+  d.clients.forEach(function(c){
+    var vs=c&&parClient[c.id];if(!vs||!Array.isArray(c.hist)||!vs.some(function(v){return v.annulee;}))return;
+    var lignes={},ventes={},paires=[],pris={};
+    c.hist.forEach(function(h,k){if(h&&h.type==='credit'){var q=h.date+'|'+Number(h.amt);(lignes[q]=lignes[q]||[]).push(k);}});
+    vs.slice().sort(function(a,b){return (_epochEvt(a)||0)-(_epochEvt(b)||0);})
+      .forEach(function(v){var q=v.date+'|'+Number(v.paiement.du);(ventes[q]=ventes[q]||[]).push(v);});
+    Object.keys(ventes).forEach(function(q){
+      var L=lignes[q]||[],V=ventes[q],dec=L.length-V.length;
+      V.forEach(function(v,k){if(v.annulee&&k+dec>=0)paires.push({i:L[k+dec],du:Number(v.paiement.du)});});
+    });
+    paires.sort(function(a,b){return a.i-b.i;}).forEach(function(x){
+      for(var j=x.i+1;j<c.hist.length;j++){
+        var h=c.hist[j];
+        if(pris[j]||!h||h.type!=='payment'||Number(h.amt)!==x.du)continue;
+        if(h.annul||(!h.mode&&!h.enc)){pris[j]=1;h.annul=true;break;}
+      }
+    });
+  });
+}
+// Les remboursements tels que le client les voit (livre de trésorerie).
+function _remboursementsHist(){
+  var out=[];
+  (DB.clients||[]).forEach(function(c){
+    ((c&&c.hist)||[]).forEach(function(h){
+      if(!h||h.type!=='payment'||h.annul)return;
+      var a=Number(h.amt)||0;if(a>0)out.push({c:c,h:h,amt:a,mode:h.mode||''});
+    });
+  });
+  return out;
+}
+// Qui a reçu l'argent : la même règle pour les dépenses et les remboursements.
+function _nomOperateur(){return role==='vendeur'?(nomVendeur||'Vendeur'):'Patron';}
+function _nomModeRemb(m){return {especes:(lang==='fr'?'espèces':'cash'),orange:'Orange Money',mtn:'MTN MoMo',moov:'Moov Money'}[m]||String(m||'');}
+// On repart TOUJOURS des espèces à l'ouverture de la fiche, comme pour les
+// dépenses : un « Orange » oublié d'un client à l'autre sortirait du tiroir
+// un argent qui y est bel et bien.
+var _modeRemb='especes';
+function selModeRemb(m){
+  _modeRemb=({especes:1,orange:1,mtn:1,moov:1}[m])?m:'especes';
+  ['especes','orange','mtn','moov'].forEach(function(x){var el=document.getElementById('remb-m-'+x);if(el)el.classList.toggle('on',x===_modeRemb);});
+}
 // ⚠️ LE RAPPORT ET LA CLÔTURE DISAIENT DEUX CHIFFRES pour le même tiroir.
 // Rapports › « Espèces en caisse (à compter) » montrait les seules ventes en
 // espèces : ni le fonds de départ, ni les dépenses payées avec l'argent du
@@ -24053,13 +24171,14 @@ function caisseAttendue(){return DB.fondsDepart+totalEspecesJour()-totalDepCaiss
 // trouve 5 500 F de moins — et soupçonne son vendeur. Le rapport donne
 // maintenant le montant de la clôture, et dit d'où il vient.
 function _rptDetailCaisse(esp){
-  var fr=(lang==='fr'),f=Number(DB.fondsDepart)||0,d=totalDepCaisseJour();
-  if(!f&&!d)return '';
+  var fr=(lang==='fr'),f=Number(DB.fondsDepart)||0,d=totalDepCaisseJour(),r=totalRembEspecesJour();
+  if(!f&&!d&&!r)return '';
   return '<div style="font-size:9.5px;font-weight:600;color:var(--M)">'
     +(f?(fr?'fonds de départ ':'opening cash ')+fmt(f)+' + ':'')+(fr?'espèces ':'cash ')+fmt(esp)
+    +(r?' + '+(fr?'remboursements de crédit ':'credit repayments ')+fmt(r):'')
     +(d?' − '+(fr?'dépenses payées de la caisse ':'expenses paid from the till ')+fmt(d):'')+'</div>';
 }
-function ouvrirClot(){var att=caisseAttendue(),_dc=totalDepCaisseJour(),_dh=totalDepJour()-_dc;document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div>'+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+((_dc>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Dépenses payées de la caisse':'Expenses paid from till')+'</span><span class="rval r">-'+fmt(_dc)+'</span></div>'):'')+((_dh>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'dépenses hors caisse (le tiroir n\'y touche pas)':'expenses not from till')+'</span><span class="rval" style="color:var(--M)">-'+fmt(_dh)+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+(totalDepJour()>0?(lang==='fr'?' NET (dépenses déduites)':' NET'):'')+'</span><span class="rval '+((totalB-totalDepJour())<0?'r':'g')+'">'+fmt(totalB-totalDepJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';document.getElementById('ov-clot').classList.add('show');}
+function ouvrirClot(){var att=caisseAttendue(),_dc=totalDepCaisseJour(),_dh=totalDepJour()-_dc;document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div>'+((totalRembEspecesJour()>0)?('<div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Remboursements de crédit (espèces)':'Credit repayments (cash)')+'</span><span class="rval g">'+fmt(totalRembEspecesJour())+'</span></div>'):'')+((totalRembMobileJour()>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'remboursements mobile money (hors caisse)':'mobile money repayments (not in drawer)')+'</span><span class="rval" style="color:var(--M)">'+fmt(totalRembMobileJour())+'</span></div>'):'')+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+((_dc>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Dépenses payées de la caisse':'Expenses paid from till')+'</span><span class="rval r">-'+fmt(_dc)+'</span></div>'):'')+((_dh>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'dépenses hors caisse (le tiroir n\'y touche pas)':'expenses not from till')+'</span><span class="rval" style="color:var(--M)">-'+fmt(_dh)+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+(totalDepJour()>0?(lang==='fr'?' NET (dépenses déduites)':' NET'):'')+'</span><span class="rval '+((totalB-totalDepJour())<0?'r':'g')+'">'+fmt(totalB-totalDepJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';document.getElementById('ov-clot').classList.add('show');}
 function calcEcart(){var compt=parseFloat(document.getElementById('inp-compt').value)||0,att=caisseAttendue(),ec=compt-att,el=document.getElementById('ecart-cd');el.style.display='flex';el.className='bcard '+(Math.abs(ec)<100?'bon':'bad');document.getElementById('ecart-lbl').textContent=ec===0?'✅ '+(lang==='fr'?'Équilibrée':'Balanced'):ec>0?'📈 '+(lang==='fr'?'Excédent':'Surplus'):'⚠️ '+(lang==='fr'?'Déficit':'Deficit');document.getElementById('ecart-amt').textContent=(ec>=0?'+':'')+fmt(ec);}
 function validerClot(){
   closeSheet('ov-clot');
@@ -24070,18 +24189,20 @@ function validerClot(){
   // le vendeur pendant que le patron clôturait partait avec. On les marque
   // clôturées, exactement comme les ventes.
   depensesDuJour().forEach(function(d){d.cloturee=true;});
+  remboursementsDuJour().forEach(function(e){e.cloturee=true;});
   save();recalcTotaux();updateObjBar();
 }
-// Les dépenses du jour, encore ouvertes — mêmes règles que getCaisseSales().
-function depensesDuJour(){
-  var auj=isoJour(new Date());
-  return (DB.depenses||[]).filter(function(d){
-    if(!d||d.cloturee)return false;
-    var j=d.ts?isoJour(new Date(d.ts)):null;
-    if(j)return j===auj;
-    return d.date===new Date().toLocaleDateString('fr-FR'); // anciennes dépenses, sans horodatage
-  });
+// Ouvert (pas clôturé) et daté d'aujourd'hui : l'heure ISO quand elle
+// existe, sinon la date française des anciennes écritures. Une seule règle
+// pour les dépenses et les remboursements.
+function _ouvertDuJour(x){
+  if(!x||x.cloturee)return false;
+  var j=x.ts?isoJour(new Date(x.ts)):null;
+  if(j)return j===isoJour(new Date());
+  return x.date===new Date().toLocaleDateString('fr-FR'); // anciennes écritures, sans horodatage
 }
+// Les dépenses du jour, encore ouvertes — mêmes règles que getCaisseSales().
+function depensesDuJour(){return (DB.depenses||[]).filter(_ouvertDuJour);}
 function totalDepJour(){return depensesDuJour().reduce(function(s,d){return s+(Number(d.amt)||0);},0);}
 // Ce qui est réellement sorti du tiroir aujourd'hui.
 function totalDepCaisseJour(){
@@ -24116,7 +24237,7 @@ function saveDep(){if(!(role==='patron'||hasPerm('depenses'))){showToast('⛔ '+
 // `caisse` : cet argent est-il sorti du tiroir ? Sans ça, la caisse attendue à
 // la clôture était toujours trop haute, et le patron voyait un déficit là où
 // il n'avait fait que payer son électricité.
-DB.depenses.push({id:genVenteId(),nm:nm,amt:amt,cat:selDCur,date:new Date().toLocaleDateString('fr-FR'),ts:new Date().toISOString(),caisse:_depCaisse,vendeur:role==='vendeur'?(nomVendeur||'Vendeur'):'Patron'});journalAjouter('depense',nm,'',fmt(amt)+(_depCaisse?'':' ('+(lang==='fr'?'hors caisse':'not from till')+')'));save();renderDepLst();document.getElementById('dep-nm').value='';document.getElementById('dep-amt').value='';showToast(t('depOk'));}
+DB.depenses.push({id:genVenteId(),nm:nm,amt:amt,cat:selDCur,date:new Date().toLocaleDateString('fr-FR'),ts:new Date().toISOString(),caisse:_depCaisse,vendeur:_nomOperateur()});journalAjouter('depense',nm,'',fmt(amt)+(_depCaisse?'':' ('+(lang==='fr'?'hors caisse':'not from till')+')'));save();renderDepLst();document.getElementById('dep-nm').value='';document.getElementById('dep-amt').value='';showToast(t('depOk'));}
 // La liste affichait la clé interne (« elec », « transp », « sal »).
 function _depCatNom(c){
   var fr=(lang==='fr'),n={loyer:['🏠 Loyer','🏠 Rent'],elec:['⚡ Électricité','⚡ Electricity'],sal:['👤 Salaire','👤 Salary'],
@@ -24996,7 +25117,7 @@ function majConsigneUI(){
 calcBenTotal=function(){return calcBenBrut()-remisePoints-(remiseVente||0)-_negoTotal();};
 function pointsGagnesPour(total){return Math.floor((total||0)/100);}
 function clientProgressData(cl){var pts=cl&&cl.points||0;if(pts>=2000)return {pct:100,next:'Niveau maximum atteint',cur:pts+' pts',lvl:cl.niveau||niveauClient(pts)};var next=pts>=500?2000:500;var prev=pts>=500?500:0;var pct=Math.max(0,Math.min(100,Math.round(((pts-prev)/(next-prev))*100)));return {pct:pct,next:(next-pts)+' pts avant '+(pts>=500?'Or 🥇':'Argent 🥈'),cur:pts+' pts',lvl:cl.niveau||niveauClient(pts)};}
-function histClientHTML(cl){return (cl.hist||[]).slice().reverse().map(function(h){var type=h.type||'payment',ico='💵',lbl='Paiement',clr='var(--G)',val='';if(type==='credit'){ico='💳';lbl='Crédit';clr='var(--R)';val='+'+fmt(h.amt||0);}else if(type==='payment'){ico='💵';lbl='Paiement';clr='var(--G)';val='-'+fmt(h.amt||0);}else if(type==='achat'){ico='🛍️';lbl='Achat';clr='var(--B)';val=fmt(h.amt||0)+(h.pts?' · +'+h.pts+' pts':'');}else if(type==='points_use'){ico='⭐';lbl='Points utilisés';clr='var(--A)';val='-'+(h.pts||0)+' pts · '+fmt(h.amt||0);}return '<div class="hist-it"><span class="hist-dt">'+(h.date||'')+' · '+lbl+'</span><span class="hist-tp '+(type==='credit'?'cr':'pm')+'">'+ico+'</span><span class="hist-amt" style="color:'+clr+'">'+val+'</span></div>';}).join('')||'<div style="color:var(--M);font-size:12px;font-weight:600">N/A</div>';}
+function histClientHTML(cl){return (cl.hist||[]).slice().reverse().map(function(h){var type=h.type||'payment',ico='💵',lbl='Paiement',clr='var(--G)',val='';if(type==='credit'){ico='💳';lbl='Crédit';clr='var(--R)';val='+'+fmt(h.amt||0);}else if(type==='payment'&&h.annul){ico='↩️';lbl=(lang==='fr'?'Vente annulée':'Sale cancelled');clr='var(--M)';val='-'+fmt(h.amt||0);}else if(type==='payment'){ico='💵';lbl='Paiement'+(h.mode?' · '+_nomModeRemb(h.mode):'');clr='var(--G)';val='-'+fmt(h.amt||0);}else if(type==='achat'){ico='🛍️';lbl='Achat';clr='var(--B)';val=fmt(h.amt||0)+(h.pts?' · +'+h.pts+' pts':'');}else if(type==='points_use'){ico='⭐';lbl='Points utilisés';clr='var(--A)';val='-'+(h.pts||0)+' pts · '+fmt(h.amt||0);}return '<div class="hist-it"><span class="hist-dt">'+(h.date||'')+' · '+lbl+'</span><span class="hist-tp '+(type==='credit'?'cr':'pm')+'">'+ico+'</span><span class="hist-amt" style="color:'+clr+'">'+val+'</span></div>';}).join('')||'<div style="color:var(--M);font-size:12px;font-weight:600">N/A</div>';}
 // ═══ ÉTAPE 2 : stock calculé à partir des événements (base + appros − ventes normales) ═══
 // ⚠️⚠️ D'OÙ VENAIT LE STOCK NÉGATIF À LA CRÉATION D'UN ARTICLE.
 // Le stock n'est pas un nombre stocké : il se RECALCULE — stk0 + appros −
@@ -25207,6 +25328,7 @@ function archiverAnciennesVentes(cutoff){
   // Retrait des évènements repliés
   DB.ventes=(DB.ventes||[]).filter(function(v){var e=_epochEvt(v);return e==null||e>=cutoff;});
   DB.appros=(DB.appros||[]).filter(function(a){var e=_epochEvt(a);return e==null||e>=cutoff;});
+  DB.encaissements=(DB.encaissements||[]).filter(function(x){var e=_epochEvt(x);return e==null||e>=cutoff;});
   return nb;
 }
 function tailleDonnees(){try{return Math.round((JSON.stringify(DB).length/1024)*10)/10;}catch(e){return 0;}}
@@ -25360,8 +25482,12 @@ async function lancerRaz(){
     (p.vr||[]).forEach(function(v){var s=Number(v.stk)||0;v.stk0=s;v.stk=s;});
   });
   // 2) Puis seulement, on efface les mouvements.
-  DB.ventes=[];DB.appros=[];DB.depenses=[];
-  DB.arch={upTo:0,resume:[]};
+  DB.ventes=[];DB.appros=[];DB.depenses=[];DB.encaissements=[];
+  // ⚠️ `upTo:0` disait « rien n'est replié », alors que TOUT vient de l'être
+  // dans stk0. Un téléphone pas encore synchronisé renvoyait alors ses
+  // vieilles ventes : elles revenaient, et le stock les retirait une
+  // seconde fois. La date de la remise à zéro fait barrage à la fusion.
+  DB.arch={upTo:Date.now(),resume:[]};
   if(effDettes){
     (DB.clients||[]).forEach(function(c){c.credit=0;c.hist=[];c.points=0;});
   }
@@ -25583,7 +25709,11 @@ function mergeDB(base,other){
     artWin=base; artSec=other;
   }
   var vById={};
-  (base.ventes||[]).concat(other.ventes||[]).forEach(function(v){if(!v||v.id==null)return;var ex=vById[v.id];if(!ex)vById[v.id]=v;else if(v.annulee&&!ex.annulee)vById[v.id]=v;});
+  // ⚠️ « Clôturée » se perdait comme « annulée » se perdait : la copie du
+  // serveur gagnait, et une clôture faite sur ce téléphone était défaite par
+  // un téléphone en retard — la caisse du soir revenait toute seule. Les
+  // deux marques sont désormais définitives, d'où qu'elles viennent.
+  (base.ventes||[]).concat(other.ventes||[]).forEach(function(v){if(!v||v.id==null)return;var ex=vById[v.id];if(!ex){vById[v.id]=v;return;}var clo=!!(ex.cloturee||v.cloturee);if(v.annulee&&!ex.annulee){vById[v.id]=v;ex=v;}if(clo&&!ex.cloturee)ex.cloturee=true;});
   base.ventes=Object.keys(vById).map(function(k){return vById[k];}).filter(function(v){var e=_epochEvt(v);return e==null||e>=archUp;}); // vieux évènements repliés -> retirés
   var aById={};
   (base.appros||[]).concat(other.appros||[]).forEach(function(a){if(a&&a.id!=null&&!aById[a.id])aById[a.id]=a;});
@@ -25702,8 +25832,16 @@ function mergeDB(base,other){
   // rafraîchissement. Union par identifiant, comme les ventes.
   var depById={};
   (base.depenses||[]).forEach(function(d){if(d&&d.id!=null)depById[d.id]=d;});
-  (other.depenses||[]).forEach(function(d){if(d&&d.id!=null&&!depById[d.id])depById[d.id]=d;});
+  (other.depenses||[]).forEach(function(d){if(!d||d.id==null)return;var ex=depById[d.id];if(!ex)depById[d.id]=d;else if(d.cloturee&&!ex.cloturee)ex.cloturee=true;});
   base.depenses=Object.keys(depById).map(function(k){return depById[k];});
+  // Les ENCAISSEMENTS (remboursements de crédit, 22.93) : comme les ventes.
+  var encById={};
+  (base.encaissements||[]).concat(other.encaissements||[]).forEach(function(e){
+    if(!e||e.id==null)return;var ex=encById[e.id];
+    if(!ex)encById[e.id]=e;else if(e.cloturee&&!ex.cloturee)ex.cloturee=true;
+  });
+  base.encaissements=Object.keys(encById).map(function(k){return encById[k];}).filter(function(e){var t=_epochEvt(e);return t==null||t>=archUp;});
+  _reconcilierEncaissements(base);
   // Fixé APRÈS les articles ET les clients : c'est la liste complète de ce que
   // ce téléphone garde, que `_artSnapApresFusion()` relira juste après.
   _artGardeLocal=_snap?_gardeLocal:null;
@@ -25819,6 +25957,8 @@ function migrateDBData(d){
     });
   })();
   recomputeStock(d);
+  if(!Array.isArray(d.encaissements))d.encaissements=[];
+  try{_marquerAnnulationsCredit(d);_reconcilierEncaissements(d);}catch(e){}
   return d;
 }
 // ⚠️ C'EST CETTE LIGNE-CI QUI TOURNE, pas la `function loadDB` du haut.
@@ -27544,8 +27684,22 @@ saveCli=function(){
   }
   showToast(t('clientAjoute'));
 };
-ouvrirDetCli=function(id){cliCours=DB.clients.find(function(c){return c.id===id;});if(!cliCours)return;majNiveauClient(cliCours);var pg=clientProgressData(cliCours);document.getElementById('cli-det-nm').textContent=cliCours.nm;document.getElementById('cli-d-dette').textContent=fmt(cliCours.credit);document.getElementById('cli-d-date').textContent=cliCours.date?new Date(cliCours.date).toLocaleDateString('fr-FR'):'N/A';document.getElementById('cli-d-tel').textContent=cliCours.tel||'N/A';var info=document.getElementById('lbl-info-cred');if(info)info.textContent='Info crédit & fidélité';var hist=document.getElementById('cli-hist');hist.innerHTML='<div class="lv-badge" style="margin:0 0 8px 0">'+pg.lvl+' · '+pg.cur+'</div><div class="lv-bar"><div class="lv-fill" style="width:'+pg.pct+'%"></div></div><div class="lv-meta"><span>'+pg.cur+'</span><span>'+pg.next+'</span></div><div style="height:10px"></div>'+histClientHTML(cliCours);document.getElementById('cli-pmt').value='';document.getElementById('reste-card').style.display='none';document.getElementById('ov-cli-det').classList.add('show');};
-enregPmt=function(){var amt=parseFloat(document.getElementById('cli-pmt').value)||0;if(!amt||!cliCours){showToast(t('errQte'));return;}cliCours.credit=Math.max(0,cliCours.credit-amt);if(!cliCours.hist)cliCours.hist=[];cliCours.hist.push({date:new Date().toLocaleDateString('fr-FR'),type:'payment',amt:amt});save();closeSheet('ov-cli-det');renderClients();showToast(cliCours.credit<=0?'✅ '+(lang==='fr'?'Crédit soldé !':'Credit cleared!'):'✅ '+(lang==='fr'?'Paiement enregistré !':'Payment recorded!'));};
+ouvrirDetCli=function(id){cliCours=DB.clients.find(function(c){return c.id===id;});if(!cliCours)return;majNiveauClient(cliCours);var pg=clientProgressData(cliCours);document.getElementById('cli-det-nm').textContent=cliCours.nm;document.getElementById('cli-d-dette').textContent=fmt(cliCours.credit);document.getElementById('cli-d-date').textContent=cliCours.date?new Date(cliCours.date).toLocaleDateString('fr-FR'):'N/A';document.getElementById('cli-d-tel').textContent=cliCours.tel||'N/A';var info=document.getElementById('lbl-info-cred');if(info)info.textContent='Info crédit & fidélité';var hist=document.getElementById('cli-hist');hist.innerHTML='<div class="lv-badge" style="margin:0 0 8px 0">'+pg.lvl+' · '+pg.cur+'</div><div class="lv-bar"><div class="lv-fill" style="width:'+pg.pct+'%"></div></div><div class="lv-meta"><span>'+pg.cur+'</span><span>'+pg.next+'</span></div><div style="height:10px"></div>'+histClientHTML(cliCours);document.getElementById('cli-pmt').value='';document.getElementById('reste-card').style.display='none';selModeRemb('especes');document.getElementById('ov-cli-det').classList.add('show');};
+// ⚠️ Le remboursement note maintenant COMMENT il est payé (le tiroir en
+// dépend), QUAND (l'heure, pour la clôture) et QUI l'a reçu. Et il ne
+// dépasse jamais la dette : 1 500 F tendus pour 1 000 F dus, c'est 500 F
+// rendus — les compter dans le tiroir fabriquerait un faux déficit.
+enregPmt=function(){var fr=(lang==='fr'),amt=parseFloat(document.getElementById('cli-pmt').value)||0;if(!amt||amt<0||!cliCours){showToast(t('errQte'));return;}
+  var du=Number(cliCours.credit)||0;
+  if(du<=0){showToast('ℹ️ '+(fr?cliCours.nm+' ne doit rien':cliCours.nm+' owes nothing'));return;}
+  var recu=Math.min(amt,du),rendu=amt-recu,mode=_modeRemb||'especes';
+  var e={id:genVenteId(),ts:new Date().toISOString(),date:new Date().toLocaleDateString('fr-FR'),clientId:cliCours.id,nm:cliCours.nm,amt:recu,mode:mode,vendeur:_nomOperateur()};
+  if(!Array.isArray(DB.encaissements))DB.encaissements=[];
+  DB.encaissements.push(e);
+  cliCours.credit=Math.max(0,du-recu);if(!cliCours.hist)cliCours.hist=[];
+  cliCours.hist.push({date:e.date,ts:e.ts,type:'payment',amt:recu,mode:mode,vendeur:e.vendeur,enc:e.id});
+  save();closeSheet('ov-cli-det');renderClients();
+  showToast(rendu>0?('↩️ '+(fr?'Rends '+fmt(rendu)+' : '+cliCours.nm+' ne devait que '+fmt(recu):'Give back '+fmt(rendu)+': '+cliCours.nm+' only owed '+fmt(recu))):(cliCours.credit<=0?'✅ '+(fr?'Crédit soldé !':'Credit cleared!'):'✅ '+(fr?'Paiement enregistré !':'Payment recorded!')));};
 encaisser=function(){
   // ⚠️⚠️ UNE VENTE VIDE S'ENREGISTRAIT. Vu au banc pendant le démarrage
   // guidé : la feuille de paiement s'ouvre même panier vide, et « Encaisser »
@@ -27679,7 +27833,7 @@ confirmerAnnulVente=function(){
   if(!v||v.annulee){fermerConfAnnul();return;}
   // Stock et "vendu" sont recalculés automatiquement à partir des ventes non annulées (voir recomputeStock).
   if(v.clientId){var cl=DB.clients.find(function(c){return c.id===v.clientId;});if(cl){cl.points=Math.max(0,(cl.points||0)-((v.pointsGagnes)||0))+(v.pointsUtilises||0);majNiveauClient(cl);if(!cl.hist)cl.hist=[];cl.hist.push({date:new Date().toLocaleDateString('fr-FR'),type:'points_use',pts:-(v.pointsUtilises||0),amt:0});
-    if(v.paiement&&v.paiement.mode==='credit'&&(v.paiement.du||0)>0){cl.credit=Math.max(0,(cl.credit||0)-v.paiement.du);cl.hist.push({date:new Date().toLocaleDateString('fr-FR'),type:'payment',amt:v.paiement.du});}
+    if(v.paiement&&v.paiement.mode==='credit'&&(v.paiement.du||0)>0){cl.credit=Math.max(0,(cl.credit||0)-v.paiement.du);cl.hist.push({date:new Date().toLocaleDateString('fr-FR'),ts:new Date().toISOString(),type:'payment',amt:v.paiement.du,annul:true});}
   }}
   v.annulee=true;save();renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();recalcTotaux();updateObjBar();updateNotifBadge();if(document.getElementById('ov-history').classList.contains('show'))filtrerHistory();fermerConfAnnul();showToast('↩️ '+(lang==='fr'?'Vente annulée, stock restitué':'Sale cancelled, stock restored'));
 };
@@ -27783,18 +27937,19 @@ function _mouvementsTresorerie(){
       quoi='Vente à crédit (avance)';
     }else if(p.mode==='mixte'){
       recu=(Number(p.especes)||0)+(Number(p.mobile)||0);
-      quoi='Vente (espèces + mobile)';
-    }else if(p.mode==='mobile'){quoi='Vente (mobile money)';}
-    else{quoi='Vente (espèces)';}
+      quoi='Vente (espèces + '+(p.moyenMobile?_nomModeRemb(p.moyenMobile):'mobile')+')';
+    }else if(p.mode==='orange'||p.mode==='mtn'||p.mode==='moov'){
+      // Avant : tout ce qui n'était pas « mobile » (un mode qui n'existe
+      // pas) devenait « espèces » — l'Orange Money aussi, chez le comptable.
+      quoi='Vente ('+_nomModeRemb(p.mode)+')';
+    }else{quoi='Vente (espèces)';}
     if(recu>0)mv.push({j:_jourTri(v.date),d:v.date,h:v.h||v.heure||'',lib:quoi,
       ref:(v.clientNom||v.vendeur||''),rec:recu,dep:0});
   });
-  (DB.clients||[]).forEach(function(c){
-    ((c&&c.hist)||[]).forEach(function(x){
-      if(!x||x.type!=='payment')return;
-      var a=Number(x.amt)||0;if(a<=0)return;
-      mv.push({j:_jourTri(x.date),d:x.date,h:'',lib:'Remboursement client',ref:c.nm||'',rec:a,dep:0});
-    });
+  _remboursementsHist().forEach(function(r){
+    // Sans moyen de paiement (notés avant 22.93) : on ne l'invente pas.
+    mv.push({j:_jourTri(r.h.date),d:r.h.date,h:'',lib:'Remboursement client'+(r.mode?' ('+(r.mode==='especes'?'espèces':_nomModeRemb(r.mode))+')':''),
+      ref:(r.c.nm||'')+(r.h.vendeur?(' / '+r.h.vendeur):''),rec:r.amt,dep:0});
   });
   (DB.depenses||[]).forEach(function(x){
     if(!x)return;var a=Number(x.amt)||0;if(a<=0)return;

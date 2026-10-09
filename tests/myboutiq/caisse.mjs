@@ -86,3 +86,15 @@ export function vendre(p, o) {
 
 // Le stock affiché d'un article, tel que la caisse le calcule.
 export const stock = (p, id) => p.evaluate(id => getStk(DB.articles.find(x => x.id === id)), id);
+
+// « FCFA 6 100 » → 6100 ; « -FCFA 1 500 » → -1500 (espaces fines comprises).
+export const nombre = x => x == null ? null : Number(String(x).replace(/−/g, '-').replace(/[^\d-]/g, ''));
+// La valeur d'une ligne du rapport (Rapports), trouvée par son libellé.
+export const ligneRapport = (p, motif) => p.evaluate(m => {
+  const re = new RegExp(m, 'i');
+  for (const r of document.querySelectorAll('#rpt-cont .rrow')) {
+    const l = r.querySelector('.rlbl'), v = r.querySelector('.rval');
+    if (l && v && re.test(l.textContent)) return v.textContent;
+  }
+  return null;
+}, motif);

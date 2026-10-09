@@ -4,21 +4,10 @@
 // Le rapport et la clôture doivent dire LE MÊME montant, sinon le patron
 // soupçonne son vendeur pour un écart qui n'existe pas.
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse, vendre } from './caisse.mjs';
+import { nouvelleBoutique, ouvrirCaisse, vendre, nombre, ligneRapport as ligne } from './caisse.mjs';
 const { t, fin } = compteur('t207');
 const { s, port } = await serveur();
 const b = await chromium.launch();
-// « FCFA 6 100 » → 6100 ; « -FCFA 1 500 » → -1500 (espaces fines comprises).
-const nombre = x => x == null ? null : Number(String(x).replace(/−/g, '-').replace(/[^\d-]/g, ''));
-// La valeur d'une ligne du rapport, trouvée par son libellé.
-const ligne = (p, motif) => p.evaluate(m => {
-  const re = new RegExp(m, 'i');
-  for (const r of document.querySelectorAll('#rpt-cont .rrow')) {
-    const l = r.querySelector('.rlbl'), v = r.querySelector('.rval');
-    if (l && v && re.test(l.textContent)) return v.textContent;
-  }
-  return null;
-}, motif);
 const depense = (p, nm, amt, cat, deLaCaisse) => p.evaluate(([nm, amt, cat, c]) => {
   window.__toasts = [];
   ouvrirDep();
@@ -100,9 +89,9 @@ await depense(p, 'Crédit téléphone', 500, 'tel', false);
   });
   t(r.avant === 1000 && r.apres === 0 && r.toasts.some(m => /Crédit soldé/.test(m)), `Awa devait ${r.avant}, elle paie : crédit soldé (${r.apres})`);
   t(r.hist.some(h => h.type === 'payment' && h.amt === 1000), 'le paiement entre dans son historique');
-  const remb = r.livre.filter(m => m.lib === 'Remboursement client');
+  const remb = r.livre.filter(m => /^Remboursement client/.test(m.lib));
   const av = r.livre.filter(m => /crédit/.test(m.lib));
-  t(remb.length === 1 && remb[0].rec === 1000 && remb[0].ref === 'Awa', 'le livre de trésorerie note le remboursement de 1 000');
+  t(remb.length === 1 && remb[0].rec === 1000 && /^Awa\b/.test(remb[0].ref), `le livre de trésorerie note le remboursement de 1 000 (${remb.map(m => m.lib + ' · ' + m.ref)})`);
   t(av.length === 1 && av[0].rec === 300, `la vente à crédit n'y entre que pour son avance (${av.map(m => m.rec)})`);
   t(r.livre.filter(m => m.dep > 0).reduce((s, m) => s + m.dep, 0) === 1500, 'les deux dépenses y sont, côté sorties');
 }
