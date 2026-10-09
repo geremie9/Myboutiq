@@ -85,6 +85,12 @@ The project skill `publier-version` (`.claude/skills/publier-version/`) walks th
 
 ## Conventions
 
+- **Never put text from elsewhere into `innerHTML` raw.** That means other shops, the server, or a seller's data arriving through sync.
+  - Escape text with `escH(s)`.
+  - Pass image URLs through `srcSure(u)`. It allows only our Supabase storage, `data:image/…` and same-origin paths.
+  - Wrap any value placed inside a JS string in an inline handler (`onerror="…"`) with `jsStr(s)`.
+  - `migrateDBData` also runs `_neutraliserTextes`: in the DB's name fields it turns `<>"` into `‹›″` and strips ids down to `[A-Za-z0-9_.-]`.
+  - Admin panels (`renderAbonnes`, `_ligPhotoAdmin`) show data written by anyone, and the `photos_partagees` proposal queue accepts inserts from anonymous users. Bench: `t209-securite`.
 - Comments are in French and explain **why**, usually with the incident behind the code ("⚠️ … mesuré au banc : …"). Keep this style, and do not delete these stories when refactoring.
 - The app has no dependencies. supabase-js is loaded from jsDelivr and cached by the service worker, and the app must keep working when it is missing (offline).
 
