@@ -5724,7 +5724,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.95'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.96'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -5885,6 +5885,8 @@ function _applyRemoteDB(data,silent){
   DB=migrateDBData(mergeDB(data,DB));_artSnapApresFusion();_reancrerFiches();
   localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
   _suppressSync=false;
+  // Le canal secret vient d'arriver (ou a changé) : on passe dessus.
+  try{if(realtimeChan&&supa&&DB&&DB.cfg&&DB.cfg.code&&_canalSignal()!==(_rtCanal||''))subscribeRealtime(DB.cfg.code);}catch(e){}
   // ⚠️ TOUT ce que la connexion redessine doit AUSSI être redessiné quand des
   // données arrivent du serveur. Il manquait l'équipe : un vendeur pouvait se
   // connecter, arriver dans DB.equipe du patron… et rester invisible à l'écran
@@ -27174,15 +27176,28 @@ async function _rtRefetch(code){
   }
   _applyRemoteDB(fresh,false);
 }
+// ⚠️ LE TEMPS RÉEL ENVOYAIT LES CODES DE TOUTES LES BOUTIQUES à chaque
+// téléphone : on écoutait toute la table boutique_signal et on triait ici,
+// par code. Le code, c'est la moitié de l'entrée (code + PIN). Le serveur
+// donne maintenant à chaque boutique un CANAL secret (data.cfg.canal, 32
+// caractères hexadécimaux) : on n'écoute plus que « canal=eq.… », filtré
+// par le serveur. Tant que la boutique n'a pas reçu son canal (première
+// écriture après la mise à jour du serveur), on garde l'ancienne écoute.
+var _rtCanal=null;
+function _canalSignal(){var c=DB&&DB.cfg&&DB.cfg.canal;return (typeof c==='string'&&/^[0-9a-f]{32}$/.test(c))?c:'';}
 subscribeRealtime=function(code){
   if(!supa)return;
   code=formatShopCode(code);
   if(realtimeChan){supa.removeChannel(realtimeChan);realtimeChan=null;}
-  realtimeChan=supa.channel('signal:'+code)
-    .on('postgres_changes',{event:'*',schema:'public',table:'boutique_signal'},function(payload){
-      var row=payload.new||payload.old;if(!row||!row.code)return;
-      if(formatShopCode(row.code)!==code)return;
-      if(!DB||!DB.cfg||normalizeShopCode(row.code)!==normalizeShopCode(DB.cfg.code))return;
+  var canal=_canalSignal();_rtCanal=canal||null;
+  var ecoute={event:'*',schema:'public',table:'boutique_signal'};
+  if(canal)ecoute.filter='canal=eq.'+canal;
+  realtimeChan=supa.channel('signal:'+(canal||code))
+    .on('postgres_changes',ecoute,function(payload){
+      var row=payload.new||payload.old;if(!row)return;
+      if(canal){if(row.canal!==canal)return;}
+      else{if(!row.code||formatShopCode(row.code)!==code)return;}
+      if(!DB||!DB.cfg||normalizeShopCode(code)!==normalizeShopCode(DB.cfg.code))return;
       _rtDernierSignal=Date.now();
       clearTimeout(_rtRefetchTimer);
       _rtRefetchTimer=setTimeout(function(){_rtRefetch(code);},150); // anti-rafale, mais court
