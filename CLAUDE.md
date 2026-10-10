@@ -54,6 +54,10 @@ cd tests/mybar && node run.js                         # MyBar bench (CommonJS)
   - Expenses are unioned by id.
   - Customers merge as a whole object (the locally modified copy wins). Afterwards `_reconcilierEncaissements` puts back any repayment missing from a customer's history.
   - **Any new collection needs a rule here.** Without one, another phone's sync will drop it or bring it back.
+- **Realtime:** every write to `boutiques` upserts a row into `boutique_signal`, and phones refetch when their row changes.
+  - Since 22.96 each shop has a secret `data.cfg.canal` (32 hex characters, generated server-side by the `trg_canal_signal` trigger and preserved when an old client writes without it). `subscribeRealtime` listens to `canal=eq.…` only.
+  - Without a canal it falls back to the old listener, which receives every shop's row and filters by code.
+  - Step 2 is still to do once phones have updated: stop writing `code` into `boutique_signal` (see `base-de-donnees/2026-10-10-canal-signal.sql`).
 - **The day's cash:**
   - `getCaisseSales()` returns today's sales that are not `cloturee`.
   - `caisseAttendue()` = opening cash + cash sales (including credit advances) + cash credit repayments − expenses paid from the till.
