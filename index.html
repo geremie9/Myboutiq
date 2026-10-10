@@ -1949,6 +1949,24 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
   border:1.5px solid var(--BD);border-radius:12px;background:var(--C);color:var(--M);
   font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
 .eg-btn2:active{transform:scale(.97)}
+/* ⭐ L'ÉTAGÈRE DE DÉPART (22.97) — voir _ETAGERE. Les suggestions ont la
+   forme EXACTE de la carte qu'elles deviendront : même grille, même
+   pastille. Seuls le pointillé et « + Ajouter » disent qu'elles ne sont
+   pas encore à lui. */
+.etg-tete{grid-column:1/-1;text-align:center;padding:16px 6px 6px}
+.etg-tete .t{font-size:20px;font-weight:900;color:var(--T);margin-bottom:4px}
+.etg-tete .s{font-size:13px;font-weight:700;color:var(--M);line-height:1.45;max-width:300px;margin:0 auto}
+.etg-sep{grid-column:1/-1;font-size:13px;font-weight:900;color:var(--T);padding:14px 2px 2px;border-top:1.5px dashed var(--BD);margin-top:6px}
+.etg-sep span{display:block;font-size:11px;font-weight:700;color:var(--M);margin-top:2px}
+.pcard.etg{border:2px dashed #C9B8F0;background:#FBF9FF;box-shadow:none}
+.pcard.etg .etg-plus{display:inline-block;margin-top:4px;padding:3px 10px;border-radius:999px;background:var(--P);color:var(--A);font-size:11px;font-weight:900}
+.pcard.etg-neuf{animation:etgNeuf .9s ease-out}
+@keyframes etgNeuf{0%{transform:scale(.6);opacity:.2}60%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.pcard.etg-neuf{animation:none}}
+.etg-pied{grid-column:1/-1;text-align:center;padding:12px 6px 6px}
+.etg-lien{background:none;border:none;color:var(--B);font-size:12.5px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;padding:8px;text-decoration:underline}
+#ppd-px::-webkit-outer-spin-button,#ppd-px::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+#ppd-px{-moz-appearance:textfield}
 .eg-step{display:flex;align-items:center;gap:9px;text-align:left;max-width:270px;margin:9px auto 0;
   font-size:12.5px;font-weight:600;color:var(--M)}
 .eg-step b{color:var(--T)}
@@ -4760,6 +4778,28 @@ body{max-width:min(100%,1200px)}
   </div>
 </div>
 
+<!-- ⭐ LE PRIX, ET RIEN D'AUTRE (22.97) — voir ouvrirPrixPad.
+     Une seule question, celle sans laquelle on ne peut pas vendre. Elle
+     remplace aussi le prompt() de « créer en vendant », que l'application
+     installée peut bloquer sans un mot. -->
+<div class="ov" id="ov-prixpad" onclick="closeOv(event,'ov-prixpad')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit"><span id="ppd-e" style="font-size:26px">🛍️</span> <span id="ppd-nm"></span></div><button class="bcl" onclick="closeSheet('ov-prixpad')">✕</button></div>
+    <div style="padding:6px 19px 24px">
+      <div class="pig" id="ppd-nm-wrap" style="display:none"><label class="pl" id="ppd-nm-l">Nom de l'article</label>
+        <input class="pi sm" id="ppd-nm-inp" type="text" maxlength="60" autocomplete="off" style="font-weight:700" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ppd-px').focus();}"></div>
+      <div style="font-size:15px;font-weight:900;color:var(--T);margin:2px 0 8px" id="ppd-q">Tu le vends combien ?</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <input class="pi" id="ppd-px" type="number" inputmode="decimal" min="0" step="any" placeholder="0" style="font-size:30px;text-align:center;flex:1;min-width:0" onkeydown="if(event.key==='Enter'){event.preventDefault();prixPadValider();}">
+        <span id="ppd-dev" style="font-size:16px;font-weight:900;color:var(--M)">FCFA</span>
+      </div>
+      <div id="ppd-aide" style="font-size:11.5px;font-weight:700;color:var(--M);margin-bottom:14px"></div>
+      <button class="bpay" id="ppd-ok" onclick="prixPadValider()">✅ Mettre dans ma caisse</button>
+      <div style="text-align:center"><button type="button" class="etg-lien" id="ppd-ren" onclick="prixPadRenommer()">✎ Changer le nom</button></div>
+    </div>
+  </div>
+</div>
+
 <!-- LA PORTE D'ENTRÉE UNIQUE POUR AJOUTER DES ARTICLES -->
 <!-- Il existait six chemins dispersés dans l'app, et le commerçant devait
      deviner lequel prendre. On n'en supprime aucun — on arrête juste de le
@@ -5724,7 +5764,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.96'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.97'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -10535,30 +10575,253 @@ function creerEnVendant(i){
   // Déjà chez lui : on ne le crée pas une deuxième fois, on l'ouvre.
   var _dj=_articleExistant(nom);
   if(_dj){_direDejaLa(_dj);return;}
-  var rep=prompt(fr?('💰 '+nom+'\n\nÀ combien tu le vends ?'):('💰 '+nom+'\n\nSelling price?'),'');
-  if(rep===null)return;
-  var px=parseFloat(String(rep).replace(',','.'))||0;
-  if(!(px>0)){showToast('⚠️ '+(fr?'Il faut un prix de vente':'A selling price is needed'));return;}
-  
-  var art={id:_prochainIdArticle(),nm:nom,e:emojiDepuisNomProduit(nom),cat:(e&&e.cat)||categorieDepuisNomProduit(nom),
-    px:px,pa:0,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,
-    um:(e&&e.um&&e.um!=='pc')?e.um:null,umSac:(e&&e.sac)||null,umCont:(e&&e.cont)||null};
-  // Sa photo, tout de suite : celle du catalogue visuel si l'article en vient.
-  if(e&&e.img600){try{art.img=_photo600(e.img600);}catch(x){}}
-  try{appliquerPhotosCatalogue([art]);}catch(x){}
-  if(!art.um||!art.umSac){try{appliquerConditionnementCatalogue([art],true);}catch(x){}}
-  DB.articles.push(art);
-  journalAjouter('creation',nom,'',fr?('créé en vendant · '+fmt(px)):'created while selling');
-  save();
-  _rechCaisse='';
-  var champ=document.getElementById('src-c');if(champ)champ.value='';
+  // ⚠️ (22.97) LE PRIX NE SE DEMANDE PLUS PAR prompt(). Installée sur
+  // l'écran d'accueil, l'application peut voir ses boîtes de dialogue
+  // natives supprimées pour de bon — c'est écrit plus haut, à propos du
+  // renommage. Le geste « vendre crée l'article » ne faisait alors plus
+  // RIEN, sans un mot, chez ceux qui avaient installé l'app.
+  ouvrirPrixPad({nom:nom,src:e,vendre:true});
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ L'ÉTAGÈRE DE DÉPART — LA PREMIÈRE VENTE EN UNE MINUTE (22.97)
+//
+//  « Allez chercher les articles, venir les mettre et vendre, c'est
+//  complexe, et c'est là que les utilisateurs laissent l'application.
+//  Même moi ça me donne des frictions. »
+//
+//  ⚠️ MESURÉ LE 10 OCTOBRE, sur les 64 boutiques de la base :
+//   · 26 n'ont JAMAIS eu un seul article — et elles sont revenues :
+//     cinq jours entre la création et la dernière visite, en médiane.
+//     Elles ont essayé, longtemps, et n'ont pas réussi.
+//   · 9 ont des articles mais aucune vente — et la MOITIÉ de leurs
+//     articles n'a pas de prix (7,7 sur 15).
+//   · Sur les 18 boutiques du dernier mois : 10 sans article, 3 ventes.
+//
+//  ⚠️ REFAIT LE PARCOURS d'une boutique neuve, sur un écran de téléphone :
+//  pour avoir riz, Coca et savon il fallait ONZE gestes — « Riz » ouvre
+//  quatre sortes, « Coca » demande ses contenances, « Retour » entre
+//  chaque — puis trois prix à taper sur un deuxième écran, AVANT de voir
+//  une caisse. Et sans réseau, « Choisir en photos » s'ouvre… sans photos.
+//
+//  L'étagère renverse l'ordre : la caisse vide montre DÉJÀ les articles
+//  que tout le monde vend. Une touche, un prix, et l'article est dans la
+//  caisse ; on vend tout de suite. Le stock, le prix d'achat, la photo,
+//  les sortes et les contenances viendront plus tard — seulement s'il en
+//  a besoin. Rien n'est créé tant qu'il n'a pas DIT un prix : pas de
+//  quinze articles à zéro franc à nettoyer ensuite.
+//
+//  La liste n'est pas devinée : ce sont les quinze articles que les
+//  boutiques de la base ont vraiment mis en rayon (voir _CHA_COURANTS).
+//  Les icônes sont des émojis : elles s'affichent sans réseau.
+//  Les cinq autres chemins (catalogue, liste, voisines…) restent, entiers,
+//  sous « Beaucoup d'articles d'un coup ».
+// ══════════════════════════════════════════════════════════════════
+var _ETAGERE={
+  boutique:[['Riz','🍚'],['Huile','🫗'],['Sucre','🍬'],['Lait','🥛'],['Pain','🍞'],['Sardines','🐟'],['Farine','🌾'],
+    ['Cube','🧊'],['Café','☕'],['Jus','🧃'],['Bière','🍺'],['Savon','🧼'],['Lessive','🧺'],['Bougie','🕯️'],['Allumettes','🔥']],
+  mode:[['Robe','👗'],['Pantalon','👖'],['Chemise','👔'],['T-shirt','👕'],['Short','🩳'],['Veste','🧥'],['Pagne','🧵'],
+    ['Chaussures','👟'],['Sandales','👡'],['Sac','👜'],['Casquette','🧢'],['Foulard','🧣'],['Chaussettes','🧦'],['Bijoux','💍'],['Lunettes','🕶️']]
+};
+var _ETAGERE_EN={'Riz':'Rice','Huile':'Oil','Sucre':'Sugar','Lait':'Milk','Pain':'Bread','Sardines':'Sardines','Farine':'Flour',
+  'Cube':'Stock cube','Café':'Coffee','Jus':'Juice','Bière':'Beer','Savon':'Soap','Lessive':'Washing powder','Bougie':'Candle',
+  'Allumettes':'Matches','Robe':'Dress','Pantalon':'Trousers','Chemise':'Shirt','T-shirt':'T-shirt','Short':'Shorts','Veste':'Jacket',
+  'Pagne':'Wax fabric','Chaussures':'Shoes','Sandales':'Sandals','Sac':'Bag','Casquette':'Cap','Foulard':'Scarf',
+  'Chaussettes':'Socks','Bijoux':'Jewellery','Lunettes':'Glasses'};
+var _etgGuideFait=false;
+// Les suggestions encore utiles : ni déjà en rayon (« Huile » se tait dès
+// qu'il a « Huile d'arachide »), ni écartées.
+function _etagereListe(){
+  var sct='boutique';try{sct=(DB&&DB.cfg&&DB.cfg.secteur)||'boutique';}catch(e){}
+  var base=_ETAGERE[sct]||_ETAGERE.boutique,fr=(lang==='fr');
+  var noms=((DB&&DB.articles)||[]).map(function(p){return txtNorm((p&&p.nm)||'');});
+  return base.map(function(x,i){return {i:i,nm:fr?x[0]:(_ETAGERE_EN[x[0]]||x[0]),e:x[1]};})
+    .filter(function(x){
+      var k=txtNorm(x.nm);
+      return !noms.some(function(n){return n===k||n.indexOf(k+' ')===0;});
+    });
+}
+// Montrée tant que la boutique n'a jamais vendu : après la première vente,
+// la caisse redevient la sienne, sans rien de plus. Et seulement à qui peut
+// créer un article — un vendeur n'a rien à en faire.
+function _etagereMontrer(tout){
+  try{
+    if(!tout||!DB||!DB.cfg||estDemo()||DB.cfg.etagereFinie)return false;
+    if(!(role==='patron'||hasPerm('produits')))return false;
+    if(_rechCaisse&&String(_rechCaisse).trim().length>=2)return false;   // il cherche : on le laisse chercher
+    if((DB.articles||[]).length>=40)return false;
+    if((DB.ventes||[]).some(function(v){return v&&!v.annulee;}))return false;
+    if(DB.arch&&Array.isArray(DB.arch.resume)&&DB.arch.resume.length)return false;
+    return _etagereListe().length>0||!(DB.articles||[]).length;
+  }catch(e){return false;}
+}
+function _etagereTuile(x,onclick,plus){
+  var m={bg:'var(--BG)',fg:'var(--T)'};
+  try{var _m=mediaArtInner({nm:x.nm,e:x.e,cat:categorieDepuisNomProduit(x.nm)},32);m={bg:_m.bg,fg:_m.fg};}catch(e){}
+  return '<div class="pcard etg" role="button" tabindex="0" onclick="'+onclick+'">'
+    +'<div class="pmedia" style="background:'+m.bg+';color:'+m.fg+';font-size:30px">'+x.e+'</div>'
+    +'<div class="pcard-overlay"><div class="pnm-ov">'+escH(x.nm)+'</div>'
+    +'<span class="etg-plus">'+plus+'</span></div></div>';
+}
+function _etagereHtml(vide){
+  var fr=(lang==='fr'),h='';
+  if(vide){
+    h+='<div class="etg-tete"><div class="t">'+(fr?'Touche ce que tu vends':'Tap what you sell')+'</div>'
+      +'<div class="s">'+(fr?'Je te demande juste le prix. Pas de stock, pas de formulaire : tu vends tout de suite.'
+                            :'I only ask the price. No stock, no form: you sell right away.')+'</div></div>';
+  }else{
+    h+='<div class="etg-sep">'+(fr?'Tu vends aussi… ?':'Do you also sell…?')
+      +'<span>'+(fr?'Touche pour l\'ajouter. Ces suggestions partent après ta première vente.'
+                   :'Tap to add it. These suggestions go away after your first sale.')+'</span></div>';
+  }
+  _etagereListe().forEach(function(x){
+    h+=_etagereTuile(x,'etagereChoisir('+x.i+')',fr?'+ Ajouter':'+ Add');
+  });
+  h+=_etagereTuile({nm:fr?'Autre article':'Other item',e:'✏️'},'etagereAutre()',fr?'+ Écrire':'+ Type');
+  if(vide){
+    h+='<div class="etg-pied">'
+      +'<div><button class="eg-btn2" onclick="ouvrirPorteArticles()">📷 '+(fr?'Beaucoup d\'articles d\'un coup':'Many items at once')+'</button></div>'
+      +'<div><button class="eg-btn2" onclick="entrerDemo()" style="border-color:var(--B);color:var(--B)">👀 '
+      +(fr?'Voir d\'abord une boutique d\'exemple':'See an example shop first')+'</button></div>'
+      +_htmlAideCreation()+_htmlRappelDemain()+'</div>';
+  }else{
+    h+='<div class="etg-pied"><button class="etg-lien" onclick="etagereMasquer()">'
+      +(fr?'Masquer ces suggestions':'Hide these suggestions')+'</button></div>';
+  }
+  return h;
+}
+function etagereChoisir(i){
+  if(!_peutCreerEnVendant())return;
+  var sct='boutique';try{sct=(DB&&DB.cfg&&DB.cfg.secteur)||'boutique';}catch(e){}
+  var x=(_ETAGERE[sct]||_ETAGERE.boutique)[i];if(!x)return;
+  var nm=(lang==='fr')?x[0]:(_ETAGERE_EN[x[0]]||x[0]);
+  var dj=_articleExistant(nm);
+  if(dj){_direDejaLa(dj);return;}
+  ouvrirPrixPad({nom:nm,e:x[1],etagere:true});
+}
+function etagereAutre(){
+  if(!_peutCreerEnVendant())return;
+  ouvrirPrixPad({nom:'',etagere:true});
+}
+function etagereMasquer(){
+  try{DB.cfg.etagereFinie=true;save();}catch(e){}
+  renderProd(DB.articles);
+}
+// ── La fenêtre du prix ─────────────────────────────────────────────
+var _ppd=null;
+function ouvrirPrixPad(o){
+  var fr=(lang==='fr');
+  _ppd=o||{};
+  var nomVide=!(_ppd.nom&&String(_ppd.nom).trim());
+  var set=function(id,t){var el=document.getElementById(id);if(el)el.textContent=t;};
+  set('ppd-e',_ppd.e||(nomVide?'✏️':((_ppd.src&&_ppd.src.e)||emojiDepuisNomProduit(_ppd.nom)||'🛍️')));
+  set('ppd-nm',nomVide?(fr?'Un autre article':'Another item'):_ppd.nom);
+  set('ppd-nm-l',fr?'Nom de l\'article':'Item name');
+  set('ppd-q',fr?'Tu le vends combien ?':'What do you sell it for?');
+  set('ppd-dev',(DB&&DB.cfg&&DB.cfg.s)||'FCFA');
+  set('ppd-aide',fr?'Le stock et le prix d\'achat, plus tard — seulement si tu veux.'
+                   :'Stock and cost price later — only if you want.');
+  set('ppd-ok',_ppd.vendre?('💰 '+(fr?'Vendre':'Sell')):('✅ '+(fr?'Mettre dans ma caisse':'Put it in my till')));
+  set('ppd-ren',fr?'✎ Changer le nom':'✎ Change the name');
+  var w=document.getElementById('ppd-nm-wrap'),inp=document.getElementById('ppd-nm-inp');
+  if(w)w.style.display=nomVide?'block':'none';
+  if(inp){inp.value=nomVide?'':String(_ppd.nom);inp.placeholder=fr?'ex : Tomate concentrée':'e.g. Tomato paste';}
+  var ren=document.getElementById('ppd-ren');if(ren)ren.style.display=nomVide?'none':'inline-block';
+  var px=document.getElementById('ppd-px');if(px)px.value='';
+  document.getElementById('ov-prixpad').classList.add('show');
+  setTimeout(function(){try{(nomVide?inp:px).focus();}catch(e){}},260);
+}
+function prixPadRenommer(){
+  var w=document.getElementById('ppd-nm-wrap'),inp=document.getElementById('ppd-nm-inp'),ren=document.getElementById('ppd-ren');
+  if(w)w.style.display='block';if(ren)ren.style.display='none';
+  if(inp){try{inp.focus();inp.select();}catch(e){}}
+}
+function prixPadValider(){
+  var fr=(lang==='fr');
+  if(!_ppd)return;
+  var w=document.getElementById('ppd-nm-wrap'),inp=document.getElementById('ppd-nm-inp');
+  var brut=(w&&w.style.display!=='none'&&inp)?inp.value:_ppd.nom;
+  var nom=_sansBalise(String(brut||'').replace(/\s+/g,' ').trim()).slice(0,60);
+  if(nom.length<2){
+    showToast('✏️ '+(fr?'Écris le nom de l\'article':'Type the item name'));
+    if(w)w.style.display='block';try{inp.focus();}catch(e){}
+    return;
+  }
+  var champ=document.getElementById('ppd-px');
+  var px=Math.round((parseFloat(String((champ&&champ.value)||'').replace(',','.'))||0)*100)/100;
+  if(!(px>0)||px>=1e9){
+    showToast('💰 '+(fr?'Écris ton prix de vente':'Type your selling price'));
+    try{champ.focus();}catch(e){}
+    return;
+  }
+  var o=_ppd;
+  // Le nom a pu changer dans la fenêtre : on revérifie, et on emmène sur
+  // celui qui existe plutôt que d'en créer un deuxième.
+  var dj=_articleExistant(nom);
+  if(dj){_ppd=null;closeSheet('ov-prixpad');_direDejaLa(dj);return;}
+  _ppd=null;
+  closeSheet('ov-prixpad');
+  var art=_creerArticleRapide(nom,px,o);
+  if(!art)return;
+  if(o.vendre){
+    _rechCaisse='';
+    var src=document.getElementById('src-c');if(src)src.value='';
+  }
   renderProd(DB.articles);renderStock(DB.articles);
   try{initTabs();}catch(x){}
-  // Et on le met tout de suite dans le panier : c'est pour ça qu'il l'a créé.
-  panier[art.id+'-0']=(panier[art.id+'-0']||0)+1;
-  updatePUI(art.id);
+  if(o.vendre){
+    // Et on le met tout de suite dans le panier : c'est pour ça qu'il l'a créé.
+    panier[art.id+'-0']=(panier[art.id+'-0']||0)+1;
+    updatePUI(art.id);
+    if(navigator.vibrate)navigator.vibrate(25);
+    showToast('✅ '+nom+' · '+fmt(px)+' — '+(fr?'ajouté au panier':'added to cart'));
+    return;
+  }
+  // Depuis l'étagère, on AJOUTE, on ne vend pas : un panier rempli en
+  // installant sa boutique deviendrait une vente fantôme au premier
+  // « Encaisser ».
   if(navigator.vibrate)navigator.vibrate(25);
-  showToast('✅ '+nom+' · '+fmt(px)+' — '+(fr?'ajouté au panier':'added to cart'));
+  showToast('✅ '+nom+' · '+fmt(px)+' — '+(fr?'dans ta caisse':'in your till'));
+  try{var c=document.getElementById('pc-'+art.id);if(c)c.classList.add('etg-neuf');}catch(x){}
+  // Le premier article a son prix : on lui montre tout de suite comment le
+  // vendre — une fois, pas à chaque article.
+  if(!_etgGuideFait&&!(DB.ventes||[]).some(function(v){return v&&!v.annulee;})){
+    _etgGuideFait=true;
+    setTimeout(function(){try{demarrageVendre();}catch(x){}},900);
+  }else{
+    // ⚠️ La caisse vient d'être redessinée : la carte que montrait la bulle
+    // a été remplacée, et la bulle restait cachée sans cible. On la recale.
+    try{if(_guideReel&&_guide===1)setTimeout(function(){try{_guideDemo(1);}catch(x){}},60);}catch(x){}
+  }
+}
+// Un article qu'on peut vendre tout de suite : un nom, un prix. Stock jamais
+// compté (`rt` + stk0 0) : ni « épuisé » ni « -3 » tant qu'il ne l'a pas
+// compté, comme pour « créer en vendant ».
+function _creerArticleRapide(nom,px,o){
+  o=o||{};
+  var fr=(lang==='fr'),e=o.src||null;
+  try{
+    var art={id:_prochainIdArticle(),nm:nom,e:o.e||(e&&e.e)||emojiDepuisNomProduit(nom),
+      cat:(e&&e.cat)||categorieDepuisNomProduit(nom),
+      px:px,pa:0,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,
+      um:(e&&e.um&&e.um!=='pc')?e.um:null,umSac:(e&&e.sac)||null,umCont:(e&&e.cont)||null};
+    if(o.vendre){
+      // Sa photo, tout de suite : celle du catalogue visuel si l'article en vient.
+      if(e&&e.img600){try{art.img=_photo600(e.img600);}catch(x){}}
+      try{appliquerPhotosCatalogue([art]);}catch(x){}
+      if(!art.um||!art.umSac){try{appliquerConditionnementCatalogue([art],true);}catch(x){}}
+    }
+    // ⚠️ Depuis l'étagère, ni photo ni conditionnement du catalogue : « Riz »
+    // deviendrait « au kilo, sac de 25 », et la première touche ouvrirait
+    // la pesée au lieu de vendre. Il le dira s'il vend autrement.
+    DB.articles.push(art);
+    try{journalAjouter('creation',nom,'',o.vendre?(fr?('créé en vendant · '+fmt(px)):'created while selling')
+                                              :(fr?('créé depuis l\'étagère · '+fmt(px)):'created from the starter shelf'));}catch(x){}
+    save();
+    return art;
+  }catch(x){
+    showToast('⚠️ '+(fr?'Article non créé — réessaie':'Item not created — try again'));
+    return null;
+  }
 }
 function getQBase(v){var q=parseFloat(v&&v.qBase);return(q>0)?q:1;}
 // ⚠️ LE NUMÉRO D'UNE VARIANTE NE SE RECYCLE JAMAIS. Six endroits calculaient
@@ -10911,6 +11174,7 @@ function renderProd(lst){
   // on le referme proprement plutôt que d'en garder une référence morte.
   try{fermerVarInline();}catch(e){}
   try{renderTopVentes();}catch(e){}
+  var _tout=!!(lst&&DB&&DB.articles&&(lst===DB.articles||lst.length===DB.articles.length));
   lst=appliquerOrdrePrio(lst);
   try{majBandeauSansPrix();}catch(e){}
   var g=document.getElementById('pgrid');g.innerHTML='';
@@ -10923,6 +11187,25 @@ function renderProd(lst){
       // demandait à quelqu'un qui ne lit pas de CHOISIR COMMENT FAIRE avant
       // de le laisser FAIRE. Une seule action maintenant : voir ses articles
       // en photos. Les cinq portes restent, sous un lien discret.
+      // ⭐ 22.97 : la caisse vide n'est plus vide — voir _ETAGERE. Le guide
+      // d'avant ne revient que si l'étagère a été écartée.
+      // ⚠️ Il TAPE ce qu'il vend dans « Chercher » : c'est la meilleure
+      // réponse possible, on la prend. Avant, une boutique vide ignorait
+      // la recherche et remontrait le guide — « créer en vendant » n'était
+      // proposé qu'aux boutiques qui avaient DÉJÀ des articles.
+      if(_rechCaisse&&String(_rechCaisse).trim().length>=2){
+        var _gc=_grilleCatalogueCaisse(_rechCaisse);
+        if(_gc){g.innerHTML=_gc;return;}
+      }
+      if(_etagereMontrer(true)){
+        g.innerHTML=_etagereHtml(true);
+        if(!_ditQuoiVendre){
+          _ditQuoiVendre=true;
+          try{parler(fr?'Touche ce que tu vends. Je te demande juste le prix.'
+                       :'Tap what you sell. I only ask the price.');}catch(e){}
+        }
+        return;
+      }
       g.innerHTML='<div class="empty-guide" style="grid-column:1/-1">'+
         '<div class="eg-ico">🛍️</div>'+
         '<div style="font-size:11px;font-weight:900;color:var(--B);letter-spacing:.3px;margin-bottom:3px">'+(fr?'PAS 1 SUR 3':'STEP 1 OF 3')+'</div>'+
@@ -11047,6 +11330,7 @@ function renderProd(lst){
       (isNeg?'<div class="sneg">📦 -'+Math.abs(ts)+'</div>':'');
     g.appendChild(d);
   });
+  if(_etagereMontrer(_tout))g.insertAdjacentHTML('beforeend',_etagereHtml(false));
 }
 // Rangée "Ventes rapides" : les 5-6 articles les plus vendus, en 1 tap
 // Masquée pour de bon, mais jamais perdue : elle revient depuis Réglages.
