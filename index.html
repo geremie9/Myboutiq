@@ -1169,6 +1169,9 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .benc{background:var(--G);color:#fff;border:none;border-radius:12px;padding:9px 15px;font-size:14px;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer;white-space:nowrap}
 .benc:active{transform:scale(.95)}
 .cvoir{font-size:22px;font-weight:900;color:var(--M);margin-left:9px;line-height:1}
+.cha-m{position:relative;width:100%;aspect-ratio:1;border-radius:11px;background:var(--BG);display:flex;align-items:center;justify-content:center;font-size:30px;overflow:hidden}
+.cha-m img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.cha-m.cha-m-p{height:100%;aspect-ratio:auto;border-radius:0;font-size:22px}
 
 /* ── BOTTOM NAV ── */
 .bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--C);border-top:1px solid var(--BD);display:flex;z-index:55;box-shadow:0 -4px 20px rgba(0,0,0,.06)}
@@ -5773,7 +5776,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.98'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.99'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -11939,6 +11942,9 @@ function ouvrirCompleterArticle(p,vidFocus,pourVendre){
   }
   document.getElementById('ov-completer').classList.add('show');
   if(nomAuto)setTimeout(function(){try{nm.focus();if(nm.select)nm.select();}catch(e){}},250);
+  // (22.99) Il ne manque que le prix, et il veut vendre : le clavier s'ouvre
+  // directement dessus — un geste de moins devant le client.
+  else if(pourVendre&&aNom&&!fam)setTimeout(function(){try{var _pv=document.getElementById('cmp-pv');if(_pv&&_pv.offsetParent&&!_pv.value)_pv.focus();}catch(e){}},250);
   // Venu d'une variante : on l'amène sous ses yeux et on la désigne. Sans ça
   // il ouvre une liste de dix variantes et doit chercher la sienne.
   if(vidFocus!=null)setTimeout(function(){_cmpViserVariante(vidFocus);},300);
@@ -20803,9 +20809,18 @@ function _chaTuile(cle,nm,img,emo,cat,sous,onclick){
   var nf=_chaCompteFormats(cle);
   var pris=!!_chaSel[cle]||nf>0;
   if(nf>0)sous=nf+(lang==='fr'?(nf>1?' contenances':' contenance'):(nf>1?' sizes':' size'));
+  // ⚠️ (22.99) SANS RÉSEAU, LE CATALOGUE « EN PHOTOS » ÉTAIT UNE GRILLE DE
+  // CASES VIDES. Les photos viennent d'internet ; une photo qui ne vient pas
+  // se cachait (`display:none`) et ne laissait RIEN à sa place — juste des
+  // noms flottants, alors que le bouton promet « Choisir en photos » et que
+  // la porte dit « ça marche sans internet ». Revu en refaisant le parcours
+  // d'une boutique neuve hors ligne. L'émoji est maintenant posé DESSOUS et
+  // la photo par-dessus : elle le couvre quand elle arrive, et s'il n'y a
+  // pas de réseau — ou en attendant sur une connexion lente — on reconnaît
+  // l'article quand même.
   var media=img
-    ?('<img src="'+_photo600(img)+'" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:11px;display:block" onerror="this.style.display=\'none\'">')
-    :('<div style="width:100%;aspect-ratio:1;border-radius:11px;background:var(--BG);display:flex;align-items:center;justify-content:center;font-size:30px">'+(emo||'📦')+'</div>');
+    ?('<div class="cha-m"><span>'+escH(emo||'📦')+'</span><img src="'+_photo600(img)+'" loading="lazy" alt="" onerror="this.remove()"></div>')
+    :('<div class="cha-m"><span>'+escH(emo||'📦')+'</span></div>');
   return '<div onclick="'+onclick+'" style="position:relative;cursor:pointer;border:2px solid '+(pris?'var(--B)':'transparent')+';border-radius:13px;padding:3px;background:'+(pris?'var(--BG)':'transparent')+'">'
     +media
     +(pris?'<div style="position:absolute;top:7px;right:7px;width:24px;height:24px;border-radius:50%;background:var(--B);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900">✓</div>':'')
@@ -20953,9 +20968,8 @@ function majChaBouton(){
   if(v)v.textContent=fr?'Tout enlever':'Clear';
   l.innerHTML=cles.map(function(k){
     var s=_chaSel[k];
-    var media=s.img
-      ?('<img src="'+_photo600(s.img)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover">')
-      :('<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--BG)">'+(s.e||'📦')+'</span>');
+    var media='<div class="cha-m cha-m-p"><span>'+escH(s.e||'📦')+'</span>'
+      +(s.img?('<img src="'+_photo600(s.img)+'" loading="lazy" alt="" onerror="this.remove()">'):'')+'</div>';
     return '<div onclick="chaRetirer(\''+k+'\')" title="'+String(s.nm).replace(/"/g,'')+'" '
       +'style="position:relative;width:54px;height:54px;border-radius:12px;overflow:hidden;flex-shrink:0;cursor:pointer;border:2px solid var(--B)">'
       +media
