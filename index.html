@@ -1168,6 +1168,7 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .ctot{font-size:17px;font-weight:900;color:var(--T)}
 .benc{background:var(--G);color:#fff;border:none;border-radius:12px;padding:9px 15px;font-size:14px;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer;white-space:nowrap}
 .benc:active{transform:scale(.95)}
+.cvoir{font-size:22px;font-weight:900;color:var(--M);margin-left:9px;line-height:1}
 
 /* ── BOTTOM NAV ── */
 .bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--C);border-top:1px solid var(--BD);display:flex;z-index:55;box-shadow:0 -4px 20px rgba(0,0,0,.06)}
@@ -3148,10 +3149,18 @@ body{max-width:min(100%,1200px)}
     <div style="height:20px"></div>
   </div>
   <button class="fab-add" id="fab-add" onclick="ouvrirPorteArticles()" aria-label="Ajouter des articles" title="Ajouter des articles">+</button>
+  <!-- ⚠️ (22.98) « ENCAISSER » OUVRAIT LE PANIER, PAS LE PAIEMENT.
+       Toute la barre était un seul bouton vers « Mon panier », et il fallait
+       y toucher « PAYER » pour enfin voir le paiement : un écran de plus à
+       CHAQUE vente, devant un client qui attend. Le patron : « supprime
+       l'étape du panier ». Le vert va maintenant droit au paiement — le
+       client d'un crédit s'y choisit déjà. Le reste de la barre (le nombre
+       et le total, avec sa flèche) ouvre toujours le panier, pour corriger
+       une quantité ou un prix négocié. -->
   <div class="fcart hide" id="fcart">
     <button class="cpill" onclick="ouvrirPanier()">
-      <div style="display:flex;align-items:center"><div class="cbub" id="cc">0</div><div class="csum"><div class="csub" id="csb">articles</div><div class="ctot" id="ctot">0</div></div></div>
-      <div class="benc" id="btn-enc">💵 Encaisser</div>
+      <div style="display:flex;align-items:center"><div class="cbub" id="cc">0</div><div class="csum"><div class="csub" id="csb">articles</div><div class="ctot" id="ctot">0</div></div><span class="cvoir" aria-hidden="true">›</span></div>
+      <div class="benc" id="btn-enc" role="button" onclick="event.stopPropagation();procederPmt()">💵 Encaisser</div>
     </button>
   </div>
   <div class="bnav">
@@ -5764,7 +5773,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.97'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.98'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
