@@ -90,8 +90,14 @@ const prixPad = async (p, prix, nom) => {
   // ── 4) LA PREMIÈRE VENTE, EN VRAIS CLICS ──
   await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); window.__toasts = []; });
   await p.locator('#pc-' + riz.id).click(); await p.waitForTimeout(300);
-  await p.locator('#fcart .cpill').click(); await p.waitForTimeout(400);
-  if (await ouvert(p, 'ov-pan')) { await p.locator('#ov-pan button[onclick*="procederPmt"]').first().click(); await p.waitForTimeout(400); }
+  // 22.98 : le nombre et le total ouvrent toujours le panier (corriger une
+  // quantité, un prix négocié)…
+  await p.locator('#fcart .csum').click(); await p.waitForTimeout(400);
+  t(await ouvert(p, 'ov-pan'), 'toucher le total ouvre toujours le panier, pour corriger');
+  await p.evaluate(() => closeSheet('ov-pan')); await p.waitForTimeout(300);
+  // … mais le vert « Encaisser » va DROIT au paiement : plus d'écran panier.
+  await p.locator('#btn-enc').click(); await p.waitForTimeout(400);
+  t(await ouvert(p, 'ov-calc') && !(await ouvert(p, 'ov-pan')), '« Encaisser » ouvre directement le paiement : plus d\'étape panier');
   await p.locator('#btn-conf-vente').click(); await p.waitForTimeout(2200);
   const v = await p.evaluate(() => ({ n: DB.ventes.length, total: DB.ventes[0] && DB.ventes[0].total, bravo: !!document.querySelector('#ov-demo-bravo.show'), tit: document.getElementById('db-tit').textContent }));
   t(v.n === 1 && v.total === 600, `vendue : une vente de ${v.total} F`);
