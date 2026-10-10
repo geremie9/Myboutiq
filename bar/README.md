@@ -194,6 +194,31 @@ chaîne libre, affichée telle qu'il l'a écrite.
    table reste un outil de service, pas un tableau de bord, et un
    serveur qui monte une tournée n'a pas à lire l'état du dépôt.
 
+## Le contexte d'un pays n'est pas celui du Cameroun
+
+MyBar est né pour un bar de Douala, et le gardait en dur pour 24 pays. Un diagnostic
+contextuel (code + sources) a rendu quatre écarts, tous corrigés dans `contexte.test.js`.
+**Les données ont été vérifiées à la source** quand une source existait ; le niveau de
+confiance est dit ici, parce qu'il n'est pas le même partout.
+
+| | Avant | Maintenant | Confiance |
+|---|---|---|---|
+| **Billets proposés** | 2 jeux pour 24 monnaies (500… 10 000, ou 1/2/5/10/20) : faux pour 9 pays | Les coupures de chaque monnaie (`PAYS.bil`) | **Bonne** : banques centrales (BEAC, BCEAO, SARB, Bank of Ghana, CBK…) ; Haïti plus incertain (les sources divergent) |
+| **Carte de départ** | Marques camerounaises (33 Export, Kadji…) partout | Marques du pays quand une source les confirme (CI, CD, GA, CG, BF, MG, NG, GH, KE, ZA) ; sinon noms **génériques** | **Moyenne** : l'existence des marques est confirmée, les formats rarement. Les prix restent indicatifs (une seule échelle `k`), et l'inscription le dit |
+| **Paiement mobile** | Un seul sac « Mobile Money » | Opérateur choisi à l'encaissement (le dernier déjà sélectionné), détail au rapport et à la clôture (« à vérifier sur ce portefeuille »), liste réglable | **Bonne** CM, CI, SN, CD, GA, CG, MG, GH, KE, HT ; **liste vide** (volontairement) là où les sources se contredisent : TG, CF, GN, MA, DZ, TN, FR |
+| **Mot du mode** | « Mobile Money » partout | Nigeria : « Virement / POS » (OPay, PalmPay, Moniepoint) ; Afrique du Sud : « Appli / QR » (SnapScan, Zapper) | **Bonne** |
+| **Bascule du jour** | 6 h codé en dur | Réglable de 0 à 11 h (6 par défaut, ventes déjà enregistrées inchangées) | — |
+
+**Un défaut trouvé par le banc, pas par la recherche** : en euros, le plancher d'arrondi
+(0,5) rendait l'achat et la vente d'un produit égaux — marge nulle sur sept produits.
+Le pas d'arrondi suit désormais la taille de la monnaie (`pasMin`), et la création refuse
+une vente au prix d'achat.
+
+**Ce que ça ne fait pas** : les bars déjà ouverts hors du Cameroun gardent la carte
+qu'ils ont créée (c'est leur base, on n'y touche pas) ; la cuisine reste
+camerounaise (brochettes, soya… — pas de suya, de nyama choma ni de braai) ; le Maghreb
+et la France n'ont qu'une carte générique ; aucune TVA n'est calculée.
+
 ## La mémoire d'un bar est finie
 
 `localStorage` a un quota **par adresse**, pas par téléphone : libérer de la
