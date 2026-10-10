@@ -78,13 +78,20 @@ await ctx.close();
   piege.clients.push({ id: "3);window.__pwn=('client-id", nm: '"><img src=x onerror="window.__pwn=\'client\'">', tel: '6', credit: 0, points: 0, hist: [],
     bg: 'red;" onmouseover="window.__pwn=\'couleur\'', tc: '#000' });
   piege.equipe.push({ id: 7, nm: '<b onmouseover=window.__pwn=1>Kofi</b>', role: 'vendeur', actif: true, perms: { vente: true } });
+  // Les sous-objets aussi : le moyen de paiement d'une vente, le mot « carton » d'une ligne.
+  piege.ventes.push({ id: 'd_1_x_1791000000000_ab', total: 600, ben: 100, benefice: 100, date: new Date().toLocaleDateString('fr-FR'), h: '10:00',
+    vendeur: 'Kofi', annulee: false, cloturee: false, paiement: { mode: '<img src=x onerror="window.__pwn=\'mode\'">' },
+    lignes: [{ pid: 2, qty: 1, qte: 1, px: 600, pa: 500, nm: 'Riz', gros: { nb: 1, mot: '<img src=x onerror="window.__pwn=\'gros\'">' } }] });
   const r = await A.p.evaluate(d => {
     window.__pwn = null;
     DB = migrateDBData(mergeDB(d, DB)); recalcTotaux();
     renderProd(DB.articles); renderStock(DB.articles); renderClients(); renderRpt();
     try { navTo('stock', document.querySelector('[data-tab="stock"]')); } catch (e) {}
     const a = DB.articles.find(x => x.id === 90), c = DB.clients.find(x => /img/.test(x.nm)), e = DB.equipe.find(x => /Kofi/.test(x.nm));
-    return { a: a && [a.nm, a.e, a.img], c: c && [c.id, c.nm, c.bg], e: e && e.nm };
+    const v = DB.ventes.find(x => x.id === 'd_1_x_1791000000000_ab');
+    return { a: a && [a.nm, a.e, a.img], c: c && [c.id, c.nm, c.bg], e: e && e.nm,
+      sous: v && [v.paiement.mode, v.lignes[0].gros.mot], etiquette: pmntLabel({ mode: '<b>x</b>' }),
+      src: [srcSure('//espion.example/p.png'), srcSure('https://bbncilovxzkcvlxvoqtg.supabase.co/storage/v1/object/public/APP/a.jpg') !== ''] };
   }, piege);
   await A.p.waitForTimeout(600);
   t(!(await pwn(A.p)), `les pièges du vendeur ne s'exécutent pas chez le patron (${await pwn(A.p) || 'rien'})`);
@@ -92,6 +99,9 @@ await ctx.close();
   t(r.a && !/[<>"]/.test(r.a[1] + r.a[2]), 'l\'emoji et la photo aussi');
   t(r.c && r.c[0] === '3window.__pwnclient-id' && !/[<>"]/.test(r.c[1] + r.c[2]), `l'identifiant du client ne peut plus appeler de fonction (${r.c && r.c[0]})`);
   t(r.e && !/[<>]/.test(r.e), 'le nom dans l\'équipe aussi');
+  t(r.sous && !/[<>"]/.test(r.sous.join('')), `les sous-objets aussi : moyen de paiement, mot du carton (${r.sous && r.sous[0]})`);
+  t(r.etiquette === '&lt;b&gt;x&lt;/b&gt;', `un moyen de paiement inconnu s'affiche en texte (${r.etiquette})`);
+  t(r.src[0] === '' && r.src[1], 'une image « //autre-site » n\'est pas chargée ; notre stockage, si');
   // L'emoji va dans le petit code qui remplace une photo cassée : une
   // apostrophe suffisait à en sortir. Même s'il en restait une, il ne sort plus.
   const emo = await A.p.evaluate(() => {

@@ -5724,7 +5724,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.94'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='22.95'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6871,6 +6871,7 @@ function escH(s){return String(s==null?'':s).replace(/[&<>"'`]/g,function(c){ret
 function jsStr(s){return escH(JSON.stringify(String(s==null?'':s)));}
 function srcSure(u){
   u=String(u==null?'':u);
+  if(/^\/\//.test(u))return '';   // « //autre-site/x.png » : une image chargée chez un tiers
   if(/^https:\/\/bbncilovxzkcvlxvoqtg\.supabase\.co\/storage\//.test(u)||/^data:image\/[a-z0-9.+-]+;base64,/i.test(u)||/^(\.?\/)?[A-Za-z0-9_\/.%-]+$/.test(u))return escH(u);
   return '';
 }
@@ -6880,10 +6881,20 @@ function srcSure(u){
 // fabriquent une balise ou sortent d'un attribut deviennent leurs sosies
 // typographiques ‹ › ″ : le nom reste lisible, il ne peut plus rien lancer.
 var _RE_BALISE=/[<>"]/;
-function _neutraliserObjet(o){
-  if(!o||typeof o!=='object')return;
+function _sansBalise(v){return v.replace(/</g,'‹').replace(/>/g,'›').replace(/"/g,'″');}
+// En profondeur : le moyen de paiement d'une vente (pmntLabel) ou le mot
+// « carton » d'une ligne vivent dans des sous-objets, affichés eux aussi.
+function _neutraliserObjet(o,prof){
+  if(!o||typeof o!=='object'||(prof|0)>5)return;
+  var p1=(prof|0)+1;
+  if(Array.isArray(o)){
+    for(var i=0;i<o.length;i++){var a=o[i];
+      if(typeof a==='string'){if(_RE_BALISE.test(a))o[i]=_sansBalise(a);}else if(a&&typeof a==='object')_neutraliserObjet(a,p1);}
+    return;
+  }
   for(var k in o){if(Object.prototype.hasOwnProperty.call(o,k)){var v=o[k];
-    if(typeof v==='string'&&_RE_BALISE.test(v))o[k]=v.replace(/</g,'‹').replace(/>/g,'›').replace(/"/g,'″');}}
+    if(typeof v==='string'){if(_RE_BALISE.test(v))o[k]=_sansBalise(v);}
+    else if(v&&typeof v==='object')_neutraliserObjet(v,p1);}}
 }
 // Les identifiants vont SANS guillemets dans les onclick (« ouvrirDetCli(12) ») :
 // un identifiant fabriqué « 1);fetch(…) » s'exécutait sans un seul chevron.
@@ -6907,9 +6918,8 @@ function _neutraliserTextes(d){
       _neutraliserObjet(x);_neutraliserIds(x);
       if(x&&typeof x.e==='string'&&/['\\`]/.test(x.e))x.e=x.e.replace(/['\\`]/g,'');
       if(cle==='boutiques'&&x&&typeof x.code==='string'&&/[^A-Za-z0-9 _-]/.test(x.code))x.code=x.code.replace(/[^A-Za-z0-9 _-]/g,'');
-      if(x&&Array.isArray(x.vr))x.vr.forEach(function(v){_neutraliserObjet(v);_neutraliserIds(v);if(v&&typeof v.e==='string')v.e=v.e.replace(/['\\`]/g,'');});
-      if(x&&Array.isArray(x.lignes))x.lignes.forEach(function(l){_neutraliserObjet(l);_neutraliserIds(l);});
-      if(x&&Array.isArray(x.hist))x.hist.forEach(_neutraliserObjet);
+      if(x&&Array.isArray(x.vr))x.vr.forEach(function(v){_neutraliserIds(v);if(v&&typeof v.e==='string')v.e=v.e.replace(/['\\`]/g,'');});
+      if(x&&Array.isArray(x.lignes))x.lignes.forEach(_neutraliserIds);
     });
   });
 }
@@ -16581,9 +16591,9 @@ function confirmerAnnulVente(){
 function pmntLabel(p){
   if(!p)return '';
   var noms={especes:'💵 Espèces',orange:'🟠 Orange Money',mtn:'🟡 MTN MoMo',moov:'🔵 Moov Money'};
-  if(p.mode==='mixte')return '💵 '+fmt(p.especes)+' + '+(noms[p.moyenMobile]||p.moyenMobile)+' '+fmt(p.mobile);
+  if(p.mode==='mixte')return '💵 '+fmt(p.especes)+' + '+(noms[p.moyenMobile]||escH(p.moyenMobile))+' '+fmt(p.mobile);
   if(p.mode==='credit')return '🧾 '+(lang==='fr'?'Crédit':'Credit')+((p.avance||0)>0?(' · '+(lang==='fr'?'avance ':'paid ')+fmt(p.avance)):'')+' · '+(lang==='fr'?'doit ':'owes ')+fmt(p.du||0);
-  return noms[p.mode]||p.mode;
+  return noms[p.mode]||escH(p.mode);
 }
 // ═══ Écran de succès : le reçu ne bloque plus la vente suivante ═══
 // Avant : le reçu s'ouvrait TOUT SEUL après chaque vente, il fallait le fermer
