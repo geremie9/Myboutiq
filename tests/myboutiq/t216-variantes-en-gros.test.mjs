@@ -41,8 +41,10 @@ const toucher = (p, nm, sel) => p.evaluate(([nm, sel]) => {
   if (!cible) return false; cible.click(); return true;
 }, [nm, sel]);
 const ligne = (p, k) => p.evaluate(k => {
-  const g = _grosPanier[k];
-  return { q: panier[k] || 0, lots: ((g && g.lots) || []).length, total: calcAPayer() };
+  const g = _grosPanier[k], b = document.getElementById('ctot');
+  // `barre` : le total AFFICHÉ dans la barre du panier, tel qu'il le lit.
+  return { q: panier[k] || 0, lots: ((g && g.lots) || []).length, total: calcAPayer(),
+    barre: (b && !document.getElementById('fcart').classList.contains('hide')) ? Number(b.textContent.replace(/\D/g, '')) : 0 };
 }, k);
 
 // ── 1) DEHORS : LA FAMILLE DIT SON CARTON ─────────────────────────────
@@ -63,6 +65,7 @@ const ligne = (p, k) => p.evaluate(k => {
   await toucher(p, '1 L'); await p.waitForTimeout(250);
   let c = await ligne(p, '30-1');
   t(c.q === 12 && c.lots === 1 && c.total === 10000, `toucher « 1 L » met un carton au panier : ${c.q} bouteilles, ${c.total} F`);
+  t(c.barre === 10000, `et la barre du panier affiche le même total (${c.barre} F, pas 12 × 900)`);
   const dit = await p.evaluate(() => (window.__toasts || []).join(' | '));
   t(/1 carton \(12\) · FCFA 10\s000/.test(dit) && !/× FCFA 900/.test(dit), `et l'app le dit à son prix de carton, plus « 12 × 900 » (« ${dit} »)`);
   await toucher(p, '1 L', '.g-unite'); await p.waitForTimeout(250);
@@ -114,6 +117,10 @@ const ligne = (p, k) => p.evaluate(k => {
   await toucher(p, '1 L'); await p.waitForTimeout(250);
   const c = await ligne(p, '30-1');
   t(c.q === 1 && c.total === 900, `la touche vend une bouteille, comme toujours au détail (${c.q}, ${c.total} F)`);
+  // Au détail, le carton se vend par sa puce : même fonction, même barre.
+  await toucher(p, '1 L', '.vt-gros'); await p.waitForTimeout(250);
+  const c2 = await ligne(p, '30-1');
+  t(c2.q === 13 && c2.total === 10900 && c2.barre === 10900, `sa puce ajoute le carton, et la barre dit ${c2.barre} F (calculé : ${c2.total})`);
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }

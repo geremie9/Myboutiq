@@ -15178,14 +15178,19 @@ function _ajouterLotVariante(p,v,n,mot,force){
   var ajout=force?n:((p.rt||v.rt)?n:Math.min(n,dispo));
   if(!(ajout>0)){showToast(t('stockInsuf'));return;}
   varQtys[v.id]=Math.round((cur+ajout)*100)/100;
-  renderVarLst(p);
-  _varVersPanier(p);
-  // Le marqueur d'affichage : le reçu et la voix diront « 1 carton (24) »
-  // au lieu de « ×24 ». Il ne touche ni la quantité ni le total.
+  // Le marqueur : le reçu et la voix diront « 1 carton (24) » au lieu de
+  // « ×24 », et c'est LUI qui porte le prix du carton.
+  // ⚠️ 23.03 — IL SE POSE AVANT QUE LA BARRE DU PANIER SE REDESSINE. Posé
+  // après (`_varVersPanier` → `updatePUI`), la barre recalculait le total
+  // SANS lui : « 12 articles · 10 800 » (12 × 900) pour un carton de
+  // 10 000 — mesuré au banc. L'encaissement, lui, recalcule et facturait
+  // juste ; c'est le chiffre sous ses yeux qui mentait.
   var key=p.id+'-'+v.id;
   // Même règle du côté des variantes : voir _ajouterLot.
   var _gv=_prixDuLot(p,v,n);
   if(ajout===n)_grosPanier[key]=_empilerLot(_grosPanier[key],n,mot,_gv,Number(v.px)||0,_umDe(p));
+  renderVarLst(p);
+  _varVersPanier(p);
   if(navigator.vibrate)navigator.vibrate(30);
   var m=_mentionGros(key,varQtys[v.id]);
   showToast(_emojiCont(mot)+' '+(v.nm||p.nm)+' — '+(m?m.txt:(fmtQ(ajout)+' '+_uniteMot(p)))
