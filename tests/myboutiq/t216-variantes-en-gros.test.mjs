@@ -136,12 +136,13 @@ const ligne = (p, k) => p.evaluate(k => {
   const g = await p.evaluate(() => ({ ouvert: !!document.querySelector('#ov-grille.show'),
     filtre: (document.getElementById('gr-f-gros') || {}).className || '',
     lignes: Array.from(document.querySelectorAll('#gr-lst .grrow .grn1')).map(x => x.textContent),
-    champ: !!document.querySelector('#gr-lst .grgros input[data-gr="v30_3"][data-ch="pxGros"]'),
-    titre: ((document.querySelector('#gr-lst .grgros-t') || {}).textContent || '') }));
+    // 23.04 — en gros, le prix du carton est DANS la ligne (t217), plus dessous.
+    champ: !!document.querySelector('#gr-lst input[data-gr="v30_3"][data-ch="pxGros"]'),
+    titre: ((document.querySelector('#gr-lst .grrow .grc') || {}).textContent || '') }));
   t(g.ouvert && /\bon\b/.test(g.filtre), 'il ouvre « Tout configurer » sur la liste des CARTONS');
   t(g.lignes.join(' | ') === 'Huile | 5 L', `la famille est dépliée sur la seule sorte qui manque (${g.lignes.join(' | ')})`);
   t(g.champ && /carton de 4/.test(g.titre), `un champ pour le prix du carton, enfin (« ${g.titre} »)`);
-  await remplir(p, '#gr-lst .grgros input[data-ch="pxGros"]', '15000');
+  await remplir(p, '#gr-lst input[data-gr="v30_3"][data-ch="pxGros"]', '15000');
   await p.waitForTimeout(400);
   const apres = await p.evaluate(() => ({ px: DB.articles.find(x => x.id === 30).vr.find(v => v.id === 3).pxGros,
     garde: JSON.parse(localStorage.getItem('myboutiq_v6')).articles.find(x => x.id === 30).vr.find(v => v.id === 3).pxGros,

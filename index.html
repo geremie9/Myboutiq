@@ -2270,6 +2270,45 @@ body{max-width:min(100%,1200px)}
 .grgros{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin:-2px 0 8px 30px;padding:7px 10px;border-radius:10px;background:#E0F2F1}
 .grgros-t{flex-basis:100%;font-size:11.5px;font-weight:800;color:#00695C}
 .grgros .grlab{color:#00695C}
+/* 23.04 — le contenant connu, l'achat se tape au contenant ; en gros, la ligne entière */
+.grrow-g{border-bottom:none;padding-bottom:4px}
+.grn2.grc{color:#00695C;font-weight:800}
+.grcap{display:block;font-size:9px;font-weight:800;color:#00695C;text-align:center;margin-top:1px;text-transform:none;letter-spacing:0;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grcap.grcp{color:var(--M)}
+.grin.grderiv{color:var(--M);font-weight:600;font-style:italic}
+.grderive{font-size:11px;font-weight:800;color:var(--M);line-height:1.4}
+.grgros-p{background:var(--BG);margin-bottom:10px}
+.grgros-p .grgros-t{flex-basis:auto;align-self:flex-end;padding-bottom:12px;min-width:50px;color:var(--M)}
+.grgros-p .grlab{color:var(--M)}
+.grgros-p .grderive{flex-basis:100%}
+.grgros-d{align-items:center;margin-bottom:10px}
+.grgros-d .grderive{flex:1 1 130px;color:#00695C}
+/* 23.04 — le pavé « grosse commande » : cartons ou pièces, les chiffres en grand */
+.pv-art{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.pv-art .pv-vig{flex-shrink:0;display:flex}
+.pv-nm{font-size:15px;font-weight:800;color:var(--T);line-height:1.25}
+.pv-info{font-size:12px;font-weight:700;color:var(--M);margin-top:2px}
+.pv-seg{display:flex;gap:6px;background:var(--BG);border-radius:13px;padding:4px;margin-bottom:10px}
+.pv-seg button{flex:1;border:none;border-radius:10px;padding:10px 6px;background:transparent;font-family:'Outfit',sans-serif;
+  font-size:14px;font-weight:800;color:var(--M);cursor:pointer}
+.pv-seg button.on{background:var(--C);color:#00695C;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.pv-ecran{display:flex;align-items:baseline;justify-content:center;gap:8px;flex-wrap:wrap;padding:6px 0 2px;min-height:58px}
+.pv-ecran b{font-size:44px;font-weight:900;color:var(--T);letter-spacing:-.02em;line-height:1}
+.pv-ecran span{font-size:17px;font-weight:800;color:var(--M)}
+.pv-tot{text-align:center;font-size:15px;font-weight:800;color:var(--G);min-height:20px;margin-bottom:6px}
+.pv-stk{text-align:center;font-size:12px;font-weight:700;color:var(--M);min-height:17px;margin-bottom:10px;line-height:1.4}
+.pv-stk.pv-manque{color:#B45309}.pv-stk.pv-non{color:var(--R)}
+.pv-vite{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:7px}
+.pv-vite button{min-height:40px;border:1.5px solid #B2DFDB;border-radius:12px;background:#E0F2F1;color:#00695C;
+  font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;cursor:pointer}
+.pv-touches{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
+.pv-touches button{min-height:50px;border:1.5px solid var(--BD);border-radius:13px;background:var(--C);color:var(--T);
+  font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;cursor:pointer;transition:transform .08s}
+.pv-touches button:active,.pv-vite button:active{transform:scale(.94)}
+.pv-touches button:disabled{opacity:.25}
+.bpay.pv-ok:disabled{background:var(--BG);color:var(--M);cursor:default}
+.bpay.pv-orange{background:#E65100}
+@media(max-height:700px){.pv-touches button{min-height:44px}.pv-ecran b{font-size:38px}}
 /* « Ton stock » : on compte comme il range — en cartons */
 .exps-row{display:flex;align-items:center;gap:10px;margin-top:10px}
 .exps-b{width:48px;height:48px;border-radius:13px;border:none;font-size:24px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;flex-shrink:0}
@@ -2625,7 +2664,7 @@ body{max-width:min(100%,1200px)}
      Même menu, mêmes gestes, ouvert par le même appui long. -->
 <div class="ctxm" id="ctxmv">
   <div style="padding:6px 12px 8px;font-size:11px;font-weight:800;color:var(--M);border-bottom:1px solid var(--BD);margin-bottom:5px" id="cxv-tit">Variante</div>
-  <div class="ctxi" onclick="ctxvQte()">🔢 <span id="cxv0">Saisir une quantité</span></div>
+  <div class="ctxi" id="ctxv-qte" onclick="ctxvQte()">🔢 <span id="cxv0">Saisir une quantité</span></div>
   <!-- Le même formulaire que pour un article : tout s'y modifie d'un coup.
        Les lignes qui suivent restent des raccourcis d'un seul geste. -->
   <div class="ctxi" onclick="ctxvTout()" style="font-weight:800">✎ <span id="cxvt">Tout modifier</span></div>
@@ -2646,6 +2685,7 @@ body{max-width:min(100%,1200px)}
        mieux au moment de l'achat, dans la fiche de stock.
        Une seule entrée : « Prix ». Le calculateur reste à UNE tape de là,
        dans la fiche, sous un nom qui dit à quoi il sert. -->
+  <div class="ctxi" id="ctxi-qte" onclick="ctxQte()">🔢 <span id="cxq">Saisir une quantité</span></div>
   <div class="ctxi" onclick="ctxNom()">🔤 <span id="cx9">Renommer</span></div>
   <div class="ctxi" id="ctxi-cont2" onclick="ctxContenance()">🥤 <span id="cx10">Ajouter une contenance</span></div>
   <div class="ctxi" onclick="ctxPV()">💰 <span id="cx1">Prix</span></div>
@@ -3961,6 +4001,28 @@ body{max-width:min(100%,1200px)}
       <div class="pig" style="margin-top:12px"><label class="pl" id="qte-lbl">Autre quantité</label><input class="pi" type="number" step="0.25" min="0" id="qte-inp" inputmode="decimal" placeholder="ex : 1,5" oninput="apercuQte()"></div>
       <div id="qte-apercu" style="font-size:13px;font-weight:800;color:var(--G);margin:2px 0 12px;min-height:17px"></div>
       <button class="bnxt" onclick="validerQte()">🛒 <span id="qte-add">Ajouter au panier</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- 23.04 — LE PAVÉ « GROSSE COMMANDE » : 10 cartons d'un coup, au lieu de dix touches -->
+<div class="ov" id="ov-pave" onclick="closeOv(event,'ov-pave')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="pv-tit">🔢 Combien ?</div><button class="bcl" onclick="closeSheet('ov-pave')">✕</button></div>
+    <div style="padding:4px 19px 20px">
+      <div class="pv-art"><span class="pv-vig" id="pv-vig"></span><div style="min-width:0"><div class="pv-nm" id="pv-nm"></div><div class="pv-info" id="pv-info"></div></div></div>
+      <div class="pv-seg" id="pv-seg"><button id="pv-s-c" onclick="paveUnite('c')"></button><button id="pv-s-p" onclick="paveUnite('p')"></button></div>
+      <div class="pv-ecran"><b id="pv-n">0</b><span id="pv-mot"></span></div>
+      <div class="pv-tot" id="pv-tot"></div>
+      <div class="pv-stk" id="pv-stk"></div>
+      <div class="pv-vite" id="pv-vite"></div>
+      <div class="pv-touches">
+        <button onclick="paveTouche('1')">1</button><button onclick="paveTouche('2')">2</button><button onclick="paveTouche('3')">3</button>
+        <button onclick="paveTouche('4')">4</button><button onclick="paveTouche('5')">5</button><button onclick="paveTouche('6')">6</button>
+        <button onclick="paveTouche('7')">7</button><button onclick="paveTouche('8')">8</button><button onclick="paveTouche('9')">9</button>
+        <button id="pv-virg" onclick="paveTouche(',')">,</button><button onclick="paveTouche('0')">0</button><button onclick="paveTouche('x')" aria-label="Effacer">⌫</button>
+      </div>
+      <button class="bpay pv-ok" id="pv-ok" onclick="paveValider()"></button>
     </div>
   </div>
 </div>
@@ -5934,7 +5996,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.03'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.04'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -11716,9 +11778,10 @@ function renderProd(lst){
       if(hasV){ouvrirVarInline(p,d);return;} // famille -> les variantes sortent SOUS la carte
       // En gros, la tuile vend le contenant : un carton sans prix le
       // demande une fois, à la première vente (c'est `vendreGros`).
-      if(_gt){vendreGros(null,p.id);return;}
+      if(_gt){_astucePave('a'+p.id);vendreGros(null,p.id);return;}
       if(estMesure(p)){ouvrirQteMesure(p);return;}
       if(isOut&&p.rt&&livePq===0&&!_stockJamaisCompte(p)){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
+      _astucePave('a'+p.id);
       addPanier(p,null);
     };
     // Modifications bloquées pendant la vente : l'appui long ouvrait le menu au
@@ -11729,6 +11792,23 @@ function renderProd(lst){
       d.addEventListener('touchstart',function(e){lt=setTimeout(function(){ignoreNextTap=true;showCtx({clientX:e.touches[0].clientX,clientY:e.touches[0].clientY},p);},900);});
       d.addEventListener('touchend',function(){if(lt){clearTimeout(lt);lt=null;}});
       d.addEventListener('touchmove',function(){if(lt){clearTimeout(lt);lt=null;}}); // on fait défiler : ce n'est pas un appui long
+    }else if(!hasV){
+      // ⭐ 23.04 — CAISSE VERROUILLÉE, OU VENDEUR : L'APPUI LONG OUVRE LE PAVÉ.
+      // C'est une vente, pas une modification : rien ne s'écrit sur
+      // l'article, rien ne part au panier tant qu'il n'a pas validé.
+      // ⚠️ Le doigt qui se lève tombe SUR la feuille qui vient de s'ouvrir
+      // (une touche du pavé, ou le fond qui la ferme) : le « touchend » d'un
+      // appui long n'a donc pas le droit de devenir un clic.
+      // Un seul pavé par geste : Android envoie aussi son « contextmenu »
+      // (vers 500 ms) avant notre minuterie. `t0` = le doigt posé ; un clic
+      // droit (sans doigt) ouvre toujours.
+      var lt2=null,t0=0,ouvert=0;
+      var _pave=function(){if(t0&&ouvert>=t0)return;ouvert=Date.now();ouvrirPave(p,null);};
+      d.oncontextmenu=function(e){e.preventDefault();_pave();return false;};
+      d.addEventListener('touchstart',function(){t0=Date.now();lt2=setTimeout(function(){lt2=null;_pave();},600);},{passive:true});
+      d.addEventListener('touchend',function(e){if(lt2){clearTimeout(lt2);lt2=null;}if(t0&&ouvert>=t0){try{e.preventDefault();}catch(x){}}t0=0;});
+      d.addEventListener('touchmove',function(){if(lt2){clearTimeout(lt2);lt2=null;}},{passive:true});
+      d.addEventListener('touchcancel',function(){if(lt2){clearTimeout(lt2);lt2=null;}t0=0;},{passive:true});
     }
     var prixTxt=prixCarte(p);
     d.innerHTML=
@@ -11942,9 +12022,12 @@ function cmpPlus(){
 // ══════════════════════════════════════════════════════════════════
 var _grFiltre='manque',_grOuverts={},_grUnite={};
 function _grIncomplet(p,v){
-  if(v)return !(Number(v.px)>0);
-  if(p.vr&&p.vr.length)return (p.vr||[]).some(function(x){return !(Number(x.px)>0);});
-  return !(Number(p.px)>0);
+  // 23.04 — en gros, le carton qui a son prix se vend : il ne manque rien
+  // (la même règle qu'à la caisse depuis la 23.02).
+  var pret=function(x,vv){return Number(x.px)>0||(_venteEnGros()&&_aPrixGros(p,vv));};
+  if(v)return !pret(v,v);
+  if(p.vr&&p.vr.length)return (p.vr||[]).some(function(x){return !pret(x,x);});
+  return !pret(p,null);
 }
 // La liste à plat : les familles restent repliées tant qu'il ne les ouvre pas,
 // « pour économiser l'écran touffu » — sa demande sur les boissons.
@@ -11983,8 +12066,8 @@ function _grEtat(){
   var tot=0,ok=0;
   (DB.articles||[]).forEach(function(p){
     if(!p)return;
-    if(p.vr&&p.vr.length){(p.vr||[]).forEach(function(v){tot++;if(Number(v.px)>0)ok++;});}
-    else{tot++;if(Number(p.px)>0)ok++;}
+    if(p.vr&&p.vr.length){(p.vr||[]).forEach(function(v){tot++;if(!_grIncomplet(p,v))ok++;});}
+    else{tot++;if(!_grIncomplet(p,null))ok++;}
   });
   return {tot:tot,ok:ok,manque:tot-ok};
 }
@@ -12027,8 +12110,82 @@ function _grEtageDe(p,v){
   try{var e=_etagesGros(p,v||null);return (e&&e.length)?e[0]:null;}catch(x){return null;}
 }
 function grBasculerUnite(cle){_grUnite[cle]=!_grUnite[cle];renderGrille();}
-function _grCase(cle,champ,val,ph,largeur){
-  return '<input class="grin" inputmode="decimal" data-gr="'+cle+'" data-ch="'+champ+'" '
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.04 — « ICI, L'ENREGISTREMENT DES ACHATS EN GROS EST COMPLEXE »
+//
+//  Sa capture de « Tout configurer » : ACHAT, VENTE, STOCK — tout à la
+//  PIÈCE, sur des articles dont le carton était connu (« pièce ⇄ » sur
+//  chaque ligne). Un carton de savon payé 12 000 devait s'écrire 500 : il
+//  divisait de tête. Un stock de 600,5 pièces voulait dire 25 cartons et
+//  demi. La 23.03 avait ajouté le prix du carton SOUS la ligne ; la ligne,
+//  elle, parlait toujours en pièces.
+//
+//  Or tout le monde achète au carton, le boutiquier du détail comme le
+//  grossiste. Dès que le contenant est connu, l'ACHAT se tape donc au
+//  contenant — ce qui est écrit sur la facture — et l'app fait la
+//  division devant lui (« 12 000 ÷ 24 »), jamais en silence.
+//  Chez un grossiste, la ligne entière se lit en cartons : ce qu'il le
+//  PAIE, ce qu'il le VEND, combien il en A (« 3 cartons + 5 en vrac »,
+//  plus jamais « 3,21 »). La pièce passe dessous.
+// ══════════════════════════════════════════════════════════════════
+// Ce qu'il paie le contenant. Pas encore écrit, mais un coût à la pièce
+// connu : on MONTRE ce coût × la taille (« 60 × 50 »), en gris, sans
+// l'écrire tant qu'il ne l'a pas touché. ⚠️ Jamais écrit tout seul : la
+// feuille du prix de gros l'a appris à ses dépens (« acheter en gros coûte
+// MOINS cher ») — c'est un repère pour qu'il ne croie pas son prix perdu.
+function _grAchatCarton(cible,gx,fr){
+  var pa=Number(cible.pa)||0,deduit=!(gx.pa>0)&&pa>0;
+  return {val:(gx.pa>0)?gx.pa:(deduit?Math.round(pa*gx.n):0), deduit:deduit,
+          cap:deduit?(fmtQ(pa)+' × '+fmtQ(gx.n)):(fr?('le '+gx.mot):('per '+gx.mot))};
+}
+function _grLaPiece(u,fr){return (u==='kg')?(fr?'le kilo':'per kg'):((u==='L')?(fr?'le litre':'per litre'):(fr?'la pièce':'each'));}
+// Le coût de la pièce, et la division d'où il vient — dans ce sens-là, la
+// division est juste : la pièce vendue sort d'un carton payé.
+function _grAchatPiece(cible,gx,u,fr){
+  var pa=Number(cible.pa)||0,div=(gx.pa>0)?Math.round(gx.pa/gx.n):0;
+  var nb=function(x){return (Math.round(x)||0).toLocaleString('fr-FR');};
+  var d=' ('+nb(gx.pa)+' ÷ '+fmtQ(gx.n)+')',laP=' '+_grLaPiece(u,fr);
+  if(pa>0)return (fr?'achat ':'cost ')+nb(pa)+laP+((div>0&&div===Math.round(pa))?d:'');
+  if(div>0)return (fr?'achat ':'cost ')+nb(div)+laP+d;
+  return fr?('achat : tape ce que tu paies le '+gx.mot):('cost: type what you pay per '+gx.mot);
+}
+// « 3 cartons et 5 pièces », jamais « 3,21 cartons ». Un stock négatif
+// (vendu avant d'avoir été saisi) ne laisse pas de reste caché : ce qu'il
+// tape est ce qu'il a compté.
+function _grCartonsVrac(stk,n){
+  stk=Number(stk)||0;
+  if(!(n>1)||!(stk>0))return {c:0,vrac:0};
+  var c=Math.floor((stk+1e-9)/n);
+  return {c:c,vrac:Math.round((stk-c*n)*100)/100};
+}
+function _grLigneGros(l,p,v,cible,nom,gx,stk,media,fr){
+  var pa=Number(cible.pa)||0,px=Number(cible.px)||0,n=gx.n;
+  var ac=_grAchatCarton(cible,gx,fr);
+  var perteG=(ac.val>0&&gx.px>0&&ac.val>=gx.px)||(pa>0&&px>0&&pa>=px);
+  var u=_umDe(p),laP=_grLaPiece(u,fr);
+  var motU=(u==='kg')?'kg':((u==='L')?'L':(fr?'pièces':'units'));
+  var cv=_grCartonsVrac(stk,n);
+  return '<div class="grrow grrow-g'+(l.sous?' grsous':'')+(perteG?' grperte':'')+'">'
+    +media
+    +'<div class="grnm"><div class="grn1">'+nom+'</div>'
+    +'<div class="grn2 grc">📦 '+escH(gx.mot+(fr?' de ':' of ')+_avecUnite(p,n))+'</div>'
+    +(perteG?('<div class="grn2" style="color:var(--R);font-weight:800">⚠️ '+(fr?'vendu moins cher qu\'acheté':'sold below cost')+'</div>')
+           :(cible._sugg?('<div class="grn2" style="color:var(--B);font-weight:800">💡 '+(fr?'prix indicatif — vérifie':'suggested — check')+'</div>'):''))
+    +'</div>'
+    +'<div class="grcases">'
+    +'<label class="grlab">'+(fr?'achat':'cost')+_grCase(l.cle,'paGros',ac.val,'—',58,ac.deduit?'grderiv':'')+'<span class="grcap">'+escH(ac.cap)+'</span></label>'
+    +'<label class="grlab">'+(fr?'vente':'price')+_grCase(l.cle,'pxGros',gx.px,'—',58)+'<span class="grcap">'+escH(fr?('le '+gx.mot):('per '+gx.mot))+'</span></label>'
+    +'<label class="grlab">'+(fr?'stock':'stock')+_grCase(l.cle,'stkC',cv.c,'0',52)+'<span class="grcap">'+escH(_expMots(gx.mot,2))+'</span></label>'
+    +'</div></div>'
+    +'<div class="grgros grgros-p"><span class="grgros-t">'+escH(laP)+'</span>'
+    +'<label class="grlab">'+(fr?'vente':'price')+_grCase(l.cle,'px',px,'—',58)+'</label>'
+    +'<label class="grlab">'+(fr?'+ en vrac':'+ loose')+_grCase(l.cle,'stkV',cv.vrac,'0',52)+'</label>'
+    +'<span class="grderive">'+escH(_grAchatPiece(cible,gx,u,fr))
+    +(stk>0?(' · '+escH(fmtQ(stk)+' '+motU+(fr?' en tout':' in all'))):'')+'</span>'
+    +'</div>';
+}
+function _grCase(cle,champ,val,ph,largeur,cls){
+  return '<input class="grin'+(cls?(' '+cls):'')+'" inputmode="decimal" data-gr="'+cle+'" data-ch="'+champ+'" '
     +'style="width:'+largeur+'px" value="'+(val>0?val:'')+'" placeholder="'+ph+'" '
     +'onchange="grEcrire(this)" onclick="event.stopPropagation()">';
 }
@@ -12062,45 +12219,56 @@ function renderGrille(){
   var h='';
   lignes.forEach(function(l){
     var p=l.p,v=l.v,cible=v||p;
-    var nom=v?(v.nm||''):p.nm;
+    // Les noms arrivent aussi par la synchro (un vendeur, un autre
+    // téléphone) : jamais bruts dans le HTML, l'image passe par `srcSure`.
+    var nom=escH(v?(v.nm||''):p.nm);
     var pa=Number(cible.pa)||0,px=Number(cible.px)||0,stk=Number(cible.stk)||0;
     var perte=(pa>0&&px>0&&pa>=px);
     // Famille repliée : une seule ligne, et le détail attend qu'on le demande.
     if(l.fam){
       var ouvert=!!_grOuverts[p.id];
       h+='<div class="grrow grfam" onclick="grBasculerFamille('+p.id+')">'
-        +'<div class="grmed">'+(p.img?'<img src="'+p.img+'">':'<span>'+(p.e||'📦')+'</span>')+'</div>'
-        +'<div class="grnm"><div class="grn1">'+p.nm+'</div>'
+        +'<div class="grmed">'+(p.img?'<img src="'+srcSure(p.img)+'">':'<span>'+escH(p.e||'📦')+'</span>')+'</div>'
+        +'<div class="grnm"><div class="grn1">'+escH(p.nm)+'</div>'
         +'<div class="grn2">'+l.nb+' '+(fr?'variante'+(l.nb>1?'s':''):'variants')
         +(l.manque?(' · <span style="color:#B45309;font-weight:800">'+(fr?'à compléter':'to complete')+'</span>'):'')+'</div></div>'
         +'<div class="grchev">'+(ouvert?'▾':'▸')+'</div></div>';
       return;
     }
+    // ⭐ 23.04 — LE CONTENANT CONNU, L'ACHAT SE TAPE AU CONTENANT ; en gros,
+    // toute la ligne se lit en cartons (voir `_grLigneGros`).
+    var gx=null;try{gx=_grosDe(p,v||null);}catch(x){}
+    var aCarton=!!(gx&&gx.n>1&&!(v&&_estGrosDeVariante(v)));
+    var _media=(l.sous?'<div class="grmed grpetit"><span>↳</span></div>'
+              :'<div class="grmed">'+(cible.img||p.img?'<img src="'+srcSure(cible.img||p.img)+'">':'<span>'+escH(p.e||'📦')+'</span>')+'</div>');
+    if(aCarton&&_venteEnGros()){h+=_grLigneGros(l,p,v,cible,nom,gx,stk,_media,fr);return;}
     var et=_grEtageDe(p,v);
     var enGros=!!(et&&_grUnite[l.cle]);
     var stkAff=enGros?(Math.round(stk/et.n*100)/100):stk;
-    h+='<div class="grrow'+(l.sous?' grsous':'')+(perte?' grperte':'')+'">'
-      +(l.sous?'<div class="grmed grpetit"><span>↳</span></div>'
-              :'<div class="grmed">'+(cible.img||p.img?'<img src="'+(cible.img||p.img)+'">':'<span>'+(p.e||'📦')+'</span>')+'</div>')
+    var ac=aCarton?_grAchatCarton(cible,gx,fr):null;
+    h+='<div class="grrow'+(l.sous?' grsous':'')+(perte?' grperte':'')+(aCarton?' grrow-g':'')+'">'
+      +_media
       +'<div class="grnm"><div class="grn1">'+nom+'</div>'
+      +(aCarton?('<div class="grn2 grc">📦 '+escH(gx.mot+(fr?' de ':' of ')+_avecUnite(p,gx.n))+'</div>'):'')
       +(perte?('<div class="grn2" style="color:var(--R);font-weight:800">⚠️ '+(fr?'vendu moins cher qu\'acheté':'sold below cost')+'</div>')
              :(cible._sugg?('<div class="grn2" style="color:var(--B);font-weight:800">💡 '+(fr?'prix indicatif — vérifie':'suggested — check')+'</div>'):''))
       +'</div>'
       +'<div class="grcases">'
-      +'<label class="grlab">'+(fr?'achat':'cost')+_grCase(l.cle,'pa',pa,'—',58)+'</label>'
-      +'<label class="grlab">'+(fr?'vente':'price')+_grCase(l.cle,'px',px,'—',58)+'</label>'
+      +'<label class="grlab">'+(fr?'achat':'cost')
+        +(aCarton?(_grCase(l.cle,'paGros',ac.val,'—',58,ac.deduit?'grderiv':'')+'<span class="grcap">'+escH(ac.cap)+'</span>'):_grCase(l.cle,'pa',pa,'—',58))+'</label>'
+      +'<label class="grlab">'+(fr?'vente':'price')+_grCase(l.cle,'px',px,'—',58)
+        +(aCarton?('<span class="grcap grcp">'+escH(_grLaPiece(_umDe(p),fr))+'</span>'):'')+'</label>'
       +'<label class="grlab">'+(fr?'stock':'stock')+_grCase(l.cle,'stk',stkAff,'0',52)
         +(et?('<button class="grun" onclick="event.stopPropagation();grBasculerUnite(\''+l.cle+'\')" title="'
-              +(fr?('1 '+et.mot+' = '+fmtQ(et.n)):'')+'">'+(enGros?et.mot:(fr?'pièce':'unit'))+' ⇄</button>')
+              +(fr?('1 '+escH(et.mot)+' = '+fmtQ(et.n)):'')+'">'+escH(enGros?_expMots(et.mot,2):(fr?'pièces':'units'))+' ⇄</button>')
             :'')
       +'</label>'
       +'</div></div>';
-    // 23.03 — le prix du CARTON, sous la ligne, dès que le contenant est connu.
-    var gx=null;try{gx=_grosDe(p,v||null);}catch(x){}
-    if(gx&&gx.n>1&&!(v&&_estGrosDeVariante(v)))
-      h+='<div class="grgros"><span class="grgros-t">📦 '+escH(gx.mot+(fr?' de ':' of ')+_avecUnite(p,gx.n))+'</span>'
-        +'<label class="grlab">'+(fr?'vente':'price')+_grCase(l.cle,'pxGros',gx.px,'—',70)+'</label>'
-        +'<label class="grlab">'+(fr?'achat':'cost')+_grCase(l.cle,'paGros',gx.pa,'—',70)+'</label></div>';
+    // Dessous : la division faite devant lui, et le carton vendu entier
+    // (23.03) — un boutiquier du détail en vend aussi, à son prix.
+    if(aCarton)
+      h+='<div class="grgros grgros-d"><span class="grderive">'+escH(_grAchatPiece(cible,gx,_umDe(p),fr))+'</span>'
+        +'<label class="grlab">'+escH(fr?('vente du '+gx.mot+' entier'):('whole '+gx.mot+' price'))+_grCase(l.cle,'pxGros',gx.px,'—',70)+'</label></div>';
   });
   c.innerHTML=h;
 }
@@ -12122,10 +12290,19 @@ function grEcrire(inp){
     }
     if(!p)return;
     var cible=v||p,fr=(lang!=='en');
-    if(champ==='stk'){
-      var et=_grEtageDe(p,v);
-      if(et&&_grUnite[cle])val=Math.round(val*et.n*100)/100;
+    if(champ==='stk'||champ==='stkC'||champ==='stkV'){
       var actuel=Number(cible.stk)||0;
+      if(champ==='stk'){
+        var et=_grEtageDe(p,v);
+        if(et&&_grUnite[cle])val=Math.round(val*et.n*100)/100;
+      }else{
+        // 23.04 — les cartons ET le vrac : chacun garde l'autre tel qu'il
+        // est à l'écran. « 4 » cartons sur 3 cartons + 5 = 4 cartons + 5.
+        var _gn=_grosDe(p,v).n;if(!(_gn>1))return;
+        var _cv=_grCartonsVrac(actuel,_gn);
+        val=(champ==='stkC')?(val*_gn+_cv.vrac):(_cv.c*_gn+val);
+        val=Math.round(val*100)/100;
+      }
       if(val!==actuel){
         journalAjouter('stock',(p.nm||'')+(v?(' — '+(v.nm||'')):''),fmtQ(actuel),fmtQ(val));
         cible.stk0=(Number(cible.stk0)||0)+(val-actuel);
@@ -12136,6 +12313,17 @@ function grEcrire(inp){
       if(champ==='px')journalAjouter('prix',(p.nm||'')+(v?(' — '+(v.nm||'')):''),fmt(avant),fmt(val));
       if(champ==='pxGros')journalAjouter('prix',(p.nm||'')+(v?(' — '+(v.nm||'')):'')+' ('+_grosDe(p,v).mot+')',fmt(avant),fmt(val));
       cible[champ]=val;
+      // ⭐ 23.04 — IL ACHÈTE LE CARTON : le coût de la pièce s'en déduit, et
+      // l'app fait la division devant lui (la ligne affiche « 12 000 ÷ 24 »).
+      // Plus de calcul de tête, plus de coût à la pièce qui dirait autre
+      // chose que le carton payé.
+      if(champ==='paGros'&&val>0){
+        var _n=_grosDe(p,v).n;
+        if(_n>1){
+          var _pu=Math.round(val/_n),_pa0=Number(cible.pa)||0;
+          if(_pu!==_pa0){journalAjouter('prix',(p.nm||'')+(v?(' — '+(v.nm||'')):'')+(fr?' (achat)':' (cost)'),fmt(_pa0),fmt(_pu));cible.pa=_pu;}
+        }
+      }
       // Le prix posé à la main n'est plus « indicatif » : il est vérifié.
       try{delete cible._sugg;}catch(x){}
     }
@@ -12143,8 +12331,25 @@ function grEcrire(inp){
     save();
     try{renderProd(DB.articles);renderStock(DB.articles);}catch(x){}
     try{majLigneGrille();}catch(x){}
-    renderGrille();
+    _grRedessiner();
   }catch(e){}
+}
+// ⚠️ 23.04 — REDESSINER PENDANT LE « change » JETAIT LA CASE QU'IL VENAIT
+// DE TOUCHER. Le « change » part quand la case perd le focus, c'est-à-dire
+// au moment où il touche la suivante : la liste refaite, la suivante
+// n'existait plus, le clavier se fermait. Deux touches par case, sur 30
+// articles. On redessine juste après, et on lui rend la case où il est.
+function _grRedessiner(){
+  setTimeout(function(){
+    var a=document.activeElement,gr=null,ch=null;
+    if(a&&a.getAttribute&&a.closest&&a.closest('#gr-lst')){gr=a.getAttribute('data-gr');ch=a.getAttribute('data-ch');}
+    renderGrille();
+    if(!gr)return;
+    var ins=document.querySelectorAll('#gr-lst input.grin');
+    for(var i=0;i<ins.length;i++){
+      if(ins[i].getAttribute('data-gr')===gr&&ins[i].getAttribute('data-ch')===ch){try{ins[i].focus();}catch(e){}break;}
+    }
+  },0);
 }
 function articleIncomplet(p){
   if(!p)return false;
@@ -13511,6 +13716,10 @@ function _placerMenu(m,e){
 function showCtx(e,p){
   artCtx=p;
   var m=document.getElementById('ctxm');m.classList.add('show');
+  // 23.04 — le geste le plus fréquent d'abord, comme dans le menu d'une variante.
+  var _cq=document.getElementById('ctxi-qte');
+  if(_cq)_cq.style.display=(p.vr&&p.vr.length)?'none':'flex';
+  var _lq=document.getElementById('cxq');if(_lq)_lq.textContent=lang==='fr'?'Saisir une quantité':'Enter a quantity';
   document.getElementById('cx1').textContent=lang==='fr'?'Prix':'Price';
   document.getElementById('cx3').textContent=lang==='fr'?'Ajouter variante':'Add variant';
   // Le mot du commerçant, pas « carton » par défaut : c'est la leçon de
@@ -13589,6 +13798,7 @@ function showCtx(e,p){
   _placerMenu(m,e);
   setTimeout(function(){document.addEventListener('click',function h(){document.getElementById('ctxm').classList.remove('show');document.removeEventListener('click',h);});},100);
 }
+function ctxQte(){var p=artCtx;document.getElementById('ctxm').classList.remove('show');if(p)ouvrirPave(p,null);}
 function ctxPV(){if(!artCtx||!peutModifierPrix())return;document.getElementById('ctxm').classList.remove('show');artCours=artCtx;ouvrirModifR(artCtx);}
 // Le calculateur d'achat par carton. Il n'a plus d'entrée dans le menu — on
 // y arrive depuis la fiche Prix, sous « Je connais seulement le prix du
@@ -14114,9 +14324,10 @@ function ctxDL(){if(!artCtx)return;if(confirm((lang==='fr'?'Supprimer ':'Delete 
 // faux ne se voit qu'au réapprovisionnement, quand il est trop tard.
 // La question est donc la MÊME pour les deux, et elle porte le carton
 // entier : « vendre un carton (24) » et non « vendre » tout court.
-function ouvrirNeg(p,v,n,mot){
+function ouvrirNeg(p,v,n,mot,fois){
   n=Math.max(1,Number(n)||1);
-  negEnCours={p:p,v:v,n:n,mot:mot||''};
+  fois=Math.max(1,Math.floor(Number(fois)||1));
+  negEnCours={p:p,v:v,n:n,mot:mot||'',fois:fois};
   var fr=(lang==='fr');
   // Sa photo, pas un émoji : il doit reconnaître ce qu'il s'apprête à vendre à découvert.
   var _ne=document.getElementById('neg-emo');
@@ -14124,8 +14335,8 @@ function ouvrirNeg(p,v,n,mot){
   document.getElementById('neg-nm').textContent=p.nm+(v?' — '+v.nm:'');
   var mt=mot||_motContenant(p,v||null);
   document.getElementById('neg-msg').textContent=(n>1)
-    ?(fr?('Stock insuffisant. Tu peux quand même vendre '+_unGros(mt)+' ('+fmtQ(n)+') et te ravitailler après.')
-        :('Not enough stock. You can still sell 1 '+mt+' ('+fmtQ(n)+') and restock later.'))
+    ?(fr?('Stock insuffisant. Tu peux quand même vendre '+(fois>1?(fmtQ(fois)+' '+_expMots(mt,2)):_unGros(mt))+' ('+fmtQ(n*fois)+') et te ravitailler après.')
+        :('Not enough stock. You can still sell '+fmtQ(fois)+' '+mt+' ('+fmtQ(n*fois)+') and restock later.'))
     :(fr?'Stock épuisé. Tu peux quand même vendre et te ravitailler après.'
         :'Out of stock. You can still sell and restock later.');
   document.getElementById('ov-neg').classList.add('show');
@@ -14138,8 +14349,8 @@ function vendreMalgre(){
   // que le repère « 1 carton » et la voix restent exactement les mêmes qu'une
   // vente en gros ordinaire. On ne repose pas une question déjà répondue.
   if(n>1){
-    if(v)_ajouterLotVariante(p,v,n,mot,true);
-    else _ajouterLot(p,n,mot,true);
+    if(v)_ajouterLotVariante(p,v,n,mot,true,negEnCours.fois);
+    else _ajouterLot(p,n,mot,true,negEnCours.fois);
     return;
   }
   var key=v?p.id+'-'+v.id:p.id+'-0';
@@ -14247,6 +14458,14 @@ function _varDehors(ev){
   if(_varBox&&_varBox.contains(ev.target))return;
   if(_varCercle&&_varCercle.contains(ev.target))return;
   if(_varChip&&_varChip.contains(ev.target))return;
+  // ⚠️ 23.04 — LE PAVÉ S'OUVRE PAR-DESSUS LE PANNEAU, ET CHAQUE TOUCHE DU
+  // PAVÉ ÉTAIT « AILLEURS » : le panneau se refermait au premier chiffre,
+  // et les pièces d'une variante (`chgVQ`) n'allaient plus au panier — il
+  // ne les pousse que panneau ouvert. Le pavé, et l'entrée du menu qui
+  // l'ouvre, font partie du choix des variantes.
+  var _pvx=document.getElementById('ov-pave'),_qx=document.getElementById('ctxv-qte');
+  if(_pvx&&_pvx.contains(ev.target))return;
+  if(_qx&&_qx.contains(ev.target))return;
   // Toucher ailleurs referme. UNIQUEMENT si c'est la carte elle-même, on note
   // l'heure pour que son propre clic ne le rouvre pas dans la foulée — sinon
   // toucher un autre article empêcherait de rouvrir celui-ci tout de suite.
@@ -14552,6 +14771,7 @@ function _brancherVar(d,p,v){
         return;
       }
     }
+    _astucePave('v'+p.id+'_'+v.id);
     if(_gvB){_ajouterLotVariante(p,v,_gvB.n,_gvB.mot);return;}
     chgVQ(v.id,p.id,1,!!p.rt);
   };
@@ -14765,16 +14985,11 @@ function renderVarLst(p){
   });
 }
 // Quantité en une fois : sans ça, vendre 12 pièces demanderait 12 tapes.
-function saisirQteVariante(p,v){
-  var fr=lang==='fr';
-  if(v.px<=0){showToast('💰 '+(fr?'Prix manquant — complète cette variante d\'abord':'Missing price'));return;}
-  var rep=prompt((fr?'Combien de ':'How many ')+(v.nm||'')+' ?',String(varQtys[v.id]||1));
-  if(rep===null)return;
-  var n=Math.max(0,Math.round((parseFloat(String(rep).replace(',','.'))||0)*100)/100);
-  var cur=varQtys[v.id]||0;
-  if(n>cur)chgVQ(v.id,p.id,n-cur,!!p.rt);
-  else{varQtys[v.id]=n;renderVarLst(p);}
-}
+// ⚠️ 23.04 — C'ÉTAIT UN prompt() DU NAVIGATEUR : « Combien de 1 L ? », en
+// pièces seulement — le carton n'existait pas, le clavier du téléphone
+// couvrait la moitié de l'écran, et le prix de la ligne ne se voyait
+// qu'après. C'est maintenant le pavé (voir `ouvrirPave`).
+function saisirQteVariante(p,v){ouvrirPave(p,v);}
 function chgVQ(vid,pid,delta,rt){
   var p=DB.articles.find(function(x){return x.id==pid;});var v=p&&p.vr.find(function(x){return x.id==vid;});if(!v)return;
   var cur=varQtys[vid]||0;
@@ -15163,9 +15378,11 @@ function vendreNiveau(e,pid,n,mot){
   if(!(n>1))return;
   _ajouterLot(p,n,mot||_motContenant(p,null));
 }
-function _ajouterLotVariante(p,v,n,mot,force){
+function _ajouterLotVariante(p,v,n,mot,force,fois){
   var fr=(lang==='fr');
   if(!(n>1))return;
+  fois=Math.max(1,Math.floor(Number(fois)||1));        // 23.04 — le pavé (voir _ajouterLot)
+  var tout=n*fois;
   // 23.03 — le prix du carton suffit à vendre le carton (comme dehors, 23.02).
   if(!(Number(v.px)>0)&&!(_prixDuLot(p,v,n).px>0)){
     showToast('💰 '+(fr?'Prix manquant — complète cette variante d\'abord':'Missing price'));return;
@@ -15174,8 +15391,8 @@ function _ajouterLotVariante(p,v,n,mot,force){
   mot=mot||_motContenant(p,v);
   // La règle vaut à l'intérieur des variantes comme dehors : il l'a demandé
   // pour tout, et un carton d'Azur vendu dans le vide ment autant qu'un autre.
-  if(!force&&dispo<n&&(p.rt||v.rt)){ouvrirNeg(p,v,n,mot);return;}
-  var ajout=force?n:((p.rt||v.rt)?n:Math.min(n,dispo));
+  if(!force&&dispo<tout&&(p.rt||v.rt)){ouvrirNeg(p,v,n,mot,fois);return;}
+  var ajout=force?tout:((p.rt||v.rt)?tout:Math.min(tout,dispo));
   if(!(ajout>0)){showToast(t('stockInsuf'));return;}
   varQtys[v.id]=Math.round((cur+ajout)*100)/100;
   // Le marqueur : le reçu et la voix diront « 1 carton (24) » au lieu de
@@ -15188,13 +15405,14 @@ function _ajouterLotVariante(p,v,n,mot,force){
   var key=p.id+'-'+v.id;
   // Même règle du côté des variantes : voir _ajouterLot.
   var _gv=_prixDuLot(p,v,n);
-  if(ajout===n)_grosPanier[key]=_empilerLot(_grosPanier[key],n,mot,_gv,Number(v.px)||0,_umDe(p));
+  var _nbL=Math.min(fois,Math.floor((ajout+1e-9)/n));
+  for(var _l=0;_l<_nbL;_l++)_grosPanier[key]=_empilerLot(_grosPanier[key],n,mot,_gv,Number(v.px)||0,_umDe(p));
   renderVarLst(p);
   _varVersPanier(p);
   if(navigator.vibrate)navigator.vibrate(30);
   var m=_mentionGros(key,varQtys[v.id]);
   showToast(_emojiCont(mot)+' '+(v.nm||p.nm)+' — '+(m?m.txt:(fmtQ(ajout)+' '+_uniteMot(p)))
-    +(ajout<n?(' · '+(fr?'c\'est tout ce qui reste':'that is all that is left')):''));
+    +(ajout<tout?(' · '+(fr?'c\'est tout ce qui reste':'that is all that is left')):''));
   var _ud=_uniteDite(p),_qd=fmtQ(ajout)+(_ud?(' '+_ud):'')+' ';
   try{parler(fr?((m?(m.nb>1?(fmtQ(m.nb)+' '+mot+'s '):_unGros(mot)+' '):_qd)+'de '+(v.nm||p.nm))
                 :((m?(m.nb+' '+mot+(m.nb>1?'s':'')+' of '):_qd)+(v.nm||p.nm)));}catch(e){}
@@ -15375,6 +15593,199 @@ function vendreUnite(e,pid){
   var deja=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
   if(out&&p.rt&&deja===0&&!jamais){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
   addPanier(p,null);
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.04 — LE PAVÉ « GROSSE COMMANDE »
+//
+//  « Un client prend 10 cartons » : dix touches sur la tuile, en comptant
+//  à voix basse devant lui — une de trop ou de moins, et ça se voit le
+//  soir, à la caisse. Pour une variante, l'appui long ouvrait un prompt()
+//  du navigateur (« Combien de 1 L ? ») qui comptait en PIÈCES et ne
+//  connaissait pas le carton.
+//  Le pavé : cartons ou pièces, 5 / 10 / 20 / 50 d'une touche, les
+//  chiffres en grand, le total qui suit, et le stock dit AVANT d'ajouter
+//  — pas un refus après coup.
+//  ⚠️ IL NE CALCULE RIEN DE SON CÔTÉ : il passe par les chemins de la
+//  caisse (`_ajouterLot`, `_ajouterLotVariante`, `chgVQ`) — même marqueur
+//  de carton, même reçu, même voix — et vérifie le stock avec leurs règles
+//  (rupture refusée, ou vendue à découvert si l'article le permet ; stock
+//  jamais compté : pas de question).
+//  On l'ouvre par l'appui long sur la tuile (caisse verrouillée, ou
+//  vendeur), par « Saisir une quantité » dans le menu du patron, et par
+//  l'appui long sur une variante.
+// ══════════════════════════════════════════════════════════════════
+var _pv=null;
+// Tout ce que le pavé doit savoir d'une entrée, lu aux mêmes sources que
+// la caisse. `reste` est en pièces (ou kg), panier déjà retiré.
+function _paveInfo(p,v){
+  var g=null;try{g=_grosDe(p,v||null);}catch(e){}
+  var n=(g&&g.n>1&&!(v&&_estGrosDeVariante(v)))?g.n:0;
+  var lot=n?_prixDuLot(p,v||null,n):{px:0,pa:0};
+  var um=_umDe(p),deja,reste,rt,jamais=false;
+  if(v){deja=varQtys[v.id]||0;reste=_dispoApresPanier(p,v);rt=!!(p.rt||v.rt);}
+  else{deja=panier[p.id+'-0']||0;reste=Math.max(0,(Number(getStk(p))||0)-deja);rt=!!p.rt;jamais=!!(p.rt&&_stockJamaisCompte(p));}
+  return {n:n,mot:(g&&g.mot)||_motContenant(p,v||null),lotPx:Number(lot.px)||0,pxU:Number(v?v.px:p.px)||0,
+          um:um,deja:deja,reste:reste,rt:rt,jamais:jamais};
+}
+function ouvrirPave(p,v){
+  if(!p)return;
+  var fr=(lang==='fr');
+  try{document.getElementById('ctxm').classList.remove('show');}catch(e){}
+  try{_fermerCtxVar();}catch(e){}
+  if(!v){
+    if(p.vr&&p.vr.length)return;              // une famille : la sorte d'abord
+    if(articleIncomplet(p)&&!_grosSeul(p)){
+      if(role==='patron'||hasPerm('produits'))ouvrirCompleterArticle(p,null,true);
+      else showToast('⏳ '+(fr?'Article en préparation — demande au patron':'Item being prepared — ask the owner'));
+      return;
+    }
+  }
+  // Une variante, panneau fermé : ce qu'elle a au panier se relit au panier
+  // (varQtys appartient au dernier panneau ouvert, peut-être un autre).
+  if(v&&!_varBox&&!_varCercle&&!_ovVarOuvert())(p.vr||[]).forEach(function(x){varQtys[x.id]=panier[p.id+'-'+x.id]||0;});
+  var i=_paveInfo(p,v);
+  if(!(i.pxU>0)&&!(i.n&&i.lotPx>0)){showToast('💰 '+(fr?'Prix manquant — complète cet article d\'abord':'Missing price'));return;}
+  // Rien à vendre : la tuile vide dit pourquoi ; celle dont tout est déjà au
+  // panier dit « stock insuffisant », comme la touche.
+  if(!i.rt&&!i.jamais&&!(i.reste>0)){if(v||i.deja>0)showToast(t('stockInsuf'));else _direPourquoiVide(p);return;}
+  // Il s'ouvre sur ce que la tuile vend d'une touche : le carton chez un
+  // grossiste (ou quand la pièce n'a pas de prix), la pièce sinon.
+  var tuileC=v?!!_grosDeVarTuile(p,v):!!_grosDeTuile(p);
+  _pv={p:p,v:v||null,mode:(i.n&&(tuileC||!(i.pxU>0)))?'c':'p',s:''};
+  document.getElementById('pv-tit').textContent='🔢 '+(fr?'Combien ?':'How many?');
+  document.getElementById('pv-nm').textContent=v?((v.nm||'')+' · '+p.nm):p.nm;
+  var vg=document.getElementById('pv-vig');
+  try{vg.innerHTML=vignetteArt(p,v||null,46);}catch(e){vg.textContent='';}
+  _paveRendre();
+  document.getElementById('ov-pave').classList.add('show');
+}
+function _ovVarOuvert(){var o=document.getElementById('ov-var');return !!(o&&o.classList.contains('show'));}
+function _paveCarton(i){return !!(_pv&&_pv.mode==='c'&&i.n>0);}
+function _paveNombre(){return parseFloat(String((_pv&&_pv.s)||'').replace(',','.'))||0;}
+// Le stock, dit comme il le range : « 4 cartons + 5 », pas « 101 ».
+function _paveStockTxt(i,c){
+  var fr=(lang==='fr');
+  if(c){var cv=_grCartonsVrac(i.reste,i.n);
+    return fmtQ(cv.c)+' '+_expMots(i.mot,cv.c>1?2:1)+(cv.vrac>0?(' + '+fmtQ(cv.vrac)):'');}
+  return fmtQ(i.reste)+' '+(i.um==='kg'?'kg':(i.um==='L'?'L':(fr?(i.reste>1?'pièces':'pièce'):'units')));
+}
+function _paveRendre(){
+  if(!_pv)return;
+  var p=_pv.p,v=_pv.v,fr=(lang==='fr'),i=_paveInfo(p,v),c=_paveCarton(i);
+  var q=_paveNombre(),mesure=!c&&(i.um==='kg'||i.um==='L');
+  var mot=c?_expMots(i.mot,q>1?2:1):(i.um==='kg'?'kg':(i.um==='L'?'L':(fr?(q>1?'pièces':'pièce'):(q>1?'units':'unit'))));
+  // Le prix d'un carton qui a le sien ; sinon son contenu au prix de la
+  // pièce — exactement ce que la ligne du panier facturera.
+  var total=c?(i.lotPx>0?q*i.lotPx:q*i.n*i.pxU):q*i.pxU;
+  var besoin=c?q*i.n:q;
+  var manque=!i.jamais&&besoin>i.reste+1e-9;
+  var sansPrix=c?!(i.lotPx>0||i.pxU>0):!(i.pxU>0);
+  // Cartons / pièces : seulement quand le contenant est connu.
+  var seg=document.getElementById('pv-seg');
+  seg.style.display=i.n?'flex':'none';
+  if(i.n){
+    var sc=document.getElementById('pv-s-c'),sp=document.getElementById('pv-s-p');
+    sc.textContent=_emojiCont(i.mot)+' '+_expMots(i.mot,2).replace(/^./,function(x){return x.toUpperCase();})+' ('+_avecUnite(p,i.n)+')';
+    sp.textContent=(i.um==='kg')?(fr?'Au kilo':'By kg'):((i.um==='L')?(fr?'Au litre':'By litre'):(fr?'Pièces':'Units'));
+    sc.className=c?'on':'';sp.className=c?'':'on';
+  }
+  document.getElementById('pv-info').textContent=c
+    ?((i.lotPx>0?fmt(i.lotPx):(fmtQ(i.n)+' × '+fmt(i.pxU)))+(fr?(' '+_leGros(i.mot)):(' per '+i.mot)))
+    :(i.pxU>0?(fmt(i.pxU)+' '+_grLaPiece(i.um,fr)):(fr?'la pièce n\'a pas de prix':'no unit price'));
+  document.getElementById('pv-n').textContent=_pv.s||'0';
+  document.getElementById('pv-mot').textContent=mot;
+  document.getElementById('pv-tot').textContent=(q>0&&!sansPrix)?('= '+fmt(total)):'';
+  var st=document.getElementById('pv-stk');
+  st.className='pv-stk'+(manque?(i.rt?' pv-manque':' pv-non'):'');
+  st.textContent=i.jamais?''
+    :manque?(i.rt?('⚠️ '+(fr?('Il n\'en reste que '+_paveStockTxt(i,c)+' — tu peux vendre quand même, et te ravitailler après')
+                              :('Only '+_paveStockTxt(i,c)+' left — you can still sell and restock later')))
+                 :('⛔ '+(fr?('Il n\'en reste que '+_paveStockTxt(i,c)):('Only '+_paveStockTxt(i,c)+' left'))))
+    :((fr?'En stock : ':'In stock: ')+_paveStockTxt(i,c)+(i.deja>0?((fr?' · déjà au panier : ':' · in cart: ')+fmtQ(i.deja)):''));
+  var vite=mesure?[0.5,1,2,5]:[5,10,20,50];
+  document.getElementById('pv-vite').innerHTML=vite.map(function(x){
+    return '<button onclick="paveVite('+x+')">'+(x===0.5?'½':fmtQ(x))+'</button>';}).join('');
+  var vg=document.getElementById('pv-virg');if(vg)vg.disabled=!mesure;
+  var ok=document.getElementById('pv-ok');
+  ok.disabled=!(q>0)||sansPrix||(manque&&!i.rt);
+  ok.className='bpay pv-ok'+((manque&&i.rt&&!sansPrix)?' pv-orange':'');
+  ok.textContent=sansPrix?('💰 '+(fr?(c?(_leGros(i.mot).replace(/^./,function(x){return x.toUpperCase();})+' n\'a pas de prix'):'La pièce n\'a pas de prix'):'No price'))
+    :(manque&&!i.rt)?('⛔ '+(fr?'Pas assez en stock':'Not enough stock'))
+    :!(q>0)?(fr?'Tape le nombre':'Type the number')
+    :((manque?('✅ '+(fr?'Vendre quand même ':'Sell anyway ')):('🛒 '+(fr?'Ajouter ':'Add ')))+fmtQ(q)+' '+mot+' · '+fmt(total));
+}
+function paveUnite(m){
+  if(!_pv)return;
+  _pv.mode=(m==='c')?'c':'p';
+  if(_pv.mode==='c'||!(_umDe(_pv.p)==='kg'||_umDe(_pv.p)==='L'))_pv.s=String(_pv.s||'').split(',')[0];
+  _paveRendre();
+}
+function paveVite(x){if(!_pv)return;_pv.s=fmtQ(x);_paveRendre();}
+function paveTouche(k){
+  if(!_pv)return;
+  var s=String(_pv.s||'');
+  if(k==='x')s=s.slice(0,-1);
+  else if(k===','){
+    var i=_paveInfo(_pv.p,_pv.v);
+    if(_paveCarton(i)||!(i.um==='kg'||i.um==='L')||s.indexOf(',')>=0)return;
+    s=(s||'0')+',';
+  }else{
+    if(s==='0')s='';
+    if(s.indexOf(',')>=0){if(s.split(',')[1].length>=2)return;}
+    else if(s.length>=5)return;                 // 99 999 : une commande, pas une faute de frappe
+    s+=k;
+  }
+  _pv.s=s;_paveRendre();
+}
+function paveValider(){
+  if(!_pv)return;
+  var p=_pv.p,v=_pv.v,fr=(lang==='fr'),i=_paveInfo(p,v),c=_paveCarton(i);
+  var q=_paveNombre();
+  if(c)q=Math.floor(q);
+  if(!(q>0))return;
+  if(c?!(i.lotPx>0||i.pxU>0):!(i.pxU>0))return;
+  // La même règle que la tuile, vérifiée ICI puisqu'on ajoute en forçant :
+  // sans vente à découvert, ce qui n'existe pas ne se vend pas.
+  if(!i.jamais&&(c?q*i.n:q)>i.reste+1e-9&&!i.rt){showToast(t('stockInsuf'));return;}
+  _pv=null;
+  closeSheet('ov-pave');
+  if(c){
+    if(v)_ajouterLotVariante(p,v,i.n,i.mot,true,q);
+    else _ajouterLot(p,i.n,i.mot,true,q);
+    return;
+  }
+  q=Math.round(q*100)/100;
+  if(v){
+    chgVQ(v.id,p.id,q,true);
+    // `chgVQ` ne pousse au panier que panneau ouvert ; sans lui, c'est ici.
+    if(!_varBox&&!_varCercle&&!_ovVarOuvert())_varVersPanier(p);
+  }
+  else{var key=p.id+'-0';panier[key]=Math.round(((panier[key]||0)+q)*100)/100;updatePUI(p.id);if(navigator.vibrate)navigator.vibrate(25);}
+  var nm=v?(v.nm||p.nm):p.nm;
+  var mq=(i.um==='kg')?'kg':((i.um==='L')?'L':(fr?(q>1?'pièces':'pièce'):(q>1?'units':'unit')));
+  showToast('🛒 '+nm+' — '+fmtQ(q)+' '+mq+' · '+fmt(q*i.pxU));
+  // « 12,5 kilos de riz », mais « 15 Savon » : « 15 de Savon » ne se dit pas.
+  try{var _ud=_uniteDite(p);parler(_ud?(fmtQ(q)+' '+_ud+(fr?' de ':' of ')+nm):(fmtQ(q)+' '+nm));}catch(e){}
+}
+// Le pavé ne sert à rien s'il ne le trouve pas. La troisième touche de
+// suite sur la même tuile, une seule fois dans la vie du téléphone : on lui
+// montre le geste — après la pause, jamais pendant qu'il tape.
+var _apCle='',_apN=0,_apT=0;
+function _astucePave(cle){
+  try{
+    if(localStorage.getItem('myboutiq_astuce_pave'))return;
+    var now=Date.now();
+    if(cle===_apCle&&now-_apT<8000)_apN++;else{_apCle=cle;_apN=1;}
+    _apT=now;
+    if(_apN<3)return;
+    var n0=_apN;
+    setTimeout(function(){
+      if(_apN!==n0||_apCle!==cle)return;
+      try{localStorage.setItem('myboutiq_astuce_pave','1');}catch(e){}
+      showToast('💡 '+(lang==='fr'?'Plusieurs d\'un coup ? Appui long sur la tuile, puis tape le nombre'
+                                  :'Several at once? Long-press the tile, then type the number'));
+    },1600);
+  }catch(e){}
 }
 // Réglages › Type de commerce › « Je vends surtout ».
 function choisirFacon(m){
@@ -16208,15 +16619,19 @@ function _resumeContenants(){
   else if(vrac>0.001)t+=' + '+fmtQ(vrac);
   return t;
 }
-function _ajouterLot(p,n,mot,force){
+function _ajouterLot(p,n,mot,force,fois){
   var fr=(lang==='fr');
+  // ⭐ 23.04 — `fois` : le pavé « grosse commande » pose 10 cartons d'un
+  // coup PAR CE CHEMIN-CI — le même marqueur, la même voix, le même reçu —
+  // au lieu de dix appels qui redessineraient dix fois la caisse.
+  fois=Math.max(1,Math.floor(Number(fois)||1));
   var key=p.id+'-0',cur=panier[key]||0,dispo=getStk(p);
-  var place=Math.max(0,dispo-cur);
+  var place=Math.max(0,dispo-cur),tout=n*fois;
   mot=mot||_motContenant(p,null);
   // ⚠️ LA RUPTURE SE DEMANDE, ELLE NE SE PREND PAS. Le stock ne couvre pas
   // le carton : c'est la même question qu'au détail, avec le carton entier.
-  if(!force&&place<n&&p.rt){ouvrirNeg(p,null,n,mot);return;}
-  var ajout=force?n:(p.rt?n:Math.min(n,place));
+  if(!force&&place<tout&&p.rt){ouvrirNeg(p,null,n,mot,fois);return;}
+  var ajout=force?tout:(p.rt?tout:Math.min(tout,place));
   if(!(ajout>0)){showToast(t('stockInsuf'));return;}
   panier[key]=cur+ajout;
   // Entier seulement : s'il ne restait pas un carton complet, ce n'est plus
@@ -16232,14 +16647,15 @@ function _ajouterLot(p,n,mot,force){
   // et ce qui ne fait pas un contenant entier compte au détail — c'est
   // exactement ce que _ligneMontant sait facturer.
   var _gg=_prixDuLot(p,null,n);
-  if(ajout===n)_grosPanier[key]=_empilerLot(_grosPanier[key],n,mot,_gg,Number(p.px)||0,_umDe(p));
+  var _nbL=Math.min(fois,Math.floor((ajout+1e-9)/n));     // les contenants ENTIERS, pas un de plus
+  for(var _l=0;_l<_nbL;_l++)_grosPanier[key]=_empilerLot(_grosPanier[key],n,mot,_gg,Number(p.px)||0,_umDe(p));
   updatePUI(p.id);
   if(navigator.vibrate)navigator.vibrate(30);
   var m=_mentionGros(key,panier[key]);
   // Le chiffre annoncé est celui réellement mis au panier, jamais celui
   // demandé : s'il ne reste pas un carton entier, il faut le dire.
   showToast(_emojiCont(mot)+' '+p.nm+' — '+(m?m.txt:(fmtQ(ajout)+' '+_uniteMot(p)))
-    +(ajout<n?(' · '+(fr?'c\'est tout ce qui reste':'that is all that is left')):''));
+    +(ajout<tout?(' · '+(fr?'c\'est tout ce qui reste':'that is all that is left')):''));
   // ⭐ LA VOIX SUIT LE MOT. « douze Coca cola » devient « un casier de Coca
   // cola » : c'est ce qu'il a dit à son client, c'est ce qu'il doit
   // entendre pour vérifier sans regarder l'écran.
