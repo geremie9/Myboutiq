@@ -2167,6 +2167,47 @@ body{max-width:min(100%,1200px)}
 .v-grille .vtile .vt-px,.vtile:not(.v-liste .vtile) .vt-px{font-size:clamp(12px,1.00vw + 7.2px,16px)}
 .v-grille .vtile .vt-emo,.vtile:not(.v-liste .vtile) .vt-emo{font-size:clamp(40px,5.0vw + 16px,54px)}
 .agpx,.agstk{grid-template-columns:repeat(auto-fill,minmax(clamp(100px,20vw,170px),1fr))}
+/* ══════════════════════════════════════════════════════════════════
+   ⭐ 23.01 — LA TUILE CALME
+   « Repense les tuiles pour donner place à tous types de commerce,
+     grossiste ou détail, avec des touches pensées et moins stressantes. »
+   Sa capture du 11/10, relue au banc : dans une même rangée, des cartes
+   blanches et des cartes à photo PLEINE PAGE, nom et prix écrits en blanc
+   sur un voile noir ; une puce « 📦 carton / sac / palette » sous presque
+   chaque tuile, sans prix ; et la seule qui en avait un, coupée
+   (« casier · … »). Trois allures de carte pour une seule grille.
+   Une seule carte maintenant, quelle que soit l'image :
+    · la vignette prend toute la largeur, en haut, dans un cadre — la photo
+      s'y range comme le dessin, et plus rien ne s'écrit dessus ;
+    · le nom en noir sur deux lignes, le PRIX en plus grand : c'est lui
+      qu'on cherche des yeux devant un client ;
+    · le gros n'apparaît que lorsqu'il VEND (`_chipTuile`), en petite
+      étiquette « montant / ce qu'il achète », sur toute la largeur.
+   Tout est rangé sous `.pgrid` : la vue des variantes, l'étagère d'ailleurs
+   et le stock gardent leurs règles.
+   ⚠️ Les 13 px du bas restent : ils logent la cible de 44 px de la puce.
+   ══════════════════════════════════════════════════════════════════ */
+.pgrid .pcard{padding:7px 7px 13px}
+.pgrid .pcard .pmedia{width:100%;height:clamp(62px,9vw + 30px,96px);margin:0 0 7px;border-radius:12px;overflow:hidden}
+.pgrid .pcard .pmedia.pphoto{background:var(--BG);font-size:30px}
+.pgrid .pcard .pmedia.pphoto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.pgrid .pcard .pmedia.pcat img{object-fit:contain}
+.pgrid .pnm-ov{font-size:clamp(11.5px,0.8vw + 8.6px,14px);font-weight:700;color:var(--T);line-height:1.22;min-height:2.44em}
+.pgrid .ppr-ov{font-size:clamp(14px,1vw + 10.4px,17px);font-weight:900;color:var(--B);margin-top:3px}
+.pgrid .pgr-sous{font-size:10px;font-weight:700;color:var(--M);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pgrid .pcard.pgr .ppr-ov{color:#00695C}
+.pgrid .pgros{width:100%;justify-content:center;margin-top:6px}
+.pgros.pg2{height:auto;min-height:32px;padding:3px 7px;gap:6px;background:#fff;border:1.5px solid rgba(0,150,136,.4);color:#00695C}
+.pgros.pg2 .pg-t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.08;min-width:0;overflow:hidden}
+.pgros.pg2 .pg-t b{font-size:12.5px;font-weight:900}
+.pgros.pg2 .pg-t i{font-style:normal;font-size:9.5px;font-weight:700;opacity:.8;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.pgros.pg2.punit{border-color:rgba(41,121,255,.32);color:var(--B)}
+.pgros.pg2 .pg-t{align-items:center}
+.pgrid .pcard>.pvbdg.pvn{top:calc(7px + clamp(62px,9vw + 30px,96px) - 24px);left:auto;right:12px}
+.cha-autres{display:block;width:100%;margin-top:8px;padding:10px 6px;min-height:44px;background:none;border:none;color:var(--B);font-size:12.5px;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer;text-align:center}
+.facon-sw{display:flex;flex:none;background:var(--BG);border-radius:11px;padding:3px;gap:2px}
+.facon-sw button{border:none;background:none;border-radius:8px;padding:8px 11px;min-height:40px;font-size:12.5px;font-weight:800;color:var(--M);font-family:'Outfit',sans-serif;cursor:pointer}
+.facon-sw button.on{background:var(--C);color:var(--T);box-shadow:0 1px 3px rgba(16,24,40,.14)}
 /* Au-delà de la largeur max, on encadre l'app pour qu'elle ne flotte pas seule */
 @media (min-width:1240px){ body{background:#E4E8F0;box-shadow:0 0 0 1px rgba(0,0,0,.05)} }
 /* Souris/pavé tactile : le survol devient utile (inutile et gênant en tactile) */
@@ -3102,7 +3143,7 @@ body{max-width:min(100%,1200px)}
       <div class="tscr" id="tabs-c"></div>
     </div>
     <div id="topventes" style="display:none"></div>
-    <div class="shdr"><span class="stit" id="sec-lbl">⭐</span><button class="sact" id="btn-libre" onclick="ouvrirMontantLibre()" style="display:none">💰 Autre</button><button class="sact" id="btn-add" onclick="ouvrirPorteArticles()" style="display:none">+ Ajouter</button></div>
+    <div class="shdr"><span class="stit" id="sec-lbl">⭐</span><button class="sact" id="btn-libre" onclick="ouvrirMontantLibre()" style="display:none">💰 Autre</button><button class="sact" id="btn-add" onclick="ouvrirAjouter()" style="display:none">+ Ajouter</button></div>
     <div class="cash-guide" id="cash-guide">🟢 Taper = +1 · 💰 Prix · 🔴 ✕ = -1</div>
     <!-- ⚠️⚠️ 256 ARTICLES SUR 687, DANS LES VRAIES BOUTIQUES, NE PEUVENT PAS
          ÊTRE VENDUS. Deux boutiques n'ont RIEN de vendable, quatre en ont la
@@ -3112,6 +3153,14 @@ body{max-width:min(100%,1200px)}
     <div id="caisse-sansprix" style="display:none;margin:0 15px 10px;background:#FFF3E0;border:1.5px solid #FFB74D;
          border-radius:12px;padding:10px 12px;font-size:12px;font-weight:800;color:#B45309;cursor:pointer"
          onclick="ouvrirPrixVite()"></div>
+    <!-- ⭐ 23.01 — « PEUT-ÊTRE QUE LES GROSSISTES TROUVENT L'APP COMPLEXE. »
+         Chez eux, chaque carton sans prix était une question posée UNE
+         PAR UNE, en pleine vente, sur la tuile. Une boutique « en gros » voit
+         ici combien il en reste, et les règle d'un seul écran (« Tout
+         configurer » a déjà la colonne du carton). Voir `majBandeauSansGros`. -->
+    <div id="caisse-sansgros" style="display:none;margin:0 15px 10px;background:#E0F2F1;border:1.5px solid rgba(0,150,136,.45);
+         border-radius:12px;padding:10px 12px;font-size:12px;font-weight:800;color:#00695C;cursor:pointer"
+         onclick="ouvrirGrilleConfig()"></div>
     <!-- ⭐ « À CHAQUE FOIS UN PEU PARTOUT » — mais refermable. Celui qui
          travaille dans un onglet de navigateur perd l'app dès qu'il ferme
          l'onglet ; celui qui a dit non une fois n'a pas à le redire. -->
@@ -3165,7 +3214,7 @@ body{max-width:min(100%,1200px)}
     <div class="pgrid" id="pgrid"></div>
     <div style="height:20px"></div>
   </div>
-  <button class="fab-add" id="fab-add" onclick="ouvrirPorteArticles()" aria-label="Ajouter des articles" title="Ajouter des articles">+</button>
+  <button class="fab-add" id="fab-add" onclick="ouvrirAjouter()" aria-label="Ajouter des articles" title="Ajouter des articles">+</button>
   <!-- ⚠️ (22.98) « ENCAISSER » OUVRAIT LE PANIER, PAS LE PAIEMENT.
        Toute la barre était un seul bouton vers « Mon panier », et il fallait
        y toucher « PAYER » pour enfin voir le paiement : un écran de plus à
@@ -3406,7 +3455,7 @@ body{max-width:min(100%,1200px)}
       </div>
       <div class="sttit">🛍️ Catalogue</div>
       <div class="stcd">
-        <div class="stit2" onclick="ouvrirPorteArticles();goBack()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="st-art">Ajouter un article</div><div class="stisub" id="st-art-s">Nouvel article</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirAjouter();goBack()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="st-art">Ajouter un article</div><div class="stisub" id="st-art-s">Nouvel article</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-releve" onclick="ouvrirReleve()"><div class="stico" style="background:#E8F5E9">📄</div><div class="stii"><div class="stitl" id="st-rel">Relevé d’activité</div><div class="stisub" id="st-rel-s">—</div></div><span class="starr">›</span></div>
         <div class="stit2" id="row-grille" onclick="ouvrirGrilleConfig()"><div class="stico" style="background:#FFF8E1">⚡</div><div class="stii"><div class="stitl" id="st-gr">Tout configurer</div><div class="stisub" id="st-gr-s">—</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirPrix(null);goBack()"><div class="stico" style="background:#E3F2FD">💰</div><div class="stii"><div class="stitl" id="st-prix">Modifier les prix</div><div class="stisub" id="st-prix-s">Prix achat, vente, bénéfice</div></div><span class="starr">›</span></div>
@@ -3429,6 +3478,14 @@ body{max-width:min(100%,1200px)}
              veut que les autres métiers RESTENT VISIBLES, marqués « Bientôt ».
              C'est ici qu'ils vivent : consultable, jamais bloquant. -->
         <div class="stit2" data-exp="1" onclick="ouvrirSecteur()"><div class="stico" style="background:#FFF3E0">🏪</div><div class="stii"><div class="stitl" id="st-secteur">Mon type de commerce</div><div class="stisub" id="st-secteur-s">Boutique — les autres métiers arrivent</div></div><span class="starr">›</span></div>
+        <!-- ⭐ 23.01 — LA FAÇON DE VENDRE : détail ou gros. Elle décide de ce
+             qu'une touche sur la tuile vend. Voir `_venteEnGros`. -->
+        <div class="stit2" id="row-facon" style="cursor:default">
+          <div class="stico" style="background:#E0F2F1">🏷️</div>
+          <div class="stii"><div class="stitl" id="st-facon">Je vends surtout</div>
+            <div class="stisub" id="st-facon-s">Au détail : une touche vend une pièce</div></div>
+          <div class="facon-sw"><button type="button" id="fc-det" class="on" onclick="choisirFacon('detail')">Détail</button><button type="button" id="fc-gros" onclick="choisirFacon('gros')">Gros</button></div>
+        </div>
         <div class="stit2" id="row-maville" onclick="ouvrirMaVille()"><div class="stico" style="background:#E0F2F1">📍</div><div class="stii"><div class="stitl" id="st-mv">Ma ville</div><div class="stisub" id="st-mv-s">—</div></div><span class="starr">›</span></div>
       </div>
 
@@ -4800,6 +4857,9 @@ body{max-width:min(100%,1200px)}
         <div id="cha-pn-lst" style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch"></div>
       </div>
       <button class="bnxt" onclick="chaValider()" id="cha-btn">Continuer</button>
+      <!-- ⭐ 23.01 — les autres façons d'ajouter, rangées ici : un lien, pas
+           une décision à prendre avant de commencer. -->
+      <button type="button" class="cha-autres" id="cha-autres" onclick="closeSheet('ov-choixart');ouvrirPorteArticles()">Autres façons d'ajouter ›</button>
     </div>
   </div>
 </div>
@@ -4846,17 +4906,16 @@ body{max-width:min(100%,1200px)}
            place. « Voir chez les voisines » passe en dernier — elle peut ne
            rien rendre tant qu'il n'y a pas de boutiques autour, et ce serait
            la pire des premières impressions. -->
-      <div style="font-size:11.5px;color:var(--M);font-weight:600;margin-bottom:13px" id="porte-aide">Si tu ne sais pas par où commencer, prends la première.</div>
-      <div class="porte-badge" id="porte-reco-b">Commence ici</div>
-      <div class="porte-reco" onclick="closeSheet('ov-porte');ouvrirChoixArticles()">
-        <div class="pr-ico">🖼️</div>
-        <div style="min-width:0">
-          <div class="pr-t" id="porte-reco-t">Choisir dans le catalogue</div>
-          <div class="pr-s" id="porte-reco-s">Des photos, rien à taper — et ça marche sans internet</div>
-        </div>
-        <span class="starr" style="margin-left:auto">›</span>
-      </div>
-      <div class="porte-autres" id="porte-autres">Autres façons</div>
+      <!-- ⭐ 23.01 — CE N'EST PLUS LA PORTE, C'EST « AUTRES FAÇONS ».
+           « Ajouter des articles, ça paraît complexe : trop de choix. »
+           Sa capture : SEPT choses à lire avant d'ajouter un article — et en
+           tête, l'encadré du support, que la règle voulait « discret, et
+           jamais devant ». Un `id` en double l'y faisait monter : il
+           remplaçait la phrase d'aide du haut au lieu de remplir la ligne
+           du bas. « + Ajouter » ouvre maintenant le catalogue directement
+           (photos, recherche, dictée, et « ajouter quand même » pour ce qui
+           n'y est pas) ; cet écran ne garde que les autres façons, et le
+           support redescend à sa place, en dernier. -->
       <div class="stit2" onclick="closeSheet('ov-porte');ouvrirAjoutExpress()"><div class="stico" style="background:#FFF3E0">⚡</div><div class="stii"><div class="stitl" id="porte-exp">Taper à la suite</div><div class="stisub" id="porte-exp-s">Nom et prix, un article après l'autre, sans t'arrêter</div></div><span class="starr">›</span></div>
       <div class="stit2" onclick="closeSheet('ov-porte');ouvrirCollageListe()"><div class="stico" style="background:#E8F5E9">📋</div><div class="stii"><div class="stitl" id="porte-coller">Coller une liste</div><div class="stisub" id="porte-coller-s">Depuis WhatsApp ou ton fournisseur</div></div><span class="starr">›</span></div>
       <div class="stit2" onclick="closeSheet('ov-porte');ouvrirAjout()"><div class="stico" style="background:#F3E5F5">➕</div><div class="stii"><div class="stitl" id="porte-un">Un seul article, en détail</div><div class="stisub" id="porte-un-s">Avec photo, variantes, conditionnement et seuil d'alerte</div></div><span class="starr">›</span></div>
@@ -4865,8 +4924,8 @@ body{max-width:min(100%,1200px)}
            les façons de faire SOI-MÊME. La dernière ligne est pour celui
            qui a tout regardé et n'a rien pris : on ne lui propose pas une
            sixième méthode, on lui propose quelqu'un. Remplie par
-           `majPorteArticles`, et seulement si c'est le patron. -->
-      <div id="porte-aide"></div>
+           `ouvrirPorteArticles`, et seulement si c'est le patron. -->
+      <div id="porte-sup" style="margin-top:14px"></div>
     </div>
   </div>
 </div>
@@ -5790,7 +5849,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.00'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.01'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -10927,7 +10986,7 @@ function _etagereHtml(vide){
   h+=_etagereTuile({nm:fr?'Autre article':'Other item',e:'✏️'},'etagereAutre()',fr?'+ Écrire':'+ Type');
   if(vide){
     h+='<div class="etg-pied">'
-      +'<div><button class="eg-btn2" onclick="ouvrirPorteArticles()">📷 '+(fr?'Beaucoup d\'articles d\'un coup':'Many items at once')+'</button></div>'
+      +'<div><button class="eg-btn2" onclick="ouvrirAjouter()">📷 '+(fr?'Beaucoup d\'articles d\'un coup':'Many items at once')+'</button></div>'
       +'<div><button class="eg-btn2" onclick="entrerDemo()" style="border-color:var(--B);color:var(--B)">👀 '
       +(fr?'Voir d\'abord une boutique d\'exemple':'See an example shop first')+'</button></div>'
       +_htmlAideCreation()+_htmlRappelDemain()+'</div>';
@@ -11299,7 +11358,27 @@ function _prixSeulManque(p){
   if(p._autoNm&&txtNorm(p.nm)===txtNorm(p._autoNm))return false;
   return !(p.px>0);
 }
+// ⭐ 23.01 — en gros, les contenants qui n'ont pas encore de prix : on les
+// compte et on les règle d'un seul écran, au lieu de les découvrir un par
+// un sous les tuiles (voir `_venteEnGros`).
+function _articlesSansPrixGros(){
+  return (DB&&DB.articles||[]).filter(function(p){
+    if(!p||(p.vr&&p.vr.length)||articleIncomplet(p))return false;
+    var g=null;try{g=_grosDe(p,null);}catch(e){}
+    return !!(g&&g.n>1&&!(g.px>0));
+  });
+}
+function majBandeauSansGros(){
+  var z=document.getElementById('caisse-sansgros');if(!z||!DB)return;
+  if(!_venteEnGros()||!(role==='patron'||hasPerm('produits'))){z.style.display='none';return;}
+  var n=_articlesSansPrixGros().length,fr=(lang==='fr');
+  if(!n){z.style.display='none';z.textContent='';return;}
+  z.style.display='block';
+  z.textContent='📦 '+n+' '+(fr?('article'+(n>1?'s':'')+' sans prix de gros — règle-'+(n>1?'les':'le')+' en une fois ›')
+                               :('item'+(n>1?'s':'')+' without a bulk price — set '+(n>1?'them':'it')+' at once ›'));
+}
 function majBandeauSansPrix(){
+  try{majBandeauSansGros();}catch(e){}
   var z=document.getElementById('caisse-sansprix');if(!z||!DB)return;
   if(!(role==='patron'||hasPerm('produits'))){z.style.display='none';return;}
   var n=_articlesSansPrix().length,fr=(lang==='fr');
@@ -11511,7 +11590,12 @@ function renderProd(lst){
     var pq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
     var d=document.createElement('div');
     var _carte=_estCarteCatalogue(p.img);
-    d.className='pcard'+((p.img&&!_carte)?' has-photo':'')+(inc?' incomplete':'')+(pq>0?' sel':'')+(hasV?' hasv':'')+(isNeg?' neg':'')+(isOut&&p.rt?' out-ok':'');
+    // ⭐ 23.01 — boutique « en gros » : une touche vend LE CONTENANT quand
+    // l'article en a un (voir `_venteEnGros`). Sinon rien ne change.
+    var _gt=(!hasV&&!inc)?_grosDeTuile(p):null;
+    // ⭐ 23.01 — plus de `has-photo` dans la grille : la photo se range dans
+    // la vignette comme le dessin (voir « LA TUILE CALME » dans le CSS).
+    d.className='pcard'+(inc?' incomplete':'')+(pq>0?' sel':'')+(hasV?' hasv':'')+(isNeg?' neg':'')+(isOut&&p.rt?' out-ok':'')+(_gt?' pgr':'');
     d.id='pc-'+p.id;
     var ignoreNextTap=false;
     d.onclick=function(){
@@ -11525,6 +11609,9 @@ function renderProd(lst){
       }
       if(isOut&&!p.rt){_direPourquoiVide(p);return;}
       if(hasV){ouvrirVarInline(p,d);return;} // famille -> les variantes sortent SOUS la carte
+      // En gros, la tuile vend le contenant : un carton sans prix le
+      // demande une fois, à la première vente (c'est `vendreGros`).
+      if(_gt){vendreGros(null,p.id);return;}
       if(estMesure(p)){ouvrirQteMesure(p);return;}
       if(isOut&&p.rt&&livePq===0&&!_stockJamaisCompte(p)){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
       addPanier(p,null);
@@ -11553,12 +11640,17 @@ function renderProd(lst){
       // la photo, ou la pastille. Tout ce qui se LIT vient ensuite, et
       // c'est exactement le même bloc, au même endroit, à la même taille.
       (_carte
-        ?'<div class="pmedia pcat"><img src="'+p.img+'" loading="lazy" alt="" onerror="var m=this.parentElement;m.classList.remove(\'pcat\');m.textContent='+jsStr(p.e||'📦')+'"></div>'
+        ?'<div class="pmedia pcat"><img src="'+srcSure(p.img)+'" loading="lazy" alt="" onerror="var m=this.parentElement;m.classList.remove(\'pcat\');m.textContent='+jsStr(p.e||'📦')+'"></div>'
         :p.img
-        ?'<img class="pcard-img" src="'+p.img+'" loading="lazy" onerror="this.parentElement.classList.remove(\'has-photo\');this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'pemoji\',textContent:'+jsStr(p.e)+'}))">'
+        // ⭐ 23.01 — LA PHOTO DANS LA VIGNETTE, PLUS SUR TOUTE LA CARTE. Le
+        // nom et le prix ne s'écrivent plus en blanc sur un voile noir : la
+        // rangée garde UNE seule allure, photo ou dessin. L'émoji est posé
+        // dessous et prend la place si la photo ne vient pas (hors ligne,
+        // lien mort) — la leçon du catalogue en 22.99.
+        ?'<div class="pmedia pphoto"><span>'+escH(p.e||'📦')+'</span><img src="'+srcSure(p.img)+'" loading="lazy" alt="" onerror="this.remove()"></div>'
         :(DB.cfg&&DB.cfg.noEmoji
           ?'<div class="pmedia pmono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</div>'
-          :(function(){var _m=mediaArtInner(p,32);return '<div class="pmedia" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</div>';})()
+          :(function(){var _m=mediaArtInner(p,40);return '<div class="pmedia" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</div>';})()
         )
       )+
       // ⚠️⚠️ « LA LONGUEUR DES ARTICLES ». Mesuré sur sa grille à 360 px :
@@ -11570,8 +11662,17 @@ function renderProd(lst){
       // ligne. Les contenances (« 50 cl · 1,5 L ») restent sous le prix :
       // elles se LISENT, elles ont droit à leur ligne.
       (function(){var _bv=hasV?_badgeVariantes(p):'',_coin=_bv.indexOf('pvn')>=0;
-        return '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+prixTxt+'</div>'
-          +_chipGros(p)+(_coin?'':_bv)+'</div>'+(_coin?_bv:'');})()+
+        // En gros, le prix affiché est celui du CONTENANT, et sa taille est
+        // écrite dessous : « 13 000 F — carton de 24 ». La pièce reste à
+        // une touche, en bas (`_chipUnite`).
+        var _px=prixTxt,_sous='';
+        if(_gt){
+          _px=_montantCarte(_gt.px);
+          _sous=_gt.mot+(lang==='fr'?' de ':' of ')+fmtQ(_gt.n);
+        }
+        return '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+_px+'</div>'
+          +(_sous?'<div class="pgr-sous">'+escH(_sous)+'</div>':'')
+          +(_gt?_chipUnite(p):_chipTuile(p))+(_coin?'':_bv)+'</div>'+(_coin?_bv:'');})()+
       (inc?'<div class="sinc">✏️ '+(lang==='fr'?'À compléter':'To complete')+'</div>':'')+
       (isLow&&!inc?'<div class="slow">⚠️ '+(lang==='fr'?'Bas':'Low')+'</div>':'')+
       (isOut&&!isNeg?'<div class="sout">⛔ '+(lang==='fr'?'Épuisé':'Out')+'</div>':'')+
@@ -14945,6 +15046,127 @@ function grosOuvrirFamille(e,pid){
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
   var carte=document.getElementById('pc-'+pid);
   try{ouvrirVarInline(p,carte);}catch(x){try{ouvrirVar(p);}catch(y){}}
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ LA CAISSE SE MET À SA FAÇON DE VENDRE (23.01)
+//
+//  « Repense les tuiles pour donner place à tous types de commerce,
+//    grossiste ou détail, avec des touches pensées et moins stressantes. »
+//
+//  Il nous avait dit deux choses qui se contredisent, et les deux étaient
+//  vraies. En 21.10 : « JE VOIS PARTOUT VENTE EN CARTON. CE N'EST PAS TOUS
+//  LES ARTICLES OÙ ON ACHÈTE EN CARTON. » Plus tard : « TOUT PRODUIT EST
+//  VENDABLE EN GROS. » La première est la phrase du détaillant, la seconde
+//  celle du grossiste. Une seule caisse pour les deux leur donnait tort à
+//  tour de rôle : sa capture du 11/10 montre « 📦 carton », « 📦 sac »,
+//  « 📦 palette » sous presque chaque tuile — et sans un seul prix.
+//  MESURÉ en base le même jour : sur toute la flotte, 3 articles ont un prix
+//  de carton, et aucune boutique en dehors des siennes n'a jamais vendu un
+//  carton. Ces puces étaient des questions de RÉGLAGE posées en pleine
+//  vente, sous les yeux du client.
+//
+//  La boutique dit maintenant comment elle vend (Réglages › Type de
+//  commerce) :
+//   · « Au détail » (par défaut) : une touche vend UNE pièce. Le contenant
+//     ne se montre que là où il a un prix — c'est alors une vente, avec son
+//     montant, et plus une question.
+//   · « En gros » : une touche vend LE CONTENANT quand son prix est posé
+//     (le prix du carton en grand, sa taille dessous) ; la pièce reste à une
+//     touche, en bas. Là où le prix manque, le repère d'avant reste : chez
+//     un grossiste, tout produit est vendable en gros.
+//  Rien n'est retiré : « 📦 Vendre par … » reste dans l'appui long.
+// ══════════════════════════════════════════════════════════════════
+function _venteEnGros(){return !!(DB&&DB.cfg&&DB.cfg.facon==='gros');}
+// Le contenant que la TUILE vend d'une touche, en boutique « en gros » :
+// seulement s'il a un prix. Sans prix, la tuile vend la pièce — vendre un
+// carton à l'aveugle demanderait de modifier l'article en pleine vente.
+function _grosDeTuile(p){
+  if(!_venteEnGros()||!p||articleIncomplet(p)||(p.vr&&p.vr.length))return null;
+  var g=null;try{g=_grosDe(p,null);}catch(e){}
+  return (g&&g.n>1&&g.px>0)?g:null;
+}
+function _montantCarte(v){var s=DB.cfg.s;return fmt(v).replace(s+' ','')+s;}
+// La puce d'un contenant qui a un prix : une petite étiquette, le MONTANT
+// en gras et ce qu'il achète dessous (« 13 000 / carton de 24 »). Sur une
+// ligne, « casier · 6 800 » ne tenait pas dans une tuile de 360 px et
+// finissait en « casier · … » — le prix, la seule chose qu'on lit, coupé.
+function _chipPrix(pid,x,fn){
+  var lib=x.mot+(lang==='fr'?' de ':' of ')+fmtQ(x.n),px=_sansDevise(x.px),t=escH(lib+' · '+px);
+  // Sans le dessin du contenant : la légende le NOMME déjà, et ses 18 px
+  // coupaient « casier de 12 » en « casier de… » sur un écran de 360 px.
+  return '<button class="pgros pg2" onclick="'+(fn||'vendreGros')+'(event,'+pid+')" title="'+t+'" aria-label="'+t+'">'
+    +'<span class="pg-t"><b>'+px+'</b><i>'+escH(lib)+'</i></span></button>';
+}
+// Ce que la tuile montre sous le prix, selon la façon de vendre.
+function _chipTuile(p){
+  if(!p||articleIncomplet(p))return '';
+  if(_venteEnGros())return _chipGros(p);
+  // ── Au détail : le gros ne sort que s'il VEND. ──
+  if(p.vr&&p.vr.length){
+    var vg=_varianteGros(p);
+    if(!(vg&&Number(vg.px)>0)||!_chipGros(p))return '';
+    return _chipPrix(p.id,{mot:_motContenant(p,null),n:getQBase(vg),px:Number(vg.px)});
+  }
+  var et=[];try{et=_etagesGros(p,null);}catch(e){}
+  var prix=et.filter(function(x){return x.px>0;});
+  if(!prix.length)return '';
+  if(et.length>1)return _chipGros(p);          // plusieurs étages : il choisit
+  return _chipPrix(p.id,et[0]);
+}
+// En gros, la pièce : une touche, en bas. Même chemin que la tuile au
+// détail — article à compléter, rupture, mesure, négociation.
+function _chipUnite(p){
+  var fr=(lang==='fr'),u=_umDe(p),lib;
+  if(u==='kg')lib=fr?'au kg':'per kg';
+  else if(u==='L')lib=fr?'au litre':'per litre';
+  else if(p.umNom)lib=(fr?'par ':'per ')+p.umNom;
+  else lib=fr?'à l\'unité':'per unit';
+  var t=escH(lib+' · '+_sansDevise(p.px));
+  return '<button class="pgros pg2 punit" onclick="vendreUnite(event,'+p.id+')" title="'+t+'" aria-label="'+t+'">'
+    +'<span class="pg-t"><b>'+_sansDevise(p.px)+'</b><i>'+escH(lib)+'</i></span></button>';
+}
+function vendreUnite(e,pid){
+  if(e)e.stopPropagation();
+  var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
+  if(articleIncomplet(p)){
+    if(role==='patron'||hasPerm('produits'))ouvrirCompleterArticle(p,null,true);
+    else showToast('⏳ '+(lang==='fr'?'Article en préparation — demande au patron':'Item being prepared — ask the owner'));
+    return;
+  }
+  var ts=getStk(p),out=ts<=0,jamais=!!(p.rt&&_stockJamaisCompte(p));
+  if(jamais)out=false;
+  if(out&&!p.rt){_direPourquoiVide(p);return;}
+  if(estMesure(p)){ouvrirQteMesure(p);return;}
+  var deja=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
+  if(out&&p.rt&&deja===0&&!jamais){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
+  addPanier(p,null);
+}
+// Réglages › Type de commerce › « Je vends surtout ».
+function choisirFacon(m){
+  var fr=(lang==='fr');
+  if(role!=='patron'){showToast('🔒 '+(fr?'Réservé au patron':'Owner only'));return;}
+  if(!DB||!DB.cfg)return;
+  m=(m==='gros')?'gros':'detail';
+  if((_venteEnGros()?'gros':'detail')===m){majLigneFacon();return;}
+  DB.cfg.facon=m;
+  save();
+  majLigneFacon();
+  try{renderProd(DB.articles);}catch(e){}
+  showToast(m==='gros'
+    ?('📦 '+(fr?'Caisse en gros : une touche vend le carton, la pièce reste en bas':'Wholesale: a tap sells the box, the unit stays below'))
+    :('🛒 '+(fr?'Caisse au détail : une touche vend une pièce':'Retail: a tap sells one unit')));
+}
+function majLigneFacon(){
+  var r=document.getElementById('row-facon');if(!r)return;
+  r.style.display=(role==='patron')?'':'none';
+  var g=_venteEnGros(),fr=(lang==='fr');
+  var a=document.getElementById('fc-det'),b=document.getElementById('fc-gros');
+  if(a){a.classList.toggle('on',!g);a.textContent=fr?'Détail':'Retail';}
+  if(b){b.classList.toggle('on',g);b.textContent=fr?'Gros':'Wholesale';}
+  var t=document.getElementById('st-facon');if(t)t.textContent=fr?'Je vends surtout':'I mostly sell';
+  var s=document.getElementById('st-facon-s');
+  if(s)s.textContent=g?(fr?'En gros : une touche vend le carton':'Wholesale: a tap sells the box')
+                      :(fr?'Au détail : une touche vend une pièce':'Retail: a tap sells one unit');
 }
 function _chipGros(p){
   if(!p||articleIncomplet(p))return '';
@@ -20743,6 +20965,14 @@ async function ouvrirChoixArticles(){
   if(!(role==='patron'||hasPerm('produits'))){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
   _chaSel={};_chaCat='';_chaQ='';_chaFam=null;
   var s=document.getElementById('cha-src');if(s)s.value='';
+  // ⭐ 23.01 — c'est maintenant LA porte d'ajout (voir `ouvrirAjouter`) :
+  // la question « qu'est-ce que tu vends ? » n'a de sens que pour une
+  // boutique vide ; pour les autres, l'écran dit simplement ce qu'il fait.
+  var fr=(lang==='fr'),vide=!(DB&&DB.articles&&DB.articles.length);
+  var tt=document.getElementById('cha-tit');
+  if(tt)tt.textContent=vide?(fr?'Qu\'est-ce que tu vends ?':'What do you sell?'):(fr?'Ajouter des articles':'Add items');
+  var af=document.getElementById('cha-autres');
+  if(af)af.textContent=fr?'Autres façons d\'ajouter ›':'Other ways to add ›';
   document.getElementById('ov-choixart').classList.add('show');
   document.getElementById('cha-grid').innerHTML='<div style="grid-column:1/-1;font-size:12px;color:var(--M);font-weight:700;padding:14px 0">'+(lang==='fr'?'Chargement du catalogue…':'Loading…')+'</div>';
   await chargerCatalogue600();
@@ -21248,29 +21478,24 @@ function chaValider(){
   try{expRender();}catch(e){}
   showToast('👍 '+n+' '+(fr?'article(s) — mets les prix maintenant':'item(s) — set the prices now'));
 }
+// ⭐ 23.01 — AJOUTER, C'EST UN SEUL GESTE. « + Ajouter », le bouton rond,
+// Réglages et le stock vide ouvrent directement le catalogue : photos,
+// recherche, dictée, et « ajouter quand même » pour ce qui n'y est pas.
+// Les autres façons sont un lien, en bas du catalogue (voir `ov-porte`).
+function ouvrirAjouter(){ouvrirChoixArticles();}
+// « Autres façons d'ajouter » : la liste, la saisie rapide, l'article
+// détaillé, les voisines — et, en dernier, quelqu'un pour le faire.
 function ouvrirPorteArticles(){
   if(!(role==='patron'||hasPerm('produits'))){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
   majPorteArticles();
-  try{var _pa=document.getElementById('porte-aide');
-      if(_pa)_pa.innerHTML=_htmlAideCreation();}catch(e){}
+  try{var _ps=document.getElementById('porte-sup');
+      if(_ps)_ps.innerHTML=_htmlAideCreation();}catch(e){}
   document.getElementById('ov-porte').classList.add('show');
 }
-// La recommandation ne change pas — le catalogue reste la porte la plus sûre.
-// Ce sont les MOTS qui s'adaptent : « commence ici » n'a de sens que pour une
-// boutique vide, et dire ça à quelqu'un qui a déjà cent articles fait perdre
-// confiance dans tout le reste de l'écran.
 function majPorteArticles(){
-  var fr=(lang==='fr'),vide=!(DB&&DB.articles&&DB.articles.length);
-  function pose(id,txt){var e=document.getElementById(id);if(e)e.textContent=txt;}
-  pose('porte-reco-b',vide?(fr?'Commence ici':'Start here'):(fr?'Le plus simple':'Simplest'));
-  pose('porte-reco-t',fr?'Choisir dans le catalogue':'Pick from the catalogue');
-  pose('porte-reco-s',fr?"Des photos, rien à taper — et ça marche sans internet"
-                        :'Photos, no typing — and it works offline');
-  pose('porte-aide',vide?(fr?'Si tu ne sais pas par où commencer, prends la première.'
-                            :'If you are unsure, take the first one.')
-                        :(fr?'Prends celle qui te va — tu peux les mélanger.'
-                            :'Take whichever suits you — you can mix them.'));
-  pose('porte-autres',fr?'Autres façons':'Other ways');
+  var fr=(lang==='fr');
+  var e=document.getElementById('porte-tit');
+  if(e)e.textContent=fr?'Autres façons d\'ajouter':'Other ways to add';
 }
 // ══════════════════════════════════════════════════════════════════
 //  MODÈLE DE BOUTIQUE — préparé par l'administrateur, appliqué par le patron
@@ -22741,7 +22966,7 @@ function renderStock(lst){var c=document.getElementById('stk-lst');if(!c)return;
   if(_stkFiltre==='cmd'&&!_stkQ){
     try{renderCommande(c,_q30,qteVendueParVariante(30));return;}catch(e){}
   }
-  if(!lst.length){c.innerHTML=(!DB.articles.length&&(role==='patron'||hasPerm('produits')))?('<div class="empty-guide"><div class="eg-ico">📦</div><div class="eg-t">'+(_fr?'Ton stock est vide':'Your stock is empty')+'</div><div class="eg-s">'+(_fr?'Ajoute tes articles pour suivre les quantités et être alerté quand ça baisse.':'Add your items to track quantities and get low-stock alerts.')+'</div><button class="eg-btn" onclick="ouvrirPorteArticles()">📦 '+(_fr?'Ajouter un article':'Add an item')+'</button>'+_htmlAideCreation()+'</div>'):('<div class="empty"><div class="empty-e">🔍</div><div class="empty-t">'+(_fr?'Aucun résultat':'No result')+'</div></div>');return;}var bc={};lst.forEach(function(p){if(!bc[p.cat])bc[p.cat]=[];bc[p.cat].push(p);});Object.entries(bc).forEach(function(e){var cat=e[0],items=e[1];var replie=!!_catsRepliees[cat];
+  if(!lst.length){c.innerHTML=(!DB.articles.length&&(role==='patron'||hasPerm('produits')))?('<div class="empty-guide"><div class="eg-ico">📦</div><div class="eg-t">'+(_fr?'Ton stock est vide':'Your stock is empty')+'</div><div class="eg-s">'+(_fr?'Ajoute tes articles pour suivre les quantités et être alerté quand ça baisse.':'Add your items to track quantities and get low-stock alerts.')+'</div><button class="eg-btn" onclick="ouvrirAjouter()">📦 '+(_fr?'Ajouter un article':'Add an item')+'</button>'+_htmlAideCreation()+'</div>'):('<div class="empty"><div class="empty-e">🔍</div><div class="empty-t">'+(_fr?'Aucun résultat':'No result')+'</div></div>');return;}var bc={};lst.forEach(function(p){if(!bc[p.cat])bc[p.cat]=[];bc[p.cat].push(p);});Object.entries(bc).forEach(function(e){var cat=e[0],items=e[1];var replie=!!_catsRepliees[cat];
 var ti=document.createElement('div');ti.className='scat-h';
 ti.innerHTML='<span>'+(replie?'▸':'▾')+' '+(CE[cat]||'📦')+' '+cat+'</span><span class="scat-n">'+items.length+'</span>';
 ti.onclick=function(){toggleCatStock(cat);};
@@ -28222,7 +28447,7 @@ var _lancerAppBase=lancerApp;lancerApp=function(){_lancerAppBase();try{majBouton
   try{_pushSynchro();}catch(e){}
   try{checkNotifications();}catch(e){}
   try{suggererArchivage();}catch(e){}
-};})();try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneGrille();}catch(e){}try{majLigneReleve();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}
+};})();try{majBoutonVeille();majBoutonVerrou();if(DB&&DB.cfg&&DB.cfg.veille)activerVeille();}catch(e){}try{_alignerFamillesAnciennes();}catch(e){}try{_replierLotsDeGros();}catch(e){}try{majLignePhotosEtrangeres();}catch(e){}try{majLigneErreurs();}catch(e){}try{majEnteteCaisse();}catch(e){}try{majLigneMaVille();}catch(e){}try{majLigneFacon();}catch(e){}try{majLigneGrille();}catch(e){}try{majLigneReleve();}catch(e){}try{chargerPrixIndicatifs();}catch(e){}try{majLignePrixImpossibles();}catch(e){}try{majEtatAbonnement();}catch(e){}try{setTimeout(verifierBoutiqueActive,1800);}catch(e){}try{_replierFamillesSolitaires();}catch(e){}setTimeout(function(){try{proposerEmpreinteALaPorte();}catch(e){}},2600);try{if(!_navArmee)_navSentinelle();}catch(e){}
 // ⭐ LA VENTE INTERROMPUE REVIENT AVEC LUI. Posée sur le téléphone quand
 // l'app est passée en fond, reprise ici — et annoncée, parce qu'un panier
 // qui reâpparaît sans un mot ne s'explique pas.
