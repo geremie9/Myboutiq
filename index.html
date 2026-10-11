@@ -2257,6 +2257,19 @@ body{max-width:min(100%,1200px)}
 .expg-tl{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:12px;font-weight:700;color:var(--M);flex-wrap:wrap}
 .expg-tl input{width:70px;height:36px;border:2px solid #00897B;border-radius:10px;text-align:center;font-size:15px;font-weight:800;font-family:'Outfit',sans-serif}
 .expg-tl button{border:none;background:none;color:var(--B);font-size:12px;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer;padding:6px 2px}
+/* ⭐ 23.03 — les variantes en gros : le prix du carton sur la sorte, la pièce sur sa puce */
+.vt-sous{display:block;font-size:10px;font-weight:700;color:var(--M);line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* (le cercle garde son prix en blanc sur le bandeau sombre : le vert y devenait illisible) */
+.vtile.vgr .vt-px{color:#00695C}
+.vt-gros.g-unite,.vsat-gros.g-unite{background:#fff;color:var(--B);box-shadow:inset 0 0 0 1.5px rgba(41,121,255,.32)}
+.g-unite .g-lib{font-weight:700;opacity:.8;margin-left:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* Dans une tuile de 98 px, « 1 700 la pièce » ne tenait pas sur une ligne
+   (« la pi… ») : le prix en haut, le mot dessous — comme la puce dehors. */
+.vt-gros.g-unite{flex-direction:column;justify-content:center;gap:1px;height:auto;min-height:30px;padding:3px 9px}
+.vt-gros.g-unite .g-lib{margin-left:0;font-size:9.5px}
+.grgros{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin:-2px 0 8px 30px;padding:7px 10px;border-radius:10px;background:#E0F2F1}
+.grgros-t{flex-basis:100%;font-size:11.5px;font-weight:800;color:#00695C}
+.grgros .grlab{color:#00695C}
 /* « Ton stock » : on compte comme il range — en cartons */
 .exps-row{display:flex;align-items:center;gap:10px;margin-top:10px}
 .exps-b{width:48px;height:48px;border-radius:13px;border:none;font-size:24px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;flex-shrink:0}
@@ -3221,7 +3234,7 @@ body{max-width:min(100%,1200px)}
          configurer » a déjà la colonne du carton). Voir `majBandeauSansGros`. -->
     <div id="caisse-sansgros" style="display:none;margin:0 15px 10px;background:#E0F2F1;border:1.5px solid rgba(0,150,136,.45);
          border-radius:12px;padding:10px 12px;font-size:12px;font-weight:800;color:#00695C;cursor:pointer"
-         onclick="ouvrirGrilleConfig()"></div>
+         onclick="ouvrirGrilleConfig('gros')"></div>
     <!-- ⭐ « À CHAQUE FOIS UN PEU PARTOUT » — mais refermable. Celui qui
          travaille dans un onglet de navigateur perd l'app dès qu'il ferme
          l'onglet ; celui qui a dit non une fois n'a pas à le redire. -->
@@ -5051,6 +5064,7 @@ body{max-width:min(100%,1200px)}
       <div style="display:flex;gap:6px;margin-bottom:9px">
         <button class="cbtn on" id="gr-f-manque" onclick="grFiltrer('manque')">⚠️ Ce qui manque</button>
         <button class="cbtn" id="gr-f-tout" onclick="grFiltrer('tout')">Tout</button>
+        <button class="cbtn" id="gr-f-gros" onclick="grFiltrer('gros')" style="display:none">📦 Prix du carton</button>
       </div>
       <div id="gr-lst"></div>
     </div>
@@ -5920,7 +5934,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.02'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.03'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -11434,11 +11448,27 @@ function _prixSeulManque(p){
 // compte et on les règle d'un seul écran, au lieu de les découvrir un par
 // un sous les tuiles (voir `_venteEnGros`).
 function _articlesSansPrixGros(){
-  return (DB&&DB.articles||[]).filter(function(p){
-    if(!p||(p.vr&&p.vr.length)||articleIncomplet(p))return false;
-    var g=null;try{g=_grosDe(p,null);}catch(e){}
-    return !!(g&&g.n>1&&!(g.px>0));
+  // 23.03 — les SORTES d'une famille comptent aussi : « Huile 5 L, carton
+  // de 4 » sans prix de carton était invisible ici, et nulle part ailleurs.
+  var out=[];
+  (DB&&DB.articles||[]).forEach(function(p){
+    if(!p)return;
+    if(p.vr&&p.vr.length){
+      (p.vr||[]).forEach(function(v){
+        if(_estGrosDeVariante(v)||!(Number(v.px)>0))return;
+        if(_grSansCarton(p,v))out.push({p:p,v:v,nm:p.nm+' — '+(v.nm||'')});
+      });
+      return;
+    }
+    if(articleIncomplet(p))return;
+    if(_grSansCarton(p,null))out.push(p);
   });
+  return out;
+}
+// Le contenant est connu, son prix ne l'est pas.
+function _grSansCarton(p,v){
+  var g=null;try{g=_grosDe(p,v||null);}catch(e){}
+  return !!(g&&g.n>1&&!(g.px>0));
 }
 function majBandeauSansGros(){
   var z=document.getElementById('caisse-sansgros');if(!z||!DB)return;
@@ -11665,9 +11695,11 @@ function renderProd(lst){
     // ⭐ 23.01 — boutique « en gros » : une touche vend LE CONTENANT quand
     // l'article en a un (voir `_venteEnGros`). Sinon rien ne change.
     var _gt=(!hasV&&!inc)?_grosDeTuile(p):null;
+    // 23.03 — une famille en gros : « dès 9 800 — le carton », comme ses sortes.
+    var _fg=(hasV&&!inc)?_grosFamille(p):null;
     // ⭐ 23.01 — plus de `has-photo` dans la grille : la photo se range dans
     // la vignette comme le dessin (voir « LA TUILE CALME » dans le CSS).
-    d.className='pcard'+(inc?' incomplete':'')+(pq>0?' sel':'')+(hasV?' hasv':'')+(isNeg?' neg':'')+(isOut&&p.rt?' out-ok':'')+(_gt?' pgr':'');
+    d.className='pcard'+(inc?' incomplete':'')+(pq>0?' sel':'')+(hasV?' hasv':'')+(isNeg?' neg':'')+(isOut&&p.rt?' out-ok':'')+((_gt||_fg)?' pgr':'');
     d.id='pc-'+p.id;
     var ignoreNextTap=false;
     d.onclick=function(){
@@ -11742,6 +11774,9 @@ function renderProd(lst){
         if(_gt){
           _px=_montantCarte(_gt.px);
           _sous=_gt.mot+(lang==='fr'?' de ':' of ')+fmtQ(_gt.n);
+        }else if(_fg){
+          _px=(lang==='fr'?'dès ':'from ')+_montantCarte(_fg.px);
+          _sous=(lang==='fr'?(_fg.mot==='palette'?'la ':'le '):'per ')+_fg.mot;
         }
         return '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div><div class="ppr-ov">'+_px+'</div>'
           +(_sous?'<div class="pgr-sous">'+escH(_sous)+'</div>':'')
@@ -11920,9 +11955,15 @@ function _grLignes(){
     var fam=!!(p.vr&&p.vr.length);
     var manque=_grIncomplet(p,null);
     if(_grFiltre==='manque'&&!manque)return;
+    // 23.03 — la liste de travail des CARTONS : contenant connu, prix inconnu.
+    if(_grFiltre==='gros'){
+      if(fam){if(!(p.vr||[]).some(function(v){return !_estGrosDeVariante(v)&&_grSansCarton(p,v);}))return;}
+      else if(!_grSansCarton(p,null))return;
+    }
     out.push({p:p,v:null,fam:fam,cle:'a'+p.id,manque:manque,
               nb:fam?p.vr.length:0});
     if(fam&&_grOuverts[p.id])(p.vr||[]).forEach(function(v){
+      if(_grFiltre==='gros'&&(_estGrosDeVariante(v)||!_grSansCarton(p,v)))return;
       out.push({p:p,v:v,fam:false,sous:true,cle:'v'+p.id+'_'+v.id,manque:_grIncomplet(p,v)});
     });
   });
@@ -11960,11 +12001,22 @@ function majLigneGrille(){
     :(fr?'Prix d\'achat, prix de vente et stock — une ligne par article'
         :'Cost, price and stock — one line per item');
 }
-function ouvrirGrilleConfig(){
+function ouvrirGrilleConfig(f){
   if(!(role==='patron'||hasPerm('produits'))){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
   _grOuverts={};_grUnite={};
   var e=_grEtat();
-  _grFiltre=e.manque?'manque':'tout';
+  // ⚠️ 23.03 — LE BANDEAU DE LA 23.01 PROMETTAIT CE QUE L'ÉCRAN NE FAISAIT
+  // PAS : « N articles sans prix de gros — règle-les en une fois » ouvrait
+  // cette grille… qui n'avait que l'achat, la vente et le stock À LA PIÈCE.
+  // Aucun champ pour le prix du carton, et son filtre « ce qui manque » ne
+  // les montrait même pas (ils avaient leur prix à la pièce). Le bandeau
+  // ouvre maintenant la liste des cartons, familles dépliées.
+  if(f==='gros'){
+    _grFiltre='gros';
+    (DB.articles||[]).forEach(function(p){
+      if(p&&p.vr&&p.vr.length&&p.vr.some(function(v){return !_estGrosDeVariante(v)&&_grSansCarton(p,v);}))_grOuverts[p.id]=true;
+    });
+  }else _grFiltre=e.manque?'manque':'tout';
   document.getElementById('ov-grille').classList.add('show');
   renderGrille();
 }
@@ -11988,12 +12040,21 @@ function renderGrille(){
     ?('<b>'+e.ok+'</b> '+(fr?'sur':'of')+' <b>'+e.tot+'</b> '+(fr?'prêts à vendre':'ready')
       +(e.manque?(' · <span style="color:#B45309">'+e.manque+' '+(fr?'sans prix':'without price')+'</span>'):' 🎉'))
     :'';
-  var fm=document.getElementById('gr-f-manque'),ft=document.getElementById('gr-f-tout');
+  var fm=document.getElementById('gr-f-manque'),ft=document.getElementById('gr-f-tout'),fg=document.getElementById('gr-f-gros');
   if(fm)fm.className='cbtn'+(_grFiltre==='manque'?' on':'');
   if(ft)ft.className='cbtn'+(_grFiltre==='tout'?' on':'');
+  if(fg){fg.className='cbtn'+(_grFiltre==='gros'?' on':'');fg.style.display=(_venteEnGros()||_grFiltre==='gros')?'':'none';}
+  if(t&&_grFiltre==='gros'){
+    var _ng=_articlesSansPrixGros().length;
+    t.innerHTML=_ng?('<b>'+_ng+'</b> '+(fr?(_ng>1?'cartons sans prix':'carton sans prix'):('box'+(_ng>1?'es':'')+' without a price'))
+                    +' · <span style="color:var(--M);font-weight:600">'+(fr?'le prix du carton, et ce que tu le paies':'the box price, and what you pay')+'</span>')
+                   :(fr?'Tous tes cartons ont leur prix 🎉':'Every box has its price 🎉');
+  }
   if(!lignes.length){
     c.innerHTML='<div style="font-size:12.5px;color:var(--M);font-weight:600;padding:14px 0;line-height:1.6">'
-      +(_grFiltre==='manque'
+      +(_grFiltre==='gros'
+        ?(fr?'🎉 Tous tes cartons ont leur prix. Touche « Tout » pour revoir la liste entière.':'🎉 Every box has its price.')
+        :_grFiltre==='manque'
         ?(fr?'🎉 Tout est configuré. Touche « Tout » pour revoir la liste entière.':'🎉 Everything is set.')
         :(fr?'Aucun article. Commence par en ajouter ou par importer tes photos.':'No item yet.'))+'</div>';
     return;
@@ -12034,6 +12095,12 @@ function renderGrille(){
             :'')
       +'</label>'
       +'</div></div>';
+    // 23.03 — le prix du CARTON, sous la ligne, dès que le contenant est connu.
+    var gx=null;try{gx=_grosDe(p,v||null);}catch(x){}
+    if(gx&&gx.n>1&&!(v&&_estGrosDeVariante(v)))
+      h+='<div class="grgros"><span class="grgros-t">📦 '+escH(gx.mot+(fr?' de ':' of ')+_avecUnite(p,gx.n))+'</span>'
+        +'<label class="grlab">'+(fr?'vente':'price')+_grCase(l.cle,'pxGros',gx.px,'—',70)+'</label>'
+        +'<label class="grlab">'+(fr?'achat':'cost')+_grCase(l.cle,'paGros',gx.pa,'—',70)+'</label></div>';
   });
   c.innerHTML=h;
 }
@@ -12067,6 +12134,7 @@ function grEcrire(inp){
       var avant=Number(cible[champ])||0;
       if(avant===val)return;
       if(champ==='px')journalAjouter('prix',(p.nm||'')+(v?(' — '+(v.nm||'')):''),fmt(avant),fmt(val));
+      if(champ==='pxGros')journalAjouter('prix',(p.nm||'')+(v?(' — '+(v.nm||'')):'')+' ('+_grosDe(p,v).mot+')',fmt(avant),fmt(val));
       cible[champ]=val;
       // Le prix posé à la main n'est plus « indicatif » : il est vérifié.
       try{delete cible._sugg;}catch(x){}
@@ -14414,12 +14482,20 @@ function _mediaVar(p,v){
   return '<div class="pmedia" style="background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</div>';
 }
 function _brancherVar(d,p,v){
+  // 23.03 — en gros, la touche vend le carton qui a son prix (voir plus haut).
+  var _gvB=_grosDeVarTuile(p,v);
   d.onclick=function(ev){
     if(ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-moins')){
+      if(_gvB&&_retirerLotVariante(p,v))return;
       chgVQ(v.id,p.id,-1,!!p.rt);return;
     }
     if(ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-plus')){
+      if(_gvB){_ajouterLotVariante(p,v,_gvB.n,_gvB.mot);return;}
       chgVQ(v.id,p.id,1,!!p.rt);return;
+    }
+    // La puce de la PIÈCE, en gros.
+    if(ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-unite')){
+      ev.stopPropagation();chgVQ(v.id,p.id,1,!!p.rt);return;
     }
     // ⭐ Toucher le repère 📦 vend LE LOT, pas l'unité — exactement comme
     // dehors. Sans ce test, il ajouterait une bouteille au lieu du casier.
@@ -14476,6 +14552,7 @@ function _brancherVar(d,p,v){
         return;
       }
     }
+    if(_gvB){_ajouterLotVariante(p,v,_gvB.n,_gvB.mot);return;}
     chgVQ(v.id,p.id,1,!!p.rt);
   };
   // ⚠️ L'appui long ouvrait UNIQUEMENT « saisir une quantité ». C'était le
@@ -14559,8 +14636,9 @@ function renderVarCercle(p){
     var a=-Math.PI/2+2*Math.PI*k/n;   // on part du HAUT, sens de lecture
     var i=_infoVar(p,v);
     var d=document.createElement('div');
-    var _cg=_chipGrosVariante(p,v,true);
-    d.className='vsat'+(i.q>0?' hq':'')+(i.out?' out':'')+(_cg?' hasgros':'');
+    var _gvC=_grosDeVarTuile(p,v);   // 23.03 — mêmes gestes que les carrés
+    var _cg=_gvC?_chipUniteVar(p,v,true):_chipGrosVariante(p,v,true);
+    d.className='vsat'+(i.q>0?' hq':'')+(i.out?' out':'')+(_cg?' hasgros':'')+(_gvC?' vgr':'');
     d.style.left=Math.round(g.cx+g.R*Math.cos(a))+'px';
     d.style.top =Math.round(g.cy+g.R*Math.sin(a))+'px';
     // ⚠️ Elles sortaient l'une APRÈS l'autre (26 ms d'écart, jusqu'à 286 ms
@@ -14568,7 +14646,7 @@ function renderVarCercle(p){
     // il voit sa famille d'un coup, pas un défilé.
     d.innerHTML='<span class="vsat-r">'
       +(function(){var _im=_imgVar(p,v),_f=_formatDeVariante(p,v);return (_im?('<img src="'+_im+'" loading="lazy" alt="">'):vignetteArt(p,v,g.taille-6,Math.round((g.taille-6)/2)))+(_f?('<span class="vsat-fmt">'+_f+'</span>'):'');})()
-      +'<span class="vsat-px">'+(g.serre?('<i>'+(v.nm||'?')+'</i>'):'')+'<b>'+i.pxCourt+'</b></span></span>'
+      +'<span class="vsat-px">'+(g.serre?('<i>'+(v.nm||'?')+'</i>'):'')+'<b>'+(_gvC?(Math.round(_gvC.px)||0).toLocaleString('fr-FR'):i.pxCourt)+'</b></span></span>'
       +(i.q>0?'<span class="vsat-b" data-moins="1">'+fmtQ(i.q)+'</span>':'')
       // ⚠️ LE NOM D'ABORD, LA PUCE DU GROS ENSUITE. On choisit une forme
       // par son NOM : « Diamaor », « Mayor », « Locale ». La puce était
@@ -14661,7 +14739,8 @@ function renderVarLst(p){
     // exactement comme une carte d'article. C'est ce qui rend les deux grilles
     // indiscernables — le reproche de fond.
     var _imT=_imgVar(p,v),_carteV=_estCarteCatalogue(_imT);
-    d.className='vtile'+(i.q>0?' hq':'')+(i.out?' out':'')+((v.img&&!_carteV)?' has-photo':'');
+    var _gvT=_grosDeVarTuile(p,v);   // 23.03 — en gros : le carton d'une touche
+    d.className='vtile'+(i.q>0?' hq':'')+(i.out?' out':'')+((v.img&&!_carteV)?' has-photo':'')+(_gvT?' vgr':'');
     // ⚠️⚠️ SA CAPTURE DES HUILES : trois contenances, chacune avec un « 1 »
     // rouge et un « − », et AUCUN « + » nulle part. La tuile entière EST le
     // « + » — mais rien ne le dit, et quand on vient d'en retirer une, le
@@ -14676,9 +14755,10 @@ function renderVarLst(p){
       +(function(){var _im=_imgVar(p,v),_f=_formatDeVariante(p,v);return (_im?(_estCarteCatalogue(_im)?('<div class="pmedia pcat"><img src="'+_im+'" loading="lazy" alt=""></div>'):('<img src="'+_im+'" loading="lazy" alt="">')):_mediaVar(p,v))+(_f?('<span class="vt-fmt">'+_f+'</span>'):'');})()
       +'<span class="vt-ov">'
       +'<span class="vt-nm">'+(v.nm||'?')+'</span>'
-      +'<span class="vt-px">'+i.px+'</span>'
+      +'<span class="vt-px">'+(_gvT?fmt(_gvT.px):i.px)+'</span>'
+      +(_gvT?('<span class="vt-sous">'+escH(_gvT.mot+(lang==='fr'?' de ':' of ')+_avecUnite(p,_gvT.n))+'</span>'):'')
       +'<span class="vt-stk" style="color:'+i.coul+'">'+i.stk+'</span>'
-      +_chipGrosVariante(p,v)+'</span>';
+      +(_gvT?_chipUniteVar(p,v):_chipGrosVariante(p,v))+'</span>';
     _replierPhotoVar(d,_mediaVar(p,v));
     _brancherVar(d,p,v);
     l.appendChild(d);
@@ -15086,7 +15166,8 @@ function vendreNiveau(e,pid,n,mot){
 function _ajouterLotVariante(p,v,n,mot,force){
   var fr=(lang==='fr');
   if(!(n>1))return;
-  if(!(Number(v.px)>0)){
+  // 23.03 — le prix du carton suffit à vendre le carton (comme dehors, 23.02).
+  if(!(Number(v.px)>0)&&!(_prixDuLot(p,v,n).px>0)){
     showToast('💰 '+(fr?'Prix manquant — complète cette variante d\'abord':'Missing price'));return;
   }
   var cur=varQtys[v.id]||0,dispo=_dispoApresPanier(p,v);
@@ -15160,10 +15241,71 @@ function _venteEnGros(){return !!(DB&&DB.cfg&&DB.cfg.facon==='gros');}
 // sert. ⚠️ `articleIncomplet` ne change PAS : tout ce qui vend la pièce
 // continue de refuser un prix à 0 F.
 function _grosSeul(p){
-  if(!_venteEnGros()||!p||(p.vr&&p.vr.length)||Number(p.px)>0)return false;
+  if(!_venteEnGros()||!p)return false;
   if(p._autoNm&&txtNorm(p.nm)===txtNorm(p._autoNm))return false;
+  // 23.03 — une FAMILLE dont aucune sorte n'a de prix à la pièce, mais dont
+  // au moins une a son carton : elle se vend, elle aussi.
+  if(p.vr&&p.vr.length){
+    if(p.vr.some(function(v){return Number(v.px)>0;}))return false;
+    return p.vr.some(function(v){return !!_grosDeVarTuile(p,v);});
+  }
+  if(Number(p.px)>0)return false;
   var g=null;try{g=_grosDe(p,null);}catch(e){}
   return !!(g&&g.n>1&&g.px>0);
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.03 — LES VARIANTES EN GROS, DEDANS COMME DEHORS
+//
+//  « J'espère que vous avez bien travaillé les articles en variante ? »
+//  Mesuré au banc sur une famille « Huile 1 L / 2 L / 5 L » d'une boutique
+//  en gros : DEHORS, l'article simple montrait son prix de carton, la
+//  famille « dès 900 » — le prix d'une bouteille. DEDANS, toucher « 1 L »
+//  vendait UNE bouteille ; le carton n'était qu'une petite puce. C'est
+//  l'écart dehors/dedans qu'il signale depuis la 21.12, et je l'avais
+//  recréé en 23.01 : la règle « une touche = un carton » n'était entrée que
+//  dans la grille, pas dans le panneau des variantes.
+//  Maintenant, en gros, une sorte dont le carton a son prix se vend AU
+//  CARTON d'une touche — carrés, liste ou cercle, les mêmes gestes — et sa
+//  puce vend la pièce. Sans prix de carton, rien ne change : la touche vend
+//  la pièce et le repère du carton reste là.
+// ══════════════════════════════════════════════════════════════════
+function _grosDeVarTuile(p,v){
+  if(!_venteEnGros()||!p||!v||_estGrosDeVariante(v))return null;
+  var g=null;try{g=_grosDe(p,v);}catch(e){}
+  return (g&&g.n>1&&g.px>0)?g:null;
+}
+// Le moins cher des cartons d'une famille : « dès 9 800 — le carton ».
+function _grosFamille(p){
+  if(!_venteEnGros()||!p||!(p.vr&&p.vr.length))return null;
+  var best=null;
+  (p.vr||[]).forEach(function(v){var g=_grosDeVarTuile(p,v);if(g&&(!best||g.px<best.px))best=g;});
+  return best;
+}
+// La puce de la PIÈCE, dedans : « 900 la pièce » — « Prix ? » quand la sorte
+// n'a que son carton (la toucher demande ce prix, jamais une vente à 0 F).
+function _chipUniteVar(p,v,cercle){
+  var fr=(lang==='fr'),u=_umDe(p);
+  var lib=(u==='kg')?(fr?'le kg':'per kg'):((u==='L')?(fr?'le litre':'per litre'):(fr?'la pièce':'unit'));
+  var px=(Number(v.px)>0)?_sansDevise(v.px):(fr?'Prix ?':'Price?');
+  return '<span class="'+(cercle?'vsat-gros':'vt-gros')+' g-unite" data-unite="'+v.id+'" title="'+escH(lib+' · '+px)+'">'
+    +'<b class="g-px">'+escH(px)+'</b><span class="g-lib">'+escH(lib)+'</span></span>';
+}
+// « − » en gros : les pièces en vrac partent d'abord, puis un carton ENTIER.
+// Retirer une pièce d'un carton le transformerait en onze bouteilles au
+// prix du détail, sans que personne ne l'ait voulu.
+function _retirerLotVariante(p,v){
+  var key=p.id+'-'+v.id,g=_grosPanier[key],q=varQtys[v.id]||0;
+  var lots=(g&&g.lots&&g.lots.length)?g.lots:null;
+  if(!lots||!(q>0))return false;
+  var enLots=lots.reduce(function(s,l){return s+(Number(l&&l.n)||0);},0);
+  if(q-enLots>1e-9)return false;
+  var l=lots[lots.length-1],n=Number(l&&l.n)||0;
+  lots.splice(lots.length-1,1);
+  if(!lots.length)_oublierGros(key);
+  varQtys[v.id]=Math.max(0,Math.round((q-n)*100)/100);
+  renderVarLst(p);
+  _varVersPanier(p);
+  return true;
 }
 function _grosDeTuile(p){
   if(!_venteEnGros()||!p||(articleIncomplet(p)&&!_grosSeul(p))||(p.vr&&p.vr.length))return null;
@@ -15995,8 +16137,14 @@ function _mentionGros(key,qty){
     // un seul étage : on garde la phrase d'avant, avec son prix
     var _G=_grp[_ord[0]];
     var _q3=(g.um==='kg')?(fmtQ(qty)+' kg'):((g.um==='L')?(fmtQ(qty)+' L'):fmtQ(qty));
+    // ⚠️ 23.03 — LE CARTON QUI A SON PRIX SE DIT À SON PRIX. La phrase
+    // écrivait le contenu au prix de la PIÈCE : « 1 carton (12 × 900) » pour
+    // un carton facturé 10 000 — et « × 0 » quand seule la pièce manquait
+    // de prix (le grossiste qui ne donne que son carton, 23.02). Le total
+    // était juste, la phrase mentait. Le carton au détail garde la sienne.
+    var _pxL=0;_ls.forEach(function(l){if(l.n===_G.n&&Number(l.px)>0)_pxL=Number(l.px);});
     return {nb:_G.nb,mot:_G.mot,emo:_emojiCont(_G.mot),um:g.um||'',reste:0,dedans:qty,
-            txt:fmtQ(_G.nb)+' '+_G.mot+(_G.nb>1?'s':'')+' ('+_q3+' × '+fmt(g.px||0)+')'};
+            txt:fmtQ(_G.nb)+' '+_G.mot+(_G.nb>1?'s':'')+(_pxL>0?(' ('+_q3+') · '+fmt(_G.nb*_pxL)):(' ('+_q3+' × '+fmt(g.px||0)+')'))};
   }
   var nb=Math.floor((qty+0.001)/g.n);
   var _rst=Math.round((qty-nb*g.n)*100)/100;
