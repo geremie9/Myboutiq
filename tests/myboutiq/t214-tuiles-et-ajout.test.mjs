@@ -118,8 +118,10 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
 }
 
 // ── 3) AJOUTER : UN SEUL GESTE ────────────────────────────────────────
+// (une boutique qui a déjà répondu à « Tu vends surtout… » — la question
+// elle-même est au banc t215)
 {
-  const { ctx, p, errs } = await caisse(boutique(null));
+  const { ctx, p, errs } = await caisse(boutique('detail'));
   await p.evaluate(() => { document.getElementById('btn-add').style.display = ''; });
   await p.locator('#btn-add').click(); await p.waitForTimeout(1200);
   const a = await p.evaluate(() => ({ cat: !!document.querySelector('#ov-choixart.show'), porte: !!document.querySelector('#ov-porte.show'),
@@ -146,7 +148,7 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
 }
 // Boutique vide : la question d'avant garde son sens.
 {
-  const d = nouvelleBoutique({ articles: [] });
+  const d = nouvelleBoutique({ articles: [] }); d.cfg.facon = 'detail';
   const { ctx, p, errs } = await caisse(d);
   await p.evaluate(() => ouvrirAjouter()); await p.waitForTimeout(900);
   const tit = await p.evaluate(() => document.getElementById('cha-tit').textContent);

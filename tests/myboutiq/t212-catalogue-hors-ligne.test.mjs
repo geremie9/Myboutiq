@@ -13,14 +13,22 @@ const b = await chromium.launch();
 // ── 1) LE CATALOGUE : CHAQUE VIGNETTE SE RECONNAÎT SANS PHOTO ─────────
 {
   const d = nouvelleBoutique({ articles: [] });
+  d.cfg.facon = 'detail';                             // elle a déjà répondu à « Tu vends surtout… » (23.02, t215)
   const { ctx, p, errs } = await ouvrirCaisse(b, port, d);
   await p.evaluate(() => ouvrirChoixArticles());
   await p.waitForTimeout(2500);                       // le temps que les photos échouent
-  const v = await p.evaluate(() => {
+  // ⚠️ Une photo paresseuse (`loading="lazy"`) peut échouer À L'INSTANT où
+  // l'on compte : elle est alors « finie et vide » le temps que son onerror
+  // la retire. Vu une fois au banc (23.02). Ce qui compte, c'est l'image
+  // cassée qui RESTE : on ne compte que celles qui le sont encore 400 ms
+  // plus tard, leur onerror passé.
+  const v = await p.evaluate(async () => {
     const tuiles = Array.from(document.querySelectorAll('#cha-grid > div[onclick]'));
     const sans = tuiles.filter(x => { const m = x.querySelector('.cha-m'); const e = m && m.querySelector('span');
       return !m || !e || !e.textContent.trim() || m.getBoundingClientRect().height < 20; });
-    const cassees = Array.from(document.querySelectorAll('#cha-grid img')).filter(i => i.complete && !i.naturalWidth).length;
+    const avant = Array.from(document.querySelectorAll('#cha-grid img')).filter(i => i.complete && !i.naturalWidth);
+    await new Promise(r => setTimeout(r, 400));
+    const cassees = avant.filter(i => i.isConnected && i.complete && !i.naturalWidth).length;
     return { n: tuiles.length, sans: sans.length, cassees };
   });
   t(v.n >= 20 && v.sans === 0, `hors ligne, les ${v.n} vignettes montrent leur émoji (vides : ${v.sans})`);
@@ -30,8 +38,11 @@ const b = await chromium.launch();
   await p.waitForTimeout(500);
   await p.evaluate(() => { const ok = document.getElementById('fmt-ok'); if (document.querySelector('#ov-format.show')) { document.querySelector('#fmt-chips button').click(); ok.click(); } });
   await p.waitForTimeout(800);
-  const pan = await p.evaluate(() => { const l = document.querySelectorAll('#cha-pn-lst > div'); const x = l[0];
-    return { n: l.length, emo: x ? (x.querySelector('.cha-m span') || {}).textContent || '' : '', cassees: Array.from(document.querySelectorAll('#cha-pn-lst img')).filter(i => i.complete && !i.naturalWidth).length }; });
+  const pan = await p.evaluate(async () => { const l = document.querySelectorAll('#cha-pn-lst > div'); const x = l[0];
+    const avant = Array.from(document.querySelectorAll('#cha-pn-lst img')).filter(i => i.complete && !i.naturalWidth);
+    await new Promise(r => setTimeout(r, 400));
+    return { n: l.length, emo: x ? (x.querySelector('.cha-m span') || {}).textContent || '' : '',
+      cassees: avant.filter(i => i.isConnected && i.complete && !i.naturalWidth).length }; });
   t(pan.n === 1 && pan.emo.trim().length > 0 && pan.cassees === 0, `le panier du catalogue aussi : « ${pan.emo} », sans image cassée`);
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
