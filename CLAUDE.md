@@ -34,6 +34,7 @@ cd tests/mybar && node run.js                         # MyBar bench (CommonJS)
   - `ouvrirCaisse(browser, port, db, {vendeur})`: opens the app offline with that DB.
   - `vendre(p, {lignes, lots, mode, client, avance, split, remise, consigne, recu})`: goes through `addPanier → procederPmt → selPmntVente → encaisser`.
   - `stock`, `nombre`, `ligneRapport`.
+- `faux-supa.mjs` puts a fake Supabase inside the page (`ctx.addInitScript(fauxSupaScript())`), driven through `window.__fs`: accounts, the `boutiques` table with the owner filter, `boutique_lire`/`boutique_ecrire2`, a log of every call with its size, and a simulated bandwidth (`__fs.debit`). Use it for the door and sync paths (see `t213`).
 - Each check is `t(condition, label)` and `fin()` prints the total. `run.mjs` counts the ✅/❌ lines and treats a non-zero exit without ❌ as a crash.
 - The browser is launched with `--host-resolver-rules` so that no domain resolves, and pages also abort every request that is not to 127.0.0.1. The bench can never reach the production Supabase project.
 - Amounts in the DOM contain narrow no-break spaces. Parse them with `nombre()`, and use `/regex/i` on labels because CSS uppercases some text.

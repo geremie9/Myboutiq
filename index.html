@@ -309,6 +309,20 @@
           return;
         }
         if(t.id==='er-btn'||(t.querySelector&&t.querySelector('#er-btn'))){retenir();return;}
+        // ⚠️ « Connexion 👑 », le formulaire complet : mesuré le 10/10 à
+        // 20:37 (Android 10), « loginP is not defined » — le patron l'avait
+        // touché pendant que l'app se lisait encore, et le geste partait en
+        // erreur, sans un mot. On garde l'intention ; `prefillEntree` la
+        // rejoue dès que la porte est prête.
+        if(t.id==='btn-lp'){
+          if(typeof window.loginP!=='function'||!window._demarre){
+            ev.preventDefault();ev.stopPropagation();
+            window._loginVoulu=true;
+            try{if(t.getAttribute('data-txt')==null)t.setAttribute('data-txt',t.textContent);
+                t.textContent=fr?'⏳ Connexion…':'⏳ Signing in…';}catch(x){}
+          }
+          return;
+        }
         t=t.parentNode;
       }
     },true);
@@ -3008,7 +3022,7 @@ body{max-width:min(100%,1200px)}
         </div>
       </div>
       <div class="fg"><label class="fl">🔐 PIN</label><input class="fi" type="password" placeholder="••••••" maxlength="6" id="p-pin" inputmode="numeric" autocomplete="new-password"></div>
-      <button class="btn-login" id="btn-lp" onclick="loginP()">Connexion 👑</button>
+      <button class="btn-login" id="btn-lp" onclick="if(window.loginP)loginP()">Connexion 👑</button>
       <button class="btn-login" id="btn-forgot-pin" onclick="ouvrirResetPin()" style="margin-top:8px;background:rgba(255,255,255,.12);color:#fff">🔁 PIN oublié ?</button>
       <button class="bio-sig clair" id="btn-bio-login" onclick="toucherSigneBio('btn-bio-login')" title="Empreinte" aria-label="Empreinte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>
     </div>
@@ -5776,7 +5790,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='22.99'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.00'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
 var SUPA_KEY='sb_publishable_ioKcc8BWl0W5jXm4sJM1DA_KEi2ySXQ';
 var supa=null,realtimeChan=null,syncTimeout=null,_suppressSync=false;
@@ -6161,8 +6175,20 @@ async function loadOwnerBoutiqueFromSupa(codeVoulu){
   var user=await getAuthUser();
   if(!supa||!user)return null;
   try{
-    var res=await supa.from('boutiques').select('code,data,pin_vendeur_clair').eq('owner_id',user.id).order('updated_at',{ascending:false});
-    if(res.error||!res.data||!res.data.length)return null;
+    // ⚠️⚠️ CHAQUE LECTURE TÉLÉCHARGEAIT TOUTES SES BOUTIQUES.
+    // Mesuré le 10/10 sur le téléphone du patron (Orange, Garoua) : neuf
+    // boutiques sur son compte, 830 Ko de données — et cette fonction les
+    // rapatriait TOUTES pour n'en garder qu'une. Or elle tourne avant chaque
+    // envoi et à chaque signal du temps réel : on l'a vue repartir toutes
+    // les 7 à 16 secondes. Le tri se fait maintenant AU SERVEUR : on ne
+    // télécharge que la boutique demandée. Les codes y sont tous rangés
+    // sous la forme « 12345 67890 » (vérifié : 65 sur 65), celle que rend
+    // formatShopCode.
+    var cols='code,data,pin_vendeur_clair';
+    var q=supa.from('boutiques').select(cols).eq('owner_id',user.id);
+    q=codeVoulu?q.eq('code',formatShopCode(codeVoulu)):q.order('updated_at',{ascending:false}).limit(1);
+    var res=await q;
+    if(res.error||!res.data)return null;
     var rows=res.data;
     // ⚠️ LE RAPPEL DU CODE ÉQUIPE, rendu à son propriétaire.
     // Le déclencheur retire `cfg.pinVendeur` du blob partagé : un téléphone
@@ -6188,13 +6214,19 @@ async function loadOwnerBoutiqueFromSupa(codeVoulu){
       // Pas de correspondance. S'il n'a qu'UNE seule boutique, aucun doute
       // possible : c'est celle-là (téléphone neuf, ou reste d'une autre
       // boutique dans la mémoire locale). Le refuser l'enfermerait dehors.
-      if(rows.length===1)return _rendreCode(rows[0]);
+      // On le vérifie sur la liste LÉGÈRE (les codes seuls) avant de
+      // télécharger quoi que ce soit.
+      var tous=await supa.from('boutiques').select('code').eq('owner_id',user.id);
+      if(!tous.error&&tous.data&&tous.data.length===1){
+        var r1=await supa.from('boutiques').select(cols).eq('owner_id',user.id).eq('code',tous.data[0].code);
+        if(!r1.error&&r1.data&&r1.data[0])return _rendreCode(r1.data[0]);
+      }
       // Plusieurs boutiques et aucune ne correspond : on ne DEVINE pas, on ne
       // rapatrie surtout pas les ventes d'une autre. Il faudra lui demander
       // laquelle il veut ouvrir.
       return null;
     }
-    return _rendreCode(rows[0]);
+    return rows.length?_rendreCode(rows[0]):null;
   }catch(e){return null;}
 }
 // Combien de boutiques ce compte possède-t-il déjà ?
@@ -7720,6 +7752,24 @@ function entreeRapidePossible(){
 // on peut demander la liste au SERVEUR — une boutique créée sur un autre
 // téléphone apparaît donc tout de suite.
 var _erBoutiques=null,_erPremierPassage=true;
+// Le numéro retenu, lisible : « +237699138770 » -> « 699 13 87 70 ».
+// L'indicatif tombe (le drapeau le porte à la connexion), le reste se
+// groupe comme à l'inscription (`_grouperTel`).
+function _numeroLisible(tel){
+  var d=String(tel||'').replace(/\D/g,'');
+  if(!d)return '';
+  try{(PAYS||[]).some(function(p){
+    if(p&&p.cc&&d.indexOf(p.cc)===0&&d.length-p.cc.length>=8){d=d.slice(p.cc.length);return true;}
+    return false;
+  });}catch(x){}
+  return _grouperTel(d);
+}
+// La boutique gardée sur ce téléphone est-elle celle de CE numéro ?
+// (Sans numéro enregistré — boutiques anciennes — on ne peut pas dire non.)
+function _boutiqueIciEstA(tel){
+  var a=(DB&&DB.cfg&&DB.cfg.tel)?_numeroLisible(normalizePhone(DB.cfg.tel)):'';
+  return !a||!tel||a===_numeroLisible(normalizePhone(tel));
+}
 function majEntreeRapide(){
   var pan=document.getElementById('entree-rapide');
   var tabs=document.getElementById('login-tabs');
@@ -7736,13 +7786,24 @@ function majEntreeRapide(){
   if(banniere)banniere.style.display='none';
   var vend=entreeRapideVendeur();
   // Il se reconnaît tout de suite : son prénom, sa boutique. Rien à retaper.
-  document.getElementById('er-bonjour').textContent=(fr?'Bonjour ':'Hello ')+(vend?(e.nom+' 👋'):'👋');
+  // ⚠️⚠️ « JE N'ARRIVE PAS À ME CONNECTER SUR MES BOUTIQUES TEST. »
+  // Il venait de créer une boutique avec un AUTRE numéro, sur ce même
+  // téléphone. La porte s'est mise à retenir ce numéro-là — sans jamais
+  // l'afficher. Son PIN, le même pour ses deux comptes, ouvrait donc la
+  // nouvelle boutique d'office, et ses six autres restaient introuvables.
+  // Mesuré le 10/10 : 20:29, PIN tapé, « Ets you » ouverte sans question.
+  // La porte dit maintenant QUEL numéro elle retient et QUELLE boutique le
+  // PIN va ouvrir ; l'autre compte est à une tape (« Autre numéro ? »).
+  var _num=vend?'':_numeroLisible(e.tel);
+  var _ici=(!vend&&DB&&DB.cfg&&DB.cfg.code&&!DB.cfg.demo&&_boutiqueIciEstA(e.tel))?String(DB.cfg.nom||''):'';
+  document.getElementById('er-bonjour').textContent=(fr?'Bonjour ':'Hello ')+(vend?(e.nom+' 👋'):('👋'+(_num?' · '+_num:'')));
   document.getElementById('er-sous').textContent=vend
     ?((fr?'Entre le PIN équipe pour ouvrir ':'Enter the team PIN to open ')+(e.boutique||formatShopCode(e.code)))
-    :(fr?'Entre ton PIN pour ouvrir tes boutiques.':'Enter your PIN to open your shops.');
+    :(_ici?(fr?'Entre ton PIN pour ouvrir « '+_ici+' ».':'Enter your PIN to open “'+_ici+'”.')
+          :(fr?'Entre ton PIN pour ouvrir tes boutiques.':'Enter your PIN to open your shops.'));
   document.getElementById('er-chg').textContent=vend
     ?(fr?'Ce n\'est pas toi ? Changer de vendeur':'Not you? Switch seller')
-    :(fr?'Ce n\'est pas toi ? Changer de compte':'Not you? Switch account');
+    :(fr?'Autre numéro ? Changer de compte':'Another number? Switch account');
   // Étape 1 : le PIN, rien d'autre.
   document.getElementById('er-lst').style.display='none';
   document.getElementById('er-lst').innerHTML='';
@@ -7803,27 +7864,30 @@ function afficherBoutiquesDeverrouillees(liste){
   document.getElementById('er-pin-wrap').style.display='none';
   var l=document.getElementById('er-lst');
   l.style.display='block';
+  // ⚠️ Nom venu du serveur : du texte, jamais du code (voir escH). Liste
+  // LÉGÈRE : le nombre d'articles n'y est que si les données y sont.
   l.innerHTML=liste.map(function(b,i){
     var nom=(b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||b.code;
-    var d=b.data||{},nbA=(d.articles||[]).length;
+    var d=b.data||null;
     return '<button type="button" onclick="ouvrirBoutiqueDeverrouillee('+i+')" style="display:flex;width:100%;align-items:center;gap:11px;background:rgba(255,255,255,.10);border:1.5px solid rgba(255,255,255,.20);border-radius:14px;padding:13px;margin-bottom:8px;cursor:pointer;font-family:Outfit,sans-serif;text-align:left">'
       +'<span style="font-size:24px">🏬</span>'
       +'<span style="flex:1;min-width:0">'
-      +'<span style="display:block;font-size:14.5px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+nom+'</span>'
-      +'<span style="display:block;font-size:10.5px;font-weight:600;color:rgba(255,255,255,.55);margin-top:1px">'+formatShopCode(b.code)+' · '+nbA+' '+(fr?'articles':'items')+'</span>'
-      +'</span><span style="font-size:18px;color:rgba(255,255,255,.5)">›</span></button>';
+      +'<span style="display:block;font-size:14.5px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(nom)+'</span>'
+      +'<span style="display:block;font-size:10.5px;font-weight:600;color:rgba(255,255,255,.55);margin-top:1px">'+escH(formatShopCode(b.code))+(d?(' · '+(d.articles||[]).length+' '+(fr?'articles':'items')):'')+'</span>'
+      +'</span><span class="lb-fl" style="font-size:18px;color:rgba(255,255,255,.5)">›</span></button>';
   }).join('');
 }
-function ouvrirBoutiqueDeverrouillee(i){
-  var b=_erBoutiques&&_erBoutiques[i];if(!b)return;
+// La boutique touchée, et elle seule (voir `_ouvrirBoutiqueDuCompte`).
+async function ouvrirBoutiqueDeverrouillee(i){
+  var b=_erBoutiques&&_erBoutiques[i];if(!b||_ouvertureEnCours)return;
   var e=lireEntree()||{};
-  // On efface l'ancienne boutique du téléphone : garder les restes d'une
-  // autre caisse mélangerait deux comptabilités.
-  DB=null;try{localStorage.removeItem('myboutiq_v6');}catch(x){}
-  _terminerLoginPatron(b.data,e.tel||'',e.email||'');
-  try{memoriserEntree({role:'patron',tel:e.tel||'',code:b.code,
-    boutique:(b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||''});}catch(x){}
-  showToast('🏬 '+((b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||''));
+  var nom=(b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||'';
+  _ouvertureEnCours=true;_ligneOccupee('er-lst',i,true);
+  try{
+    if(!(await _ouvrirBoutiqueDuCompte(b,e.tel||'',e.email||'')))return;
+    try{memoriserEntree({role:'patron',tel:e.tel||'',code:b.code,boutique:nom});}catch(x){}
+    showToast('🏬 '+nom);
+  }finally{_ouvertureEnCours=false;_ligneOccupee('er-lst',i,false);}
 }
 function retourListeBoutiques(){
   if(_erBoutiques&&_erBoutiques.length)afficherBoutiquesDeverrouillees(_erBoutiques);
@@ -8165,7 +8229,10 @@ async function validerEntreeRapide(pinImpose){
   // même chose sous la main : sa boutique et son PIN, gardés depuis 19.81.
   // Pire : sans réseau il entrait INSTANTANÉMENT, avec réseau il attendait.
   // On ouvre donc tout de suite, et on prouve au serveur derrière.
-  if(DB&&DB.cfg&&DB.cfg.code&&String(pin).length>=4&&String(DB.cfg.pin||'')===pin){
+  // ⚠️ Seulement si la boutique d'ici est celle du numéro retenu : avec
+  // deux comptes et le même PIN, elle ouvrait sinon celle de l'AUTRE
+  // compte (voir loginP). Dans ce cas, le serveur tranche.
+  if(DB&&DB.cfg&&DB.cfg.code&&String(pin).length>=4&&String(DB.cfg.pin||'')===pin&&_boutiqueIciEstA(e.tel)){
     _shopPin=pin;
     _finishLoginP();
     showToast('👋 '+(fr?'Te voilà':'Welcome back'));
@@ -8175,29 +8242,47 @@ async function validerEntreeRapide(pinImpose){
     setTimeout(function(){_prouverPatronEnFond(e.tel,pin);},60);
     return;
   }
-  showToast('🔐 '+(fr?'Vérification…':'Checking…'));
-  var email=authEmailFromPhone(e.tel);
-  var res=await supa.auth.signInWithPassword({email:email,password:pin});
-  if(res.error){
-    var alts=altPhoneDigits(e.tel);
-    for(var i=0;i<alts.length&&res.error;i++){
-      var r2=await supa.auth.signInWithPassword({email:'owner-'+alts[i]+'@myboutiq.app',password:pin});
-      if(!r2.error){res=r2;email='owner-'+alts[i]+'@myboutiq.app';}
+  // ⚠️ UN SEUL ESSAI À LA FOIS, ET IL SE VOIT. Même défaut que
+  // « Connexion 👑 » (voir loginP) : « Vérification… » s'effaçait en deux
+  // secondes, alors que la vérification et la liste en prennent dix sur un
+  // réseau lent — et chaque ✓ de plus relançait tout. La ligne sous
+  // « Bonjour » dit maintenant où on en est, jusqu'au bout.
+  if(_erEnCours){showToast('⏳ '+(fr?'Je vérifie déjà — patiente un instant':'Already checking — one moment'));return;}
+  _erEnCours=true;
+  var _so=document.getElementById('er-sous'),_soAvant=_so?_so.textContent:'',_listeVue=false;
+  var _dire=function(m){if(_so)_so.textContent='⏳ '+m;};
+  try{
+    _dire(fr?'Je vérifie ton PIN…':'Checking your PIN…');
+    var email=authEmailFromPhone(e.tel);
+    var res=await supa.auth.signInWithPassword({email:email,password:pin});
+    if(res.error){
+      var alts=altPhoneDigits(e.tel);
+      for(var i=0;i<alts.length&&res.error;i++){
+        var r2=await supa.auth.signInWithPassword({email:'owner-'+alts[i]+'@myboutiq.app',password:pin});
+        if(!r2.error){res=r2;email='owner-'+alts[i]+'@myboutiq.app';}
+      }
     }
+    if(res.error){try{_noterEchecLocal();}catch(x){}
+      showToast('❌ '+(fr?'PIN incorrect':'Wrong PIN'));return;}
+    _pinPatronValide=pin;   // accepte par le serveur : il fera foi hors reseau
+    try{memoriserEntree({role:'patron',tel:e.tel,email:email});}catch(x){}
+    _dire(fr?'Je cherche tes boutiques…':'Looking up your shops…');
+    var mes=await listerBoutiquesDuCompte();
+    if(!mes.length){
+      // Compte reconnu mais aucune boutique en ligne : on reprend celle du
+      // téléphone plutôt que de le laisser dehors.
+      if(DB&&DB.cfg&&DB.cfg.code){_shopPin=String(DB.cfg.pin||pin);_finishLoginP();return;}
+      showToast(t('boutiqueIntrouvable'));return;
+    }
+    afficherBoutiquesDeverrouillees(mes);_listeVue=true;
+  }finally{
+    _erEnCours=false;
+    // Pas de liste à montrer (PIN refusé, rien trouvé) : la ligne reprend
+    // ce qu'elle disait avant.
+    if(!_listeVue&&_so&&/^⏳/.test(_so.textContent))_so.textContent=_soAvant;
   }
-  if(res.error){try{_noterEchecLocal();}catch(x){}
-    showToast('❌ '+(fr?'PIN incorrect':'Wrong PIN'));return;}
-  _pinPatronValide=pin;   // accepte par le serveur : il fera foi hors reseau
-  try{memoriserEntree({role:'patron',tel:e.tel,email:email});}catch(x){}
-  var mes=await listerBoutiquesDuCompte();
-  if(!mes.length){
-    // Compte reconnu mais aucune boutique en ligne : on reprend celle du
-    // téléphone plutôt que de le laisser dehors.
-    if(DB&&DB.cfg&&DB.cfg.code){_shopPin=String(DB.cfg.pin||pin);_finishLoginP();return;}
-    showToast(t('boutiqueIntrouvable'));return;
-  }
-  afficherBoutiquesDeverrouillees(mes);
 }
+var _erEnCours=false;
 // L'empreinte ne remplace pas le PIN : elle déverrouille l'appareil quand la
 // session serveur est encore valide. Si elle ne l'est plus, le PIN reste
 // nécessaire — sinon on ouvrirait une boutique sans rien prouver au serveur.
@@ -8372,7 +8457,18 @@ function _bioPourquoi(e){
     return fr?'Ce téléphone a refusé ce type de clé — réactive l\'empreinte dans Réglages 👆':'This phone refused this key type';
   return (fr?'Empreinte impossible':'Biometrics failed')+(n?' ('+n+')':'');
 }
+// ⭐ « Connexion 👑 » TOUCHÉ PENDANT QUE L'APP SE LISAIT (voir le bloc de
+// tête) : on le rejoue une fois la porte posée, avec ce qu'il avait tapé.
+// S'il n'y a rien à rejouer, le bouton reprend simplement son mot.
+function _rejouerLoginVoulu(){
+  var b=document.getElementById('btn-lp'),fp=document.getElementById('fp');
+  var tel=(document.getElementById('p-tel')||{}).value||'',pin=(document.getElementById('p-pin')||{}).value||'';
+  if(fp&&fp.offsetParent!==null&&tel&&pin){try{loginP();}catch(e){}return;}
+  if(b){var tx=b.getAttribute('data-txt');if(tx!=null){b.textContent=tx;b.removeAttribute('data-txt');}}
+}
 function prefillEntree(){
+  var _voulu=!!window._loginVoulu;window._loginVoulu=false;
+  if(_voulu)setTimeout(_rejouerLoginVoulu,0);
   if(majEntreeRapide())return;
   var tabs=document.getElementById('login-tabs');if(tabs)tabs.style.display='';
   var e=lireEntree();
@@ -8387,10 +8483,12 @@ function prefillEntree(){
     setTimeout(function(){try{document.getElementById('v-pin').focus();}catch(x){}},350);
   }else{
     var t1=document.getElementById('lt-p');if(t1)swTab(t1,'fp');
-    var tel=document.getElementById('p-tel');if(tel&&e.tel)tel.value=e.tel;
+    // Ce qu'il a tapé AVANT que l'app soit prête l'emporte sur ce qu'elle
+    // retenait : c'est ce geste-là qu'on va rejouer.
+    var tel=document.getElementById('p-tel');if(tel&&e.tel&&!(_voulu&&tel.value))tel.value=e.tel;
     if(e.ccNum){var cn=document.getElementById('p-cc-num');if(cn)cn.textContent=e.ccNum;}
     if(e.ccFlag){var cf=document.getElementById('p-cc-flag');if(cf)cf.textContent=e.ccFlag;}
-    var pp=document.getElementById('p-pin');if(pp)pp.value='';
+    var pp=document.getElementById('p-pin');if(pp&&!_voulu)pp.value='';
     setTimeout(function(){try{document.getElementById('p-pin').focus();}catch(x){}},350);
   }
   if(bandeau){
@@ -9973,7 +10071,49 @@ function _refusePendantBlocage(){
                     :'Wait '+(r<90?(r+' s'):(Math.ceil(r/60)+' min'))+' before retrying.'));
   return true;
 }
+// ⚠️⚠️ SEIZE CONNEXIONS EN UNE MINUTE ET DEMIE, AUCUNE BOUTIQUE OUVERTE.
+// Mesuré le 10/10 sur le téléphone du patron (Garoua) : pendant tout le
+// travail, le bouton restait « Connexion 👑 », actif — et le petit
+// « Connexion… » s'efface au bout de deux secondes. Rien ne bougeait : il
+// retouchait, et chaque appui lançait une connexion ET un téléchargement de
+// plus, qui se partageaient le même réseau lent. Le bouton dit maintenant
+// qu'il travaille, et un second appui n'en lance pas un second.
+var _loginEnCours=false;
 async function loginP(){
+  if(_loginEnCours){showToast('⏳ '+(lang==='fr'?'Connexion en cours — patiente un instant':'Signing in — one moment'));return;}
+  _loginEnCours=true;_boutonAttend('btn-lp',true);
+  try{await _loginPCorps();}
+  finally{_loginEnCours=false;_boutonAttend('btn-lp',false);}
+}
+// Le serveur n'est pas encore branché : la bibliothèque arrive APRÈS le
+// script de l'app (balise `defer`), avec plusieurs secondes de retard sur
+// un réseau lent. On l'attend un moment — le bouton dit déjà qu'il
+// travaille — au lieu de conclure « hors réseau ».
+async function _attendreServeur(ms){
+  var fin=Date.now()+(ms||8000);
+  while(!supa&&navigator.onLine&&Date.now()<fin){
+    try{initSupa();}catch(e){}
+    if(supa)break;
+    try{chargerBibliothequeSupa();}catch(e){}
+    await new Promise(function(r){setTimeout(r,250);});
+  }
+  return !!supa;
+}
+// Un bouton qui travaille le dit, et ne se laisse pas retoucher. Son texte
+// d'origine est gardé sur lui (`data-txt`) — le bloc de tête l'y pose aussi
+// quand on le touche avant que l'app soit prête.
+function _boutonAttend(id,on){
+  var b=document.getElementById(id);if(!b)return;
+  if(on){
+    if(b.getAttribute('data-txt')==null)b.setAttribute('data-txt',b.textContent);
+    b.textContent='⏳ '+(lang==='fr'?'Connexion…':'Signing in…');b.disabled=true;
+  }else{
+    var tx=b.getAttribute('data-txt');
+    if(tx!=null){b.textContent=tx;b.removeAttribute('data-txt');}
+    b.disabled=false;
+  }
+}
+async function _loginPCorps(){
   if(_refusePendantBlocage())return;
   var brut=document.getElementById('p-tel').value||'';
   var tel=normalizePhone(brut);
@@ -9985,9 +10125,25 @@ async function loginP(){
   if(!vt.ok){showToast('📱 '+vt.msg);document.getElementById('p-tel').focus();return;}
   if(!pin){showToast(t('errPin'));return;}
   showToast('🔐 '+(lang==='fr'?'Connexion...':'Signing in...'));
-  var canMigrateOffline=DB&&DB.cfg&&pin&&pin===DB.cfg.pin;
+  // ⚠️⚠️ LE PIN NE SUFFIT PAS : LE NUMÉRO AUSSI DOIT ÊTRE CELUI D'ICI.
+  // Trouvé par le banc t213 en rejouant son téléphone : deux comptes, le
+  // même PIN pour les deux. Il tape le numéro de son compte de test… et si
+  // le serveur n'est pas encore branché (bibliothèque en retard, liaison
+  // tombée), on le croyait « hors réseau » et on ouvrait la boutique gardée
+  // ici — celle de l'AUTRE compte. Exactement « je n'arrive pas à me
+  // connecter sur mes boutiques test ». On attend d'abord le serveur ; et
+  // sans lui, on n'ouvre la boutique d'ici que pour SON numéro.
+  if(!supa&&navigator.onLine)await _attendreServeur(8000);
+  var _numIci=(DB&&DB.cfg&&DB.cfg.tel)?_numeroLisible(normalizePhone(DB.cfg.tel)):'';
+  var _autreNumero=!_boutiqueIciEstA(tel);
+  var canMigrateOffline=DB&&DB.cfg&&pin&&pin===DB.cfg.pin&&!_autreNumero;
   if(!supa||!supa.auth||!navigator.onLine){
     if(canMigrateOffline){_finishLoginP();return;}
+    if(_autreNumero&&DB.cfg.pin&&pin===String(DB.cfg.pin)){
+      showToast('📴 '+(lang==='fr'?'Sans liaison au serveur, ce téléphone n\'ouvre que « '+(DB.cfg.nom||'')+' » ('+_numIci+'). Réessaie avec du réseau.'
+                                  :'Without the server, this phone only opens “'+(DB.cfg.nom||'')+'” ('+_numIci+'). Try again online.'));
+      return;
+    }
     if(!navigator.onLine){showToast('📴 '+(lang==='fr'?'Pas de réseau. Connecte-toi une première fois avec internet, ensuite ça marchera hors-ligne.':'No network. Connect once with internet first, then it will work offline.'));return;}
     // ⚠️⚠️ « COMPTE INTROUVABLE OU PIN INCORRECT » ÉTAIT UN MENSONGE ICI.
     // Le téléphone se croit en ligne (`navigator.onLine` dit vrai dès
@@ -10044,16 +10200,19 @@ async function loginP(){
   // L'app devinait laquelle ouvrir (la dernière modifiée). Un ordinateur ne
   // doit pas deviner de quelle caisse on parle : il demande.
   var mes=await listerBoutiquesDuCompte();
+  // La liste est LÉGÈRE : les données de la boutique viennent ensuite, et
+  // pour elle seule (voir `_ouvrirBoutiqueDuCompte`).
   if(mes.length>1){
     // Celle qu'il ouvre d'habitude sur ce téléphone : on n'impose pas un écran
     // de plus à quelqu'un qui revient toujours au même endroit.
     var pref=((lireEntree()||{}).code)||((DB&&DB.cfg&&DB.cfg.code)||'');
     var vue=mes.filter(function(b){return normalizeShopCode(b.code)===normalizeShopCode(pref);})[0];
-    if(vue){_terminerLoginPatron(vue.data,tel,email);return;}
+    if(vue&&(await _ouvrirBoutiqueDuCompte(vue,tel,email)))return;
     ouvrirChoixBoutique(mes,tel,email);
     return;
   }
-  var remoteDB=(mes.length===1)?mes[0].data:await loadOwnerBoutiqueFromSupa((DB&&DB.cfg&&DB.cfg.code)||'');
+  if(mes.length===1){await _ouvrirBoutiqueDuCompte(mes[0],tel,email);return;}
+  var remoteDB=await loadOwnerBoutiqueFromSupa((DB&&DB.cfg&&DB.cfg.code)||'');
   if(remoteDB){
     _terminerLoginPatron(remoteDB,tel,email);
     return;
@@ -10072,7 +10231,13 @@ async function loginP(){
   //
   // L'identifiant de compte fait foi. Le numéro ne suffit plus : il ne dit
   // pas à qui appartient la boutique, seulement qui l'a saisi.
-  var _moi=(res&&res.data&&res.data.user&&res.data.user.id)||null;
+  // ⚠️ `res` N'EXISTAIT PAS ICI (depuis la 22.43) : le résultat de la
+  // connexion s'appelle `authRes`. Lire une variable jamais déclarée lève
+  // une erreur — ce repli s'arrêtait donc net, sans un mot, au lieu de
+  // reprendre la boutique du téléphone. On demande le compte à la session :
+  // elle vaut aussi après une inscription faite juste au-dessus.
+  var _u=null;try{_u=await getAuthUser();}catch(x){}
+  var _moi=(_u&&_u.id)||(authRes&&authRes.data&&authRes.data.user&&authRes.data.user.id)||null;
   var _proprio=(DB&&DB.cfg&&DB.cfg.ownerId)||null;
   var _aMoi;
   if(_proprio&&_moi)_aMoi=(_proprio===_moi);
@@ -10133,32 +10298,93 @@ function ouvrirChoixBoutique(liste,tel,email){
   document.getElementById('cb-sous').textContent=fr
     ?'Ce numéro possède '+liste.length+' boutiques. Choisis celle que tu ouvres maintenant — tu pourras changer à tout moment.'
     :'This number owns '+liste.length+' shops. Pick the one to open now.';
+  // ⚠️ Le nom vient du serveur, et un vendeur peut l'avoir écrit : du
+  // texte, jamais du code (même règle que partout, voir escH).
+  // La liste est LÉGÈRE (voir listerBoutiquesDuCompte) : sans les données,
+  // pas de nombre d'articles ni de ventes. Le code et la date suffisent à
+  // distinguer deux boutiques du même nom.
   document.getElementById('cb-lst').innerHTML=liste.map(function(b,i){
-    var d=b.data||{},cfg=d.cfg||{};
-    var nbA=(d.articles||[]).length,nbV=(d.ventes||[]).length;
+    var d=b.data||null,cfg=(d&&d.cfg)||{};
+    var faits=[];
+    if(d){faits.push((d.articles||[]).length+' '+(fr?'articles':'items'));
+          faits.push((d.ventes||[]).length+' '+(fr?'ventes gardées':'sales kept'));}
+    faits.push('active '+_ilYA(b.updated_at?new Date(b.updated_at).getTime():0));
     return '<button type="button" onclick="choisirBoutiqueEntree('+i+')" style="display:flex;width:100%;text-align:left;align-items:center;gap:11px;background:var(--BG);border:1.6px solid var(--BD);border-radius:13px;padding:13px;margin-bottom:9px;cursor:pointer;font-family:Outfit,sans-serif">'
       +'<span style="font-size:26px">🏬</span>'
       +'<span style="flex:1;min-width:0">'
-      +'<span style="display:block;font-size:14.5px;font-weight:800;color:var(--T);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(cfg.nom||b.nom||'—')+'</span>'
-      +'<span style="display:block;font-size:11px;font-weight:700;color:var(--M);margin-top:2px">'+formatShopCode(b.code)+'</span>'
-      +'<span style="display:block;font-size:11px;font-weight:600;color:var(--M);margin-top:2px">'+nbA+' '+(fr?'articles':'items')+' · '+nbV+' '+(fr?'ventes gardées':'sales kept')+' · '+(fr?'active ':'active ')+_ilYA(b.updated_at?new Date(b.updated_at).getTime():0)+'</span>'
-      +'</span><span style="font-size:19px;color:var(--B)">›</span></button>';
+      +'<span style="display:block;font-size:14.5px;font-weight:800;color:var(--T);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(cfg.nom||b.nom||'—')+'</span>'
+      +'<span style="display:block;font-size:11px;font-weight:700;color:var(--M);margin-top:2px">'+escH(formatShopCode(b.code))+'</span>'
+      +'<span style="display:block;font-size:11px;font-weight:600;color:var(--M);margin-top:2px">'+faits.join(' · ')+'</span>'
+      +'</span><span class="lb-fl" style="font-size:19px;color:var(--B)">›</span></button>';
   }).join('');
   document.getElementById('ov-choixb').classList.add('show');
 }
-function choisirBoutiqueEntree(i){
-  var b=_cbListe[i];if(!b)return;
-  closeSheet('ov-choixb');
-  // Cette boutique remplace ce qu'il y avait sur le téléphone : fusionner
-  // avec les restes d'une AUTRE boutique mélangerait deux caisses.
+// ══════════════════════════════════════════════════════════════════
+//  OUVRIR UNE BOUTIQUE DU COMPTE, APRÈS LE PIN — ET ELLE SEULE.
+//  Déjà sur ce téléphone : elle s'ouvre TOUT DE SUITE, et la synchro
+//  rapatrie derrière ce qui a changé ailleurs — c'est déjà ce que fait
+//  l'entrée instantanée (voir `validerEntreeRapide`). Garder la copie
+//  d'ici, c'est aussi garder les ventes qui n'étaient pas encore parties :
+//  l'ancien chemin l'effaçait avant de tout recharger.
+//  Sinon on ne télécharge QUE la boutique touchée. Rend true si elle est
+//  ouverte, false si elle n'est pas arrivée (il reste sur la liste).
+// ══════════════════════════════════════════════════════════════════
+var _ouvertureEnCours=false;
+async function _ouvrirBoutiqueDuCompte(b,tel,email){
+  if(!b||!b.code)return false;
+  var fr=lang==='fr';
+  // L'adresse du compte est celle de la SESSION qui vient de lister ces
+  // boutiques — pas celle que le téléphone retenait. Une adresse retenue
+  // d'un AUTRE compte (deux numéros sur un téléphone) bloquait ensuite
+  // chaque envoi : « session d'un autre patron — écriture refusée ».
+  try{var _s=await supa.auth.getSession();
+      var _m=_s&&_s.data&&_s.data.session&&_s.data.session.user&&_s.data.session.user.email;
+      if(_m)email=_m;}catch(e){}
+  if(DB&&DB.cfg&&!DB.cfg.demo&&normalizeShopCode(DB.cfg.code)===normalizeShopCode(b.code)){
+    try{closeSheet('ov-choixb');}catch(e){}
+    _terminerLoginPatron(null,tel,email);
+    return true;
+  }
+  var d=b.data||await loadOwnerBoutiqueFromSupa(b.code);
+  if(!d||!d.cfg){
+    showToast('📡 '+(fr?'Ta boutique n\'est pas arrivée — vérifie ta connexion, puis retouche-la'
+                       :'Your shop did not arrive — check your connection, then tap it again'));
+    return false;
+  }
+  // Une AUTRE boutique était sur ce téléphone : elle s'efface, on ne
+  // mélange jamais deux caisses (voir aussi assurerBoutiqueLocale).
+  try{closeSheet('ov-choixb');}catch(e){}
   DB=null;
   try{localStorage.removeItem('myboutiq_v6');}catch(e){}
-  _terminerLoginPatron(b.data,_cbTel,_cbEmail);
-  try{memoriserEntree({role:'patron',tel:_cbTel,code:b.code,
-    ccNum:(document.getElementById('p-cc-num')||{}).textContent||'',
-    ccFlag:(document.getElementById('p-cc-flag')||{}).textContent||'',
-    boutique:(b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||''});}catch(e){}
-  showToast('🏬 '+((b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||''));
+  _terminerLoginPatron(d,tel,email);
+  return true;
+}
+// La ligne touchée dit qu'elle travaille, les autres attendent : sur un
+// réseau lent l'ouverture prend quelques secondes, et un second appui ne
+// doit rien relancer.
+function _ligneOccupee(id,i,on){
+  try{
+    var bs=document.querySelectorAll('#'+id+' > button');
+    for(var k=0;k<bs.length;k++){
+      bs[k].disabled=!!on;
+      bs[k].style.opacity=(on&&k!==i)?'.45':'';
+      var fl=bs[k].querySelector('.lb-fl');
+      if(fl&&k===i)fl.textContent=on?'⏳':'›';
+    }
+  }catch(e){}
+}
+async function choisirBoutiqueEntree(i){
+  var b=_cbListe[i];if(!b||_ouvertureEnCours)return;
+  var nom=(b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||'';
+  _ouvertureEnCours=true;_ligneOccupee('cb-lst',i,true);
+  try{
+    if(!(await _ouvrirBoutiqueDuCompte(b,_cbTel,_cbEmail)))return;
+    try{memoriserEntree({role:'patron',tel:_cbTel,code:b.code,
+      ccNum:(document.getElementById('p-cc-num')||{}).textContent||'',
+      ccFlag:(document.getElementById('p-cc-flag')||{}).textContent||'',
+      boutique:nom});}catch(e){}
+    showToast('🏬 '+nom);
+  }finally{_ouvertureEnCours=false;_ligneOccupee('cb-lst',i,false);}
 }
 // Changer de boutique sans se déconnecter : il a déjà prouvé qu'il est le
 // patron en entrant son PIN, on ne le lui redemande pas pour SES boutiques.
@@ -10173,14 +10399,24 @@ async function changerDeBoutique(){
 }
 // Toutes les boutiques de ce compte. Les droits serveur (sel_owner) ne
 // laissent voir que les siennes.
+// ⚠️⚠️ 660 KO POUR AFFICHER SIX NOMS.
+// Cette liste rapatriait les DONNÉES ENTIÈRES de chaque boutique — ventes,
+// articles, clients — alors qu'elle ne sert qu'à montrer des noms et des
+// codes. Mesuré le 10/10 sur le téléphone du patron (Orange, Garoua) : six
+// boutiques actives, 660 Ko. Au banc, à 50 Ko/s : douze secondes après
+// « Connexion » sans que rien ne bouge à l'écran. Il retouchait — et chaque
+// appui relançait le même téléchargement : seize connexions en une minute
+// et demie, aucune boutique ouverte. On ne demande plus que le nom, le code
+// et la date (moins d'un kilo-octet) ; les données de LA boutique choisie
+// viennent après le choix, et elles seules (`_ouvrirBoutiqueDuCompte`).
 async function listerBoutiquesDuCompte(){
   try{
     var user=await getAuthUser();
     if(!supa||!user||!navigator.onLine)return [];
-    var r=await supa.from('boutiques').select('code,nom,updated_at,data')
+    var r=await supa.from('boutiques').select('code,nom,updated_at')
             .eq('owner_id',user.id).eq('actif',true).order('updated_at',{ascending:false});
     if(r.error||!r.data)return [];
-    var l=r.data.filter(function(b){return b&&b.code&&b.data;});
+    var l=r.data.filter(function(b){return b&&b.code;});
     memoriserSesBoutiques(l);
     return l;
   }catch(e){return [];}
