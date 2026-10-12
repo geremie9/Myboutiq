@@ -19,9 +19,16 @@ for (const locale of ['fr-FR', 'en-US']) {
     await p.goto(`http://127.0.0.1:${port}/?site`); await p.waitForTimeout(1800);
     const m = await p.evaluate(() => {
       const larges = [];
+      // Un élément qu'un cadre ROGNE exprès (formes du décor, bandeau qui
+      // défile, toile de la caisse) ne déborde pas : on ne le voit pas
+      // dépasser. Seul #s-landing ne compte pas comme cadre — c'est lui qui
+      // cachait les boutons coupés de la 23.03.
+      // Le décor (aria-hidden) peut dépasser : le bandeau penché le fait exprès.
+      const rogne = e => { if (e.closest('[aria-hidden="true"]')) return true; for (let a = e.parentElement; a && a.id !== 's-landing'; a = a.parentElement) {
+        const o = getComputedStyle(a).overflowX; if (o === 'hidden' || o === 'clip' || o === 'auto' || o === 'scroll') return true; } return false; };
       document.querySelectorAll('#s-landing *').forEach(e => {
         const r = e.getBoundingClientRect();
-        if (r.width > 0 && r.right > innerWidth + 1 && getComputedStyle(e).position !== 'fixed' && !e.closest('.vt-liens')) larges.push((e.id || e.className || e.tagName) + ' ' + Math.round(r.right));
+        if (r.width > 0 && r.right > innerWidth + 1 && getComputedStyle(e).position !== 'fixed' && !rogne(e)) larges.push((e.id || e.className || e.tagName) + ' ' + Math.round(r.right));
       });
       return { page: document.documentElement.scrollWidth, larges: larges.slice(0, 4) };
     });
