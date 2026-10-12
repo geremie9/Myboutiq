@@ -26,6 +26,12 @@ for (const f of pages) {
   }
   t(fautes.length === 0, `${f} — ${n} bloc${n > 1 ? 's' : ''}` + (fautes.length ? ' : ' + fautes.join(' | ') : ''));
 }
+// Le script commun des guides (23.07) : chargé par chaque page conseils.
+for (const f of ['conseils/commun/guides.js']) {
+  let err = '';
+  try { new vm.Script(fs.readFileSync(path.join(RACINE, f), 'utf8'), { filename: f }); } catch (e) { err = e.message; }
+  t(!err, f + (err ? ' : ' + err : ''));
+}
 // Les fonctions serveur en TypeScript (Deno) : les types retirés, le reste
 // doit se lire comme du JavaScript. Une faute de frappe ne se voyait
 // qu'au déploiement — ou pire, au premier appel.
