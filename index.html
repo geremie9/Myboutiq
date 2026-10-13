@@ -810,6 +810,36 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .aemo svg.ic{margin:0 auto;color:var(--T)}
 #btn-save-stk{display:flex;align-items:center;justify-content:center;gap:8px}
 .empty-e svg.ic{margin:0 auto;color:var(--M);width:40px;height:40px}
+/* ── 23.13 — valeur et inventaire ── */
+.vb-carte{display:flex;gap:8px;align-items:stretch;margin-bottom:6px}
+.vb-val{flex:1;min-width:0;text-align:left;background:var(--C);border:1.5px solid var(--BD);border-radius:14px;padding:9px 12px;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;flex-direction:column;gap:1px}
+.vb-val span{font-size:11px;font-weight:700;color:var(--M)}
+.vb-val b{font-size:18px;font-weight:900;color:var(--T)}
+.vb-val i{font-style:normal;font-size:11px;font-weight:800;color:var(--B)}
+.vb-inv{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:96px;background:var(--P);color:var(--A);border:none;border-radius:14px;padding:8px 10px;font-family:'Outfit',sans-serif;font-size:11.5px;font-weight:800;cursor:pointer}
+.vb-total{display:flex;flex-direction:column;align-items:center;padding:6px 0 14px}
+.vb-total span{font-size:12.5px;font-weight:700;color:var(--M)}
+.vb-total b{font-size:30px;font-weight:900;color:var(--T);letter-spacing:-.5px}
+.vb-l{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--BD)}
+.vb-l span{font-size:13.5px;font-weight:800;color:var(--T);display:flex;flex-direction:column}
+.vb-l span i{font-style:normal;font-size:11px;font-weight:600;color:var(--M)}
+.vb-l b{font-size:15px;font-weight:900;color:var(--T);white-space:nowrap}
+.vb-trou{display:flex;gap:8px;align-items:center;margin-top:10px;padding:10px 12px;border-radius:12px;background:#FFF4E5;color:#B45309;font-size:12px;font-weight:700;cursor:pointer}
+.vb-si{margin-top:12px;font-size:12.5px;font-weight:600;color:var(--T);line-height:1.5}
+.vb-der{margin-top:10px;font-size:11.5px;font-weight:600;color:var(--M);line-height:1.45}
+.inv-aide{font-size:12px;font-weight:600;color:var(--M);line-height:1.45}
+.inv-prog{font-size:11.5px;font-weight:800;color:var(--B)}
+.inv-l{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--BD)}
+.inv-i{flex:1;min-width:0}
+.inv-nm{font-size:13.5px;font-weight:800;color:var(--T);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inv-th{font-size:11.5px;font-weight:600;color:var(--M)}
+.inv-e{font-size:11.5px;font-weight:800;min-height:15px}
+.inv-e.ok{color:var(--G)}.inv-e.moins{color:var(--R)}.inv-e.plus{color:#B45309}
+.inv-in{flex:0 0 84px;width:84px;min-height:46px;text-align:center;background:var(--BG);border:2px solid var(--BD);border-radius:12px;font-size:18px;font-weight:900;font-family:'Outfit',sans-serif;color:var(--T);outline:none}
+.inv-in:focus{border-color:var(--B)}
+.inv-in::placeholder{font-size:12px;font-weight:700;color:var(--M)}
+.inv-pied{padding:10px 15px 18px;border-top:1px solid var(--BD);background:var(--C)}
+.inv-res{font-size:12.5px;font-weight:800;color:var(--T);min-height:18px}
 /* Patron / Vendeur : le même sélecteur calme ; l'ambre plein reste au
    seul bouton qui agit (« Connexion »). */
 #s-login .login-tabs{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.10);border-radius:15px;margin-bottom:18px}
@@ -6108,6 +6138,26 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   </div>
 </div>
 
+<!-- ⭐ 23.13 — CE QUE VAUT MA BOUTIQUE -->
+<div class="ov" id="ov-valeur" onclick="closeOv(event,'ov-valeur')">
+  <div class="bsht" style="max-height:90vh"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="vb-tit">Ce que vaut ma boutique</div><button class="bcl" onclick="closeSheet('ov-valeur')" aria-label="Fermer">✕</button></div>
+    <div style="padding:14px 19px 8px" id="vb-corps"></div>
+  </div>
+</div>
+<!-- ⭐ 23.13 — L'INVENTAIRE : il compte, l'app montre l'écart, rien ne change avant « Valider » -->
+<div class="ov" id="ov-inv" onclick="closeOv(event,'ov-inv')">
+  <div class="bsht" style="max-height:94vh;display:flex;flex-direction:column;padding-bottom:0"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="inv-tit">Inventaire</div><button class="bcl" onclick="closeSheet('ov-inv')" aria-label="Fermer">✕</button></div>
+    <div style="padding:10px 15px 6px">
+      <div class="inv-aide" id="inv-aide">Compte ce qui est vraiment sur tes étagères et tape le nombre. L'app montre l'écart. Rien ne change tant que tu ne valides pas — tu peux t'arrêter et reprendre plus tard.</div>
+      <input class="sinp" id="inv-src" oninput="invFiltrer(this.value)" placeholder="Chercher un article" style="width:100%;margin:9px 0 7px">
+      <div class="inv-prog" id="inv-prog"></div>
+    </div>
+    <div id="inv-lst" style="flex:1;overflow-y:auto;padding:0 15px 10px"></div>
+    <div class="inv-pied" id="inv-pied"></div>
+  </div>
+</div>
 <div class="ov" id="ov-journal" onclick="closeOv(event,'ov-journal')">
   <div class="bsht" style="max-height:88vh"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">📋 <span id="journal-tit">Journal des modifications</span></div><button class="bcl" onclick="closeSheet('ov-journal')">✕</button></div>
@@ -6599,7 +6649,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.12'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.13'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -24612,6 +24662,162 @@ function partagerCommande(){
   }catch(e){}
   try{window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}catch(e){}
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.13 — CE QUE VAUT MA BOUTIQUE, ET L'INVENTAIRE
+//
+//  « Les clients me demandent souvent : est-ce que MyBoutiQ peut faire
+//    l'inventaire, de telle sorte que je connaisse la valeur exacte de ma
+//    boutique ? »
+//  La valeur du stock existait (une ligne grise en haut du Stock). Le
+//  comptage n'existait pas : pour corriger, il fallait passer article par
+//  article par « J'ai perdu », un motif à chaque fois.
+//  · LA VALEUR se lit en une feuille : marchandise au prix d'achat, argent
+//    attendu dans le tiroir aujourd'hui, crédits à recevoir — et ce que
+//    rapporterait le stock vendu au prix normal. Ce qui n'a pas de prix
+//    d'achat N'EST PAS inventé : il est compté à part, et dit.
+//  · L'INVENTAIRE : il tape ce qu'il compte, l'app montre l'écart article
+//    par article et en francs. Le brouillon est gardé sur le téléphone (on
+//    compte une boutique en plusieurs fois). À la validation, chaque écart
+//    devient un MOUVEMENT de stock daté (`definirStock` : `adj`, journal),
+//    jamais une réécriture de `stk` — la synchro et l'historique tiennent.
+//    Ce qu'il n'a pas compté ne bouge pas.
+// ══════════════════════════════════════════════════════════════════
+function _lignesInventaire(){
+  var L=[];
+  (DB&&DB.articles||[]).forEach(function(p){
+    if(!p)return;
+    if(p.vr&&p.vr.length&&!utiliseStockBase(p)){
+      p.vr.forEach(function(v){
+        if(!v||_estGrosDeVariante(v))return;
+        L.push({k:p.id+'-'+v.id,p:p,v:v,nm:p.nm+' — '+(v.nm||''),th:Number(v.stk)||0,pa:Number(v.pa)||0,px:Number(v.px)||0});
+      });
+    }else L.push({k:p.id+'-0',p:p,v:null,nm:p.nm,th:Number(getStk(p))||0,pa:Number(p.pa)||0,px:Number(p.px)||0});
+  });
+  return L;
+}
+function valeurBoutique(){
+  var r=_valeurStock(),vente=0;
+  _lignesInventaire().forEach(function(l){var q=Math.max(0,l.th);if(q>0&&l.px>0)vente+=q*l.px;});
+  var credits=0;(DB&&DB.clients||[]).forEach(function(c){var x=Number(c&&c.credit)||0;if(x>0)credits+=x;});
+  var caisse=0;try{caisse=Math.max(0,Number(caisseAttendue())||0);}catch(e){}
+  return {achat:r.val,sansPa:r.sansPa,vente:vente,credits:credits,caisse:caisse,total:r.val+credits+caisse};
+}
+function ouvrirValeur(){
+  if(!(role==='patron'||hasPerm('rapports')||hasPerm('stock')))return;
+  var fr=(lang==='fr'),v=valeurBoutique(),d=(DB&&DB.cfg&&DB.cfg.dernierInventaire)||null;
+  var lg=function(t,x,s){return '<div class="vb-l"><span>'+t+(s?'<i>'+s+'</i>':'')+'</span><b>'+fmt(x)+'</b></div>';};
+  var h='<div class="vb-total"><span>'+(fr?'Ta boutique vaut':'Your shop is worth')+'</span><b>'+fmt(v.total)+'</b></div>'
+    +lg(fr?'Marchandise':'Goods',v.achat,fr?'au prix où tu l\'as achetée':'at the price you paid')
+    +lg(fr?'Argent dans la caisse':'Cash in the till',v.caisse,fr?'attendu aujourd\'hui':'expected today')
+    +lg(fr?'Crédits à recevoir':'Credit to collect',v.credits,fr?'ce que les clients te doivent':'what customers owe you');
+  if(v.sansPa>0)h+='<div class="vb-trou" onclick="closeSheet(\'ov-valeur\');filtreStock(\'sanspa\')">'+ico('alerte',16)+'<span>'
+    +v.sansPa+' '+(fr?('article'+(v.sansPa>1?'s':'')+' sans prix d\'achat '+(v.sansPa>1?'ne sont':'n\'est')+' pas compté'+(v.sansPa>1?'s':'')+' — touche pour compléter')
+                    :('item'+(v.sansPa>1?'s':'')+' without cost price not counted — tap to fix'))+'</span></div>';
+  if(v.vente>0)h+='<div class="vb-si">'+(fr?'Si tu vends tout ton stock au prix normal : ':'If you sell all your stock at the normal price: ')
+    +'<b>'+fmt(v.vente)+'</b>'+(v.vente>v.achat&&v.achat>0?(' — '+(fr?'bénéfice possible ':'possible profit ')+'<b>'+fmt(v.vente-v.achat)+'</b>'):'')+'</div>';
+  h+='<div class="vb-der">'+(d?((fr?'Dernier inventaire : ':'Last count: ')+new Date(d.date).toLocaleDateString(fr?'fr-FR':'en-GB')
+      +' · '+d.n+' '+(fr?'article'+(d.n>1?'s':''):'item'+(d.n>1?'s':''))+(d.ecart?(' · '+(fr?'écart ':'gap ')+(d.ecart>0?'+':'−')+fmt(Math.abs(d.ecart))):(' · '+(fr?'aucun écart':'no gap'))))
+      :(fr?'Pas encore d\'inventaire : la marchandise est celle que l\'app a calculée (entrées − ventes).':'No count yet: goods are what the app computed (stock in − sales).'))+'</div>';
+  if(role==='patron'||hasPerm('stock'))h+='<button class="bnxt" style="margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="closeSheet(\'ov-valeur\');ouvrirInventaire()">'
+    +ico('recu',18)+(fr?'Faire l\'inventaire':'Count my stock')+'</button>';
+  document.getElementById('vb-corps').innerHTML=h;
+  document.getElementById('vb-tit').textContent=fr?'Ce que vaut ma boutique':'What my shop is worth';
+  document.getElementById('ov-valeur').classList.add('show');
+}
+var _inv={},_invFiltre='',_invConfirme=false;
+function _invCle(){return 'mb_inv_'+String((DB&&DB.cfg&&DB.cfg.code)||'');}
+function _invGarder(){try{localStorage.setItem(_invCle(),JSON.stringify(_inv));}catch(e){}}
+function _invNum(x){var n=parseFloat(String(x==null?'':x).replace(',','.'));return isNaN(n)?null:n;}
+function ouvrirInventaire(){
+  if(!(role==='patron'||hasPerm('stock'))){showToast(lang==='fr'?'Réservé au patron':'Owner only');return;}
+  try{_inv=JSON.parse(localStorage.getItem(_invCle())||'{}')||{};}catch(e){_inv={};}
+  _invFiltre='';_invConfirme=false;
+  var fr=(lang==='fr'),q=document.getElementById('inv-src');if(q){q.value='';q.placeholder=fr?'Chercher un article':'Search an item';}
+  document.getElementById('inv-tit').textContent=fr?'Inventaire':'Stock count';
+  document.getElementById('inv-aide').textContent=fr
+    ?'Compte ce qui est vraiment sur tes étagères et tape le nombre. L\'app montre l\'écart. Rien ne change tant que tu ne valides pas — tu peux t\'arrêter et reprendre plus tard.'
+    :'Count what is really on your shelves and type the number. The app shows the gap. Nothing changes until you confirm — you can stop and come back later.';
+  _invRendre();
+  document.getElementById('ov-inv').classList.add('show');
+}
+function invFiltrer(v){_invFiltre=String(v||'');_invRendre(true);}
+function _invEcart(l){var c=_invNum(_inv[l.k]);return c==null?null:Math.round((c-l.th)*1000)/1000;}
+function _invRendre(listeSeule){
+  var fr=(lang==='fr'),L=_lignesInventaire(),q=txtNorm(_invFiltre||'');
+  {
+    var box=document.getElementById('inv-lst');
+    box.innerHTML=L.filter(function(l){return !q||txtNorm(l.nm).indexOf(q)>=0;}).map(function(l){
+      var u=estMesure(l.p)?(' '+uniteArt(l.p)):'',sac=Number((l.v||l.p).umSac)||0;
+      return '<div class="inv-l" data-k="'+escH(l.k)+'">'+dessinArt(l.p,20,'width:38px;height:38px;border-radius:10px')
+        +'<div class="inv-i"><div class="inv-nm">'+escH(l.nm)+'</div><div class="inv-th">'+(fr?'L\'app dit ':'App says ')+fmtQ(Math.max(0,l.th))+u
+        +(sac>1?(' · '+(fr?'carton de ':'box of ')+sac):'')+'</div><div class="inv-e" id="inv-e-'+escH(l.k)+'"></div></div>'
+        +'<input class="inv-in" type="text" inputmode="decimal" autocomplete="off" aria-label="'+(fr?'Compté':'Counted')+'" placeholder="'+(fr?'compté':'count')+'" value="'+escH(_inv[l.k]==null?'':_inv[l.k])+'" '
+        +'oninput="invTape('+jsStr(l.k)+',this.value)"></div>';
+    }).join('')||('<div class="empty"><div class="empty-e">'+ico('chercher',40)+'</div><div class="empty-t">'+(fr?'Aucun article':'No item')+'</div></div>');
+  }
+  L.forEach(function(l){_invMajLigne(l);});
+  _invMajPied(L);
+}
+function _invMajLigne(l){
+  var z=document.getElementById('inv-e-'+l.k);if(!z)return;
+  var e=_invEcart(l),fr=(lang==='fr');
+  if(e==null){z.textContent='';z.className='inv-e';return;}
+  if(!e){z.textContent=fr?'Juste':'Exact';z.className='inv-e ok';return;}
+  var val=l.pa>0?(' · '+(e>0?'+':'−')+fmt(Math.abs(e*l.pa))):'';
+  z.textContent=(e>0?('+'+fmtQ(e)+(fr?' en trop':' extra')):('−'+fmtQ(-e)+(fr?' manquant'+(-e>1?'s':''):' missing')))+val;
+  z.className='inv-e '+(e>0?'plus':'moins');
+}
+function invTape(k,v){
+  _inv[k]=String(v||'').trim();if(_inv[k]==='')delete _inv[k];
+  _invConfirme=false;_invGarder();
+  var L=_lignesInventaire(),l=L.find(function(x){return x.k===k;});if(l)_invMajLigne(l);
+  _invMajPied(L);
+}
+function _invBilan(L){
+  var n=0,manque=0,trop=0,vm=0,vt=0,ch=0;
+  L.forEach(function(l){var e=_invEcart(l);if(e==null)return;n++;if(!e)return;ch++;
+    if(e<0){manque+=-e;vm+=(-e)*(l.pa||0);}else{trop+=e;vt+=e*(l.pa||0);}});
+  return {n:n,ch:ch,manque:manque,trop:trop,vm:vm,vt:vt,total:L.length};
+}
+function _invMajPied(L){
+  var fr=(lang==='fr'),b=_invBilan(L||_lignesInventaire());
+  document.getElementById('inv-prog').textContent=b.n+' / '+b.total+' '+(fr?'compté'+(b.n>1?'s':''):'counted');
+  var p=document.getElementById('inv-pied');
+  var resume=b.n?((b.ch?((b.manque?((fr?'Manque ':'Missing ')+fmtQ(b.manque)+(b.vm?(' ('+fmt(b.vm)+')'):'')):'')
+      +(b.manque&&b.trop?' · ':'')+(b.trop?((fr?'En trop ':'Extra ')+fmtQ(b.trop)+(b.vt?(' ('+fmt(b.vt)+')'):'')):''))
+      :(fr?'Tout ce que tu as compté est juste.':'Everything you counted is exact.')))
+    :(fr?'Tape les quantités que tu comptes.':'Type the quantities you count.');
+  p.innerHTML='<div class="inv-res">'+resume+'</div>'
+    +'<button class="bnxt" id="inv-ok" '+(b.n?'':'disabled ')+'onclick="validerInventaire()" style="margin-top:8px;'+(b.n?'':'opacity:.5')+'">'
+    +(_invConfirme?((fr?'Confirmer : corriger ':'Confirm: fix ')+b.ch+' '+(fr?'article'+(b.ch>1?'s':''):'item'+(b.ch>1?'s':'')))
+                  :(fr?'Valider l\'inventaire':'Confirm the count'))+'</button>';
+}
+function validerInventaire(){
+  if(!(role==='patron'||hasPerm('stock')))return;
+  var fr=(lang==='fr');
+  try{DB=migrateDBData(DB);}catch(e){}           // le stock de CE moment, pas celui de l'ouverture
+  var L=_lignesInventaire(),b=_invBilan(L);
+  if(!b.n)return;
+  if(!_invConfirme&&b.ch){_invConfirme=true;_invMajPied(L);return;}   // une seconde touche : il voit ce qui va changer
+  var ecart=0;
+  L.forEach(function(l){
+    var c=_invNum(_inv[l.k]);if(c==null||c<0)return;
+    var e=Math.round((c-l.th)*1000)/1000;if(!e)return;
+    ecart+=e*(l.pa||0);
+    try{toucheArticle(l.p.id);}catch(x){}
+    definirStock(l.p,l.v,c);
+  });
+  DB.cfg.dernierInventaire={date:new Date().toISOString(),n:b.n,ch:b.ch,ecart:Math.round(ecart)};
+  journalAjouter('stock',fr?'Inventaire':'Stock count',b.n+' '+(fr?'compté'+(b.n>1?'s':''):'counted'),
+    b.ch?((b.ch)+' '+(fr?'corrigé'+(b.ch>1?'s':''):'fixed')+(ecart?(' · '+(ecart>0?'+':'−')+fmt(Math.abs(ecart))):'')):(fr?'aucun écart':'no gap'));
+  _inv={};try{localStorage.removeItem(_invCle());}catch(e){}
+  save();
+  try{_apresMouvementStock();}catch(e){}
+  closeSheet('ov-inv');
+  showToast(b.ch?((fr?'Inventaire enregistré : ':'Count saved: ')+b.ch+' '+(fr?'article'+(b.ch>1?'s':'')+' corrigé'+(b.ch>1?'s':''):'item'+(b.ch>1?'s':'')+' fixed'))
+                :(fr?'Inventaire enregistré : tout était juste':'Count saved: everything was exact'));
+  try{ouvrirValeur();}catch(e){}
+}
 // La ligne au-dessus de la liste + le compteur du filtre « À commander ».
 function majValeurStock(q30){
   var z=document.getElementById('stk-valeur');
@@ -24621,10 +24827,17 @@ function majValeurStock(q30){
     else{
       var r=_valeurStock();
       z.style.display='';
-      z.innerHTML='<b>'+fmt(r.val)+'</b> '+(fr?'de marchandise':'of goods')
-        +(r.sansPa>0?(' · <span class="stkv-trou" onclick="filtreStock(\'sanspa\')">'
-            +r.sansPa+' '+(fr?('article'+(r.sansPa>1?'s':'')+' sans prix d\'achat')
-                             :('item'+(r.sansPa>1?'s':'')+' without cost price'))+' ›</span>'):'');
+      // 23.13 — « Est-ce que MyBoutiQ peut faire l'inventaire, que je
+      // connaisse la valeur exacte de ma boutique ? » La valeur était là,
+      // en petit gris ; l'inventaire n'existait pas. La ligne devient une
+      // carte : la valeur, son détail, et le bouton pour compter.
+      z.innerHTML='<div class="vb-carte"><button type="button" class="vb-val" onclick="ouvrirValeur()">'
+        +'<span>'+(fr?'Ta marchandise vaut':'Your goods are worth')+'</span><b>'+fmt(r.val)+'</b>'
+        +'<i>'+(fr?'Ce que vaut ma boutique ›':'What my shop is worth ›')+'</i></button>'
+        +'<button type="button" class="vb-inv" onclick="ouvrirInventaire()">'+ico('recu',18)+'<span>'+(fr?'Faire l\'inventaire':'Count my stock')+'</span></button></div>'
+        +(r.sansPa>0?('<span class="stkv-trou" onclick="filtreStock(\'sanspa\')">'
+            +r.sansPa+' '+(fr?('article'+(r.sansPa>1?'s':'')+' sans prix d\'achat — pas compté'+(r.sansPa>1?'s':''))
+                             :('item'+(r.sansPa>1?'s':'')+' without cost price — not counted'))+' ›</span>'):'');
     }
   }
   var bt=document.getElementById('sf-cmd');
