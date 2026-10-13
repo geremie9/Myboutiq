@@ -5749,7 +5749,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
 <!-- ⚡ TOUT CONFIGURER -->
 <div class="ov" id="ov-grille" onclick="closeOv(event,'ov-grille')">
   <div class="bsht" style="max-height:94vh"><div class="shndl"></div>
-    <div class="shhdr"><div class="shtit">⚡ <span>Tout configurer</span></div><button class="bcl" onclick="closeSheet('ov-grille')">✕</button></div>
+    <div class="shhdr"><div class="shtit"><span>Tout configurer</span></div><button class="bcl" onclick="closeSheet('ov-grille')">✕</button></div>
     <div style="padding:8px 19px 24px">
       <div style="font-size:11.5px;color:var(--M);font-weight:600;line-height:1.6;margin-bottom:10px">
         Prix d'achat, prix de vente et stock — une ligne par article. Ça s'enregistre tout seul.
@@ -5757,9 +5757,9 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       </div>
       <div style="font-size:12px;font-weight:700;color:var(--T);margin-bottom:9px" id="gr-etat"></div>
       <div style="display:flex;gap:6px;margin-bottom:9px">
-        <button class="cbtn on" id="gr-f-manque" onclick="grFiltrer('manque')">⚠️ Ce qui manque</button>
+        <button class="cbtn on" id="gr-f-manque" onclick="grFiltrer('manque')">Ce qui manque</button>
         <button class="cbtn" id="gr-f-tout" onclick="grFiltrer('tout')">Tout</button>
-        <button class="cbtn" id="gr-f-gros" onclick="grFiltrer('gros')" style="display:none">📦 Prix du carton</button>
+        <button class="cbtn" id="gr-f-gros" onclick="grFiltrer('gros')" style="display:none">Prix du carton</button>
       </div>
       <div id="gr-lst"></div>
     </div>
@@ -6649,7 +6649,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.13'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.14'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -12740,25 +12740,53 @@ function _grIncomplet(p,v){
 }
 // La liste à plat : les familles restent repliées tant qu'il ne les ouvre pas,
 // « pour économiser l'écran touffu » — sa demande sur les boissons.
+// ⚠️⚠️ 23.14 — « QUAND J'ESSAIE DE RENSEIGNER LES PRIX, CERTAINS SAUTENT ;
+// TU ÉCRIS, ET QUAND TU PARS INSCRIRE D'AUTRES PRIX, ÇA S'EFFACE. »
+// Sa capture : « Boisson predator », 5 variantes en palette de 12. Mesuré
+// au banc en tapant comme lui (toucher, taper, toucher la case suivante) :
+//   · liste « Cartons sans prix » : chaque palette chiffrée SORTAIT de la
+//     liste — 25 cases, puis 0. Les lignes partaient sous son doigt ;
+//   · liste « Tout » : la liste ENTIÈRE était redessinée pendant qu'il
+//     tapait déjà dans la case suivante — « 3000 » devenait « 30300000 ».
+// La liste est maintenant FIGÉE tant qu'il travaille (ordre et lignes
+// retenus à l'ouverture et à chaque filtre) : une ligne complétée reste à
+// sa place. Et une saisie ne refait que SA ligne, sans jamais toucher la
+// case où il écrit (`_grRafraichir`).
+var _grFige=null;
 function _grLignes(){
-  var out=[];
+  var out=[],fige=_grFige;
   (DB.articles||[]).forEach(function(p){
     if(!p)return;
     var fam=!!(p.vr&&p.vr.length);
     var manque=_grIncomplet(p,null);
-    if(_grFiltre==='manque'&&!manque)return;
+    var passe=true;
+    if(_grFiltre==='manque'&&!manque)passe=false;
     // 23.03 — la liste de travail des CARTONS : contenant connu, prix inconnu.
     if(_grFiltre==='gros'){
-      if(fam){if(!(p.vr||[]).some(function(v){return !_estGrosDeVariante(v)&&_grSansCarton(p,v);}))return;}
-      else if(!_grSansCarton(p,null))return;
+      if(fam){if(!(p.vr||[]).some(function(v){return !_estGrosDeVariante(v)&&_grSansCarton(p,v);}))passe=false;}
+      else if(!_grSansCarton(p,null))passe=false;
     }
-    out.push({p:p,v:null,fam:fam,cle:'a'+p.id,manque:manque,
+    var cle='a'+p.id;
+    if(fige?!(cle in fige):!passe)return;
+    out.push({p:p,v:null,fam:fam,cle:cle,manque:manque,
               nb:fam?p.vr.length:0});
-    if(fam&&_grOuverts[p.id])(p.vr||[]).forEach(function(v){
-      if(_grFiltre==='gros'&&(_estGrosDeVariante(v)||!_grSansCarton(p,v)))return;
-      out.push({p:p,v:v,fam:false,sous:true,cle:'v'+p.id+'_'+v.id,manque:_grIncomplet(p,v)});
+    if(fam&&_grOuverts[p.id])(p.vr||[]).forEach(function(v,iv){
+      var cv='v'+p.id+'_'+v.id;
+      var pv=!(_grFiltre==='gros'&&(_estGrosDeVariante(v)||!_grSansCarton(p,v)));
+      if(fige?!((cv in fige)||pv):!pv)return;
+      out.push({p:p,v:v,fam:false,sous:true,cle:cv,manque:_grIncomplet(p,v),iv:iv});
     });
   });
+  if(fige){
+    // Figée : chaque ligne garde sa place ; une variante qu'on vient de
+    // déplier se range juste sous sa famille.
+    var rang=function(l){return (l.cle in fige)?fige[l.cle]:((fige['a'+l.p.id]||0)+0.001*((l.iv||0)+1));};
+    out.sort(function(a,b){return rang(a)-rang(b);});
+    // Une ligne montrée une fois reste montrée : une famille dépliée APRÈS
+    // l'ouverture garde ses variantes, même quand il les complète.
+    out.forEach(function(l){if(!(l.cle in fige))fige[l.cle]=rang(l);});
+    return out;
+  }
   // Ce qui manque d'abord : c'est la liste de travail, pas un inventaire.
   out.sort(function(a,b){
     var ca=(a.sous?a.p.id:a.p.id), cb=(b.sous?b.p.id:b.p.id);
@@ -12769,6 +12797,7 @@ function _grLignes(){
     }
     return (a.sous?1:0)-(b.sous?1:0);
   });
+  _grFige={};out.forEach(function(l,i){_grFige[l.cle]=i;});
   return out;
 }
 function _grEtat(){
@@ -12809,10 +12838,11 @@ function ouvrirGrilleConfig(f){
       if(p&&p.vr&&p.vr.length&&p.vr.some(function(v){return !_estGrosDeVariante(v)&&_grSansCarton(p,v);}))_grOuverts[p.id]=true;
     });
   }else _grFiltre=e.manque?'manque':'tout';
+  _grFige=null;
   document.getElementById('ov-grille').classList.add('show');
   renderGrille();
 }
-function grFiltrer(f){_grFiltre=f;renderGrille();}
+function grFiltrer(f){_grFiltre=f;_grFige=null;renderGrille();}
 function grBasculerFamille(id){_grOuverts[id]=!_grOuverts[id];renderGrille();}
 // ⚠️ « Ça s'enregistre de façon unitaire, pas en gros. » Le carton est ici.
 function _grEtageDe(p,v){
@@ -12842,10 +12872,14 @@ function grBasculerUnite(cle){_grUnite[cle]=!_grUnite[cle];renderGrille();}
 // l'écrire tant qu'il ne l'a pas touché. ⚠️ Jamais écrit tout seul : la
 // feuille du prix de gros l'a appris à ses dépens (« acheter en gros coûte
 // MOINS cher ») — c'est un repère pour qu'il ne croie pas son prix perdu.
+// « le palette », « vente du palette entier » : sa capture le montrait sous
+// chaque prix. Une palette, une caisse, une boîte sont au féminin.
+function _grLe(mot){return (/^[aeiouyhéè]/i.test(mot)?'l\'':(_expFem(mot)?'la ':'le '))+mot;}
+function _grDuEntier(mot){return _expFem(mot)?('de la '+mot+' entière'):(/^[aeiouyhéè]/i.test(mot)?('de l\''+mot+' entier'):('du '+mot+' entier'));}
 function _grAchatCarton(cible,gx,fr){
   var pa=Number(cible.pa)||0,deduit=!(gx.pa>0)&&pa>0;
   return {val:(gx.pa>0)?gx.pa:(deduit?Math.round(pa*gx.n):0), deduit:deduit,
-          cap:deduit?(fmtQ(pa)+' × '+fmtQ(gx.n)):(fr?('le '+gx.mot):('per '+gx.mot))};
+          cap:deduit?(fmtQ(pa)+' × '+fmtQ(gx.n)):(fr?_grLe(gx.mot):('per '+gx.mot))};
 }
 function _grLaPiece(u,fr){return (u==='kg')?(fr?'le kilo':'per kg'):((u==='L')?(fr?'le litre':'per litre'):(fr?'la pièce':'each'));}
 // Le coût de la pièce, et la division d'où il vient — dans ce sens-là, la
@@ -12856,7 +12890,7 @@ function _grAchatPiece(cible,gx,u,fr){
   var d=' ('+nb(gx.pa)+' ÷ '+fmtQ(gx.n)+')',laP=' '+_grLaPiece(u,fr);
   if(pa>0)return (fr?'achat ':'cost ')+nb(pa)+laP+((div>0&&div===Math.round(pa))?d:'');
   if(div>0)return (fr?'achat ':'cost ')+nb(div)+laP+d;
-  return fr?('achat : tape ce que tu paies le '+gx.mot):('cost: type what you pay per '+gx.mot);
+  return fr?('achat : tape ce que tu paies '+_grLe(gx.mot)):('cost: type what you pay per '+gx.mot);
 }
 // « 3 cartons et 5 pièces », jamais « 3,21 cartons ». Un stock négatif
 // (vendu avant d'avoir été saisi) ne laisse pas de reste caché : ce qu'il
@@ -12877,13 +12911,13 @@ function _grLigneGros(l,p,v,cible,nom,gx,stk,media,fr){
   return '<div class="grrow grrow-g'+(l.sous?' grsous':'')+(perteG?' grperte':'')+'">'
     +media
     +'<div class="grnm"><div class="grn1">'+nom+'</div>'
-    +'<div class="grn2 grc">📦 '+escH(gx.mot+(fr?' de ':' of ')+_avecUnite(p,n))+'</div>'
-    +(perteG?('<div class="grn2" style="color:var(--R);font-weight:800">⚠️ '+(fr?'vendu moins cher qu\'acheté':'sold below cost')+'</div>')
-           :(cible._sugg?('<div class="grn2" style="color:var(--B);font-weight:800">💡 '+(fr?'prix indicatif — vérifie':'suggested — check')+'</div>'):''))
+    +'<div class="grn2 grc">'+escH(gx.mot+(fr?' de ':' of ')+_avecUnite(p,n))+'</div>'
+    +(perteG?('<div class="grn2" style="color:var(--R);font-weight:800">'+ico('alerte',12)+' '+(fr?'vendu moins cher qu\'acheté':'sold below cost')+'</div>')
+           :(cible._sugg?('<div class="grn2" style="color:var(--B);font-weight:800">'+(fr?'prix indicatif — vérifie':'suggested — check')+'</div>'):''))
     +'</div>'
     +'<div class="grcases">'
     +'<label class="grlab">'+(fr?'achat':'cost')+_grCase(l.cle,'paGros',ac.val,'—',58,ac.deduit?'grderiv':'')+'<span class="grcap">'+escH(ac.cap)+'</span></label>'
-    +'<label class="grlab">'+(fr?'vente':'price')+_grCase(l.cle,'pxGros',gx.px,'—',58)+'<span class="grcap">'+escH(fr?('le '+gx.mot):('per '+gx.mot))+'</span></label>'
+    +'<label class="grlab">'+(fr?'vente':'price')+_grCase(l.cle,'pxGros',gx.px,'—',58)+'<span class="grcap">'+escH(fr?_grLe(gx.mot):('per '+gx.mot))+'</span></label>'
     +'<label class="grlab">'+(fr?'stock':'stock')+_grCase(l.cle,'stkC',cv.c,'0',52)+'<span class="grcap">'+escH(_expMots(gx.mot,2))+'</span></label>'
     +'</div></div>'
     +'<div class="grgros grgros-p"><span class="grgros-t">'+escH(laP)+'</span>'
@@ -12898,13 +12932,21 @@ function _grCase(cle,champ,val,ph,largeur,cls){
     +'style="width:'+largeur+'px" value="'+(val>0?val:'')+'" placeholder="'+ph+'" '
     +'onchange="grEcrire(this)" onclick="event.stopPropagation()">';
 }
-function renderGrille(){
-  var c=document.getElementById('gr-lst');if(!c)return;
+function _grNomCourt(p,v){
+  var f=String(p.nm||''),n=String(v.nm||'');
+  if(f&&n.length>f.length&&txtNorm(n.slice(0,f.length))===txtNorm(f)){
+    var r=n.slice(f.length).replace(/^[\s\-–—·:,]+/,'');
+    if(r)return r;
+  }
+  return n;
+}
+function renderGrille(dans){
+  var c=dans||document.getElementById('gr-lst');if(!c)return;
   var fr=(lang!=='en'),lignes=_grLignes(),e=_grEtat();
   var t=document.getElementById('gr-etat');
   if(t)t.innerHTML=e.tot
     ?('<b>'+e.ok+'</b> '+(fr?'sur':'of')+' <b>'+e.tot+'</b> '+(fr?'prêts à vendre':'ready')
-      +(e.manque?(' · <span style="color:#B45309">'+e.manque+' '+(fr?'sans prix':'without price')+'</span>'):' 🎉'))
+      +(e.manque?(' · <span style="color:#B45309">'+e.manque+' '+(fr?'sans prix':'without price')+'</span>'):''))
     :'';
   var fm=document.getElementById('gr-f-manque'),ft=document.getElementById('gr-f-tout'),fg=document.getElementById('gr-f-gros');
   if(fm)fm.className='cbtn'+(_grFiltre==='manque'?' on':'');
@@ -12914,23 +12956,28 @@ function renderGrille(){
     var _ng=_articlesSansPrixGros().length;
     t.innerHTML=_ng?('<b>'+_ng+'</b> '+(fr?(_ng>1?'cartons sans prix':'carton sans prix'):('box'+(_ng>1?'es':'')+' without a price'))
                     +' · <span style="color:var(--M);font-weight:600">'+(fr?'le prix du carton, et ce que tu le paies':'the box price, and what you pay')+'</span>')
-                   :(fr?'Tous tes cartons ont leur prix 🎉':'Every box has its price 🎉');
+                   :(fr?'Tous tes cartons ont leur prix':'Every box has its price');
   }
   if(!lignes.length){
     c.innerHTML='<div style="font-size:12.5px;color:var(--M);font-weight:600;padding:14px 0;line-height:1.6">'
       +(_grFiltre==='gros'
-        ?(fr?'🎉 Tous tes cartons ont leur prix. Touche « Tout » pour revoir la liste entière.':'🎉 Every box has its price.')
+        ?(fr?'Tous tes cartons ont leur prix. Touche « Tout » pour revoir la liste entière.':'Every box has its price.')
         :_grFiltre==='manque'
-        ?(fr?'🎉 Tout est configuré. Touche « Tout » pour revoir la liste entière.':'🎉 Everything is set.')
+        ?(fr?'Tout est configuré. Touche « Tout » pour revoir la liste entière.':'Everything is set.')
         :(fr?'Aucun article. Commence par en ajouter ou par importer tes photos.':'No item yet.'))+'</div>';
     return;
   }
   var h='';
-  lignes.forEach(function(l){
+  lignes.forEach(function(l){h+='<div class="grl" data-cle="'+l.cle+'">';_grUne(l);h+='</div>';});
+  function _grUne(l){
     var p=l.p,v=l.v,cible=v||p;
     // Les noms arrivent aussi par la synchro (un vendeur, un autre
     // téléphone) : jamais bruts dans le HTML, l'image passe par `srcSure`.
-    var nom=escH(v?(v.nm||''):p.nm);
+    // ⚠️ 23.14 — « Boisson Predator 33 cl », « Boisson Predator 50 cl »… :
+    // sur un téléphone, chaque ligne coupait à « Boisson Predat… » et les
+    // cinq variantes se ressemblaient. Sous sa famille, on ne répète pas le
+    // nom de la famille : « 33 cl », « 50 cl », « Gold ».
+    var nom=escH(v?_grNomCourt(p,v):p.nm);
     var pa=Number(cible.pa)||0,px=Number(cible.px)||0,stk=Number(cible.stk)||0;
     var perte=(pa>0&&px>0&&pa>=px);
     // Famille repliée : une seule ligne, et le détail attend qu'on le demande.
@@ -12949,7 +12996,7 @@ function renderGrille(){
     var gx=null;try{gx=_grosDe(p,v||null);}catch(x){}
     var aCarton=!!(gx&&gx.n>1&&!(v&&_estGrosDeVariante(v)));
     var _media=(l.sous?'<div class="grmed grpetit"><span>↳</span></div>'
-              :'<div class="grmed">'+(cible.img||p.img?'<img src="'+srcSure(cible.img||p.img)+'">':'<span>'+escH(p.e||'📦')+'</span>')+'</div>');
+              :'<div class="grmed">'+(cible.img||p.img?'<img src="'+srcSure(cible.img||p.img)+'">':dessinArt(p,20,'width:100%;height:100%'))+'</div>');
     if(aCarton&&_venteEnGros()){h+=_grLigneGros(l,p,v,cible,nom,gx,stk,_media,fr);return;}
     var et=_grEtageDe(p,v);
     var enGros=!!(et&&_grUnite[l.cle]);
@@ -12958,9 +13005,9 @@ function renderGrille(){
     h+='<div class="grrow'+(l.sous?' grsous':'')+(perte?' grperte':'')+(aCarton?' grrow-g':'')+'">'
       +_media
       +'<div class="grnm"><div class="grn1">'+nom+'</div>'
-      +(aCarton?('<div class="grn2 grc">📦 '+escH(gx.mot+(fr?' de ':' of ')+_avecUnite(p,gx.n))+'</div>'):'')
-      +(perte?('<div class="grn2" style="color:var(--R);font-weight:800">⚠️ '+(fr?'vendu moins cher qu\'acheté':'sold below cost')+'</div>')
-             :(cible._sugg?('<div class="grn2" style="color:var(--B);font-weight:800">💡 '+(fr?'prix indicatif — vérifie':'suggested — check')+'</div>'):''))
+      +(aCarton?('<div class="grn2 grc">'+escH(gx.mot+(fr?' de ':' of ')+_avecUnite(p,gx.n))+'</div>'):'')
+      +(perte?('<div class="grn2" style="color:var(--R);font-weight:800">'+ico('alerte',12)+' '+(fr?'vendu moins cher qu\'acheté':'sold below cost')+'</div>')
+             :(cible._sugg?('<div class="grn2" style="color:var(--B);font-weight:800">'+(fr?'prix indicatif — vérifie':'suggested — check')+'</div>'):''))
       +'</div>'
       +'<div class="grcases">'
       +'<label class="grlab">'+(fr?'achat':'cost')
@@ -12977,8 +13024,8 @@ function renderGrille(){
     // (23.03) — un boutiquier du détail en vend aussi, à son prix.
     if(aCarton)
       h+='<div class="grgros grgros-d"><span class="grderive">'+escH(_grAchatPiece(cible,gx,_umDe(p),fr))+'</span>'
-        +'<label class="grlab">'+escH(fr?('vente du '+gx.mot+' entier'):('whole '+gx.mot+' price'))+_grCase(l.cle,'pxGros',gx.px,'—',70)+'</label></div>';
-  });
+        +'<label class="grlab">'+escH(fr?('vente '+_grDuEntier(gx.mot)):('whole '+gx.mot+' price'))+_grCase(l.cle,'pxGros',gx.px,'—',70)+'</label></div>';
+  }
   c.innerHTML=h;
 }
 // ⚠️ Écrire le stock, c'est la seule case qui demande de la prudence :
@@ -13040,15 +13087,49 @@ function grEcrire(inp){
     save();
     try{renderProd(DB.articles);renderStock(DB.articles);}catch(x){}
     try{majLigneGrille();}catch(x){}
-    _grRedessiner();
+    _grRafraichir();
   }catch(e){}
+}
+// ⚠️ 23.14 — UNE SAISIE NE REFAIT QUE CE QUI A CHANGÉ. La liste est
+// dessinée à part et comparée ligne à ligne : la ligne où il écrit garde sa
+// case (valeur, curseur, clavier) ; seules les autres cases et les textes
+// suivent. Si les lignes elles-mêmes ont changé, on retombe sur le dessin
+// complet ci-dessous.
+function _grRafraichir(){
+  var c=document.getElementById('gr-lst');if(!c)return;
+  var a=document.activeElement,tmp=document.createElement('div');
+  renderGrille(tmp);
+  var vx=c.querySelectorAll('.grl'),nx=tmp.querySelectorAll('.grl'),pareil=(vx.length===nx.length);
+  for(var i=0;pareil&&i<vx.length;i++)if(vx[i].getAttribute('data-cle')!==nx[i].getAttribute('data-cle'))pareil=false;
+  if(!pareil){_grRedessiner(true);return;}
+  for(var k=0;k<vx.length;k++)if(vx[k].innerHTML!==nx[k].innerHTML)_grAccorder(vx[k],nx[k],a);
+}
+// Rend `o` pareil à `n` en touchant le moins possible : un texte change, un
+// attribut change, une case reçoit sa nouvelle valeur — la case `a` (celle
+// qui a le focus) garde la sienne. Seul un morceau qui n'a plus la même
+// forme est remplacé, et jamais celui qui contient `a`.
+function _grAccorder(o,n,a){
+  if(o.nodeType===3||o.nodeType===8){if(o.nodeValue!==n.nodeValue)o.nodeValue=n.nodeValue;return;}
+  var at,j;
+  for(j=o.attributes.length-1;j>=0;j--){at=o.attributes[j].name;if(!n.hasAttribute(at))o.removeAttribute(at);}
+  for(j=0;j<n.attributes.length;j++){at=n.attributes[j];if(o.getAttribute(at.name)!==at.value)o.setAttribute(at.name,at.value);}
+  if(o.tagName==='INPUT'){if(o!==a&&o.value!==n.value)o.value=n.value;return;}
+  var oc=Array.prototype.slice.call(o.childNodes),nc=Array.prototype.slice.call(n.childNodes);
+  for(j=0;j<nc.length;j++){
+    var x=oc[j],y=nc[j];
+    if(!x){o.appendChild(y);continue;}
+    if(x.nodeType===y.nodeType&&x.nodeName===y.nodeName)_grAccorder(x,y,a);
+    else if(x===a||(x.contains&&x.contains(a)))o.insertBefore(y,x);
+    else o.replaceChild(y,x);
+  }
+  for(j=nc.length;j<oc.length;j++)if(oc[j].parentNode===o&&!(oc[j]===a||(oc[j].contains&&oc[j].contains(a))))o.removeChild(oc[j]);
 }
 // ⚠️ 23.04 — REDESSINER PENDANT LE « change » JETAIT LA CASE QU'IL VENAIT
 // DE TOUCHER. Le « change » part quand la case perd le focus, c'est-à-dire
 // au moment où il touche la suivante : la liste refaite, la suivante
 // n'existait plus, le clavier se fermait. Deux touches par case, sur 30
 // articles. On redessine juste après, et on lui rend la case où il est.
-function _grRedessiner(){
+function _grRedessiner(tout){
   setTimeout(function(){
     var a=document.activeElement,gr=null,ch=null;
     if(a&&a.getAttribute&&a.closest&&a.closest('#gr-lst')){gr=a.getAttribute('data-gr');ch=a.getAttribute('data-ch');}
