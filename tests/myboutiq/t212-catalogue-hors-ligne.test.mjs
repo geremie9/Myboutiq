@@ -25,13 +25,14 @@ const b = await chromium.launch();
   const v = await p.evaluate(async () => {
     const tuiles = Array.from(document.querySelectorAll('#cha-grid > div[onclick]'));
     const sans = tuiles.filter(x => { const m = x.querySelector('.cha-m'); const e = m && m.querySelector('span');
-      return !m || !e || !e.textContent.trim() || m.getBoundingClientRect().height < 20; });
+      // 23.11 — sous la photo, le DESSIN de la tuile (plus l'emoji) : il doit être là.
+      return !m || !e || !e.querySelector('svg') || m.getBoundingClientRect().height < 20; });
     const avant = Array.from(document.querySelectorAll('#cha-grid img')).filter(i => i.complete && !i.naturalWidth);
     await new Promise(r => setTimeout(r, 400));
     const cassees = avant.filter(i => i.isConnected && i.complete && !i.naturalWidth).length;
     return { n: tuiles.length, sans: sans.length, cassees };
   });
-  t(v.n >= 20 && v.sans === 0, `hors ligne, les ${v.n} vignettes montrent leur émoji (vides : ${v.sans})`);
+  t(v.n >= 20 && v.sans === 0, `hors ligne, les ${v.n} vignettes montrent leur dessin (vides : ${v.sans})`);
   t(v.cassees === 0, `aucune image cassée ne reste à l'écran (${v.cassees})`);
   // Le panier du catalogue, en bas : même chose.
   await p.evaluate(() => { const x = Array.from(document.querySelectorAll('#cha-grid > div[onclick]')).find(e => /chaFormats|chaBasculer/.test(e.getAttribute('onclick'))); x.click(); });
@@ -41,7 +42,7 @@ const b = await chromium.launch();
   const pan = await p.evaluate(async () => { const l = document.querySelectorAll('#cha-pn-lst > div'); const x = l[0];
     const avant = Array.from(document.querySelectorAll('#cha-pn-lst img')).filter(i => i.complete && !i.naturalWidth);
     await new Promise(r => setTimeout(r, 400));
-    return { n: l.length, emo: x ? (x.querySelector('.cha-m span') || {}).textContent || '' : '',
+    return { n: l.length, emo: x && x.querySelector('.cha-m span svg') ? 'dessin' : '',
       cassees: avant.filter(i => i.isConnected && i.complete && !i.naturalWidth).length }; });
   t(pan.n === 1 && pan.emo.trim().length > 0 && pan.cassees === 0, `le panier du catalogue aussi : « ${pan.emo} », sans image cassée`);
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
