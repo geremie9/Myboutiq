@@ -32,13 +32,13 @@ const ENTREE = { role: 'patron', tel: '+237689335389', code: 'MARI0001', nom: 'G
   t(!emo, `la porte n'affiche aucun emoji${emo ? ' (« ' + emo + ' » dans : ' + txt.slice(0, 160) + ')' : ''}`);
   const pts = () => p.evaluate(() => { const l = document.querySelectorAll('#er-points i'); return { n: l.length, on: document.querySelectorAll('#er-points i.on').length, vu: !!(document.getElementById('er-points') || {}).offsetParent }; });
   let a = await pts();
-  t(a.vu && a.n === 4 && a.on === 0, `les points du PIN : 4 ronds vides (${a.on}/${a.n})`);
+  t(a.vu && a.n === 6 && a.on === 0, `les points du PIN : 6 ronds vides, la longueur d'un PIN de patron (${a.on}/${a.n})`);
   for (const k of ['1', '2']) await p.locator(`#er-clavier .kp[data-k="${k}"]`).click();
   a = await pts();
-  t(a.on === 2 && a.n === 4, `deux chiffres tapés, deux ronds pleins (${a.on}/${a.n})`);
+  t(a.on === 2 && a.n === 6, `deux chiffres tapés, deux ronds pleins (${a.on}/${a.n})`);
   for (const k of ['3', '4', '5']) await p.locator(`#er-clavier .kp[data-k="${k}"]`).click();
   a = await pts();
-  t(a.on === 5 && a.n === 5, `un PIN de plus de 4 chiffres : les ronds suivent (${a.on}/${a.n})`);
+  t(a.on === 5 && a.n === 6, `cinq chiffres : cinq ronds pleins sur six (${a.on}/${a.n})`);
   await p.locator('#kp-eff').click(); await p.locator('#kp-eff').click();
   a = await pts();
   t(a.on === 3 && await p.evaluate(() => document.getElementById('er-pin').value) === '123', `l'effacement vide les ronds avec le champ (${a.on})`);

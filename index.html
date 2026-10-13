@@ -3685,24 +3685,30 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
            ouvertures sur dix. Un vendeur les voit corrigés un instant plus
            tard : un mot qui change, jamais une ligne qui saute. -->
       <div id="er-bonjour" class="er-bj">Bonjour</div>
-      <div id="er-sous" class="er-so">Entre ton PIN pour ouvrir tes boutiques.</div>
+      <div id="er-sous" class="er-so">Entre ton PIN à 6 chiffres pour ouvrir tes boutiques.</div>
       <div id="er-lst" style="max-height:36vh;overflow-y:auto;margin-bottom:14px"></div>
       <div id="er-pin-wrap">
         <div id="er-cible" style="font-size:13px;font-weight:800;color:#fff;margin-bottom:9px;display:flex;align-items:center;gap:8px"></div>
         <button class="bio-sig" id="er-bio" onclick="toucherSigneBio('er-bio')" title="Empreinte" aria-label="Empreinte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>
         <div class="er-ligne"><input class="fi" type="password" id="er-pin" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="••••" aria-label="PIN" oninput="if(window._pinTape)_pinTape()" onkeydown="if(event.key==='Enter'&&window.validerEntreeRapide)validerEntreeRapide()">
-        <div id="er-points" class="er-points" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div id="er-points" class="er-points" data-n="6" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
         <button type="button" class="er-kb" id="er-kb" style="display:none" onclick="if(window.basculerClavier)basculerClavier()" aria-label="Changer de clavier" title="Changer de clavier"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h1M10.5 10h1M14.5 10h1M8 14h8"/></svg></button></div>
         <!-- ⭐ 23.09 — LES POINTS DU PIN. Le champ reste le vrai champ (le bloc de
              tête, le clavier de l'app et un clavier physique écrivent dedans) ;
              les points ne font que le MONTRER. On écoute l'écriture du champ
              elle-même, pas chacun de ceux qui écrivent : un nouvel écrivain
-             demain sera montré sans qu'on y pense. Quatre ronds, puis cinq,
-             six : le PIN a 4 à 6 chiffres, on ne lui en promet pas plus. -->
+             demain sera montré sans qu'on y pense.
+             ⚠️⚠️ 23.12 — « ÇA DEMANDE 4 CODES… MAIS L'ACCÈS EST BLOQUÉ. »
+             La 23.09 montrait QUATRE ronds à tout le monde. Un patron (PIN à
+             6 chiffres, imposé à l'inscription) en tapait quatre, touchait ✓,
+             et lisait « PIN incorrect ». Les ronds disent maintenant la
+             longueur attendue : 6 pour un patron (ou celle du PIN gardé sur
+             ce téléphone), 4 pour le PIN équipe d'un vendeur (`data-n`,
+             posé par `majEntreeRapide`). -->
         <script>(function(){try{
           var ch=document.getElementById('er-pin'),pt=document.getElementById('er-points');if(!ch||!pt)return;
           var d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');if(!d||!d.set)return;
-          var maj=function(){var n=String(d.get.call(ch)||'').length,m=n<=4?4:Math.min(6,n),h='';
+          var maj=function(){var n=String(d.get.call(ch)||'').length,L=+pt.getAttribute('data-n')||6,m=Math.min(6,Math.max(L,n)),h='';
             for(var i=0;i<m;i++)h+='<i'+(i<n?' class="on"':'')+'></i>';pt.innerHTML=h;};
           Object.defineProperty(ch,'value',{configurable:true,get:function(){return d.get.call(ch);},set:function(v){d.set.call(ch,v);maj();}});
           ch.addEventListener('input',maj);window._majPoints=maj;maj();
@@ -6593,7 +6599,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.11'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.12'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -8592,6 +8598,17 @@ function _boutiqueIciEstA(tel){
   var a=(DB&&DB.cfg&&DB.cfg.tel)?_numeroLisible(normalizePhone(DB.cfg.tel)):'';
   return !a||!tel||a===_numeroLisible(normalizePhone(tel));
 }
+// 23.12 — Combien de chiffres la porte attend. 0 = on ne sait pas (on ne
+// bloque rien, le serveur juge). Le PIN du patron gardé sur CE téléphone
+// donne la vraie longueur (les très vieux comptes ont pu en avoir 4).
+function _pinAttendu(){
+  try{
+    if(entreeRapideVendeur())return 0;
+    var e=lireEntree();
+    if(DB&&DB.cfg&&DB.cfg.pin&&e&&_boutiqueIciEstA(e.tel))return String(DB.cfg.pin).length;
+  }catch(x){}
+  return 0;
+}
 function majEntreeRapide(){
   var pan=document.getElementById('entree-rapide');
   var tabs=document.getElementById('login-tabs');
@@ -8628,8 +8645,15 @@ function majEntreeRapide(){
     +(_num?'<span class="er-num"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>'+escH(_num)+'</span>':'');
   document.getElementById('er-sous').textContent=vend
     ?((fr?'Entre le PIN équipe pour ouvrir ':'Enter the team PIN to open ')+(e.boutique||formatShopCode(e.code)))
-    :(_ici?(fr?'Entre ton PIN pour ouvrir « '+_ici+' ».':'Enter your PIN to open “'+_ici+'”.')
-          :(fr?'Entre ton PIN pour ouvrir tes boutiques.':'Enter your PIN to open your shops.'));
+    :(function(){
+        var L=_pinAttendu()||6,co=false;try{co=codeOuvertureActif();}catch(x){}
+        var quoi=co?(fr?'ton code d\'ouverture ou ton PIN':'your quick code or your PIN')
+                   :(fr?('ton PIN à '+L+' chiffres'):('your '+L+'-digit PIN'));
+        return _ici?(fr?'Entre '+quoi+' pour ouvrir « '+_ici+' ».':'Enter '+quoi+' to open “'+_ici+'”.')
+                   :(fr?'Entre '+quoi+' pour ouvrir tes boutiques.':'Enter '+quoi+' to open your shops.');
+      })();
+  try{var _pt=document.getElementById('er-points');
+    if(_pt){_pt.setAttribute('data-n',vend?4:(_pinAttendu()||6));if(window._majPoints)window._majPoints();}}catch(x){}
   document.getElementById('er-chg').textContent=vend
     ?(fr?'Ce n\'est pas toi ? Changer de vendeur':'Not you? Switch seller')
     :(fr?'Autre numéro ?':'Another number?');
@@ -9017,6 +9041,16 @@ async function validerEntreeRapide(pinImpose){
   }
   var pin=pinImpose!=null?String(pinImpose):(document.getElementById('er-pin').value||'').trim();
   if(pin.length<4){showToast('🔐 '+(fr?'Entre ton PIN':'Enter your PIN'));return;}
+  // ⚠️ 23.12 — UN ✓ TROP TÔT N'EST PAS UN MAUVAIS PIN. Quatre chiffres d'un
+  // PIN qui en a six partaient au serveur et revenaient « PIN incorrect » —
+  // un essai compté contre lui, et l'impression d'être enfermé dehors. On
+  // dit ce qui manque, et on lui laisse ce qu'il a tapé.
+  var _att=(pinImpose==null)?_pinAttendu():0;
+  if(_att&&pin.length<_att&&!(pin.length===4&&codeOuvertureActif())){
+    var _mq=_att-pin.length;
+    showToast('🔐 '+(fr?('Ton PIN a '+_att+' chiffres — il en manque '+_mq):('Your PIN has '+_att+' digits — '+_mq+' missing')));
+    return;
+  }
   document.getElementById('er-pin').value='';
   // ⚡ LE CODE D'OUVERTURE SE VÉRIFIE ICI AUSSI, et pas seulement à la frappe.
   // ⚠️ SANS CE BLOC : il tape ses quatre chiffres, touche « ✓ » (ou Entrée),
