@@ -173,9 +173,10 @@ Built for African shopkeepers, in French and English.
 > rien). C'est ce fichier qu'il faut envoyer. Ne touche pas à `icon-512.png`
 > dans le dépôt : c'est lui qui sert à l'app installée.
 >
-> **23.08 — nouvelle marque.** Les icônes ont été redessinées (l'auvent rayé
-> et le Q en vitrine) : `07-icone-512-play.png` est à renvoyer dans la
-> Console (Fiche principale › Icône de l'app). `icon-512.png` a maintenant
+> **23.09 — la marque définitive, en aplats** (la bande festonnée de l'auvent
+> et un Q net ; la 23.08 était une version illustrée, remplacée) :
+> `07-icone-512-play.png` est à renvoyer dans la Console (Fiche principale ›
+> Icône de l'app). `icon-512.png` a maintenant
 > exactement le fond de l'écran de démarrage (#241257) : le carré qu'on
 > voyait au lancement disparaît, il ne reste que la marque.
 > ⚠️ L'icône et l'écran de démarrage de l'app Android sont DANS le fichier
@@ -268,7 +269,7 @@ Console refuse l'envoi en parlant du « niveau d'API cible », c'est ça et rien
 d'autre — relance `update`, reconstruis.
 
 Le fichier à envoyer est `app-release-bundle.aab`. Il porte la version
-**23.08 (2308)** : `twa-manifest.json` est déjà à jour dans le dépôt, fais un
+**23.09 (2309)** : `twa-manifest.json` est déjà à jour dans le dépôt, fais un
 `git pull` avant de construire.
 
 > La règle pour la suite : `appVersionCode` = la version de l'app sans le

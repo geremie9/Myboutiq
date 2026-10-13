@@ -48,7 +48,7 @@ for (const [vw, vh] of [[360, 640], [360, 740], [390, 844]]) {
   if (vw === 390) {
     t(!(await vu(p, '#btn-old-user')) && !(await vu(p, '#btn-new-user')), `${T} : le choix « Se connecter / Créer ma boutique » est rangé pour celui qu'on connaît`);
     t(await vu(p, '#lg-autre'), `${T} : « Créer une autre boutique » reste à une tape, en bas`);
-    t(m.num === '689 33 53 89' && /^Bonjour 👋/.test(m.bj) && m.centre === 'center', `${T} : son bonjour au centre, le numéro retenu dans sa pastille (« ${m.num} »)`);
+    t(m.num === '689 33 53 89' && /^Bonjour/.test(m.bj) && m.centre === 'center', `${T} : son bonjour au centre, le numéro retenu dans sa pastille (« ${m.num} »)`);
     t(m.okFond === 'rgb(255, 176, 32)', `${T} : le ✓ a la couleur de ce qui agit dans l'app (${m.okFond})`);
   }
   t(m.okBas <= vh, `${T} : le ✓ est dans l'écran (${Math.round(m.okBas)} / ${vh})`);
@@ -75,6 +75,8 @@ for (const [vw, vh] of [[360, 640], [360, 740], [390, 844]]) {
   const e = await p.evaluate(() => ({ a: document.getElementById('btn-old-user').innerText.trim(), b: document.getElementById('btn-new-user').innerText.trim() }));
   t(e.a === 'Se connecter' && e.b === 'Créer ma boutique' && await vu(p, '#btn-old-user'), `téléphone neuf : « ${e.a} » / « ${e.b} »`);
   t(!(await vu(p, '#lg-autre')), 'et pas de « Créer une autre boutique » en double');
+  const cf = await p.evaluate(() => ({ t: (document.getElementById('lg-confiance') || {}).innerText || '', v: APP_BUILD }));
+  t(cf.t.includes('v' + cf.v), `téléphone neuf : la ligne de confiance dit aussi la version (« ${cf.t.replace(/\s+/g, ' ')} »)`);
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }

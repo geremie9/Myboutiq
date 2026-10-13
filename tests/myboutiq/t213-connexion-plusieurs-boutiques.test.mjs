@@ -223,7 +223,7 @@ const ETS_YOU_ICI = () => { const d = JSON.parse(JSON.stringify(ROWS[0].data)); 
   await p.waitForFunction(() => !!document.querySelector('#ov-choixb.show'), null, { timeout: 15000 }).catch(() => {});
   const g2 = await p.evaluate(() => ({ ch: !!document.querySelector('#ov-choixb.show'), btn: document.getElementById('btn-lp').textContent }));
   t(g2.ch, 'dès que l\'app est prête, la connexion repart toute seule : la liste de ses boutiques s\'ouvre');
-  t(/Connexion 👑/.test(g2.btn), `le bouton reprend son mot (« ${g2.btn} »)`);
+  t(/^Connexion$/.test(g2.btn.trim()), `le bouton reprend son mot (« ${g2.btn} »)`);
   t(await connexions(p) === 1, `une seule connexion (${await connexions(p)})`);
   t(errs.length === 0, 'aucune erreur JS (avant : « loginP is not defined »)' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close(); lent.close();
