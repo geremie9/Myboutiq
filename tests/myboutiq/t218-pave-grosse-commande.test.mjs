@@ -55,14 +55,14 @@ const nombre = x => Number(String(x).replace(/[^\d]/g, ''));
 // ── 1) CAISSE VERROUILLÉE, EN GROS : 3 CARTONS D'UN COUP = 3 TOUCHES ──
 {
   const { ctx, p, errs } = await ouvrirCaisse(b, port, boutique('gros'));
-  // La référence : trois touches sur la tuile.
-  for (let i = 0; i < 3; i++) { await p.locator('#pc-6').click(); await p.waitForTimeout(120); }
+  // La référence : trois touches sur la barre du carton (23.07 : le gros est en bas).
+  for (let i = 0; i < 3; i++) { await p.locator('#pc-6 .pbas .pbarre').click(); await p.waitForTimeout(120); }
   const ref = await ligne(p, '6-0');
   await p.evaluate(() => { viderPanier(); window.__toasts = []; });
   await appuiLong(p, '#pc-6'); await p.waitForTimeout(300);
   let v = await pave(p);
   t(!!v, 'caisse verrouillée : l\'appui long sur la tuile ouvre le pavé');
-  t(v && /Cartons \(24\)/.test(v.mode) && v.seg, `il s'ouvre sur les cartons, comme la tuile en gros (« ${v && v.mode} »)`);
+  t(v && /Cartons \(24\)/.test(v.mode) && v.seg, `il s'ouvre sur les cartons, comme la barre du bas en gros (« ${v && v.mode} »)`);
   t(v && /En stock : 4 cartons/.test(v.stk), `le stock se dit en cartons (« ${v && v.stk} »)`);
   await taper(p, ['3']);
   v = await pave(p);
@@ -190,10 +190,10 @@ const nombre = x => Number(String(x).replace(/[^\d]/g, ''));
 {
   const { ctx, p, errs } = await ouvrirCaisse(b, port, boutique('gros'));
   await p.evaluate(() => { window.__toasts = []; });
-  for (let i = 0; i < 3; i++) { await p.locator('#pc-6').click(); await p.waitForTimeout(150); }
+  for (let i = 0; i < 3; i++) { await p.locator('#pc-6 .pbas .pbarre').click(); await p.waitForTimeout(150); }
   await p.waitForTimeout(1900);
   let dit = await p.evaluate(() => window.__toasts.join(' | '));
-  t(/Appui long sur la tuile/.test(dit), `à la troisième touche, après la pause : l'astuce (« ${dit.slice(-90)} »)`);
+  t(/Appui long sur la tuile/.test(dit), `au troisième carton touché, après la pause : l'astuce (« ${dit.slice(-90)} »)`);
   await p.evaluate(() => { viderPanier(); window.__toasts = []; });
   for (let i = 0; i < 3; i++) { await p.locator('#pc-6').click(); await p.waitForTimeout(150); }
   await p.waitForTimeout(1900);

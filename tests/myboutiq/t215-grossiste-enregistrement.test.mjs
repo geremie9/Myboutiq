@@ -159,15 +159,21 @@ async function choisir(p, noms) {
   t(!!a.bo && a.bo.pa === 80, `son prix d'achat à la pièce vient du carton divisé : ${a.bo && a.bo.pa}`);
   t(!!a.bo && a.bo.stk === 157, `son stock : 3 cartons + 7 = ${a.bo && a.bo.stk} pièces`);
   t(!!a.ca && a.ca.px === 200 && a.ca.stk === 10 && a.ferme, `la canne à sucre aussi, au détail : ${JSON.stringify(a.ca)}`);
-  // ── et la caisse vend le carton ──
+  // ── et la caisse vend la pièce en haut, le carton en bas (23.07) ──
   if (a.bo) {
   await fermer(p); await p.evaluate(() => renderProd(DB.articles)); await p.waitForTimeout(300);
   const id = a.bo.id;
-  const tu = await p.evaluate(id => { const c = document.getElementById('pc-' + id); return { prix: c.querySelector('.ppr-ov').innerText, sous: (c.querySelector('.pgr-sous') || {}).innerText || '' }; }, id);
-  t(/4\s?500/.test(tu.prix) && /carton de 50/.test(tu.sous), `à la caisse, la tuile montre le prix du carton (« ${tu.prix} · ${tu.sous} »)`);
+  const tu = await p.evaluate(id => { const c = document.getElementById('pc-' + id);
+    return { prix: c.querySelector('.ppr-ov').innerText, lib: (c.querySelector('.ppr-lib') || {}).innerText || '',
+      barre: (c.querySelector('.pbas .pbarre') || {}).innerText || '' }; }, id);
+  t(/^100/.test(tu.prix) && /la pièce/i.test(tu.lib) && /4\s?500/.test(tu.barre) && /carton de 50/.test(tu.barre),
+    `à la caisse : la pièce en haut, le carton en bas (« ${tu.prix} ${tu.lib} » · « ${tu.barre.replace(/\s+/g, ' ')} »)`);
   await p.locator('#pc-' + id).click(); await p.waitForTimeout(300);
-  const c = await p.evaluate(id => ({ q: panier[id + '-0'] || 0, total: calcAPayer() }), id);
-  t(c.q === 50 && c.total === 4500, `une touche = un carton : ${c.q} bougies, ${c.total} F`);
+  let c = await p.evaluate(id => ({ q: panier[id + '-0'] || 0, total: calcAPayer() }), id);
+  t(c.q === 1 && c.total === 100, `la tuile = une pièce : ${c.q} bougie, ${c.total} F`);
+  await p.locator('#pc-' + id + ' .pbas .pbarre').click(); await p.waitForTimeout(300);
+  c = await p.evaluate(id => ({ q: panier[id + '-0'] || 0, total: calcAPayer() }), id);
+  t(c.q === 51 && c.total === 4600, `la barre du bas = un carton : ${c.q} bougies, ${c.total} F`);
   }
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
@@ -205,17 +211,22 @@ async function choisir(p, noms) {
   if (a && a.pxGros === 4500) {
   await fermer(p); await p.evaluate(() => renderProd(DB.articles)); await p.waitForTimeout(300);
   const tu = await p.evaluate(id => { const c = document.getElementById('pc-' + id);
-    return { inc: c.classList.contains('incomplete') || !!c.querySelector('.sinc'), puce: (c.querySelector('.punit') || {}).innerText || '',
-      sansPrix: _articlesSansPrix().length }; }, a.id);
+    return { inc: c.classList.contains('incomplete') || !!c.querySelector('.sinc'), haut: (c.querySelector('.ppr-vide') || {}).innerText || '',
+      barre: (c.querySelector('.pbas .pbarre') || {}).innerText || '', sansPrix: _articlesSansPrix().length }; }, a.id);
   t(!tu.inc, 'à la caisse, ce n\'est pas un article « à compléter » : le carton a son prix');
-  t(/Prix \?/.test(tu.puce) && tu.sansPrix === 0, `la pièce dit qu'elle n'a pas de prix (« ${tu.puce.replace(/\s+/g, ' ')} »), et rien n'est compté « sans prix »`);
-  await p.locator('#pc-' + a.id).click(); await p.waitForTimeout(300);
-  const c = await p.evaluate(id => ({ q: panier[id + '-0'] || 0, total: calcAPayer() }), a.id);
-  t(c.q === 50 && c.total === 4500, `la tuile vend le carton : ${c.q} bougies, ${c.total} F`);
+  t(/Prix \?/.test(tu.haut) && tu.sansPrix === 0, `en haut, la pièce dit qu'elle n'a pas de prix (« ${tu.haut} »), et rien n'est compté « sans prix »`);
+  t(/4\s?500/.test(tu.barre), `en bas, le carton et son prix (« ${tu.barre.replace(/\s+/g, ' ')} »)`);
+  await p.evaluate(() => { window.__toasts = []; });
+  await p.locator('#pc-' + a.id + ' .pnm-ov').click(); await p.waitForTimeout(300);
+  let c = await p.evaluate(id => ({ q: panier[id + '-0'] || 0, toast: (window.__toasts || []).join(' | ') }), a.id);
+  t(c.q === 0 && /touche la barre du bas/.test(c.toast), `toucher la pièce sans prix ne vend rien à 0 F, et dit où est le carton (« ${c.toast} »)`);
+  await p.locator('#pc-' + a.id + ' .pbas .pbarre').click(); await p.waitForTimeout(300);
+  c = await p.evaluate(id => ({ q: panier[id + '-0'] || 0, total: calcAPayer() }), a.id);
+  t(c.q === 50 && c.total === 4500, `la barre vend le carton : ${c.q} bougies, ${c.total} F`);
   await p.evaluate(() => viderPanier());
-  await p.locator('#pc-' + a.id + ' .punit').click(); await p.waitForTimeout(500);
+  await p.locator('#pc-' + a.id + ' .ppr-vide').click(); await p.waitForTimeout(500);
   const u = await p.evaluate(id => ({ fiche: !!document.querySelector('#ov-completer.show'), q: panier[id + '-0'] || 0 }), a.id);
-  t(u.fiche && u.q === 0, 'la puce de la pièce demande son prix, une fois — jamais une vente à 0 F');
+  t(u.fiche && u.q === 0, 'le patron touche « Prix ? » : la fiche demande le prix de la pièce — jamais une vente à 0 F');
   // Repassée au détail, la boutique dit la vérité : la pièce n'a pas de prix.
   await fermer(p); await p.evaluate(() => { DB.cfg.facon = 'detail'; renderProd(DB.articles); }); await p.waitForTimeout(300);
   t(await p.evaluate(id => document.getElementById('pc-' + id).classList.contains('incomplete'), a.id), 'au détail, le même article redevient « à compléter »');

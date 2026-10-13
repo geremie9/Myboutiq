@@ -49,10 +49,12 @@ async function caisse(db) {
 }
 const tuile = (p, id) => p.evaluate(id => {
   const c = document.getElementById('pc-' + id); if (!c) return null;
-  const g = c.querySelector('.pgros'), nm = c.querySelector('.pnm-ov'), i = g && g.querySelector('.pg-t i');
+  // 23.07 — le gros vit dans la barre du bas (`.pbas`), sur toutes les tuiles.
+  const g = c.querySelector('.pbas .pbarre, .pbas .pgros'), nm = c.querySelector('.pnm-ov'), i = g && g.querySelector('i');
   const r = c.getBoundingClientRect();
   return { cls: c.className, chip: g ? g.innerText.replace(/\s+/g, ' ').trim() : '', unit: !!c.querySelector('.punit'),
-    prix: (c.querySelector('.ppr-ov') || {}).innerText || '', sous: (c.querySelector('.pgr-sous') || {}).innerText || '',
+    prix: (c.querySelector('.ppr-ov') || {}).innerText || '', sous: (c.querySelector('.ppr-lib') || {}).innerText || '',
+    basY: (() => { const b = c.querySelector('.pbas'); return b ? Math.round(r.bottom - b.getBoundingClientRect().bottom) : -1; })(),
     nomY: nm ? Math.round(nm.getBoundingClientRect().top - r.top) : -1, nomCouleur: nm ? getComputedStyle(nm).color : '',
     coupe: i ? i.scrollWidth > i.clientWidth + 1 : false,
     photo: (() => { const im = c.querySelector('.pmedia.pphoto img'); return im ? (im.complete && im.naturalWidth > 0) : false; })() };
@@ -63,7 +65,7 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
 {
   const { ctx, p, errs } = await caisse(boutique(null));
   await p.waitForTimeout(600);
-  const g = await p.evaluate(() => ({ plein: document.querySelectorAll('#pgrid .pcard.has-photo').length, puces: document.querySelectorAll('#pgrid .pgros').length }));
+  const g = await p.evaluate(() => ({ plein: document.querySelectorAll('#pgrid .pcard.has-photo').length, puces: document.querySelectorAll('#pgrid .pbas .pbarre, #pgrid .pbas .pgros').length }));
   const huile = await tuile(p, 21), sucre = await tuile(p, 20), savon = await tuile(p, 6), biere = await tuile(p, 22);
   t(g.plein === 0 && huile.photo, `la photo se range dans la vignette, plus aucune carte à photo pleine page (${g.plein})`);
   t(huile.nomCouleur !== 'rgb(255, 255, 255)', `le nom sous une photo s'écrit en noir, plus en blanc sur un voile (${huile.nomCouleur})`);
@@ -74,15 +76,19 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
   t(/casier de 12/.test(biere.chip) && !biere.coupe, `« casier de 12 » tient en entier sur 360 px (« ${biere.chip} »)`);
   // Une touche sur la tuile : une pièce. Une touche sur la puce : un carton.
   await p.locator('#pc-6').click(); await p.waitForTimeout(250);
-  await p.locator('#pc-6 .pgros').click(); await p.waitForTimeout(300);
+  await p.locator('#pc-6 .pbas .pbarre').click(); await p.waitForTimeout(300);
   const c = await panier6(p);
-  t(c.q === 25 && c.total === 13600, `tuile = 1 pièce, puce = 1 carton : 25 pièces, 600 + 13 000 = ${c.total}`);
+  t(c.q === 25 && c.total === 13600, `tuile = 1 pièce, barre du bas = 1 carton : 25 pièces, 600 + 13 000 = ${c.total}`);
   t(await p.evaluate(() => document.getElementById('caisse-sansgros').style.display === 'none'), 'au détail, aucun bandeau de gros : ce n\'est pas son métier');
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }
 
-// ── 2) EN GROS : LA TUILE VEND LE CONTENANT ───────────────────────────
+// ── 2) EN GROS : LA MÊME TUILE — LA PIÈCE EN HAUT, LE GROS EN BAS (23.07) ──
+// « Il sait dans sa tête qu'en bas c'est le gros, en haut c'est le détail. »
+// Jusqu'à la 23.06, en gros, la tuile d'un carton qui avait son prix
+// montrait le CARTON en haut et la pièce en bas — l'inverse de sa voisine
+// sans prix. Le sens ne dépend plus ni du mode, ni du prix.
 {
   const { ctx, p, errs } = await caisse(boutique(null));
   // Le patron le dit une fois, dans Réglages › Type de commerce.
@@ -97,10 +103,11 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
   await p.evaluate(() => { goScreen('s-caisse'); renderProd(DB.articles); });
   await p.waitForTimeout(400);
   const savon = await tuile(p, 6), sucre = await tuile(p, 20), biere = await tuile(p, 22);
-  t(/13\s?000/.test(savon.prix) && /carton de 24/.test(savon.sous), `le prix affiché est celui du carton, sa taille dessous (« ${savon.prix} · ${savon.sous} »)`);
-  t(savon.unit && /600/.test(savon.chip) && /unité/.test(savon.chip), `la pièce reste à une touche, en bas (« ${savon.chip} »)`);
-  t(/6\s?800/.test(biere.prix) && /casier de 12/.test(biere.sous), `même chose pour le casier (« ${biere.prix} · ${biere.sous} »)`);
-  t(!!sucre.chip && !sucre.unit, `chez un grossiste tout est vendable en gros : le sac sans prix garde son repère (« ${sucre.chip} »)`);
+  t(/600/.test(savon.prix) && /pièce/.test(savon.sous), `en haut, la pièce — comme au détail (« ${savon.prix} · ${savon.sous} »)`);
+  t(/13\s?000/.test(savon.chip) && /carton de 24/.test(savon.chip), `en bas, le carton, son prix et sa taille (« ${savon.chip} »)`);
+  t(/6\s?800/.test(biere.chip) && /casier de 12/.test(biere.chip) && /\d/.test(biere.prix) && !/6\s?800/.test(biere.prix), `même chose pour le casier (« ${biere.prix} » / « ${biere.chip} »)`);
+  t(/sac/.test(sucre.chip) && /prix \?/.test(sucre.chip), `chez un grossiste tout est vendable en gros : le sac sans prix garde sa barre, et le dit (« ${sucre.chip} »)`);
+  t(savon.basY === sucre.basY && savon.basY >= 0, `la barre du gros est au même endroit sur toutes les tuiles (${savon.basY} / ${sucre.basY} px du bord)`);
   // « Peut-être que les grossistes trouvent l'app complexe. » Les prix de gros
   // qui manquent se règlent d'un seul écran, pas un par un sous les tuiles.
   const band = await p.evaluate(() => { const z = document.getElementById('caisse-sansgros'); return { vu: z && z.style.display !== 'none', txt: z ? z.textContent : '' }; });
@@ -109,9 +116,9 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
   t(await p.evaluate(() => !!document.querySelector('#ov-grille.show')), 'et ouvre « Tout configurer », qui a la colonne du carton');
   await p.evaluate(() => document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')));
   await p.locator('#pc-6').click(); await p.waitForTimeout(250);
-  await p.locator('#pc-6 .punit').click(); await p.waitForTimeout(300);
+  await p.locator('#pc-6 .pbas .pbarre').click(); await p.waitForTimeout(300);
   const c = await panier6(p);
-  t(c.q === 25 && c.total === 13600, `tuile = 1 carton, puce = 1 pièce : 25 pièces, 13 000 + 600 = ${c.total}`);
+  t(c.q === 25 && c.total === 13600, `les mêmes gestes qu'au détail : tuile = 1 pièce, barre = 1 carton : 25 pièces, 600 + 13 000 = ${c.total}`);
   t(c.lots === 1, `le carton est compté comme UN carton (le reçu dira « carton de 24 »)`);
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
