@@ -6713,7 +6713,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.17'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.18'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -15427,7 +15427,27 @@ function _varDehors(ev){
   // l'heure pour que son propre clic ne le rouvre pas dans la foulée — sinon
   // toucher un autre article empêcherait de rouvrir celui-ci tout de suite.
   if(_varCarteEl&&_varCarteEl.contains(ev.target))_varJusteFerme=Date.now();
+  // ⚠️⚠️ 23.18 — « QUAND JE VEUX SORTIR DES VARIANTES EN TOUCHANT À CÔTÉ,
+  // ÇA SÉLECTIONNE N'IMPORTE QUEL ARTICLE OÙ ON TOUCHE. » Le panneau se
+  // refermait au doigt POSÉ ; le voile parti, le « clic » qui suit le doigt
+  // levé tombait sur la tuile d'en dessous — rejoué au banc sur un écran
+  // tactile : Riz au panier, aux trois présentations. Le toucher qui sert à
+  // sortir ne fait QUE sortir : son clic est avalé. Seule exception, le
+  // panier (posé au-dessus du voile exprès) : le toucher l'ouvre aussi.
+  var _fc=document.querySelector('.fcart');
+  if(!(_fc&&_fc.contains(ev.target)))_avalerClicSuivant();
   fermerVarInline();
+}
+function _avalerClicSuivant(){
+  var t0=Date.now();
+  var h=function(e){
+    document.removeEventListener('click',h,true);
+    if(Date.now()-t0>900)return;
+    try{e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();}catch(x){}
+  };
+  document.addEventListener('click',h,true);
+  // Un geste qui défile ne donne pas de clic : on ne garde pas l'écoute.
+  setTimeout(function(){document.removeEventListener('click',h,true);},900);
 }
 
 // ══════════════════════════════════════════════════════════════════════

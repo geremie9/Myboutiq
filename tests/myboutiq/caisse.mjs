@@ -31,8 +31,11 @@ export function nouvelleBoutique(x) {
 
 // La caisse ouverte sur cette boutique, sans serveur, sans voix, sans
 // fenêtre de confirmation. `__toasts` garde tout ce que l'app a dit.
-export async function ouvrirCaisse(b, port, db, { vendeur = null } = {}) {
-  const ctx = await b.newContext({ viewport: { width: 390, height: 800 }, locale: 'fr-FR', timezoneId: 'Africa/Douala' });
+// `tactile` : un vrai écran tactile (hasTouch/isMobile) — le toucher ne suit
+// pas le même chemin que la souris (t237).
+export async function ouvrirCaisse(b, port, db, { vendeur = null, tactile = false } = {}) {
+  const ctx = await b.newContext(Object.assign({ viewport: { width: 390, height: 800 }, locale: 'fr-FR', timezoneId: 'Africa/Douala' },
+    tactile ? { hasTouch: true, isMobile: true } : {}));
   const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message.slice(0, 160)));
   await couperInternet(p, port);
