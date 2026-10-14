@@ -56,7 +56,8 @@ t(/fonds de départ/.test(comp)&&/dépenses payées de la caisse/.test(comp)&&!/
 const tir=r.lignes.find(x=>/dont consignes/.test(x))||'';
 t(/\+FCFA\s?400|\+400/.test(tir.replace(/\s/g,' ')), `« dont consignes (dans le tiroir) » : seulement celles payées en espèces — ${tir}`);
 const dep=await p.evaluate(()=>{ouvrirDep();return document.getElementById('dep-lst-cont').textContent;});
-t(/⚡ Électricité ·/.test(dep)&&/📱 Téléphone ·/.test(dep)&&!/\belec ·|\btel ·/.test(dep), 'les dépenses disent « ⚡ Électricité », plus « elec »');
+// 23.15 : le nom de la catégorie, sans emoji (refonte « professionnalisme »).
+t(/Électricité ·/.test(dep)&&/Téléphone ·/.test(dep)&&!/\belec ·|\btel ·/.test(dep), 'les dépenses disent « Électricité », plus « elec »');
 // La clôture elle-même n'a pas bougé.
 const cl=await p.evaluate(()=>{document.querySelectorAll('.ov').forEach(x=>x.classList.remove('show'));ouvrirClot();
   document.getElementById('inp-compt').value='10300';calcEcart();return document.getElementById('ecart-lbl').textContent;});
