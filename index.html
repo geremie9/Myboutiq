@@ -1058,6 +1058,10 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 .shdr{display:flex;align-items:center;justify-content:space-between;padding:10px 15px 6px}
 .stit{font-size:11px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.8px}
 .sact{font-size:11px;font-weight:700;color:var(--B);background:none;border:none;cursor:pointer;font-family:'Outfit',sans-serif}
+/* 23.21 — « Montant libre » : un bouton qu'on voit, pas un mot de 11 px. */
+.sact.sact-puce{display:inline-flex!important;align-items:center;gap:6px;min-height:36px;padding:0 13px;border-radius:999px;background:var(--C);border:1.5px solid var(--BD);color:var(--T);font-size:12.5px;font-weight:800;margin-left:auto;margin-right:8px}
+.sact.sact-puce[style*="display:none"],.sact.sact-puce[style*="display: none"]{display:none!important}
+.sact.sact-puce:active{background:var(--BG)}
 
 /* ── GRILLE PRODUITS ── */
 .pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:0 15px}
@@ -3969,7 +3973,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       <div class="tscr" id="tabs-c"></div>
     </div>
     <div id="topventes" style="display:none"></div>
-    <div class="shdr"><span class="stit" id="sec-lbl"></span><button class="sact" id="btn-libre" onclick="ouvrirMontantLibre()" style="display:none">Montant libre</button><button class="sact" id="btn-add" onclick="ouvrirAjouter()" style="display:none">+ Ajouter</button></div>
+    <div class="shdr"><span class="stit" id="sec-lbl"></span><button class="sact sact-puce" id="btn-libre" onclick="ouvrirMontantLibre()" style="display:none"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/></svg><span>Montant libre</span></button><button class="sact" id="btn-add" onclick="ouvrirAjouter()" style="display:none">+ Ajouter</button></div>
     <div class="cash-guide" id="cash-guide">🟢 Taper = +1 · 💰 Prix · 🔴 ✕ = -1</div>
     <!-- ⚠️⚠️ 256 ARTICLES SUR 687, DANS LES VRAIES BOUTIQUES, NE PEUVENT PAS
          ÊTRE VENDUS. Deux boutiques n'ont RIEN de vendable, quatre en ont la
@@ -4469,34 +4473,31 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
 <!-- ══ LE MONTANT LIBRE ═══════════════════════════════════════════
      Une seule case obligatoire : le montant. Le nom est facultatif —
      à cet instant précis, le client attend sa monnaie. -->
+<!-- ⚠️⚠️ 23.21 — « LE BOUTON MONTANT LIBRE N'EST PAS BIEN SORTI. » La
+     feuille utilisait des classes qui n'existent nulle part dans l'app
+     (sheet, shd, sht, sclose, sbody — les feuilles sont en bsht, shhdr,
+     shtit, bcl) : depuis la 22.73, elle s'ouvrait SANS fond ni cadre, le
+     titre et la croix flottaient sur la caisse floutée, le texte passait
+     sur les tuiles. Mesuré au banc. Elle a maintenant le corps de toutes
+     les autres feuilles. -->
 <div class="ov" id="ov-libre" onclick="closeOv(event,'ov-libre')">
-  <div class="sheet" onclick="event.stopPropagation()">
-    <div class="shd">
-      <div class="sht" id="ml-tit">💰 Autre montant</div>
-      <button class="sclose" onclick="closeSheet('ov-libre')">✕</button>
-    </div>
-    <div class="sbody">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="ml-tit">Autre montant</div><button class="bcl" onclick="closeSheet('ov-libre')">✕</button></div>
+    <div style="padding:15px 19px 20px">
       <div class="pig">
         <label class="pl" id="ml-lbl-mt">Combien le client paie</label>
         <input class="pi" id="ml-mt" type="number" inputmode="decimal" step="25" min="0"
-               placeholder="ex : 2 500" onkeydown="if(event.key==='Enter')validerMontantLibre()">
+               placeholder="ex : 2 500" style="font-size:24px;font-weight:900" onkeydown="if(event.key==='Enter')validerMontantLibre()">
       </div>
       <div class="pig">
-        <label class="pl" id="ml-lbl-nm">C'est pour quoi ? (facultatif)</label>
-        <input class="pi" id="ml-nm" type="text" maxlength="40"
+        <label class="pl" id="ml-lbl-nm">C'est pour quoi ? (si tu veux)</label>
+        <input class="pi sm" id="ml-nm" type="text" maxlength="40"
                placeholder="ex : recharge, sachet, dépannage"
                onkeydown="if(event.key==='Enter')validerMontantLibre()">
       </div>
       <div id="ml-err" style="display:none;background:#FFF5F3;border:1.5px solid #F6D2CA;color:#A8341A;border-radius:11px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:11px"></div>
-      <div class="enc att" style="margin:0 0 13px">
-        <div class="enc-t" style="font-size:13px" id="ml-av-t">⚠️ Ce que ça compte, et ce que ça ne compte pas</div>
-        <div style="font-size:12px;font-weight:600;color:#3B3B4E;line-height:1.5" id="ml-av-s">
-          Le montant entre dans ta <strong>recette du jour</strong>. Mais comme l'app ne sait pas ce que
-          la marchandise t'a coûté, elle ne compte <strong>aucun bénéfice</strong> dessus — un bénéfice
-          inconnu vaut mieux qu'un bénéfice faux. Aucun stock ne bouge.
-        </div>
-      </div>
-      <button class="bnxt" onclick="validerMontantLibre()" id="ml-ok">➕ Ajouter au panier</button>
+      <div style="font-size:11.5px;font-weight:600;color:var(--M);line-height:1.5;margin:2px 0 13px" id="ml-av-s">Il compte dans la recette du jour, pas dans le bénéfice (l'app ne sait pas ce qu'il t'a coûté). Aucun stock ne bouge.</div>
+      <button class="bnxt" onclick="validerMontantLibre()" id="ml-ok">Ajouter au panier</button>
     </div>
   </div>
 </div>
@@ -6746,7 +6747,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.20'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.21'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -10420,19 +10421,15 @@ function appliquerLang(){
     var fr=(lang==='fr');
     var _p=function(id,txt){var e=document.getElementById(id);if(e)e.textContent=txt;};
     var _ph=function(id,txt){var e=document.getElementById(id);if(e)e.placeholder=txt;};
-    _p('btn-libre', fr?'Montant libre':'Other amount');
+    var _bl=document.querySelector('#btn-libre span');if(_bl)_bl.textContent=fr?'Montant libre':'Other amount';
     _p('ml-tit',    fr?'Autre montant':'Other amount');
     _p('ml-lbl-mt', fr?'Combien le client paie':'How much the customer pays');
-    _p('ml-lbl-nm', fr?'C\'est pour quoi ? (facultatif)':'What is it for? (optional)');
+    _p('ml-lbl-nm', fr?'C\'est pour quoi ? (si tu veux)':'What is it for? (optional)');
     _ph('ml-mt',    fr?'ex : 2 500':'e.g. 2,500');
     _ph('ml-nm',    fr?'ex : recharge, sachet, dépannage':'e.g. airtime, bag, quick favour');
-    _p('ml-ok',     fr?'➕ Ajouter au panier':'➕ Add to basket');
-    _p('ml-av-t',   fr?'⚠️ Ce que ça compte, et ce que ça ne compte pas'
-                      :'⚠️ What it counts, and what it does not');
-    var a=document.getElementById('ml-av-s');
-    if(a)a.innerHTML=fr
-      ?'Le montant entre dans ta <strong>recette du jour</strong>. Mais comme l\'app ne sait pas ce que la marchandise t\'a coûté, elle ne compte <strong>aucun bénéfice</strong> dessus — un bénéfice inconnu vaut mieux qu\'un bénéfice faux. Aucun stock ne bouge.'
-      :'The amount goes into your <strong>day\'s takings</strong>. But since the app does not know what the goods cost you, it counts <strong>no profit</strong> on it — an unknown profit beats a false one. No stock moves.';
+    _p('ml-ok',     fr?'Ajouter au panier':'Add to basket');
+    _p('ml-av-s',   fr?'Il compte dans la recette du jour, pas dans le bénéfice (l\'app ne sait pas ce qu\'il t\'a coûté). Aucun stock ne bouge.'
+                      :'It counts in the day\'s takings, not in the profit (the app does not know what it cost you). No stock moves.');
   })();
   // Panier
   document.getElementById('ov-pan-t').textContent=lang==='fr'?'🛒 Mon Panier':'🛒 My Cart';
