@@ -842,6 +842,12 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .vb-der{margin-top:10px;font-size:11.5px;font-weight:600;color:var(--M);line-height:1.45}
 .stk-photo{display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--BD);
   background:var(--BG);color:var(--B);font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;cursor:pointer}
+.vb-dette{cursor:pointer}
+.vb-dette b{color:var(--R)}
+.vb-regle{display:flex;align-items:center;gap:6px;margin-top:10px;padding:8px 0;border-top:1px solid var(--BD)}
+.vb-regle span{flex:1;font-size:12.5px;font-weight:800;color:var(--T)}
+.vb-regle button{min-height:36px;padding:0 12px;border-radius:10px;border:1.5px solid var(--BD);background:var(--BG);color:var(--M);font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;cursor:pointer}
+.vb-regle button.on{background:var(--P);border-color:var(--P);color:#fff}
 .vb-autre{border-top:1px solid var(--BD);padding:11px 0 4px}
 .vb-autre .vb-at{font-size:13.5px;font-weight:800;color:var(--T)}
 .vb-autre .vb-as{font-size:11px;font-weight:600;color:var(--M);margin:1px 0 8px;line-height:1.4}
@@ -4818,13 +4824,15 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
 <!-- STOCK NEGATIF -->
 <div class="ov" id="ov-neg" onclick="closeOv(event,'ov-neg')">
   <div class="bsht"><div class="shndl"></div>
-    <div class="shhdr"><div class="shtit">⚠️ Stock épuisé</div><button class="bcl" onclick="closeSheet('ov-neg')">✕</button></div>
+    <div class="shhdr"><div class="shtit" id="neg-tit">Stock épuisé</div><button class="bcl" onclick="closeSheet('ov-neg')">✕</button></div>
     <div style="padding:18px 19px;text-align:center">
       <div style="font-size:48px;margin-bottom:10px" id="neg-emo">💧</div>
       <div style="font-size:15px;font-weight:800;color:var(--T);margin-bottom:7px" id="neg-nm">Article</div>
       <div style="font-size:13px;font-weight:600;color:var(--M);margin-bottom:18px;line-height:1.5" id="neg-msg">Stock épuisé. Tu peux quand même vendre et te ravitailler après.</div>
-      <button class="bpay" style="margin-bottom:9px" onclick="vendreMalgre()" id="btn-vendre">✅ Vendre quand même</button>
+      <button class="bpay" style="margin-bottom:9px" onclick="vendreMalgre()" id="btn-vendre">Vendre quand même</button>
+      <button class="bpay" style="margin-bottom:9px;display:none" onclick="negVersEntree()" id="btn-neg-entree">Faire l'entrée de stock</button>
       <button class="bvid" onclick="closeSheet('ov-neg')" id="btn-ann-neg">Annuler</button>
+      <button type="button" onclick="negInterdire()" id="btn-neg-regle" style="display:none;margin-top:12px;background:none;border:none;color:var(--M);font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;font-family:Outfit,sans-serif"></button>
     </div>
   </div>
 </div>
@@ -5471,7 +5479,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
        ══════════════════════════════════════════════════════════════ -->
   <div class="ov" id="ov-codeouv" onclick="closeOv(event,'ov-codeouv')">
     <div class="bsht"><div class="shndl"></div>
-      <div class="shhdr"><div class="shtit">⚡ <span id="co-tit">Ouvrir avec 4 chiffres</span></div><button class="bcl" onclick="closeSheet('ov-codeouv')">✕</button></div>
+      <div class="shhdr"><div class="shtit"><span id="co-tit">Ouvrir avec 4 chiffres</span></div><button class="bcl" onclick="closeSheet('ov-codeouv')">✕</button></div>
       <div class="pstps">
         <div style="background:#E8F5E9;border:1.4px solid #A5D6A7;border-radius:10px;padding:10px 12px;font-size:11.5px;font-weight:700;color:#1B5E20;margin-bottom:13px;line-height:1.5" id="co-note">Un code court pour ouvrir CE téléphone, comme l'écran de verrouillage. Il ne sort jamais d'ici. Ton PIN à 6 chiffres continue de marcher, et c'est lui qu'il te faudra sur un nouveau téléphone.</div>
         <div class="pig"><label class="pl" id="co-l1">Ton PIN à 6 chiffres</label><input class="pi" type="password" id="co-pin" maxlength="6" inputmode="numeric" placeholder="••••••"></div>
@@ -5479,6 +5487,8 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
         <div class="pig"><label class="pl" id="co-l3">Répète-le</label><input class="pi" type="password" id="co-new2" maxlength="4" inputmode="numeric" placeholder="••••"></div>
         <button class="bnxt" onclick="validerCodeOuverture()"><span id="co-btn">Poser mon code</span></button>
         <button class="bnxt" id="co-off" style="display:none;margin-top:9px;background:#FFEBEE;color:#C62828" onclick="retirerCodeOuverture()"><span id="co-off-l">Retirer le code court</span></button>
+        <button class="bvid" id="co-tard" style="display:none;margin-top:9px" onclick="codeCourtPlusTard(false)">Plus tard</button>
+        <button type="button" id="co-jamais" style="display:none;margin:12px auto 0;background:none;border:none;color:var(--M);font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;font-family:Outfit,sans-serif" onclick="codeCourtPlusTard(true)">Ne plus me proposer</button>
       </div>
     </div>
   </div>
@@ -9138,9 +9148,11 @@ async function validerEntreeRapide(pinImpose){
   // et ces quatre chiffres partaient au serveur COMME MOT DE PASSE. Refus
   // garanti, et un essai raté compté contre lui — pour un code juste.
   // Le ✓ doit faire exactement ce que fait le dernier chiffre tapé.
+  var _parCourt=false;
   if(pinImpose==null&&pin.length===4&&codeOuvertureActif()){
     var _ok=false;try{_ok=await _codeOuvJuste(pin);}catch(x){}
     if(_ok){
+      _parCourt=true;
       var _vrai=String((DB&&DB.cfg&&DB.cfg.pin)||_pinPatronValide||_pinGarde()||'');
       // Le PIN de la boutique a disparu du téléphone (synchro, effacement) :
       // le code court ne peut plus rien prouver au serveur. On le dit, au
@@ -9156,6 +9168,7 @@ async function validerEntreeRapide(pinImpose){
     if(DB&&DB.cfg&&String(DB.cfg.pin||'')===pin){
       _shopPin=pin;_finishLoginP();
       showToast('📴 '+(fr?'Hors ligne — seule '+(DB.cfg.nom||'ta boutique')+' est disponible':'Offline — only this shop is available'));
+      if(!_parCourt)try{_proposerCodeCourt();}catch(x){}
     }else{
       // Hors ligne, c'est LE chemin du voleur : 300 essais en 10 ms avant
       // cette ligne. Chaque refus compte maintenant sur l'appareil.
@@ -9180,6 +9193,7 @@ async function validerEntreeRapide(pinImpose){
     _shopPin=pin;
     _finishLoginP();
     showToast('👋 '+(fr?'Te voilà':'Welcome back'));
+    if(!_parCourt)try{_proposerCodeCourt();}catch(x){}
     // La preuve serveur part juste après, sans le faire attendre. Si elle
     // échoue, on ne l'éjecte PAS en pleine vente : _signalerPinRefuse (19.90)
     // prendra le relais au premier échange refusé et lui demandera de retaper.
@@ -10458,9 +10472,45 @@ async function _codeOuvJuste(v){
   if(!codeOuvertureActif())return false;
   try{return (await _hachCode(v,o.sel))===o.h;}catch(e){return false;}
 }
-function ouvrirCodeOuverture(){
+// ⭐ 23.15 — « LE CODE RAPIDE À 4 CHIFFRES : LE PROPOSER AUX UTILISATEURS. »
+// Il existait depuis la 22.79, au fond des Réglages (« Ouvrir avec 4
+// chiffres ») : personne ne va le chercher. On le propose au bon moment —
+// juste après une ouverture avec le PIN à 6 chiffres, quand il vient de le
+// taper. Il n'a donc PAS à le retaper (il l'a prouvé il y a deux minutes au
+// plus) : deux fois quatre chiffres, et c'est fait.
+// Jamais en pleine vente (une feuille ouverte : on se tait), jamais plus
+// d'une fois tous les trois jours, trois fois au plus ; « Ne plus me
+// proposer » le fait taire pour de bon. Rien ne part au serveur.
+var _CLE_COPROP='mb_co_prop',_coProposeT=0;
+function _coPropLire(){try{return JSON.parse(localStorage.getItem(_CLE_COPROP)||'{}')||{};}catch(e){return {};}}
+function _coPropEcrire(o){try{localStorage.setItem(_CLE_COPROP,JSON.stringify(o));}catch(e){}}
+function _proposerCodeCourt(){
+  setTimeout(function(){
+    try{
+      if(role!=='patron'||!DB||!DB.cfg||!DB.cfg.code)return;
+      try{if(estDemo())return;}catch(e){}
+      if(codeOuvertureActif())return;
+      if(String(DB.cfg.pin||'').length<6)return;
+      var o=_coPropLire();
+      if(o.non||(o.n||0)>=3)return;
+      if(o.t&&(Date.now()-o.t)<3*864e5)return;
+      if(document.querySelector('.ov.show'))return;
+      var sc=document.querySelector('.scr.on');if(!sc||sc.id!=='s-caisse')return;
+      o.n=(o.n||0)+1;o.t=Date.now();_coPropEcrire(o);
+      _coProposeT=Date.now();
+      ouvrirCodeOuverture(true);
+    }catch(e){}
+  },2200);
+}
+function codeCourtPlusTard(jamais){
+  if(jamais){var o=_coPropLire();o.non=true;_coPropEcrire(o);}
+  _coProposeT=0;closeSheet('ov-codeouv');
+  if(jamais)showToast(lang==='fr'?'D\'accord. Il reste dans Réglages → « Ouvrir avec 4 chiffres ».':'OK. It stays in Settings.');
+}
+function ouvrirCodeOuverture(propose){
   if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
   var fr=(lang==='fr');
+  if(propose!==true)_coProposeT=0;
   // ⚠️ La feuille voisine (« Changer mon PIN ») est restée en français en
   // anglais depuis toujours. On ne refait pas la même chose : tout se pose
   // ici, à l'ouverture, donc rien ne peut être oublié.
@@ -10480,12 +10530,30 @@ function ouvrirCodeOuverture(){
                                                   :(fr?'Poser mon code':'Set my code');
   var off=document.getElementById('co-off');
   if(off)off.style.display=on?'block':'none';
+  // Proposé juste après son PIN : la case du PIN disparaît, la phrase dit pourquoi.
+  var _prop=(propose===true&&_coProposeT>0);
+  var _rp=document.getElementById('co-pin');if(_rp&&_rp.parentNode)_rp.parentNode.style.display=_prop?'none':'';
+  if(_prop){
+    document.getElementById('co-note').textContent=fr
+      ?'Tu viens de taper ton PIN à 6 chiffres. Sur ce téléphone, 4 chiffres peuvent suffire pour ouvrir ta caisse — comme l\'écran de verrouillage. Ton PIN reste valable partout.'
+      :'You just typed your 6-digit PIN. On this phone, 4 digits can be enough to open your till — like the lock screen. Your PIN keeps working everywhere.';
+    document.getElementById('co-btn').textContent=fr?'Ouvrir avec 4 chiffres':'Open with 4 digits';
+  }
+  ['co-tard','co-jamais'].forEach(function(id){var b=document.getElementById(id);if(b)b.style.display=_prop?'block':'none';});
+  var _bt=document.getElementById('co-tard');if(_bt)_bt.textContent=fr?'Plus tard':'Later';
+  var _bj=document.getElementById('co-jamais');if(_bj)_bj.textContent=fr?'Ne plus me proposer':'Don\'t ask again';
   document.getElementById('ov-codeouv').classList.add('show');
 }
 function _coErr(m){showToast('⚠️ '+m);}
 async function validerCodeOuverture(){
   var fr=(lang==='fr');
   var pin=(document.getElementById('co-pin').value||'').trim();
+  // Proposé à l'entrée : il a prouvé son PIN il y a moins de deux minutes.
+  if(_coProposeT>0&&(Date.now()-_coProposeT)<120000&&DB&&DB.cfg)pin=String(DB.cfg.pin||'');
+  else if(_coProposeT>0){
+    _coProposeT=0;var _rp=document.getElementById('co-pin');if(_rp&&_rp.parentNode)_rp.parentNode.style.display='';
+    return _coErr(fr?'Retape ton PIN à 6 chiffres, pour être sûr que c\'est toi.':'Type your 6-digit PIN again.');
+  }
   var a=(document.getElementById('co-new').value||'').trim();
   var b=(document.getElementById('co-new2').value||'').trim();
   // 1. Il prouve que c'est bien lui. L'app peut rester ouverte des heures.
@@ -10513,6 +10581,7 @@ async function validerCodeOuverture(){
   // La trace : le patron doit pouvoir voir, plus tard, qu'un code court a
   // été posé sur cet appareil-là — et quand.
   try{journalAjouter('unite',fr?'Code d\'ouverture (4 chiffres)':'Opening code (4 digits)','',fr?'posé sur cet appareil':'set on this device');}catch(e){}
+  _coProposeT=0;
   closeSheet('ov-codeouv');
   showToast('⚡ '+(fr?'C\'est posé. Quatre chiffres suffisent maintenant sur ce téléphone.'
                     :'Done. Four digits are enough on this phone now.'));
@@ -15162,10 +15231,41 @@ function ouvrirNeg(p,v,n,mot,fois){
         :('Not enough stock. You can still sell '+fmtQ(fois)+' '+mt+' ('+fmtQ(n*fois)+') and restock later.'))
     :(fr?'Stock épuisé. Tu peux quand même vendre et te ravitailler après.'
         :'Out of stock. You can still sell and restock later.');
+  var _non=venteSansStockInterdite(),_peutStk=(role==='patron'||hasPerm('stock'));
+  if(_non)document.getElementById('neg-msg').textContent=fr
+    ?('Ta boutique ne vend pas sans stock. '+(_peutStk?'Fais d\'abord l\'entrée de ce que tu as reçu.':'Demande au patron de faire l\'entrée de stock.'))
+    :('Your shop does not sell without stock.'+(_peutStk?' Record the stock you received first.':' Ask the owner to record the stock.'));
+  else document.getElementById('neg-msg').textContent+=(fr?' Ce sera compté comme une dette de stock : ta prochaine entrée la comblera d\'abord.':' It is counted as stock owed: your next entry fills it first.');
+  document.getElementById('btn-vendre').style.display=_non?'none':'block';
+  var _be=document.getElementById('btn-neg-entree');if(_be)_be.style.display=(_non&&_peutStk)?'block':'none';
+  var _br=document.getElementById('btn-neg-regle');
+  if(_br){_br.style.display=(role==='patron'&&!_non)?'inline':'none';_br.textContent=fr?'Interdire la vente de dépannage dans ma boutique':'Stop selling without stock';}
   document.getElementById('ov-neg').classList.add('show');
+}
+function negVersEntree(){
+  var n=negEnCours;closeSheet('ov-neg');if(!n||!n.p)return;
+  if(!(role==='patron'||hasPerm('stock')))return;
+  try{selArtStk(n.p);stkSens('in');}catch(e){}
+  document.getElementById('ov-stk').classList.add('show');
+}
+function negInterdire(){
+  if(role!=='patron')return;
+  reglerVenteSansStock('non');
+  closeSheet('ov-neg');
+}
+function reglerVenteSansStock(x){
+  if(role!=='patron')return;
+  var fr=(lang==='fr');
+  DB.cfg.sansStock=(x==='non')?'non':'oui';
+  try{journalAjouter('unite',fr?'Vente sans stock':'Selling without stock','',x==='non'?(fr?'interdite':'blocked'):(fr?'autorisée':'allowed'));}catch(e){}
+  save();
+  showToast(x==='non'?(fr?'La vente sans stock est interdite dans ta boutique':'Selling without stock is now blocked')
+                     :(fr?'La vente sans stock est autorisée (comptée comme dette de stock)':'Selling without stock is allowed (counted as stock owed)'));
+  try{if(document.querySelector('#ov-valeur.show'))ouvrirValeur();}catch(e){}
 }
 function vendreMalgre(){
   if(!negEnCours)return;
+  if(venteSansStockInterdite())return;
   var p=negEnCours.p,v=negEnCours.v,n=Math.max(1,Number(negEnCours.n)||1),mot=negEnCours.mot;
   closeSheet('ov-neg');
   // Il vient de répondre : on repasse par le chemin normal, en forçant, pour
@@ -18584,6 +18684,7 @@ function chgQ(key,d){panier[key]=Math.round(((panier[key]||0)+d)*100)/100;if(pan
 // ⚠️ Remplacée plus bas (`viderPanier=function`) : c'est l'autre qui tourne.
 function viderPanier(){panier={};_grosPanier={};_negoLigne={};panierLibre=[];renderProd(DB.articles);document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');}
 function procederPmt(){
+  if(_refusSansStock())return;
   closeSheet('ov-pan');
   try{if(panierVide()){showToast('🛒 '+(lang==='fr'?'Le panier est vide':'The basket is empty'));return;}}catch(e){}
   var total=calcTotal();
@@ -24815,8 +24916,25 @@ function valeurBoutique(){
   _lignesInventaire().forEach(function(l){var q=Math.max(0,l.th);if(q>0&&l.px>0)vente+=q*l.px;});
   var credits=0;(DB&&DB.clients||[]).forEach(function(c){var x=Number(c&&c.credit)||0;if(x>0)credits+=x;});
   var caisse=0;try{caisse=Math.max(0,Number(caisseAttendue())||0);}catch(e){}
-  var autre=_argentHors().total;
-  return {achat:r.val,sansPa:r.sansPa,vente:vente,credits:credits,caisse:caisse,autre:autre,total:r.val+credits+caisse+autre};
+  var autre=_argentHors().total,dt=_detteStock();
+  return {achat:r.val,sansPa:r.sansPa,vente:vente,credits:credits,caisse:caisse,autre:autre,dette:dt.val,detteN:dt.n,detteL:dt.L,
+          total:r.val+credits+caisse+autre-dt.val};
+}
+// ⚠️ 23.15 — CE QUI EST PARTI SANS AVOIR ÉTÉ ENTRÉ. Un stock sous zéro,
+// c'est de la marchandise vendue que l'app n'a jamais vue arriver : une
+// entrée oubliée, ou un dépannage chez le voisin qu'il faudra lui rendre.
+// Dans les deux cas, l'argent de la vente est dans la caisse et la
+// marchandise n'est plus là : la valeur la DÉDUIT, au prix d'achat, et le
+// dit — sinon chaque dépannage gonflait la boutique. Un article dont le
+// stock n'a jamais été compté n'est pas une dette : il n'y a rien à rattraper.
+function _detteStock(){
+  var val=0,n=0,L=[];
+  _lignesInventaire().forEach(function(l){
+    if(!(l.th<0)||_stockJamaisCompte(l.p))return;
+    var q=-l.th;n++;L.push({nm:l.nm,q:q,pa:l.pa});
+    if(l.pa>0)val+=q*l.pa;
+  });
+  return {val:Math.round(val),n:n,L:L};
 }
 // ⚠️ 23.15 — « L'APP MONTRE UNIQUEMENT L'ARGENT EN CAISSE AUJOURD'HUI. »
 // La caisse, c'est l'argent du jour : celui d'hier est parti chez le
@@ -24859,6 +24977,17 @@ function ouvrirValeur(){
         return '<div class="vb-a"><label for="vb-a-'+x[0]+'">'+escH(fr?x[1]:x[2])+'</label>'
           +'<input id="vb-a-'+x[0]+'" type="text" inputmode="numeric" autocomplete="off" placeholder="0" value="'+(n>0?n:'')+'" oninput="argentHorsTape(\''+x[0]+'\',this.value)"></div>';}).join('')
       +'</div>';
+  }
+  if(v.detteN>0){
+    var _ex=v.detteL.slice(0,3).map(function(x){return fmtQ(x.q)+' '+x.nm;}).join(', ')+(v.detteN>3?' …':'');
+    h+='<div class="vb-l vb-dette" onclick="closeSheet(\'ov-valeur\');filtreStock(\'dette\')"><span>'+(fr?'Dépannages à régulariser':'Sold without stock')
+      +'<i>'+escH(_ex)+(fr?' — pas encore rentré : touche pour régulariser':' — not entered yet: tap to fix')+'</i></span><b>−'+fmt(v.dette)+'</b></div>';
+  }
+  if(role==='patron'){
+    var _non=venteSansStockInterdite();
+    h+='<div class="vb-regle"><span>'+(fr?'Vente de dépannage (sans stock)':'Selling without stock')+'</span>'
+      +'<button type="button" class="'+(_non?'':'on')+'" onclick="reglerVenteSansStock(\'oui\')">'+(fr?'Autorisée':'Allowed')+'</button>'
+      +'<button type="button" class="'+(_non?'on':'')+'" onclick="reglerVenteSansStock(\'non\')">'+(fr?'Interdite':'Blocked')+'</button></div>';
   }
   if(v.sansPa>0)h+='<div class="vb-trou" onclick="closeSheet(\'ov-valeur\');filtreStock(\'sanspa\')">'+ico('alerte',16)+'<span>'
     +v.sansPa+' '+(fr?('article'+(v.sansPa>1?'s':'')+' sans prix d\'achat '+(v.sansPa>1?'ne sont':'n\'est')+' pas compté'+(v.sansPa>1?'s':'')+' — touche pour compléter')
@@ -25068,6 +25197,7 @@ function appliquerFiltreStock(){
       return !!_besoinRachat(p,q30);
     }
     if(_stkFiltre==='sanspa')return _valeurArticle(p).inconnu;
+    if(_stkFiltre==='dette')return !_stockJamaisCompte(p)&&(getStk(p)<0||(p.vr||[]).some(function(v){return !_estGrosDeVariante(v)&&(Number(v.stk)||0)<0;}));
     return true;
   });
   if(_stkFiltre==='vend')lst.sort(function(a,b){return (q30[b.id]||0)-(q30[a.id]||0);});
@@ -25085,6 +25215,11 @@ function majCompteStock(lst){
   var c=document.getElementById('stk-compte');
   if(c){
     var fr=lang==='fr';
+    if(_stkFiltre==='dette'){
+      c.textContent=lst.length+' '+(fr?('article'+(lst.length>1?'s':'')+' vendu'+(lst.length>1?'s':'')+' sans stock — fais l\'entrée de ce que tu as reçu, ou ton inventaire. « Tout » pour revenir')
+                                      :('item'+(lst.length>1?'s':'')+' sold without stock — record what you received. « Tout » to go back'));
+      return;
+    }
     if(_stkFiltre==='sanspa'){
       c.textContent=lst.length+' '+(fr?('article'+(lst.length>1?'s':'')+' sans prix d\'achat — touche « Tout » pour revenir')
                                       :('item'+(lst.length>1?'s':'')+' without cost price — tap « Tout » to go back'));
@@ -28072,6 +28207,16 @@ function _prochainIdArticle(){
 }
 function recomputeStock(d){
   if(!d||!Array.isArray(d.articles))return d;
+  // ⚠️⚠️ 23.15 — « UNE VENTE DE DÉPANNAGE PEUT FAUSSER LA VALEUR RÉELLE DE
+  // LA BOUTIQUE. » Une unité vendue sans stock (`l.dep`) ne sortait PAS du
+  // stock : il restait à 0. Mesuré au banc : 16 Bougies vendues à stock 0,
+  // puis l'entrée des 20 qu'il a rachetées → l'app dit 20, l'étagère en a
+  // 4. La valeur comptait 16 bougies qui n'existent pas, à chaque fois.
+  // Les ventes faites depuis 23.15 portent `dt` (« dette ») : elles sortent
+  // EN ENTIER, le stock passe à −16 (« 16 à rattraper », l'affichage existe
+  // déjà) et la prochaine entrée comble d'abord ce trou. Les ventes
+  // d'avant gardent l'ancienne règle : aucun stock ne change d'un coup chez
+  // personne en mettant l'app à jour.
   // ⚠️ « ON NE PEUT PAS ANNULER UNE VENTE À L'INTÉRIEUR DES VARIANTES. »
   // MESURÉ : vendre 2, regrouper, puis annuler → le stock ne bouge pas (5 au
   // lieu de 7) pendant que l'app annonce « stock restitué ».
@@ -28127,7 +28272,7 @@ function recomputeStock(d){
   var approBase={},approVar={};
   (d.appros||[]).forEach(function(a){if(!a||a.pid==null)return;var qy=Number(a.qty)||0;var _m=_rattacher(a),_p=_m?_m.pid:a.pid,_v=_m?_m.vid:a.vid;if(_estFondu(_p,_v))_v=null;_v=_reprise(_p,_v,a);if(_v==null)approBase[_p]=(approBase[_p]||0)+qy;else{var k=_p+'|'+_v;approVar[k]=(approVar[k]||0)+qy;}});
   var soldBase={},soldVar={},vendu={};
-  (d.ventes||[]).forEach(function(v){if(!v||v.annulee)return;(v.lignes||[]).forEach(function(l){if(!l||l.pid==null)return;var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;var _m=_rattacher(l),_pi=_m?_m.pid:l.pid,_vi=_m?_m.vid:l.vid;if(_estFondu(_pi,_vi))_vi=null;_vi=_reprise(_pi,_vi,l);vendu[_pi]=(vendu[_pi]||0)+qt;var p=d.articles.find(function(x){return x.id==_pi;});if(!p)return;if(_vi){if(utiliseStockBase(p))soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);else{var _lv=(p.vr||[]).find(function(x){return String(x.id)===String(_vi);});var _gr=_lv&&_estGrosDeVariante(_lv);var k=_pi+'|'+(_gr?_lv.base:_vi);soldVar[k]=(soldVar[k]||0)+norm*(_gr?(Number(l.qBase)||getQBase(_lv)):(Number(l.qBase)||1));}}else soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);});});
+  (d.ventes||[]).forEach(function(v){if(!v||v.annulee)return;(v.lignes||[]).forEach(function(l){if(!l||l.pid==null)return;var qt=Number(l.qty||l.qte||0),dep=l.dt?0:Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;var _m=_rattacher(l),_pi=_m?_m.pid:l.pid,_vi=_m?_m.vid:l.vid;if(_estFondu(_pi,_vi))_vi=null;_vi=_reprise(_pi,_vi,l);vendu[_pi]=(vendu[_pi]||0)+qt;var p=d.articles.find(function(x){return x.id==_pi;});if(!p)return;if(_vi){if(utiliseStockBase(p))soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);else{var _lv=(p.vr||[]).find(function(x){return String(x.id)===String(_vi);});var _gr=_lv&&_estGrosDeVariante(_lv);var k=_pi+'|'+(_gr?_lv.base:_vi);soldVar[k]=(soldVar[k]||0)+norm*(_gr?(Number(l.qBase)||getQBase(_lv)):(Number(l.qBase)||1));}}else soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);});});
   d.articles.forEach(function(p){
     p.stk=(Number(p.stk0)||0)+(approBase[p.id]||0)-(soldBase[p.id]||0);
     p.vd=(Number(p.vd0)||0)+(vendu[p.id]||0); // vd0 = ventes déjà archivées (compteur "vendu" à vie préservé)
@@ -28204,7 +28349,7 @@ function archiverAnciennesVentes(cutoff){
       else r[pm.mode]=(r[pm.mode]||0)+Number(v.total||0);
       (v.lignes||[]).forEach(function(l){
         if(!l||l.pid==null)return;
-        var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;
+        var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-(l.dt?0:dep);if(norm<0)norm=0;
         vendu[l.pid]=(vendu[l.pid]||0)+qt;
         // ⚠️ L'ARCHIVAGE OUBLIAIT LES DÉPANNAGES. `depCount` additionne
         // `dep0` et les dépannages des ventes VIVANTES : replier une vente
@@ -30634,7 +30779,33 @@ enregPmt=function(){var fr=(lang==='fr'),amt=parseFloat(document.getElementById(
   cliCours.hist.push({date:e.date,ts:e.ts,type:'payment',amt:recu,mode:mode,vendeur:e.vendeur,enc:e.id});
   save();closeSheet('ov-cli-det');renderClients();
   showToast(rendu>0?('↩️ '+(fr?'Rends '+fmt(rendu)+' : '+cliCours.nm+' ne devait que '+fmt(recu):'Give back '+fmt(rendu)+': '+cliCours.nm+' only owed '+fmt(recu))):(cliCours.credit<=0?'✅ '+(fr?'Crédit soldé !':'Credit cleared!'):'✅ '+(fr?'Paiement enregistré !':'Payment recorded!')));};
+// ⚠️ 23.15 — LA BOUTIQUE PEUT INTERDIRE LA VENTE SANS STOCK
+// (`DB.cfg.sansStock==='non'`). Les articles dont le stock n'a JAMAIS été
+// compté restent vendables : une boutique qui démarre sans compter son
+// stock ne doit pas se retrouver bloquée à sa première vente. Les lignes
+// sont lues exactement comme `encaisser` les lira (même calcul de qDep).
+function venteSansStockInterdite(){return !!(DB&&DB.cfg&&DB.cfg.sansStock==='non');}
+function _panierSansStock(){
+  var out=[];
+  Object.entries(panier||{}).forEach(function(e){
+    var key=e[0],qty=Number(e[1])||0,parts=key.split('-'),pid=parts[0],vid=parts[1];
+    var p=(DB.articles||[]).find(function(x){return x.id==pid;});if(!p||!(qty>0))return;
+    var v=vid&&vid!=='0'?(p.vr||[]).find(function(x){return x.id==vid;}):null;
+    var dispo=v?Math.max(0,stockVarDispo(p,v)):Math.max(0,p.stk||0);
+    if(qty>dispo&&!_stockJamaisCompte(p))out.push({p:p,v:v,dispo:dispo,qty:qty});
+  });
+  return out;
+}
+function _refusSansStock(){
+  if(!venteSansStockInterdite())return false;
+  var L=_panierSansStock();if(!L.length)return false;
+  var fr=(lang==='fr'),x=L[0];
+  showToast((fr?'Pas assez de ':'Not enough ')+x.p.nm+(x.v?(' — '+x.v.nm):'')+(fr?(' (il en reste '+fmtQ(x.dispo)+'). Ta boutique ne vend pas sans stock : fais d\'abord l\'entrée.')
+    :(' ('+fmtQ(x.dispo)+' left). Your shop does not sell without stock.')));
+  return true;
+}
 encaisser=function(){
+  if(_refusSansStock())return;
   // ⚠️⚠️ UNE VENTE VIDE S'ENREGISTRAIT. Vu au banc pendant le démarrage
   // guidé : la feuille de paiement s'ouvre même panier vide, et « Encaisser »
   // écrivait une vente à 0 F sans une ligne — elle comptait dans les
@@ -30667,7 +30838,7 @@ encaisser=function(){
   }else{
     paiement={mode:pmntModeVente};
   }
-  Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1],parts=key.split('-'),pid=parts[0],vid=parts[1],_tch=toucheArticle(pid),p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;var px=v?v.px:p.px,pa=v?v.pa:p.pa,qBase=v?getQBase(v):1;var qNorm,qDep;if(v){/* ⚠️ Lisait v.stk : pour un carton qui puise dans une AUTRE variante, v.stk vaut 0, donc TOUTE la vente passait en depassement — et le recalcul exclut les depassements. Le stock ne bougeait jamais. stockVarDispo connait la reserve et couvre les trois modeles. */var dv=Math.max(0,stockVarDispo(p,v));qNorm=Math.min(qty,dv);qDep=qty-qNorm;}else{var dp=Math.max(0,p.stk||0);qNorm=Math.min(qty,dp);qDep=qty-qNorm;}var _mgv=_mentionGros(key,qty);
+  Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1],parts=key.split('-'),pid=parts[0],vid=parts[1],_tch=toucheArticle(pid),p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;var px=v?v.px:p.px,pa=v?v.pa:p.pa,qBase=v?getQBase(v):1;var qNorm,qDep;if(v){/* ⚠️ Lisait v.stk : pour un carton qui puise dans une AUTRE variante, v.stk vaut 0, donc TOUTE la vente passait en depassement — et le recalcul exclut les depassements. Le stock ne bougeait jamais. stockVarDispo connait la reserve et couvre les trois modeles. */var dv=Math.max(0,stockVarDispo(p,v));qNorm=Math.min(qty,dv);qDep=qty-qNorm;}else{var dp=Math.max(0,p.stk||0);qNorm=Math.min(qty,dp);qDep=qty-qNorm;}var _dt=(qDep>0&&!_stockJamaisCompte(p))?1:0;var _mgv=_mentionGros(key,qty);
     // ⭐ LE CARTON A SA PROPRE LIGNE, avec son prix et ce qu'il contient.
     // `qte` = nombre de contenants, `qBase` = ce qu'il y a dedans : la même
     // forme qu'une variante de gros, sans la variante. Le reçu, le stock et
@@ -30693,7 +30864,7 @@ encaisser=function(){
         var _dG=Math.min(_depRest,_qG);_depRest-=_dG;
         lignes.push({nm:_nomV+' — '+G.mot+' de '+fmtQ(G.n),px:G.px,pa:G.pa,
                      qte:G.nb,qty:G.nb,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:G.n,
-                     dep:Math.round(_dG/G.n*100)/100,gros:{nb:G.nb,mot:G.mot}});
+                     dep:Math.round(_dG/G.n*100)/100,dt:_dt,gros:{nb:G.nb,mot:G.mot}});
       });
       if(_mm.qDetail>0){
         // ⚠️ LE RESTE D'UN CONTENANT ENTAMÉ N'EST PAS DU DÉTAIL. Il a été
@@ -30708,7 +30879,7 @@ encaisser=function(){
           ?(_nomV+' — '+(lang==='fr'?(_mm.casseMot+' entamé'):('opened '+_mm.casseMot)))
           :_nomV;
         lignes.push({nm:_nmD,px:_pxD,pa:_paD,qte:_mm.qDetail,qty:_mm.qDetail,pid:p.id,
-                     vid:vid&&vid!=='0'?vid:null,qBase:1,dep:_detDep,gros:null});
+                     vid:vid&&vid!=='0'?vid:null,qBase:1,dep:_detDep,dt:_dt,gros:null});
       }
       return;
     }
@@ -30716,7 +30887,7 @@ encaisser=function(){
     // fait écrire au reçu « 2 lots (25) » — comme si deux lots en
     // contenaient vingt-cinq. La phrase entière part donc à côté,
     // « 2 lots + 1 », et le reçu la recopie telle quelle.
-    lignes.push({nm:p.nm+(v?' — '+v.nm:''),px:px,pa:pa,qte:qty,qty:qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:qBase,dep:qDep,
+    lignes.push({nm:p.nm+(v?' — '+v.nm:''),px:px,pa:pa,qte:qty,qty:qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:qBase,dep:qDep,dt:_dt,
                  gros:(_mgv&&!_mgv.entame)?{nb:_mgv.nb,mot:_mgv.mot}:null,
                  grosTxt:(_mgv&&_mgv.entame)?_mgv.court:null});});
   // ⚠️ LES MONTANTS LIBRES, EN LIGNES À PART.
