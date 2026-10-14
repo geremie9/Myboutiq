@@ -48,7 +48,8 @@ await depense(p, 'Crédit téléphone', 500, 'tel', false);
   t(/fonds de départ/.test(detail) && /dépenses payées de la caisse/.test(detail), `et il dit d'où vient ce chiffre (« ${detail.slice(0, 120)} »)`);
   t(nombre(await ligne(p, 'Orange')) === 3200 && nombre(await ligne(p, 'Crédit accordé')) === 1000,
     'la répartition montre l\'Orange (3 200) et le crédit à récupérer (1 000)');
-  t(nombre(await ligne(p, '^\\s*💸')) === -1500, `les dépenses du jour : toutes, de la caisse ou non (${await ligne(p, '^\\s*💸')})`);
+  // 23.17 : la ligne n'a plus d'emoji — on la trouve par son nom exact.
+  t(nombre(await ligne(p, '^\\s*Dépenses\\s*$')) === -1500, `les dépenses du jour : toutes, de la caisse ou non (${await ligne(p, '^\\s*Dépenses\\s*$')})`);
   t(nombre(await ligne(p, 'Bénéfice NET')) === -600, `bénéfice NET : 900 − 1 500 = −600 (${await ligne(p, 'Bénéfice NET')})`);
 }
 // ── LA CLÔTURE ────────────────────────────────────────────────────────

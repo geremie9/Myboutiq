@@ -842,6 +842,18 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .vb-der{margin-top:10px;font-size:11.5px;font-weight:600;color:var(--M);line-height:1.45}
 .stk-photo{display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--BD);
   background:var(--BG);color:var(--B);font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;cursor:pointer}
+.rpt-ess{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.rpt-ess>div{background:var(--C);border-radius:14px;padding:11px 10px;box-shadow:0 2px 8px rgba(0,0,0,.04);display:flex;flex-direction:column;gap:2px;min-width:0}
+.rpt-ess span{font-size:10.5px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.3px}
+.rpt-ess b{font-size:17px;font-weight:900;color:var(--T);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rpt-ess b.g{color:#1B7A3A}.rpt-ess b.r{color:var(--R)}
+.rpt-ess i{font-style:normal;font-size:10.5px;font-weight:700;color:var(--M)}
+.rpt-plus>summary{list-style:none;cursor:pointer;position:relative;background:var(--C);border-radius:14px;padding:13px 40px 13px 14px;font-size:13.5px;font-weight:800;color:var(--T);box-shadow:0 2px 8px rgba(0,0,0,.04);display:flex;flex-direction:column;gap:2px;margin-bottom:11px}
+.rpt-plus>summary::-webkit-details-marker{display:none}
+.rpt-plus>summary i{font-style:normal;font-size:11px;font-weight:600;color:var(--M)}
+.rpt-plus>summary::after{content:'›';position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:20px;color:var(--M)}
+.rpt-plus[open]>summary::after{content:'˅'}
+.pdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .vb-dette{cursor:pointer}
 .vb-dette b{color:var(--R)}
 .vb-regle{display:flex;align-items:center;gap:6px;margin-top:10px;padding:8px 0;border-top:1px solid var(--BD)}
@@ -6701,7 +6713,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.16'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.17'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -25744,7 +25756,7 @@ function renderRpt(){
   var c=document.getElementById('rpt-cont');if(!c)return;
   // Top articles DU JOUR (cohérent avec le résumé du jour affiché juste au-dessus).
   // Avant : p.vd = total DEPUIS TOUJOURS, ce qui ne disait rien de la journée.
-  // ⭐ Toutes les cartes lisent CETTE liste et CE nombre de jours. Une seule
+  // Toutes les cartes lisent CETTE liste et CE nombre de jours. Une seule
   // source pour l'écran entier : impossible qu'une carte parle d'hier pendant
   // qu'une autre parle du mois.
   var _vp=_rptVentes(), _jp=_rptJours(), _motP=_rptMot();
@@ -25764,13 +25776,13 @@ function renderRpt(){
   if(role==='vendeur'&&!hasPerm('rapports')){
     // ── VUE VENDEUR (simplifiée, sans données financières sensibles) ──
     c.innerHTML=
-      '<div class="rcd"><div class="rctit">🧾 '+(lang==='fr'?"Mon activité aujourd'hui":"My activity today")+'</div>'+
-      '<div class="rrow"><span class="rlbl">🛍️ '+(lang==='fr'?'Transactions enregistrées':'Transactions recorded')+'</span><span class="rval">'+nbT+'</span></div></div>'+
-      '<div class="rcd"><div class="rctit">🏆 '+(lang==='fr'?'Articles les plus vendus aujourd\'hui':'Best selling items today')+'</div>'+topChartHtml+'</div>'+
-      '<div class="rcd"><div class="rctit">⚠️ '+(lang==='fr'?'Alertes stock':'Stock alerts')+'</div>'+
-      (al.map(function(a){var ts=a.q;return '<div class="tit"><div class="temo">'+(a.p.e||'')+'</div><div class="tinf"><div class="tnm">'+_nomAlerte(a)+'</div><div class="tqt" style="color:'+(ts<=0?'var(--R)':'var(--O)')+'">'+(ts<=0?'⛔ '+(lang==='fr'?'Épuisé':'Out'):'⚠️ '+fmtQ(ts)+(lang==='fr'?' restant':' left'))+'</div></div></div>';}).join('')||'<div style="text-align:center;padding:11px;color:var(--G);font-weight:700">'+t('stockOk')+'</div>')+
+      '<div class="rcd"><div class="rctit">'+(lang==='fr'?"Mon activité aujourd'hui":"My activity today")+'</div>'+
+      '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Transactions enregistrées':'Transactions recorded')+'</span><span class="rval">'+nbT+'</span></div></div>'+
+      '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Articles les plus vendus aujourd\'hui':'Best selling items today')+'</div>'+topChartHtml+'</div>'+
+      '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Alertes stock':'Stock alerts')+'</div>'+
+      (al.map(function(a){var ts=a.q;return '<div class="tit"><div class="temo">'+dessinArt(a.p,18,'width:100%;height:100%')+'</div><div class="tinf"><div class="tnm">'+_nomAlerte(a)+'</div><div class="tqt" style="color:'+(ts<=0?'var(--R)':'var(--O)')+'">'+(ts<=0?''+(lang==='fr'?'Épuisé':'Out'):''+fmtQ(ts)+(lang==='fr'?' restant':' left'))+'</div></div></div>';}).join('')||'<div style="text-align:center;padding:11px;color:var(--G);font-weight:700">'+t('stockOk')+'</div>')+
       '</div>'+
-      '<div style="text-align:center;padding:10px;font-size:11px;color:var(--M);font-weight:600">🔒 '+(lang==='fr'?'Rapport financier complet réservé au patron':'Full financial report reserved to the owner')+'</div>';
+      '<div style="text-align:center;padding:10px;font-size:11px;color:var(--M);font-weight:600">'+(lang==='fr'?'Rapport financier complet réservé au patron':'Full financial report reserved to the owner')+'</div>';
     return;
   }
 
@@ -25781,7 +25793,7 @@ function renderRpt(){
   var ta=_vp.reduce(function(s,v){
     return s+(v.lignes||[]).reduce(function(x,l){return x+(Number(l.pa)||0)*(Number(l.qte||l.qty)||0);},0);
   },0);
-  // ⚠️ On ne lit plus totalV/totalB/nbT : ces variables-là ne connaissent que
+  // On ne lit plus totalV/totalB/nbT : ces variables-là ne connaissent que
   // la caisse du jour. Sur « ce mois », elles auraient affiché le chiffre
   // d'aujourd'hui à côté des ventes du mois — deux périodes sur une carte.
   var _V=_vp.reduce(function(a2,v){return a2+Number(v.total||0);},0);
@@ -25813,15 +25825,14 @@ function renderRpt(){
   // La courbe des 7 jours reste ce qu'elle est : sept jours. Sur « ce mois »
   // elle raconterait une autre période que les cartes au-dessus — on le DIT
   // dans son titre plutôt que de la faire mentir ou de la cacher.
-  var evoHtml='<div class="rcd"><div class="rctit">📈 '+(lang==='fr'?'Évolution — 7 derniers jours':'Trend — last 7 days')+'</div><div class="evo-wrap"><div class="evo-bars">'+evoBarsHtml+'</div></div></div>';
+  var evoHtml='<div class="rcd"><div class="rctit">'+(lang==='fr'?'Évolution — 7 derniers jours':'Trend — last 7 days')+'</div><div class="evo-wrap"><div class="evo-bars">'+evoBarsHtml+'</div></div></div>';
   var benPct=100-coutPct;
   var donGrad='conic-gradient(#E74C3C 0% '+coutPct+'%, #27AE60 '+coutPct+'% 100%)';
   c.innerHTML=
-    _rptBarrePeriodes()+
-    '<div class="rcd"><div class="rctit">📊 '+(lang==='fr'?('Résumé '+_motP):('Summary '+_motP))+'</div>'+
-    '<div class="rrow"><span class="rlbl">💰 '+(lang==='fr'?'Chiffre d\'affaires':'Revenue')+'</span><span class="rval a">'+fmt(_V)+'</span></div>'+
-    '<div class="rrow"><span class="rlbl">🛒 '+(lang==='fr'?'Coût des ventes':'Cost of sales')+'</span><span class="rval r">-'+fmt(ta)+'</span></div>'+
-    '<div class="rrow"><span class="rlbl">📈 '+(lang==='fr'?'Bénéfice brut':'Gross profit')+'</span><span class="rval '+(_B<0?'r':'g')+'">'+fmt(_B)+'</span></div>'+
+    '<div class="rcd"><div class="rctit">'+(lang==='fr'?('Le détail '+_motP):('Details '+_motP))+'</div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Chiffre d\'affaires':'Revenue')+'</span><span class="rval a">'+fmt(_V)+'</span></div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Coût des ventes':'Cost of sales')+'</span><span class="rval r">-'+fmt(ta)+'</span></div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Bénéfice brut':'Gross profit')+'</span><span class="rval '+(_B<0?'r':'g')+'">'+fmt(_B)+'</span></div>'+
     // Un bénéfice négatif vient presque toujours d'un prix d'achat qui est en
     // réalité celui du gros. On NOMME les coupables au lieu de laisser le
     // patron douter de toute son application.
@@ -25829,7 +25840,7 @@ function renderRpt(){
       var sus=(DB.articles||[]).filter(function(p){return prixAchatAberrant(Number(p.pa)||0,Number(p.px)||0);});
       if(!sus.length)return '';
       var fr=lang==='fr';
-      return '<div class="rrow" style="background:#FFEBEE;border-radius:9px;padding:9px 11px;margin:6px 0"><span class="rlbl" style="color:var(--R)">⚠️ '
+      return '<div class="rrow" style="background:#FFEBEE;border-radius:9px;padding:9px 11px;margin:6px 0"><span class="rlbl" style="color:var(--R)">'
         +(fr?sus.length+' article'+(sus.length>1?'s ont':' a')+' un prix d\'achat impossible':sus.length+' item(s) with an impossible cost')
         +'<div style="font-size:9.5px;font-weight:600;color:var(--M);margin-top:2px">'
         +sus.slice(0,4).map(function(p){return p.nm+' : '+fmt(p.pa)+' / '+uniteArt(p)+' (vendu '+fmt(p.px)+')';}).join('<br>')
@@ -25841,7 +25852,7 @@ function renderRpt(){
       var inc=_vp.reduce(function(s,v){return s+getSaleCAInconnu(v);},0);
       if(inc<=0)return '';
       // La ligne n'était qu'un constat. Elle ouvre maintenant la réparation.
-      return '<div class="rrow" style="cursor:pointer" onclick="ouvrirReparerBenefice()"><span class="rlbl" style="color:var(--O)">⚠️ '+(lang==='fr'?'Ventes sans prix d\'achat':'Sales without cost')+'<div style="font-size:9.5px;font-weight:600;color:var(--B);text-decoration:underline">'+(lang==='fr'?'bénéfice inconnu — touche pour corriger':'profit unknown — tap to fix')+'</div></span><span class="rval" style="color:var(--O)">'+fmt(inc)+'</span></div>';
+      return '<div class="rrow" style="cursor:pointer" onclick="ouvrirReparerBenefice()"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'Ventes sans prix d\'achat':'Sales without cost')+'<div style="font-size:9.5px;font-weight:600;color:var(--B);text-decoration:underline">'+(lang==='fr'?'bénéfice inconnu — touche pour corriger':'profit unknown — tap to fix')+'</div></span><span class="rval" style="color:var(--O)">'+fmt(inc)+'</span></div>';
     })()+
     (function(){
       // La consigne n'est ni un chiffre d'affaires ni un bénéfice : c'est de
@@ -25851,59 +25862,56 @@ function renderRpt(){
       var jour=_vp.reduce(function(s,v){return s+(Number(v.consigne)||0);},0);
       var total=(DB.ventes||[]).reduce(function(s,v){return s+((v&&!v.annulee)?(Number(v.consigne)||0):0);},0);
       if(!jour&&!total)return '';
-      return '<div class="rrow"><span class="rlbl" style="color:#B45309">🍾 '+(fr?('Consignes '+_motP):'Deposits')
+      return '<div class="rrow"><span class="rlbl" style="color:#B45309">'+(fr?('Consignes '+_motP):'Deposits')
         +'<div style="font-size:9.5px;font-weight:600;color:var(--M)">'+(fr?'argent gardé pour être rendu — ni chiffre d\'affaires ni bénéfice':'held to be returned')
         +(total?('<br>'+(fr?'tu dois en tout : ':'you owe in total: ')+fmt(total)):'')
         +'</div></span><span class="rval" style="color:#B45309">'+(jour>=0?'+':'')+fmt(jour)+'</span></div>';
     })()+
-    '<div class="rrow"><span class="rlbl">💸 '+(lang==='fr'?'Dépenses':'Expenses')+'</span><span class="rval r">-'+fmt(totalDep)+'</span></div>'+
-    '<div class="rrow"><span class="rlbl">💎 '+(lang==='fr'?'Bénéfice NET':'NET Profit')+'</span><span class="rval '+(benNet<0?'r':'g')+'" style="font-size:17px;font-weight:900">'+fmt(benNet)+'</span></div>'+
-    '<div class="rrow"><span class="rlbl">📉 '+(lang==='fr'?'Marge':'Margin')+'</span><span class="rval">'+m+'%</span></div>'+
-    '<div class="rrow"><span class="rlbl">🧾 '+(lang==='fr'?'Transactions':'Transactions')+'</span><span class="rval">'+_N+'</span></div></div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Dépenses':'Expenses')+'</span><span class="rval r">-'+fmt(totalDep)+'</span></div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Bénéfice NET':'NET Profit')+'</span><span class="rval '+(benNet<0?'r':'g')+'" style="font-size:17px;font-weight:900">'+fmt(benNet)+'</span></div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Marge':'Margin')+'</span><span class="rval">'+m+'%</span></div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Transactions':'Transactions')+'</span><span class="rval">'+_N+'</span></div></div>'+
     (function(){
       var pb=paiementBreakdown(_vp);
       var rows=[
-        ['💵',lang==='fr'?'Espèces':'Cash',pb.especes],
-        ['🟠','Orange Money',pb.orange],
-        ['🟡','MTN MoMo',pb.mtn],
-        ['🔵','Moov Money',pb.moov],
-        ['🧾',lang==='fr'?'Crédit accordé (à récupérer)':'Credit given (to collect)',pb.credit],
-        ['🏷️',lang==='fr'?'Remises accordées':'Discounts given',pb.remises]
+        ['<i class="pdot" style="background:#2E7D32"></i>',lang==='fr'?'Espèces':'Cash',pb.especes],
+        ['<i class="pdot" style="background:#FF7900"></i>','Orange Money',pb.orange],
+        ['<i class="pdot" style="background:#FFCC00"></i>','MTN MoMo',pb.mtn],
+        ['<i class="pdot" style="background:#0072CE"></i>','Moov Money',pb.moov],
+        ['<i class="pdot" style="background:#B45309"></i>',lang==='fr'?'Crédit accordé (à récupérer)':'Credit given (to collect)',pb.credit],
+        ['<i class="pdot" style="background:#7C6F8E"></i>',lang==='fr'?'Remises accordées':'Discounts given',pb.remises]
       ].filter(function(r){return r[2]>0;});
       // La consigne est dans le tiroir mais ne t'appartient pas : on la montre
       // à part, jamais mélangée au chiffre d'affaires.
       var cons=pb.consTiroir||0;
       var ligneCons=cons!==0
-        ?('<div class="rrow"><span class="rlbl" style="color:var(--O)">🍾 '+(lang==='fr'?'dont consignes (dans le tiroir)':'incl. deposits (in the drawer)')+'</span>'
+        ?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (dans le tiroir)':'incl. deposits (in the drawer)')+'</span>'
           +'<span class="rval" style="color:var(--O)">'+(cons>0?'+':'')+fmt(cons)+'</span></div>')
         :'';
       // Un jour sans vente mais avec un remboursement ou une dépense de la
       // caisse : le tiroir a bougé, la ligne « à compter » doit rester.
       if(!rows.length&&!(_rptPer==='jour'&&(totalRembEspecesJour()>0||totalDepCaisseJour()>0)))return '';
-      return '<div class="rcd"><div class="rctit">💳 '+(lang==='fr'?'Répartition par moyen de paiement':'Breakdown by payment method')+'</div>'+
+      return '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Répartition par moyen de paiement':'Breakdown by payment method')+'</div>'+
         rows.map(function(r){return '<div class="rrow"><span class="rlbl">'+r[0]+' '+r[1]+'</span><span class="rval">'+fmt(r[2])+'</span></div>';}).join('')+ligneCons+
-        ((_rptPer==='jour')?('<div class="rrow" style="border-top:1px solid var(--BD);margin-top:6px;padding-top:9px"><span class="rlbl" style="font-weight:800">'+(lang==='fr'?'💰 Espèces en caisse (à compter)':'💰 Cash in drawer (to count)')+_rptDetailCaisse(pb.especes)+'</span><span class="rval a" style="font-weight:900">'+fmt(caisseAttendue())+'</span></div>'):'')+
+        ((_rptPer==='jour')?('<div class="rrow" style="border-top:1px solid var(--BD);margin-top:6px;padding-top:9px"><span class="rlbl" style="font-weight:800">'+(lang==='fr'?'Espèces en caisse (à compter)':'Cash in drawer (to count)')+_rptDetailCaisse(pb.especes)+'</span><span class="rval a" style="font-weight:900">'+fmt(caisseAttendue())+'</span></div>'):'')+
         '</div>';
     })()+
-    evoHtml+
-    _rptHeuresHtml(_vp)+
-    _rptSemaineHtml()+
-    '<div class="rcd"><div class="rctit">🥧 '+(lang==='fr'?'Répartition du chiffre d\'affaires':'Revenue breakdown')+'</div>'+
-    '<div class="don-wrap"><div style="width:84px;height:84px;border-radius:50%;background:'+(_V>0?donGrad:'var(--BG)')+'"></div>'+
-    '<div class="don-legend"><div class="don-lg-row"><span class="don-dot" style="background:#E74C3C"></span>'+(lang==='fr'?'Coût':'Cost')+' ('+coutPct+'%)</div><div class="don-lg-row"><span class="don-dot" style="background:#27AE60"></span>'+(lang==='fr'?'Bénéfice':'Profit')+' ('+(_V>0?benPct:0)+'%)</div></div></div></div>'+
-    '<div class="rcd"><div class="rctit">🏆 '+(lang==='fr'?('Top articles '+_motP):('Top items '+_motP))+'</div>'+topChartHtml+'</div>'+
-    _rptVendeursHtml(_vp)+
-    '<div class="rcd"><div class="rctit">⚠️ '+(lang==='fr'?'Alertes stock':'Stock alerts')+'</div>'+
-    (al.map(function(a){var p=a.p,ts=a.q;return '<div class="tit"><div class="temo">'+(p.e||'')+'</div><div class="tinf"><div class="tnm">'+_nomAlerte(a)+'</div><div class="tqt" style="color:'+(ts<=0?'var(--R)':'var(--O)')+'">'+(ts<=0?'⛔ '+(lang==='fr'?'Épuisé':'Out'):'⚠️ '+fmtQ(ts)+(lang==='fr'?' restant':' left'))+'</div></div><button onclick="ouvrirStk(DB.articles.find(function(x){return x.id==='+p.id+'}))" style="background:var(--B);color:#fff;border:none;border-radius:7px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">+</button></div>';}).join('')||'<div style="text-align:center;padding:11px;color:var(--G);font-weight:700">'+t('stockOk')+'</div>')+
-    '</div>'+
-    '<div class="rcd"><div class="rctit">🕐 '+(lang==='fr'?'Dernières ventes':'Recent sales')+'</div>'+
+    '';
+  var _graph=evoHtml+_rptHeuresHtml(_vp)+_rptSemaineHtml()+    '<div class="rcd"><div class="rctit">'+(lang==='fr'?('Top articles '+_motP):('Top items '+_motP))+'</div>'+topChartHtml+'</div>'+
+    _rptVendeursHtml(_vp);
+  var _alertes=!al.length?'':
+    '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Alertes stock':'Stock alerts')+'</div>'+
+    (al.map(function(a){var p=a.p,ts=a.q;return '<div class="tit"><div class="temo">'+dessinArt(p,18,'width:100%;height:100%')+'</div><div class="tinf"><div class="tnm">'+_nomAlerte(a)+'</div><div class="tqt" style="color:'+(ts<=0?'var(--R)':'var(--O)')+'">'+(ts<=0?''+(lang==='fr'?'Épuisé':'Out'):''+fmtQ(ts)+(lang==='fr'?' restant':' left'))+'</div></div><button onclick="ouvrirStk(DB.articles.find(function(x){return x.id==='+p.id+'}))" style="background:var(--B);color:#fff;border:none;border-radius:7px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">+</button></div>';}).join('')||'<div style="text-align:center;padding:11px;color:var(--G);font-weight:700">'+t('stockOk')+'</div>')+
+    '</div>';
+  var _dernieres=
+    '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Dernières ventes':'Recent sales')+'</div>'+
     (vr.map(function(v){
-      if(v.annulee)return '<div class="rrow"><span class="rlbl" style="text-decoration:line-through;color:var(--M)">⏰ '+v.h+' — '+(lang==='fr'?'ANNULÉE':'CANCELLED')+'</span><span class="rval" style="color:var(--M);text-decoration:line-through">'+fmt(v.total)+'</span></div>';
-      var btn=hasPerm('annuler')?'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">↩️ '+(lang==='fr'?'Annuler':'Cancel')+'</button>':'';
-      return '<div class="rrow" style="align-items:center"><span class="rlbl">⏰ '+v.h+'</span><span style="display:flex;align-items:center"><span class="rval g">'+fmt(v.total)+'</span>'+btn+'</span></div>';
+      if(v.annulee)return '<div class="rrow"><span class="rlbl" style="text-decoration:line-through;color:var(--M)">'+v.h+' — '+(lang==='fr'?'ANNULÉE':'CANCELLED')+'</span><span class="rval" style="color:var(--M);text-decoration:line-through">'+fmt(v.total)+'</span></div>';
+      var btn=hasPerm('annuler')?'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">'+(lang==='fr'?'Annuler':'Cancel')+'</button>':'';
+      return '<div class="rrow" style="align-items:center"><span class="rlbl">'+v.h+'</span><span style="display:flex;align-items:center"><span class="rval g">'+fmt(v.total)+'</span>'+btn+'</span></div>';
     }).join('')||'<div class="empty" style="padding:11px"><div class="empty-t">'+(_motCloture()||t('aucuneVente'))+'</div></div>')+
     (function(){
-      // ⚠️ La carte n'en montre que CINQ. Sans ce mot, les autres ont
+      // La carte n'en montre que CINQ. Sans ce mot, les autres ont
       // l'air d'avoir disparu — c'est exactement ce qu'il a signalé.
       var _n=_vp.length,_fr=(lang==='fr');
       var _c=(vr.length&&_ventesCloturees().length)?('<div style="font-size:10.5px;color:var(--M);font-weight:700;padding:4px 2px 0">'+_motCloture()+'</div>'):'';
@@ -25913,6 +25921,29 @@ function renderRpt(){
       return _c;
     })()+
     '</div>';
+  // 23.17 — « TROP DE FONCTIONNALITÉS, PAS ORGANISÉ. » L'écran faisait
+  // 1 763 px pour douze boutons : résumé, paiements, 7 jours, heures,
+  // semaine, un camembert qui redisait le résumé, le top, les vendeurs,
+  // « Tous les stocks OK » quand il n'y avait rien à dire, les dernières
+  // ventes — tout ouvert, tout à la suite. Les trois chiffres qu'il vient
+  // chercher (ce qu'il a vendu, ce qu'il a gagné, ce qu'il doit avoir dans
+  // la caisse) arrivent maintenant en premier, en grand ; le détail suit ;
+  // les graphiques attendent qu'on les ouvre. Les alertes ne parlent que
+  // s'il y a une alerte. La ligne « à compter » reste dans le détail, la
+  // même que la clôture (`caisseAttendue`), et la carte la reprend.
+  var _cais=(_rptPer==='jour')?caisseAttendue():null,_fr=(lang==='fr');
+  var _ess='<div class="rpt-ess">'
+    +'<div><span>'+(_fr?'Ventes':'Sales')+'</span><b>'+fmt(_V)+'</b><i>'+_N+' '+(_fr?('vente'+(_N>1?'s':'')):('sale'+(_N>1?'s':'')))+'</i></div>'
+    +'<div><span>'+(_fr?'Bénéfice net':'Net profit')+'</span><b class="'+(benNet<0?'r':'g')+'">'+fmt(benNet)+'</b><i>'+(_fr?'marge ':'margin ')+m+' %</i></div>'
+    +(_cais!=null
+      ?('<div><span>'+(_fr?'Espèces à compter':'Cash to count')+'</span><b>'+fmt(_cais)+'</b><i>'+(_fr?'dans la caisse':'in the drawer')+'</i></div>')
+      :('<div><span>'+(_fr?'Dépenses':'Expenses')+'</span><b>'+fmt(totalDep)+'</b><i>'+escH(_motP)+'</i></div>'))
+    +'</div>';
+  var _ouvert=false;try{_ouvert=sessionStorage.getItem('mb_rpt_plus')==='1';}catch(e){}
+  c.innerHTML=_rptBarrePeriodes()+_ess+c.innerHTML+_alertes+_dernieres
+    +(_graph?('<details class="rpt-plus"'+(_ouvert?' open':'')+' ontoggle="try{sessionStorage.setItem(\'mb_rpt_plus\',this.open?\'1\':\'0\')}catch(e){}">'
+      +'<summary>'+(_fr?'Graphiques et classements':'Charts and rankings')+'<i>'+(_fr?'7 jours, heures, semaine, meilleurs articles, vendeurs':'7 days, hours, week, top items, sellers')+'</i></summary>'
+      +_graph+'</details>'):'');
 }
 
 // ═══════════════════════════════════════════
@@ -27036,14 +27067,14 @@ function _rptHeuresHtml(vp){
              +Math.min(24,best+2)+' h — '+part+' %'+(fr?' de ton chiffre':' of revenue');
     }
   }
-  return '<div class="rcd"><div class="rctit">🕐 '+(fr?('Heures de pointe '+_rptMot()):'Peak hours')+'</div>'
+  return '<div class="rcd"><div class="rctit">'+(fr?('Heures de pointe '+_rptMot()):'Peak hours')+'</div>'
     +'<div class="hour-chart">'+cols+'</div>'
     +(phrase?('<div style="font-size:11.5px;font-weight:800;color:var(--B);margin-top:9px;text-align:center;line-height:1.4">'+phrase+'</div>'):'')
     +'</div>';
 }
 
-// ── 📅 CETTE SEMAINE CONTRE LA SEMAINE DERNIÈRE ───────────────────
-// ⚠️ ON COMPARE LE MÊME NOMBRE DE JOURS. Le Dashboard mettait une semaine
+// ── CETTE SEMAINE CONTRE LA SEMAINE DERNIÈRE ───────────────────
+// ON COMPARE LE MÊME NOMBRE DE JOURS. Le Dashboard mettait une semaine
 // COMMENCÉE en face d'une semaine FINIE : un mardi, la boutique avait
 // toujours l'air en chute de 70 %. Un chiffre qui fait peur pour rien,
 // c'est un chiffre qu'on apprend à ne plus regarder.
@@ -27062,7 +27093,7 @@ function _rptSemaineHtml(){
   if(cette<=0&&avant<=0)return '';
   var ecart=cette-avant,pct=avant>0?Math.round(ecart/avant*100):(cette>0?100:0);
   var jrs=jour+1;
-  return '<div class="rcd"><div class="rctit">📅 '+(fr?'Cette semaine':'This week')+'</div>'
+  return '<div class="rcd"><div class="rctit">'+(fr?'Cette semaine':'This week')+'</div>'
     +'<div class="week-compare">'
     +'<div class="week-pill"><div class="week-lbl">'+(fr?'Cette semaine':'This week')+'</div><div class="week-val">'+fmt(cette)+'</div></div>'
     +'<div class="week-pill"><div class="week-lbl">'+(fr?'La semaine dernière':'Last week')+'</div><div class="week-val">'+fmt(avant)+'</div></div>'
@@ -27074,7 +27105,7 @@ function _rptSemaineHtml(){
         :('the same '+jrs+' day(s) of each week'))+'</div></div>';
 }
 
-// ── 👥 MES VENDEURS ───────────────────────────────────────────────
+// ── MES VENDEURS ───────────────────────────────────────────────
 // Un commerçant seul n'a pas besoin d'une carte qui lui apprend qu'il a
 // tout vendu lui-même. Elle n'apparaît que s'il y a une équipe.
 function _rptVendeursHtml(vp){
@@ -27095,12 +27126,12 @@ function _rptVendeursHtml(vp){
       +'<div class="dash-track" style="margin-top:5px"><div class="dash-fill" style="width:'+Math.max(3,pct)+'%"></div></div></div>'
       +'<div class="seller-amt" style="margin-left:10px">'+fmt(s.amt)+'</div></div>';
   }).join('');
-  return '<div class="rcd"><div class="rctit">👥 '+(fr?('Mes vendeurs '+_rptMot()):'My sellers')+'</div>'+lignes+'</div>';
+  return '<div class="rcd"><div class="rctit">'+(fr?('Mes vendeurs '+_rptMot()):'My sellers')+'</div>'+lignes+'</div>';
 }
 function _rptBarrePeriodes(){
   var fr=(lang==='fr');
   var opts=[['jour',fr?'Aujourd\'hui':'Today'],['7j',fr?'7 jours':'7 days'],
-            ['mois',fr?'Ce mois':'This month'],['annee',fr?'📅 Mon année':'📅 My year']];
+            ['mois',fr?'Ce mois':'This month'],['annee',fr?'Mon année':'My year']];
   return '<div class="stkf-row" style="margin-bottom:11px">'+opts.map(function(o){
     return '<button class="stkf'+(o[0]===_rptPer?' on':'')+'" onclick="rptPeriode(\''+o[0]+'\')">'+o[1]+'</button>';
   }).join('')+'</div>';
