@@ -2077,6 +2077,18 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .succ-ico{font-size:78px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1)}
 @keyframes popIn{from{transform:scale(0) rotate(-20deg)}to{transform:scale(1) rotate(0)}}
 .succ-tit{color:#fff;font-size:24px;font-weight:900}.succ-amt{color:rgba(255,255,255,.85);font-size:16px;font-weight:700}
+.cli-tot{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
+.cli-tot-l{font-size:11px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.3px}
+.cli-tot-v{font-size:22px;font-weight:900;color:var(--R)}.cli-tot-v.zero{color:var(--T)}
+.cli-tot-n{text-align:right;font-size:11.5px;font-weight:700;color:var(--M)}
+.cli-sous{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:3px}
+.cli-ech{font-size:11px;font-weight:700;color:var(--M)}
+.cli-ech.retard{color:var(--R);font-weight:800}.cli-ech.jour{color:#B45309;font-weight:800}
+.cli-rien{font-size:11.5px;font-weight:700;color:var(--M)}
+.cli-ajout{margin-top:11px;display:flex;align-items:center;justify-content:center;gap:8px}
+.succ-det{min-height:22px;color:#fff;font-size:15px;font-weight:800;text-align:center;padding:0 24px;line-height:1.35}
+.succ-det:empty{display:none}
+.succ-det b{display:inline-block;background:#fff;color:#0B6B33;border-radius:10px;padding:5px 12px;margin-top:4px;font-size:20px;font-weight:900}
 
 /* ── REÇU ── */
 .recu-cd{background:#fff;border:1px solid var(--BD);border-radius:11px;padding:15px;margin:11px 19px;font-family:'Nunito',sans-serif}
@@ -6411,12 +6423,18 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   <div style="color:#FFB74D;font-size:11.5px;font-weight:800" id="imp-err"></div>
 </div>
 
+<!-- ⚠️ 23.20 — L'écran qu'il voit à CHAQUE vente portait un ✅ d'emoji de
+     78 px (un visage différent d'un Tecno à un Samsung) et ne disait rien
+     d'utile au comptoir. La coche est dessinée, et la ligne du dessous dit
+     ce qu'il doit faire maintenant : « Rends 700 », « Awa doit 2 500 »,
+     « Orange Money ». -->
 <div class="succ" id="succ">
-  <div class="succ-ico">✅</div>
+  <div class="succ-ico"><svg viewBox="0 0 64 64" width="84" height="84" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="rgba(255,255,255,.18)"/><circle cx="32" cy="32" r="23" fill="#fff"/><path d="M21 33l7.5 7.5L44 25" fill="none" stroke="var(--G)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
   <div class="succ-tit" id="succ-tit">Vente enregistrée !</div>
   <div class="succ-amt" id="succ-amt">0</div>
+  <div class="succ-det" id="succ-det"></div>
   <div style="display:flex;gap:10px;margin-top:18px">
-    <button id="succ-recu" onclick="voirRecuDepuisSucces()" style="background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.5);border-radius:12px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;min-height:48px">🧾 <span id="succ-recu-l">Reçu</span></button>
+    <button id="succ-recu" onclick="voirRecuDepuisSucces()" style="background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.5);border-radius:12px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;min-height:48px"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="vertical-align:-3px;margin-right:6px"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg><span id="succ-recu-l">Reçu</span></button>
     <button onclick="fermerSucces()" style="background:#fff;color:var(--G);border:none;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;min-height:48px"><span id="succ-suite-l">Vente suivante</span> →</button>
   </div>
 </div>
@@ -6728,7 +6746,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.19'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.20'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -19114,13 +19132,14 @@ function pmntLabel(p){
 // Avant : le reçu s'ouvrait TOUT SEUL après chaque vente, il fallait le fermer
 // avant de servir le client suivant. Désormais il est proposé, pas imposé.
 var _succTimer=null;
-function planifierFermetureSucces(sc){
+function planifierFermetureSucces(sc,rendre){
   clearTimeout(_succTimer);
   if(DB&&DB.cfg&&DB.cfg.recuAuto){ // le patron peut réactiver l'ouverture automatique
     _succTimer=setTimeout(function(){sc.classList.remove('show');afficherRecu();},1500);
     return;
   }
-  _succTimer=setTimeout(function(){sc.classList.remove('show');},2200);
+  // Une monnaie à rendre se lit le temps de compter les billets.
+  _succTimer=setTimeout(function(){sc.classList.remove('show');},rendre?4000:2200);
 }
 function fermerSucces(){
   clearTimeout(_succTimer);
@@ -30837,8 +30856,44 @@ function utiliserPointsClient(){
 }
 renderClients=function(){
   var c=document.getElementById('cli-cont');if(!c)return;
-  var today=new Date(),tot=DB.clients.reduce(function(s,x){majNiveauClient(x);return s+x.credit;},0);
-  c.innerHTML='<div class="rcd" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px"><div><div style="font-size:11px;font-weight:700;color:var(--M)">'+(lang==='fr'?'Total crédits':'Total credit')+'</div><div style="font-size:22px;font-weight:900;color:var(--R)">'+fmt(tot)+'</div></div><div style="text-align:right;font-size:11px;font-weight:700;color:var(--M)">'+DB.clients.length+' '+(lang==='fr'?'clients':'customers')+'</div></div><div class="ccd">'+(DB.clients.map(function(cl){var d=cl.date?Math.ceil((new Date(cl.date)-today)/864e5):999;var sc=cl.credit<=0?'cs-paid':d<0?'cs-due':d<=3?'cs-warn':'cs-ok';var st=cl.credit<=0?(lang==='fr'?'Soldé ✅':'Paid ✅'):d<0?(lang==='fr'?'En retard':'Overdue')+' ('+Math.abs(d)+'j)':d===0?(lang==='fr'?"Dû aujourd'hui":"Due today"):d<=3?d+'j':'OK';return '<div class="cit" onclick="ouvrirDetCli('+cl.id+')"><div class="cav" style="background:'+cl.bg+';color:'+cl.tc+'">'+cl.nm[0].toUpperCase()+'</div><div class="ciinf"><div class="cinm">'+cl.nm+'</div><div class="lv-badge">'+cl.niveau+' · '+(cl.points||0)+' pts</div><div class="cidt">📅 '+(cl.date?new Date(cl.date).toLocaleDateString('fr-FR'):'N/A')+'</div></div><div class="ciamt"><div class="cidebt">'+fmt(cl.credit)+'</div><div class="cist '+sc+'">'+st+'</div></div></div>';}).join('')||'<div class="empty-guide" style="padding:24px 16px"><div class="eg-ico">🧾</div><div class="eg-t">'+(lang==='fr'?'Aucun client à crédit':'No credit customer')+'</div><div class="eg-s">'+(lang==='fr'?"Enregistre un client pour suivre ce qu'il te doit et être rappelé à l'échéance.":'Add a customer to track what they owe you and get reminded at the due date.')+'</div></div>')+'</div><button class="bnxt" style="margin-top:11px" onclick="ouvrirAddCli()">➕ '+(lang==='fr'?'Ajouter un client':'Add customer')+'</button>';
+  // ⚠️ 23.20 — L'ÉCRAN CLIENTS, REVU. Mesuré sur la 23.19 : les clients
+  // dans l'ordre de création (Mama Brigitte, 12 000, en dernier) ; « 0 F »
+  // en rouge pour qui ne doit rien ; « 📅 N/A » sous chaque nom sans
+  // échéance ; un badge « OK » qui ne voulait rien dire ; le nom posé tel
+  // quel dans le HTML, alors qu'il arrive aussi par la synchro.
+  // Maintenant : ceux qui doivent d'abord (en retard, puis le plus gros),
+  // le montant seulement s'il y en a un, l'échéance seulement si elle
+  // existe, et tout ce qui vient d'ailleurs passe par escH.
+  var fr=(lang==='fr'),today=new Date();today.setHours(0,0,0,0);
+  var tot=0,nDoit=0;
+  (DB.clients||[]).forEach(function(x){majNiveauClient(x);var cr=Number(x.credit)||0;if(cr>0){tot+=cr;nDoit++;}});
+  var jours=function(cl){if(!cl.date)return null;var d=new Date(cl.date);if(isNaN(d))return null;d.setHours(0,0,0,0);return Math.round((d-today)/864e5);};
+  var L=(DB.clients||[]).slice().sort(function(a,b){
+    var ca=Number(a.credit)||0,cb=Number(b.credit)||0;
+    if((ca>0)!==(cb>0))return ca>0?-1:1;
+    if(ca>0){var ja=jours(a),jb=jours(b),ra=(ja!=null&&ja<0)?1:0,rb=(jb!=null&&jb<0)?1:0;if(ra!==rb)return rb-ra;return cb-ca;}
+    return txtNorm(a.nm||'')<txtNorm(b.nm||'')?-1:1;
+  });
+  var coul=function(v,def){return /^#[0-9a-fA-F]{3,8}$/.test(String(v||''))?v:def;};
+  c.innerHTML='<div class="rcd cli-tot"><div><div class="cli-tot-l">'+(fr?'Ils te doivent':'They owe you')+'</div>'
+    +'<div class="cli-tot-v'+(tot>0?'':' zero')+'">'+fmt(tot)+'</div></div>'
+    +'<div class="cli-tot-n">'+(nDoit?(nDoit+' '+(fr?('client'+(nDoit>1?'s':'')+' sur '+DB.clients.length):('of '+DB.clients.length))):(DB.clients.length+' '+(fr?'clients':'customers')))+'</div></div>'
+    +'<div class="ccd">'+(L.map(function(cl){
+      var cr=Number(cl.credit)||0,j=jours(cl),nm=String(cl.nm||'?');
+      var ech='';
+      if(cr>0&&j!=null){
+        ech=j<0?('<span class="cli-ech retard">'+(fr?('En retard de '+Math.abs(j)+' j'):(Math.abs(j)+' d overdue'))+'</span>')
+           :j===0?('<span class="cli-ech jour">'+(fr?'À payer aujourd\'hui':'Due today')+'</span>')
+           :('<span class="cli-ech">'+(fr?'À payer le ':'Due ')+escH(new Date(cl.date).toLocaleDateString(fr?'fr-FR':'en-GB'))+'</span>');
+      }
+      return '<div class="cit" onclick="ouvrirDetCli('+(Number(cl.id)||0)+')">'
+        +'<div class="cav" style="background:'+coul(cl.bg,'#EDE7F6')+';color:'+coul(cl.tc,'#5C4B6E')+'">'+escH(nm.charAt(0).toUpperCase())+'</div>'
+        +'<div class="ciinf"><div class="cinm">'+escH(nm)+'</div>'
+        +'<div class="cli-sous"><span class="lv-badge">'+escH(cl.niveau||'')+' · '+(Number(cl.points)||0)+' pts</span>'+ech+'</div></div>'
+        +'<div class="ciamt">'+(cr>0?('<div class="cidebt">'+fmt(cr)+'</div>'):('<div class="cli-rien">'+(fr?'Ne doit rien':'Owes nothing')+'</div>'))+'</div></div>';
+    }).join('')||('<div class="empty-guide" style="padding:24px 16px"><div class="eg-ico">'+ico('clients',40)+'</div><div class="eg-t">'+(fr?'Aucun client à crédit':'No credit customer')+'</div>'
+      +'<div class="eg-s">'+(fr?"Enregistre un client pour suivre ce qu'il te doit et être rappelé à l'échéance.":'Add a customer to track what they owe you and get reminded at the due date.')+'</div></div>'))+'</div>'
+    +'<button class="bnxt cli-ajout" onclick="ouvrirAddCli()">'+ico('plus',18)+'<span>'+(fr?'Ajouter un client':'Add customer')+'</span></button>';
 };
 saveCli=function(){
   var nm=document.getElementById('cli-nm').value.trim(),tel=document.getElementById('cli-tel').value.trim(),
@@ -31028,10 +31083,41 @@ encaisser=function(){
   panier={};panierLibre=[];remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
   renderProd(DB.articles);renderStock(DB.articles);renderClients();recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
   document.getElementById('succ-amt').textContent=fmt(total);
+  var _rendu=0;try{_rendu=_succDetail(paiement,total,clientNm);}catch(e){}
   var sc=document.getElementById('succ');sc.classList.add('show');if(navigator.vibrate)navigator.vibrate([50,30,50]);
-  planifierFermetureSucces(sc);
+  planifierFermetureSucces(sc,_rendu>0);
   try{_guideApresVente(total,ben,lignes);}catch(e){}
 };
+// La ligne sous le montant : ce qu'il doit faire MAINTENANT. Le reçu en
+// espèces d'abord (« Rends 700 » — c'est la question au comptoir), sinon le
+// moyen de paiement, et le crédit avec le nom de celui qui doit.
+// Tout passe par textContent / escH : le nom du client vient de la synchro.
+function _succDetail(pm,total,clientNm){
+  var z=document.getElementById('succ-det');if(!z)return 0;
+  var fr=(lang==='fr'),mode=(pm&&pm.mode)||'especes';
+  var noms={orange:'Orange Money',mtn:'MTN MoMo',moov:'Moov Money'};
+  z.innerHTML='';
+  if(mode==='especes'){
+    var recu=parseFloat(String((document.getElementById('calc-recu')||{}).value||'').replace(/[^\d.,]/g,'').replace(',','.'))||0;
+    var rendu=Math.round((recu-total)*100)/100;
+    if(recu>0&&rendu>0){
+      z.innerHTML=escH((fr?'Reçu ':'Received ')+fmt(recu)+' · '+(fr?'rends':'give back'))+'<br><b>'+escH(fmt(rendu))+'</b>';
+      return rendu;
+    }
+    z.textContent=fr?'En espèces':'Cash';return 0;
+  }
+  if(mode==='credit'){
+    var du=Number(pm.du)||0,av=Number(pm.avance)||0;
+    z.textContent=(clientNm?(clientNm+' '+(fr?'doit ':'owes ')):(fr?'À crédit : ':'On credit: '))+fmt(du)+(av>0?(' · '+(fr?'avance ':'paid ')+fmt(av)):'');
+    return 0;
+  }
+  if(mode==='mixte'){
+    z.textContent=(fr?'Espèces ':'Cash ')+fmt(Number(pm.especes)||0)+' + '+(noms[pm.moyenMobile]||'Mobile Money')+' '+fmt(Number(pm.mobile)||0);
+    return 0;
+  }
+  z.textContent=noms[mode]||'';
+  return 0;
+}
 confirmerAnnulVente=function(){
   if(ventAnnulEnCours===null)return;
   var v=DB.ventes.find(function(x){return x.id===ventAnnulEnCours;});
