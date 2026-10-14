@@ -1636,6 +1636,21 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .vt-gros::after{content:'';position:absolute;top:50%;left:50%;
   transform:translate(-50%,-50%);width:100%;height:44px;min-width:44px}
 .vt-gros.vide{background:rgba(26,26,46,.07);color:var(--M);font-weight:800}
+/* 23.19 — la barre du gros, comme dehors : prix en gros, taille dessous. */
+.vt-gros.vt-barre{flex-direction:column;justify-content:center;gap:1px;width:100%;height:auto;min-height:38px;padding:4px 6px;border-radius:10px;line-height:1.15}
+.vt-gros.vt-barre b{font-size:12.5px;font-weight:900;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:3px}
+.vt-gros.vt-barre i{font-style:normal;font-size:9.5px;font-weight:800;opacity:.85;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:3px}
+.vt-gros.vt-barre svg.ic{width:12px;height:12px}
+/* Le doigt doit tomber sur la puce elle-même : c'est elle qui porte
+   data-grosv / data-grosdet (lus sur ev.target par `_brancherVar`). */
+.vt-gros.vt-barre b,.vt-gros.vt-barre i,.vt-gros.vt-barre svg{pointer-events:none}
+.vt-gros.vt-barre.vide b{font-size:10.5px;gap:2px;letter-spacing:-.1px}
+.vt-gros.vt-barre.vide b svg.ic{width:11px;height:11px}
+/* 23.19 — « l'endroit pour la photo, comme si c'est un peu petit » : 58 px
+   fixes dans une variante, toute la largeur (jusqu'à 96 px) dehors. La même
+   place, dedans comme dehors. */
+.vgrid:not(.v-liste) .vtile .pmedia{width:100%;height:clamp(62px,9vw + 30px,96px);margin:0 0 7px;border-radius:12px;overflow:hidden}
+.vgrid:not(.v-liste) .vtile .pmedia.pcat img{object-fit:contain}
 /* Le même repère, sur un satellite du cercle. Posé en bas, comme la puce
    d'une tuile dehors : même place, même langage. Et la cible fait 44 px —
    la leçon de la 21.12, qui n'avait jamais atteint ce repère-ci. */
@@ -6713,7 +6728,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.18'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.19'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -16164,6 +16179,18 @@ function _familleAvecPuceGros(p){
   try{return (_varVisibles(p)||[]).some(function(v){return !!_chipGrosVariante(p,v,true);});}
   catch(e){return false;}
 }
+// ⚠️ 23.19 — « LE GROS DES ARTICLES EN VARIANTES N'A PAS LA TAILLE COMME
+// POUR LES ARTICLES DEHORS. » Sa capture : quatre savons, chacun avec une
+// puce grise « carton », sans « de 24 », sans « prix ? ». Dehors, la barre
+// dit « 13 000 / carton de 24 » ou « carton de 24 / prix ? » (`_barreGros`).
+// En carrés et en liste, la tuile a la place : la même barre, sur deux
+// lignes. Le cercle garde sa puce courte (82 px par satellite).
+function _barreGrosV(p,mot,px,n){
+  var fr=(lang==='fr'),taille=escH(mot+(fr?' de ':' of ')+_avecUnite(p,n));
+  return px>0
+    ?('<b>'+_montantCarte(px)+'</b><i>'+_iconeCont(mot)+' '+taille+'</i>')
+    :('<b>'+_iconeCont(mot)+' '+taille+'</b><i>'+(fr?'prix ?':'price?')+'</i>');
+}
 function _chipGrosVariante(p,v,cercle){
   if(!p||!v||_estGrosDeVariante(v))return '';
   var cls=cercle?'vsat-gros':'vt-gros',mot=_motContenant(p,v);
@@ -16190,8 +16217,8 @@ function _chipGrosVariante(p,v,cercle){
   // encore un lot en variante gardent la puce d'en dessous.)
   var _gv=_grosDe(p,v);
   if(_gv.px>0&&_gv.n>1)
-    return mid+'<span class="'+cls+'" data-grosv="'+v.id+'" data-grosvn="'+_gv.n+'" title="'
-      +_gv.mot+' de '+fmtQ(_gv.n)+'">'+_htmlGros(_gv.mot,_gv.px,true)+'</span>';
+    return mid+'<span class="'+cls+(cercle?'':' vt-barre')+'" data-grosv="'+v.id+'" data-grosvn="'+_gv.n+'" title="'
+      +_gv.mot+' de '+fmtQ(_gv.n)+'">'+(cercle?_htmlGros(_gv.mot,_gv.px,true):_barreGrosV(p,_gv.mot,_gv.px,_gv.n))+'</span>';
   var lots=_lotsDeVariante(p,v);
   if(lots.length)
     return mid+lots.map(function(lot){
@@ -16224,9 +16251,9 @@ function _chipGrosVariante(p,v,cercle){
     // UN PRIX. « 72 » est une quantité — a côté d'un « 📦 6 000 » qui est un
     // montant, c'est exactement la confusion qu'il avait signalée sur ses
     // captures. Le MOT, comme dehors ; la taille reste dans l'infobulle.
-    return mid+'<span class="'+cls+' vide" data-grosdet="'+v.id+'" title="'
+    return mid+'<span class="'+cls+' vide'+(cercle?'':' vt-barre')+'" data-grosdet="'+v.id+'" title="'
       +(lang==='fr'?('Vendre '+_unGros(mot)+' de '+fmtQ(n)):('Sell 1 '+mot+' of '+fmtQ(n)))+'">'
-      +_htmlGros(mot,0,false)+'</span>';
+      +(cercle?_htmlGros(mot,0,false):_barreGrosV(p,mot,0,n))+'</span>';
   // Rien de connu : le repère NEUTRE, exactement comme dehors. « Tout
   // produit est vendable en gros » — y compris celui dont il n'a jamais
   // dit le conditionnement. Une tape ouvre l'écran qui le demande.
