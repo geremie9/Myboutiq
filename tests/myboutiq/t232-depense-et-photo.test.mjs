@@ -36,8 +36,9 @@ const b = await chromium.launch();
   await p.evaluate(() => { DB.depenses.push({ id: 'x_1_a', nm: '<img src=x onerror="window.__pwn=1">', amt: 5, cat: 'autre', date: new Date().toLocaleDateString('fr-FR'), ts: new Date().toISOString(), caisse: true }); renderDepLst(); });
   await p.waitForTimeout(200);
   t(!(await p.evaluate(() => window.__pwn)) && !(await p.evaluate(() => document.querySelector('#dep-lst-cont img'))), 'un nom de dépense venu de la synchro reste du texte');
-  const z = await p.evaluate(() => ({ b: +getComputedStyle(document.getElementById('annonce-banner')).zIndex, o: +getComputedStyle(document.getElementById('ov-dep')).zIndex }));
-  t(z.b < z.o, `le bandeau « tes articles peuvent avoir leur photo » passe SOUS une feuille ouverte (${z.b} < ${z.o})`);
+  // 23.16 : le bandeau n'est plus posé par-dessus quoi que ce soit (il est dans la page).
+  const z = await p.evaluate(() => { const cs = getComputedStyle(document.getElementById('annonce-banner')); return { pos: cs.position, b: +cs.zIndex || 0, o: +getComputedStyle(document.getElementById('ov-dep')).zIndex }; });
+  t(z.pos !== 'fixed' || z.b < z.o, `le bandeau « tes articles peuvent avoir leur photo » ne passe jamais par-dessus une feuille ouverte (${z.pos}, ${z.b} < ${z.o})`);
   await p.evaluate(() => closeSheet('ov-dep'));
   // ── LA PHOTO : depuis la fiche de l'article ─────────────────────────────
   await p.evaluate(() => navTo('stock', document.querySelectorAll('.ni')[1])); await p.waitForTimeout(400);

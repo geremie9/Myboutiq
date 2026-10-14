@@ -2267,15 +2267,17 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
   min-height:44px;min-width:44px;padding:0 11px;border-radius:12px;
   border:2px solid var(--BD);background:var(--C);color:var(--M);font-family:'Outfit',sans-serif;
   font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;transition:all .18s}
-.set-tab>span{display:none}
-.set-tab.on{flex:1 1 auto}
-.set-tab.on>span{display:inline}
+.set-tab{flex:1 1 0;flex-direction:column;gap:3px;min-width:0;padding:6px 2px;font-size:10.5px}
+.set-tab>span{display:inline;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.set-tab.on{flex:1 1 0}
 /* Dès qu'il y a la place, tous les libellés s'affichent */
 @media (min-width:560px){
   .set-tab{flex:1 1 auto}
   .set-tab>span{display:inline}
 }
 .set-tab.on{background:var(--P);border-color:var(--P);color:var(--A)}
+/* Le code de la boutique, rangé dans « Équipe » : la carte sombre garde ses couleurs. */
+.qr-wrap.qr-equipe{background:var(--P)!important;margin:13px 15px 0!important}
 .set-pane{display:none}
 .set-pane.on{display:block}
 
@@ -3898,9 +3900,14 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
        affiché pendant une vente. -->
   <!-- ⚠️ 23.15 — z-index 199 : le bandeau passait PAR-DESSUS les feuilles
        (.ov, 100) — « 5 de tes articles peuvent avoir leur photo » couvrait
-       le haut de la feuille des dépenses, du prix, du stock. Sous les
-       feuilles : une feuille ouverte est ce qu'il est en train de faire. -->
-  <div id="annonce-banner" style="display:none;position:fixed;left:12px;right:12px;top:78px;max-width:440px;margin:0 auto;background:#fff;border-left:5px solid #4A6CF7;border-radius:12px;padding:12px 14px;align-items:flex-start;gap:11px;z-index:99;box-shadow:0 6px 22px rgba(0,0,0,.20)">
+       le haut de la feuille des dépenses, du prix, du stock.
+       ⚠️ 23.16 — ET IL COUVRAIT LES CHIFFRES DU JOUR. Posé en position fixe
+       à 78 px du haut, il tombait pile sur « Ventes · Bénéfice · Trans. » —
+       ce que le commerçant regarde le plus. Il est maintenant DANS la page,
+       entre l'en-tête et les articles : il pousse, il ne cache plus rien.
+       Et un seul message à la fois : tant qu'il est là, la carte
+       « Installer » attend (`majBoutonsInstaller`). -->
+  <div id="annonce-banner" style="display:none;margin:10px 15px 0;background:#fff;border-left:5px solid #4A6CF7;border-radius:12px;padding:12px 14px;align-items:flex-start;gap:11px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
     <span style="flex-shrink:0;color:#4A6CF7;display:flex" id="annonce-ico"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 11v2a1 1 0 0 0 1 1h3l6 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg></span>
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:800;color:var(--T)" id="annonce-titre"></div>
@@ -4114,11 +4121,15 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
     </div>
   </div>
   <div class="set-tabs" id="set-tabs">
-    <button class="set-tab on" onclick="setParamTab('boutique',this)">🏪 <span id="tb-boutique">Boutique</span></button>
-    <button class="set-tab" onclick="setParamTab('users',this)">👥 <span id="tb-users">Équipe</span></button>
-    <button class="set-tab" onclick="setParamTab('stock',this)">📦 <span id="tb-stock">Produits</span></button>
-    <button class="set-tab" onclick="setParamTab('vente',this)">🧾 <span id="tb-vente">Ventes</span></button>
-    <button class="set-tab" onclick="setParamTab('secu',this)">🔔 <span id="tb-secu">Sécurité</span></button>
+    <!-- ⚠️ 23.16 — « PAS BIEN ORGANISÉ. » Quatre onglets sur cinq n'avaient
+         pas de nom, seulement un emoji (le cinquième, « Sécurité », était une
+         CLOCHE et ne contenait ni le PIN ni l'empreinte). Chaque onglet dit
+         maintenant son nom, et ce qu'il contient lui ressemble. -->
+    <button class="set-tab on" onclick="setParamTab('boutique',this)"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.6l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.5L21.5 8H6"/></svg><span id="tb-boutique">Boutique</span></button>
+    <button class="set-tab" onclick="setParamTab('users',this)"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.2A6.5 6.5 0 0 1 21.5 20"/></svg><span id="tb-users">Équipe</span></button>
+    <button class="set-tab" onclick="setParamTab('stock',this)"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg><span id="tb-stock">Articles</span></button>
+    <button class="set-tab" onclick="setParamTab('vente',this)"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg><span id="tb-vente">Ventes</span></button>
+    <button class="set-tab" onclick="setParamTab('secu',this)"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg><span id="tb-secu">Compte</span></button>
   </div>
   <div id="set-panes" style="overflow-y:auto;padding-bottom:30px">
     <div class="set-pane on" id="pane-boutique"></div>
@@ -4246,7 +4257,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       </div>
       <div class="sttit">💼 Gestion boutique</div>
       <div class="stcd">
-        <div class="stit2" onclick="ouvrirObj()"><div class="stico" style="background:#FFF8E1">🎯</div><div class="stii"><div class="stitl" id="st-obj">Objectif journalier</div><div class="stisub" id="st-obj-s">Fixer un objectif</div></div><span class="starr">›</span></div>
+        <div class="stit2" data-exp="1" onclick="ouvrirObj()"><div class="stico" style="background:#FFF8E1">🎯</div><div class="stii"><div class="stitl" id="st-obj">Objectif journalier</div><div class="stisub" id="st-obj-s">Fixer un objectif</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirDep()"><div class="stico" style="background:#FFEBEE">💸</div><div class="stii"><div class="stitl" id="st-dep">Dépenses boutique</div><div class="stisub" id="st-dep-s">Loyer, électricité...</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="ouvrirFourn()"><div class="stico" style="background:#E3F2FD">🚚</div><div class="stii"><div class="stitl" id="st-fourn">Fournisseurs</div><div class="stisub" id="st-fourn-s">Gérer et commander</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirClot();goBack()"><div class="stico" style="background:#E8F5E9">🌙</div><div class="stii"><div class="stitl" id="st-clot">Clôture journée</div><div class="stisub" id="st-clot-s">Rapport du soir</div></div><span class="starr">›</span></div>
@@ -4279,7 +4290,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       <div class="stcd">
         <div class="stit2" onclick="changerDeBoutique()"><div class="stico" style="background:#EDE7F6">🔀</div><div class="stii"><div class="stitl" id="st-chgb">Changer de boutique</div><div class="stisub" id="st-chgb-s">Ouvrir une autre boutique de ce numéro, sans re-saisir le PIN</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="ouvrirMesBoutiques()"><div class="stico" style="background:#FFF3E0">🏬</div><div class="stii"><div class="stitl">Ajouter une boutique par son code</div><div class="stisub">Rejoindre une boutique qui n'est pas sur ce numéro</div></div><span class="starr">›</span></div>
-        <div class="stit2" onclick="contacterSupport()"><div class="stico" style="background:#E8F5E9">📞</div><div class="stii"><div class="stitl">Contacter le support</div><div class="stisub">Assistance via WhatsApp</div></div><span class="starr">›</span></div>
+        <div class="stit2" data-exp="1" onclick="contacterSupport()"><div class="stico" style="background:#E8F5E9">📞</div><div class="stii"><div class="stitl">Contacter le support</div><div class="stisub">Assistance via WhatsApp</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="ouvrirParrainage()"><div class="stico" style="background:#EDE7F6">🤝</div><div class="stii"><div class="stitl">Programme parrainage</div><div class="stisub">Inviter une boutique et gagner des bonus</div></div><span class="starr">›</span></div>
       </div>
     </div>
@@ -6690,7 +6701,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.15'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.16'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -9619,16 +9630,27 @@ function construireOngletsParams(){
     var sec=el?(el.classList&&el.classList.contains('stsc')?el:el.closest('.stsc')):null;
     if(sec&&P[dest])P[dest].appendChild(sec);
   }
-  bouger(src.querySelector('.stsc'),'boutique');        // bloc "mode expert" (1er)
+  // ⚠️ 23.16 — CE QUI EST À L'ÉQUIPE VA DANS « ÉQUIPE », CE QUI EST À LUI
+  // DANS « COMPTE ». Le code de la boutique et le PIN équipe (« partage-les
+  // avec tes vendeurs ») occupaient la moitié de l'écran AVANT les onglets,
+  // à chaque visite ; « Changer mon PIN » et l'empreinte étaient dans
+  // « Boutique », sous l'objectif journalier (0 boutique sur 28 s'en sert).
+  var _expert=src.querySelector('.stsc');                // bloc « mode expert » (1er)
+  var _qr=document.querySelector('#s-settings .sthdr .qr-wrap');
+  if(_qr&&P.users){_qr.classList.add('qr-equipe');P.users.insertBefore(_qr,P.users.firstChild);}
   bouger('equipe-lst','users');
   bouger('sec-commandes','stock');
   bouger('sec-langdev','boutique');
   bouger('sec-abo','boutique');
-  bouger('sec-assist','boutique');
   bouger('sec-rythme','vente');
+  bouger('sec-securite','secu');
   bouger('tog-veille','secu');
   bouger('sec-patron-backup','secu');
+  bouger('sec-assist','secu');
+  bouger(_expert,'secu');
   bouger('st-logout','secu');
+  var _noms={boutique:['Boutique','Shop'],users:['Équipe','Team'],stock:['Articles','Items'],vente:['Ventes','Sales'],secu:['Compte','Account']};
+  Object.keys(_noms).forEach(function(k){var e=document.getElementById('tb-'+k);if(e)e.textContent=_noms[k][lang==='fr'?0:1];});
   // 3) Tout ce qui resterait part dans Boutique (sécurité : ne rien perdre)
   Array.prototype.slice.call(src.querySelectorAll('.stsc')).forEach(function(s){P.boutique.appendChild(s);});
   src.style.display='none';
@@ -32179,7 +32201,10 @@ function majBoutonsInstaller(){
     // Une boutique sans article n'a qu'une chose à faire : choisir ce
     // qu'elle vend. La carte verte attend le premier article.
     var _vide=false;try{_vide=!(DB&&DB.articles&&DB.articles.length);}catch(e){}
-    c.style.display=(montrer&&!ferme&&!_dm&&!_vide)?'flex':'none';
+    // 23.16 — un seul message à la fois sur la caisse : si le bandeau
+    // (annonce, photos, empreinte) est là, la carte attend qu'il parte.
+    var _ann=document.getElementById('annonce-banner'),_occupe=!!(_ann&&_ann.style.display==='flex');
+    c.style.display=(montrer&&!ferme&&!_dm&&!_vide&&!_occupe)?'flex':'none';
     var ct=document.getElementById('cai-install-t');
     if(ct)ct.textContent=fr?'Garde MyBoutiQ sur ton écran d\'accueil — elle s\'ouvre plus vite, et sans réseau.'
                            :'Keep MyBoutiQ on your home screen — faster, and offline.';
@@ -32199,6 +32224,14 @@ function majBoutonsInstaller(){
       :(montrer?'Full screen, faster to open':'How to do it from your browser');
   }
 }
+// Le bandeau qui apparaît ou part décide pour la carte « Installer ».
+(function(){
+  function brancher(){
+    var b=document.getElementById('annonce-banner');if(!b||!window.MutationObserver)return;
+    new MutationObserver(function(){try{majBoutonsInstaller();}catch(e){}}).observe(b,{attributes:true,attributeFilter:['style']});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',brancher);else brancher();
+})();
 function _annoncesVues(){
   try{return JSON.parse(localStorage.getItem('myboutiq_annonces_vues')||'[]');}catch(e){return [];}
 }
