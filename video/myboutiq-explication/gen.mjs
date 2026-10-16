@@ -9,7 +9,7 @@ const VOIX = JSON.parse(fs.readFileSync(path.join(P, 'voix.json'), 'utf8'));
 const W = 1080, H = 1920;
 
 // ── Minutage ─────────────────────────────────────────────────────────
-const LEAD = { 1: 0.6 }, LEAD_DEF = 1.0, GAP = 0.45, TAIL = 0.9;
+const LEAD = { 1: 0.6 }, LEAD_DEF = 0.9, GAP = 0.32, TAIL = 0.8;
 const frames = [...new Set(VOIX.map(v => v.frame))];
 let t = 0;
 const scenes = frames.map(f => {
@@ -35,6 +35,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 // cap = capture, ring = cadre orange [x,y,w,h] en px CSS de l'app (390×844),
 // zoom = extrait agrandi, tap = doigt [x,y] (ou [[x,y],[x,y]] plusieurs touches).
 const TEL = {
+  // v2 — DIALOGUE : un temps par RÉPLIQUE (SCRIPT-dialogue.md). cap2 = autre capture au milieu de la réplique.
   4: { k: '1 · Commencer', h: 'Ta boutique en une minute', b: {
     1: { cap: '01-site', ring: [20, 356, 350, 57], tap: [195, 384] },
     2: { cap: '02-creer', ring: [39, 464, 312, 52] },
@@ -47,57 +48,50 @@ const TEL = {
     4: { cap: '22-recherche', zoom: [8, 186, 374, 150] } } },
   6: { k: '3 · Vendre', h: 'Vendre en trois touches', b: {
     1: { cap: '04-caisse' },
-    2: { cap: '04-caisse', ring: [137, 375, 116, 179], tap: [[195, 450], [195, 450]] },
-    3: { cap: '05-panier', zoom: [15, 706, 360, 74] },
-    4: { cap: '06-paiement', ring: [15, 196, 360, 92], zoom2: { at: 0.55, r: [22, 536, 346, 140] } },
-    5: { cap: '06-paiement', zoom: [22, 536, 346, 140] },
-    6: { cap: '07-succes', ring: [70, 526, 76, 60], zoom: [60, 426, 270, 80] } } },
+    2: { cap: '04-caisse', ring: [137, 375, 116, 179], tap: [[195, 450], [195, 450]], cap2: { at: 0.6, cap: '05-panier' }, zoom2: { at: 0.62, r: [15, 706, 360, 74], cap: '05-panier' } },
+    3: { cap: '06-paiement', ring: [15, 196, 360, 92], zoom2: { at: 0.6, r: [22, 536, 346, 140] } },
+    4: { cap: '06-paiement', zoom: [22, 536, 346, 140] },
+    5: { cap: '07-succes', ring: [70, 526, 76, 60], zoom: [60, 426, 270, 80] } } },
   7: { k: '4 · Gros et détail', h: 'Détail en haut, gros en bas', b: {
     1: { cap: '08-gros' },
-    2: { cap: '08-gros', ring: [16, 460, 108, 34] },
-    3: { cap: '08-gros', ring: [16, 492, 108, 58], zoom: [8, 371, 124, 187] },
-    4: { cap: '23-nego', ring: [19, 300, 352, 130] },
-    5: { cap: '23-nego', zoom: [15, 296, 360, 135], ring: [15, 690, 360, 46] } } },
+    2: { cap: '08-gros', ring: [16, 460, 108, 34], ring2: { at: 0.45, r: [16, 492, 108, 58] }, zoom2: { at: 0.5, r: [8, 371, 124, 187] } },
+    3: { cap: '23-nego', ring: [19, 300, 352, 130] },
+    4: { cap: '23-nego', zoom: [15, 296, 360, 135], ring: [15, 690, 360, 46] } } },
   8: { k: '5 · Le crédit', h: 'Chaque dette, notée pour toi', b: {
     1: { cap: '10-credit' },
-    2: { cap: '10-credit', ring: [303, 425, 70, 78], ring2: { at: 0.45, r: [15, 548, 360, 42] } },
-    3: { cap: '11-clients', zoom: [15, 79, 360, 68] },
-    4: { cap: '11-clients', ring: [15, 158, 360, 62], zoom: [15, 158, 360, 62] },
-    5: { cap: '24-client', ring: [19, 534, 352, 50], zoom2: { at: 0.5, r: [15, 698, 360, 60] } },
-    6: { cap: '11-clients' } } },
+    2: { cap: '10-credit', ring: [303, 425, 70, 78], ring2: { at: 0.4, r: [15, 548, 360, 42] } },
+    3: { cap: '11-clients', ring: [15, 158, 360, 62], zoom2: { at: 0.3, r: [15, 158, 360, 62] } },
+    4: { cap: '24-client', ring: [19, 534, 352, 50] },
+    5: { cap: '24-client', zoom: [15, 698, 360, 60] } } },
   9: { k: '6 · La caisse du soir', h: 'La caisse tombe juste', b: {
-    1: { cap: '12-depense' },
-    2: { cap: '12-depense', ring: [19, 410, 352, 56], ring2: { at: 0.5, r: [19, 543, 113, 40] } },
-    3: { cap: '13-cloture', ring: [30, 556, 345, 34], zoom: [30, 556, 345, 34] },
-    4: { cap: '13-cloture', ring: [19, 628, 352, 52] },
+    1: { cap: '12-depense', ring: [19, 410, 352, 56] },
+    2: { cap: '12-depense', ring: [19, 543, 113, 40] },
+    3: { cap: '13-cloture', ring: [30, 556, 345, 34], ring2: { at: 0.6, r: [19, 628, 352, 52] } },
+    4: { cap: '13-cloture' },
     5: { cap: '13-cloture', zoom: [19, 700, 352, 56] } } },
   10: { k: '7 · Tes chiffres', h: 'Ce que tu gagnes, vraiment', b: {
     1: { cap: '14-rapports' },
-    2: { cap: '14-rapports', ring: [197, 790, 95, 54] },
-    3: { cap: '14-rapports', zoom: [15, 255, 360, 192] },
-    4: { cap: '14-rapports', ring: [10, 70, 370, 48] },
-    5: { cap: '15-valeur', zoom: [19, 180, 352, 72], ring2: { at: 0.5, r: [15, 330, 360, 130] } } } },
+    2: { cap: '14-rapports', ring: [197, 790, 95, 54], zoom2: { at: 0.3, r: [15, 255, 360, 192] } },
+    3: { cap: '15-valeur', zoom: [19, 180, 352, 72] },
+    4: { cap: '15-valeur', ring: [15, 330, 360, 130] } } },
   11: { k: '8 · Ton stock', h: 'Le stock se compte tout seul', b: {
     1: { cap: '16-stock', ring: [15, 680, 360, 60] },
-    2: { cap: '17-commander', zoom: [15, 278, 360, 124] },
-    3: { cap: '17-commander', ring: [274, 283, 101, 36], tap: [324, 301] },
+    2: { cap: '16-stock', ring: [15, 680, 360, 60] },
+    3: { cap: '17-commander', zoom: [15, 278, 360, 124], ring2: { at: 0.7, r: [274, 283, 101, 36] } },
     4: { cap: '16-stock', ring: [265, 188, 112, 66] } } },
   12: { k: '9 · Tes vendeurs', h: 'Tu vois tout, même absent', b: {
     1: { cap: '19-vendeur', ring: [0, 0, 390, 66] },
-    2: { cap: '18-inviter' },
-    3: { cap: '18-inviter', ring: [15, 225, 360, 48], ring2: { at: 0.55, r: [15, 353, 360, 48] } },
-    4: { cap: '14-rapports', ring: [15, 455, 360, 30] },
-    5: { cap: '14-rapports' } } },
+    2: { cap: '18-inviter', ring: [15, 225, 360, 48], ring2: { at: 0.55, r: [15, 353, 360, 48] } },
+    3: { cap: '14-rapports', ring: [15, 455, 360, 30] },
+    4: { cap: '14-rapports' } } },
   13: { k: '10 · Sans réseau', h: 'Sans réseau ? Tu vends.', b: {
-    1: { cap: '20-horsligne', ring: [10, 700, 370, 58] },
-    2: { cap: '20-horsligne', zoom: [10, 700, 370, 58] },
-    3: { cap: '04-caisse' },
-    4: { cap: '02-creer' },
-    5: { cap: '02-creer', ring: [39, 524, 312, 52] } } },
+    1: { cap: '04-caisse' },
+    2: { cap: '20-horsligne', ring: [10, 700, 370, 58], zoom2: { at: 0.35, r: [10, 700, 370, 58] } },
+    3: { cap: '02-creer' },
+    4: { cap: '02-creer', ring: [39, 524, 312, 52] } } },
   14: { k: '11 · Le micro', h: 'Il entend le nom de l’article', b: {
     1: { cap: '04-caisse' },
-    2: { cap: '04-caisse', ring: [331, 78, 44, 44], tap: [353, 100] },
-    3: { cap: '21-micro', ring: [15, 132, 360, 22], zoom2: { at: 0.45, r: [8, 128, 374, 266] } } } },
+    2: { cap: '04-caisse', ring: [331, 78, 44, 44], tap: [353, 100], cap2: { at: 0.45, cap: '21-micro' }, zoom2: { at: 0.55, r: [8, 128, 374, 266], cap: '21-micro' } } } },
 };
 
 const STYLE_COMMUN = `
@@ -106,7 +100,7 @@ const STYLE_COMMUN = `
 
 function sceneTel(s) {
   const cfg = TEL[s.f], id = `s${String(s.f).padStart(2, '0')}`;
-  const caps = [...new Set(Object.values(cfg.b).map(b => b.cap))];
+  const caps = [...new Set(Object.values(cfg.b).flatMap(b => [b.cap, b.cap2 && b.cap2.cap].filter(Boolean)))];
   const r2s = ([x, y, w, h], pad = 6) => ({ l: x * K - pad, t: y * K - pad, w: w * K + 2 * pad, h: h * K + 2 * pad });
   let rings = '', zooms = '', taps = '', js = '';
   const capIdx = c => caps.indexOf(c);
@@ -135,11 +129,13 @@ tl.to("#${id}-tel",{opacity:1,duration:0.3},${(at + Math.max(1.6, len)).toFixed(
     const addRing = (r, a, l) => { const q = r2s(r); const rid = `${id}-r${n++}`;
       rings += `<div class="ring" id="${rid}" style="left:${q.l.toFixed(0)}px;top:${q.t.toFixed(0)}px;width:${q.w.toFixed(0)}px;height:${q.h.toFixed(0)}px"></div>`;
       js += ringJS('#' + rid, a, l); };
-    const addZoom = (r, a, l) => { const zid = `${id}-z${n++}`; zooms += zoomHTML(zid, r).replace('CAP', c.cap); js += zoomJS('#' + zid, a, l); };
+    const addZoom = (r, a, l, cap) => { const zid = `${id}-z${n++}`; zooms += zoomHTML(zid, r).replace('CAP', cap || c.cap); js += zoomJS('#' + zid, a, l); };
     if (c.ring) addRing(c.ring, at + 0.15, len - 0.1);
     if (c.ring2) addRing(c.ring2.r, at + len * c.ring2.at, len * (1 - c.ring2.at) + 0.3);
     if (c.zoom) addZoom(c.zoom, at + 0.25, len - 0.2);
-    if (c.zoom2) addZoom(c.zoom2.r, at + len * c.zoom2.at, len * (1 - c.zoom2.at) + 0.2);
+    if (c.zoom2) addZoom(c.zoom2.r, at + len * c.zoom2.at, len * (1 - c.zoom2.at) + 0.2, c.zoom2.cap);
+    if (c.cap2) { const a2 = at + len * c.cap2.at, i2 = capIdx(c.cap2.cap);
+      js += `tl.to("#${id}-cap${i2}",{opacity:1,duration:0.35},${a2.toFixed(2)});\ntl.to("#${id}-cap${capIdx(prev)}",{opacity:0,duration:0.35},${a2.toFixed(2)});\n`; prev = c.cap2.cap; }
     if (c.tap) {
       const pts = Array.isArray(c.tap[0]) ? c.tap : [c.tap];
       pts.forEach((pt, j) => { const tid = `${id}-t${n++}`;
@@ -211,8 +207,12 @@ function sceneTexte(s) {
 <div class="q" id="${id}-q2">Et ton <span class="n">bénéfice</span> ?</div>
 <div class="q" id="${id}-q3">Combien de clients te <span class="n">doivent</span> ?</div>
 <div class="q" id="${id}-q4">Si tu dois réfléchir… cette vidéo est pour toi.</div>`;
-    [1, 2, 3, 4].forEach(i => { js += `tl.fromTo("#${id}-q${i}",{opacity:0,y:60,scale:0.92},{opacity:1,y:0,scale:1,duration:0.55,ease:"back.out(1.5)"},${(at(i) - 0.1).toFixed(2)});\n`; });
-    js += `tl.to(["#${id}-q1","#${id}-q2","#${id}-q3"],{opacity:0.35,duration:0.4},${(at(4) - 0.1).toFixed(2)});\n`;
+    // v2 : F pose (1), H hésite (2), F insiste (3), H avoue (4), F conclut (5).
+    js += `tl.fromTo("#${id}-q1",{opacity:0,y:60,scale:0.92},{opacity:1,y:0,scale:1,duration:0.55,ease:"back.out(1.5)"},${(at(1) - 0.1).toFixed(2)});\n`;
+    js += `tl.fromTo("#${id}-q2",{opacity:0,y:60,scale:0.92},{opacity:1,y:0,scale:1,duration:0.55,ease:"back.out(1.5)"},${(at(3) - 0.1).toFixed(2)});\n`;
+    js += `tl.fromTo("#${id}-q3",{opacity:0,y:60,scale:0.92},{opacity:1,y:0,scale:1,duration:0.55,ease:"back.out(1.5)"},${(at(3) + B[2].duree * 0.4).toFixed(2)});\n`;
+    js += `tl.fromTo("#${id}-q4",{opacity:0,y:60,scale:0.92},{opacity:1,y:0,scale:1,duration:0.55,ease:"back.out(1.5)"},${(at(5) - 0.1).toFixed(2)});\n`;
+    js += `tl.to(["#${id}-q1","#${id}-q2","#${id}-q3"],{opacity:0.35,duration:0.4},${(at(5) - 0.1).toFixed(2)});\n`;
   } else if (s.f === 2) {
     const cartes = [['cahier', 'Le cahier se perd'], ['credit', 'Les crédits s’oublient'], ['caisse', 'La caisse ne tombe pas juste'], ['stock', 'Le stock disparaît']];
     css = `.carte{position:absolute;left:110px;right:110px;height:178px;border-radius:32px;background:rgba(255,255,255,.96);color:#200E4E;display:flex;align-items:center;gap:34px;padding:0 44px;box-shadow:0 24px 50px rgba(5,0,20,.35)}
@@ -244,7 +244,7 @@ function sceneTexte(s) {
     js += `tl.fromTo("#${id}-logo",{opacity:0,scale:0.3,rotation:-20},{opacity:1,scale:1,rotation:0,duration:0.7,ease:"back.out(1.8)"},0.1);
 tl.fromTo("#${id}-nom",{opacity:0,y:50},{opacity:1,y:0,duration:0.55,ease:"power3.out"},0.45);
 tl.fromTo(["#${id}-p1","#${id}-p2","#${id}-p3"],{opacity:0,y:40,scale:0.8},{opacity:1,y:0,scale:1,duration:0.45,ease:"back.out(2)",stagger:0.55},${(at(1) + 0.9).toFixed(2)});
-tl.fromTo("#${id}-bad",{opacity:0,y:40},{opacity:1,y:0,duration:0.55,ease:"power3.out"},${(at(2) - 0.1).toFixed(2)});\n`;
+tl.fromTo("#${id}-bad",{opacity:0,y:40},{opacity:1,y:0,duration:0.55,ease:"power3.out"},${(at(3) - 0.1).toFixed(2)});\n`;
   } else if (s.f === 15) {
     css = `#${id}-q{position:absolute;left:80px;right:80px;top:300px;text-align:center;font-weight:900;font-size:76px;line-height:1.1}
 #${id}-q span{color:#F5A623}
@@ -311,7 +311,7 @@ const subs = [];
 for (const s of scenes) for (const b of s.beats) {
   const parts = morceaux(b.texte), tot = parts.reduce((a, p) => a + p.length, 0);
   let c = s.start + b.t;
-  parts.forEach((p, j) => { const d = b.duree * p.length / tot; subs.push({ t: +c.toFixed(3), d: +(j === parts.length - 1 ? d + 0.35 : d).toFixed(3), x: p }); c += d; });
+  parts.forEach((p, j) => { const d = b.duree * p.length / tot; subs.push({ t: +c.toFixed(3), d: +(j === parts.length - 1 ? d + 0.25 : d).toFixed(3), x: p, q: b.qui || 'F' }); c += d; });
 }
 
 // ── index.html ───────────────────────────────────────────────────────
@@ -365,10 +365,12 @@ const stHosts = groupes.map((G, g) => {
 <style>
 ${STYLE_COMMUN}
 #root{position:absolute;inset:0;font-family:"Outfit",sans-serif}
-.st{position:absolute;left:0;right:0;bottom:330px;margin:0 auto;width:fit-content;max-width:980px;background:rgba(12,6,32,.82);border-radius:26px;padding:18px 32px;text-align:center;font-weight:700;font-size:46px;line-height:1.22;color:#fff;opacity:0}
+.st{position:absolute;left:0;right:0;bottom:330px;margin:0 auto;width:fit-content;max-width:980px;background:rgba(12,6,32,.84);border-radius:26px;padding:18px 32px;text-align:center;font-weight:700;font-size:46px;line-height:1.22;color:#fff;opacity:0}
+.st.h{background:#F5A623;color:#200E4E;font-weight:800}
+.st.hf{background:#fff;color:#200E4E;font-weight:900}
 </style>
 <div id="root" data-composition-id="${id}" data-width="${W}" data-height="${H}" data-layout-allow-overlap>
-${G.map((x, i) => `  <div class="st" id="${id}-${i}">${esc(x.x)}</div>`).join('\n')}
+${G.map((x, i) => `  <div class="st${x.q === 'H' ? ' h' : x.q === 'HF' ? ' hf' : ''}" id="${id}-${i}">${esc(x.x)}</div>`).join('\n')}
 </div>
 <script>
 const tl = gsap.timeline({ paused: true });

@@ -6,7 +6,7 @@ import sys, numpy as np, wave
 DUR=float(sys.argv[1]); OUT=sys.argv[2]; SR=44100; N=int(DUR*SR)
 rng=np.random.default_rng(20261016)
 L=np.zeros(N); R=np.zeros(N)
-bpm=96; beat=60/bpm; bar=4*beat
+bpm=104; beat=60/bpm; bar=4*beat   # v2 : plus de rythme (dialogue « percutant »)
 def mtof(m): return 440*2**((m-69)/12)
 def add(buf,t0,sig,g=1.0):
     s0=int(t0*SR)
@@ -20,6 +20,12 @@ def pad(freqs,length):
 def kal(f,length=1.2):
     t=np.arange(int(length*SR))/SR
     return (np.sin(2*np.pi*f*t)+0.3*np.sin(2*np.pi*f*3.01*t)*np.exp(-t*9))*np.exp(-t*4.5)
+def kick(length=0.35):
+    t=np.arange(int(length*SR))/SR; f=48+90*np.exp(-t*28)
+    return np.sin(2*np.pi*np.cumsum(f)/SR)*np.exp(-t*9)
+def basse(f,length):
+    t=np.arange(int(length*SR))/SR
+    return (np.sin(2*np.pi*f*t)+0.25*np.sin(2*np.pi*2*f*t))*np.exp(-t*3.2)*np.minimum(1,t/0.01)
 def shaker(length=0.09):
     n=int(length*SR); x=rng.uniform(-1,1,n); x=np.diff(np.concatenate([[0],x]))
     return x*np.exp(-np.arange(n)/SR*55)
@@ -37,6 +43,9 @@ while t<DUR:
         add(L if i%2 else R,t+i*beat/2,kal(mtof(n)),g); add(R if i%2 else L,t+i*beat/2,kal(mtof(n)),g*0.5)
     for i in range(8):
         add(L,t+i*beat/2+beat/4,shaker(),0.018 if i%2 else 0.03); add(R,t+i*beat/2+beat/4,shaker(),0.012)
+    for i in range(4):
+        kk=kick(); add(L,t+i*beat,kk,0.16 if i%2==0 else 0.10); add(R,t+i*beat,kk,0.16 if i%2==0 else 0.10)
+        bs=basse(mtof(ch[0]-24),beat*0.9); add(L,t+i*beat+beat/2,bs,0.07); add(R,t+i*beat+beat/2,bs,0.07)
     t+=bar; k+=1
 # entrée et sortie en fondu
 f=np.ones(N); a=int(2.5*SR); f[:a]=np.linspace(0,1,a); f[-int(4*SR):]=np.linspace(1,0,int(4*SR))
