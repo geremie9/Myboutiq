@@ -1049,6 +1049,12 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 .sinp:focus{border-color:var(--B)}.sinp::placeholder{color:var(--M);font-weight:500}
 .bmic{width:44px;height:44px;background:var(--B);border:none;border-radius:12px;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .bmic.on{background:var(--R);animation:pulse-mic 1.2s infinite}
+.bmic.on.pause{background:var(--M);animation:none}
+.ec-etat{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--T);padding:6px 2px 0;line-height:1.3}
+.ec-etat::before{content:'';flex:none;width:8px;height:8px;border-radius:50%;background:var(--R);animation:pulse-mic 1.2s infinite}
+.ec-etat.pause{color:var(--M)}
+.ec-etat.pause::before{background:var(--M);animation:none}
+.pcard.entendu{box-shadow:0 0 0 2.5px var(--B)}
 @keyframes pulse-mic{0%{box-shadow:0 0 0 0 rgba(255,0,0,.5)}70%{box-shadow:0 0 0 9px rgba(255,0,0,0)}100%{box-shadow:0 0 0 0 rgba(255,0,0,0)}}
 .bmic:active{transform:scale(.9)}
 .tscr{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
@@ -6747,7 +6753,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.21'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.22'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -12273,9 +12279,14 @@ function prixCarte(p){
   return fmt(p.px).replace(s+' ','')+s;
 }
 var ordrePrio=[];
+// 23.22 — les articles que l'écoute en continu vient d'entendre (voir
+// `_ecRemonter`) passent devant tout le reste, pour un moment.
+var _entendus=[];
 function appliquerOrdrePrio(lst){
-  if(!ordrePrio.length)return lst;
+  var _ent=[];try{_ent=_entendusActifs();}catch(e){}
+  if(!ordrePrio.length&&!_ent.length)return lst;
   var idx={};ordrePrio.forEach(function(id,i){idx[id]=i;});
+  _ent.forEach(function(id,i){idx[id]=-100+i;});
   return lst.slice().sort(function(a,b){var ia=idx.hasOwnProperty(a.id)?idx[a.id]:999999,ib=idx.hasOwnProperty(b.id)?idx[b.id]:999999;return ia-ib;});
 }
 // ⚠️ « CHAQUE ARTICLE QUI REÇOIT UNE MODIFICATION, QUELQUE CHOSE DE
@@ -27765,8 +27776,11 @@ function majBoutonMic(){
   var b=document.getElementById('btn-mic');if(!b)return;
   var fr=(lang!=='en');
   b.innerHTML=window.ico(ecouteContinue?'ecoute':'micro',21);
+  var _p=!!(ecouteContinue&&_ec.pause);
+  b.classList.toggle('pause',_p);
   b.title=ecouteContinue
-    ?(fr?'Écoute continue — toucher pour arrêter':'Listening — tap to stop')
+    ?(_p?(fr?'Écoute en pause, pas de réseau — toucher pour arrêter':'Listening paused, no network — tap to stop')
+        :(fr?'Écoute continue — toucher pour arrêter':'Listening — tap to stop'))
     :(fr?'Toucher pour dicter · rester appuyé pour l\'écoute continue'
         :'Tap to dictate · hold for continuous listening');
 }
@@ -27781,41 +27795,338 @@ document.addEventListener('DOMContentLoaded',function(){
   b.addEventListener('touchmove',fini);   // il fait défiler : ce n'est pas un appui
   b.addEventListener('touchcancel',fini);
 });
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.22 — L'ÉCOUTE EN CONTINU N'ENTEND QUE LES NOMS D'ARTICLES
+//
+//  Son idée : « le micro devrait juste entendre les noms des articles dans
+//  une conversation et réorganiser les articles instantanément. Un client
+//  parle sa langue locale mais prononce les noms des articles en français ;
+//  l'app se fout de comment, elle entend juste les noms. »
+//
+//  ⚠️ MESURÉ sur 25 phrases de comptoir (noms réels de la production,
+//  langue locale transcrite comme la reconnaissance française l'écrit) :
+//  l'ancienne règle cherchait le nom ENTIER dans la phrase. Personne ne dit
+//  « bière castel 33 cl » : 13 articles sur 23 (57 %), et un faux (« jus »
+//  pour « jus de gingembre »). Celle-ci : 23 sur 23, 0 faux, et RIEN sur les
+//  cinq phrases sans nom d'article.
+//  - un article est entendu si tous ses mots utiles sont dans la phrase
+//    (sans « 33 cl », « de », « la »…), à une lettre près pour les mots de
+//    5 lettres et plus (« pimentée » / « pimenté »), au pluriel près ;
+//  - ou par son mot DISTINCTIF seul : « castel », « guinness », « heineken ».
+//    5 lettres au moins, pas un mot de rayon (jus, huile, savon, bière…),
+//    et qu'on ne trouve que dans deux articles au plus ;
+//  - le plus précis gagne, et un mot entendu ne sert qu'une fois (« cube
+//    maggi et cube jumbo » : deux cubes, pas quatre).
+//  Les variantes comptent : « castel » fait remonter la famille « Bière »
+//  dont Castel est une sorte.
+// ══════════════════════════════════════════════════════════════════
+var _EC_VIDES={de:1,du:1,des:1,la:1,le:1,les:1,l:1,d:1,a:1,au:1,en:1,et:1,kg:1,cl:1,g:1,ml:1,avec:1,pour:1,sans:1};
+var _EC_GENERIQUES={biere:1,huile:1,savon:1,sucre:1,farine:1,jus:1,lait:1,cube:1,sardine:1,sardines:1,tomate:1,biscuit:1,biscuits:1,pain:1,boisson:1,sachet:1,fromage:1,orange:1,export:1};
+function _ecNorm(s){
+  var x=String(s||'').toLowerCase().replace(/œ/g,'oe').replace(/æ/g,'ae');
+  try{x=x.normalize('NFD').replace(/[̀-ͯ]/g,'');}catch(e){}
+  return x.replace(/['’.()\-,;:!?]/g,' ').replace(/\s+/g,' ').trim();
+}
+function _ecMots(nm){
+  return _ecNorm(nm).replace(/\b\d+([,.]\d+)?\s*(cl|l|kg|g|ml)\b/g,' ').split(' ')
+    .filter(function(w){return w&&!_EC_VIDES[w]&&!/^\d+$/.test(w);});
+}
+// Distance d'édition ≤ 1, sans table : on n'a besoin que de « à une lettre près ».
+function _ecUneLettre(a,b){
+  if(a===b)return true;
+  var la=a.length,lb=b.length;if(Math.abs(la-lb)>1)return false;
+  var i=0;while(i<la&&i<lb&&a.charAt(i)===b.charAt(i))i++;
+  if(la===lb)return a.slice(i+1)===b.slice(i+1);
+  return la>lb?a.slice(i+1)===b.slice(i):a.slice(i)===b.slice(i+1);
+}
+function _ecProche(w,k){
+  return w===k||(k.length>=5&&w.length>=4&&_ecUneLettre(w,k))||(k.length>=4&&(w===k+'s'||k===w+'s'));
+}
+// L'index des noms : refait seulement quand les articles changent.
+var _ecIdx=null,_ecIdxCle='';
+function _ecIndex(){
+  var arts=(DB&&DB.articles)||[];
+  var cle=arts.map(function(p){return p?(p.id+':'+p.nm+':'+((p.vr||[]).map(function(v){return v&&v.nm;}).join('/'))):'';}).join('|');
+  if(_ecIdx&&cle===_ecIdxCle)return _ecIdx;
+  var ent=[],motsArt={},freq={};
+  arts.forEach(function(p){
+    if(!p||p.id==null||!p.nm)return;
+    var noms=[p.nm];
+    (p.vr||[]).forEach(function(v){
+      if(!v||!v.nm)return;
+      try{if(_estGrosDeVariante(v))return;}catch(e){}
+      noms.push(p.nm+' '+v.nm);
+    });
+    noms.forEach(function(nm){
+      var k=_ecMots(nm);
+      ent.push({id:p.id,k:k});
+      var m=motsArt[p.id]||(motsArt[p.id]={});
+      k.forEach(function(w){m[w]=1;});
+    });
+  });
+  // Un mot est distinctif s'il ne revient que dans peu d'ARTICLES — une
+  // famille de cinq sortes compte une fois, pas cinq.
+  Object.keys(motsArt).forEach(function(id){Object.keys(motsArt[id]).forEach(function(w){freq[w]=(freq[w]||0)+1;});});
+  _ecIdx={ent:ent,freq:freq};_ecIdxCle=cle;
+  return _ecIdx;
+}
+// Une phrase entendue → les articles nommés dedans (identifiants, sans doublon).
+function _articlesEntendus(txt){
+  var T=_ecNorm(txt).split(' ').filter(function(w){return !!w;});
+  if(!T.length)return [];
+  var I=_ecIndex(),c=[],plein={};
+  var dans=function(k){return T.some(function(w){return _ecProche(w,k);});};
+  I.ent.forEach(function(e,n){
+    if(!e.k.length||(e.k.length===1&&e.k[0].length<3))return;
+    if(e.k.every(dans)){c.push({id:e.id,k:e.k,n:n});plein[n]=1;}
+  });
+  I.ent.forEach(function(e,n){
+    if(plein[n])return;
+    var k=e.k.filter(function(w){return w.length>=5&&!_EC_GENERIQUES[w]&&(I.freq[w]||0)<=2;});
+    for(var i=0;i<k.length;i++)if(dans(k[i])){c.push({id:e.id,k:[k[i]],n:n,faible:1});break;}
+  });
+  c.sort(function(a,b){return (b.k.length-a.k.length)||((a.faible?1:0)-(b.faible?1:0))||(a.n-b.n);});
+  // Un mot pris par un nom complet n'est plus disponible. Un mot distinctif,
+  // lui, peut désigner deux articles à la fois : « deux castel », c'est la
+  // Castel ou la Castel Milk Stout — les deux remontent, il choisit.
+  var pris={},out=[],vus={};
+  c.forEach(function(x){
+    var idx=[];
+    for(var j=0;j<x.k.length;j++){
+      var f=-1;
+      for(var i=0;i<T.length;i++)if(!pris[i]&&idx.indexOf(i)<0&&_ecProche(T[i],x.k[j])){f=i;break;}
+      if(f<0)return;
+      idx.push(f);
+    }
+    if(!x.faible)idx.forEach(function(i){pris[i]=1;});
+    if(!vus[x.id]){vus[x.id]=1;out.push(x.id);}
+  });
+  return out;
+}
+// ── Les articles entendus remontent en tête de la grille ──────────────
+// Ils passent DEVANT le classement au nombre de touches (`ordrePrio`), sans
+// le modifier : entendre un nom dans une conversation n'est pas toucher
+// l'article. Trois au plus, le dernier entendu en premier ; ils retombent
+// à leur place 3 minutes après.
+var _EC_GARDE=180000,_EC_REPETE=8000;
+function _entendusActifs(){
+  var now=Date.now();
+  _entendus=(_entendus||[]).filter(function(x){return x&&now-x.t<_EC_GARDE&&(DB.articles||[]).some(function(p){return p.id===x.id;});});
+  return _entendus.map(function(x){return x.id;});
+}
+function _ecRemonter(ids){
+  var now=Date.now(),neufs=[];
+  ids.forEach(function(id){
+    // ⚠️ Le même article n'est pas remonté deux fois de suite : la
+    // reconnaissance réécrit la phrase à chaque syllabe, et le client
+    // répète le nom. Sans ce frein, la grille sautait à chaque mot.
+    if(_ec.dernier[id]&&now-_ec.dernier[id]<_EC_REPETE)return;
+    _ec.dernier[id]=now;neufs.push(id);
+  });
+  if(!neufs.length)return;
+  neufs.slice(0,3).reverse().forEach(function(id){
+    _entendus=(_entendus||[]).filter(function(x){return x.id!==id;});
+    _entendus.unshift({id:id,t:now});
+  });
+  if(_entendus.length>3)_entendus.length=3;
+  _ecStats('tr',neufs.length);
+  _ecGrille(neufs);
+  try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}
+}
+function _ecGrille(neufs){
+  _ecEtat();
+  var sc=document.getElementById('s-caisse');
+  if(!sc||!sc.classList.contains('on'))return;
+  // Il est en train de choisir une variante : on ne lui retire pas le
+  // panneau sous le doigt. La grille prendra le nouvel ordre au prochain rendu.
+  if(typeof _varCarteId!=='undefined'&&_varCarteId!=null)return;
+  var q=(document.getElementById('src-c')||{}).value||'';
+  renderProd(q?DB.articles.filter(function(p){return p.nm.toLowerCase().indexOf(q.toLowerCase())!==-1;}):DB.articles);
+  (neufs||[]).forEach(function(id){
+    var c=document.getElementById('pc-'+id);if(!c)return;
+    c.classList.add('entendu');
+    setTimeout(function(){c.classList.remove('entendu');},1600);
+  });
+}
+// ── L'état, sous la recherche : il écoute, il a entendu, ou il est en pause ──
+function _ecEtat(){
+  var el=document.getElementById('ec-etat');
+  if(!ecouteContinue){if(el&&el.parentNode)el.parentNode.removeChild(el);return;}
+  if(!el){
+    var src=document.getElementById('src-c'),bar=src&&src.parentNode;
+    if(!bar||!bar.parentNode)return;
+    el=document.createElement('div');el.id='ec-etat';el.className='ec-etat';
+    el.setAttribute('role','status');
+    bar.parentNode.insertBefore(el,bar.nextSibling);
+  }
+  var fr=(lang!=='en');
+  el.classList.toggle('pause',!!_ec.pause);
+  if(_ec.pause){
+    el.textContent=fr?'Écoute en pause — pas de réseau. Elle reprend seule.'
+                     :'Listening paused — no network. It resumes by itself.';
+    return;
+  }
+  var noms=_entendusActifs().map(function(id){
+    var p=(DB.articles||[]).filter(function(a){return a.id===id;})[0];
+    return p?p.nm:null;
+  }).filter(function(x){return !!x;});
+  el.textContent=noms.length?((fr?'Entendu : ':'Heard: ')+noms.join(', '))
+                            :(fr?'J\'écoute les noms d\'articles':'Listening for item names');
+}
+// ── Les compteurs : ANONYMES, des nombres seulement ───────────────────
+// Ni son, ni phrase, ni nom d'article : combien de fois il l'ouvre, combien
+// de temps elle écoute, combien d'articles elle trouve, combien de pauses
+// faute de réseau. De quoi décider dans 2 ou 3 semaines si l'écoute
+// hors réseau (≈ 40 Mo à télécharger) vaut la peine. Un compteur par
+// téléphone, qui ne fait que monter — voir la règle dans `mergeDB`.
+var _ecSale=false;
+function _ecStats(k,n){
+  try{
+    if(!DB||estDemo())return;
+    var m=DB.ecoute;
+    if(!m||typeof m!=='object'||Array.isArray(m))m=DB.ecoute={};
+    var id=String(_deviceId||'').replace(/[^A-Za-z0-9_.-]/g,'').slice(0,40)||'x';
+    var s=m[id];if(!s||typeof s!=='object')s=m[id]={s:0,sec:0,tr:0,pa:0};
+    var j=isoJour();
+    if(!s.j0)s.j0=j;
+    if(s.j!==j){s.j=j;s.jrs=(Number(s.jrs)||0)+1;}
+    s[k]=(Number(s[k])||0)+(Number(n)||0);
+    _ecSale=true;
+  }catch(e){}
+}
+function _ecCompterTemps(){
+  if(!_ec.actif)return;
+  var sec=Math.round((Date.now()-_ec.actif)/1000);
+  _ec.actif=(ecouteContinue&&!_ec.pause)?Date.now():0;
+  if(sec>0&&sec<4*3600)_ecStats('sec',sec);
+}
+function _ecSauver(){if(_ecSale){_ecSale=false;try{save();}catch(e){}}}
+// ── La reconnaissance elle-même ───────────────────────────────────────
+// ⚠️ LE RÉSEAU. La reconnaissance du téléphone (Google) passe par Internet.
+// Avant, `onend` la relançait AUSSITÔT, quoi qu'il arrive : réseau coupé,
+// elle échouait en une fraction de seconde, repartait, rééchouait — un bip
+// à chaque tour sur Android, et un micro qui semblait allumé mais
+// n'entendait plus rien. Maintenant :
+// - réseau coupé : elle se met EN PAUSE, le dit sous la recherche, et
+//   réessaie seule à 3 s, 10 s, 30 s puis chaque minute — tout de suite
+//   quand le téléphone retrouve le réseau ;
+// - des fins trop rapprochées (moins de 2 s) : la relance attend de plus en
+//   plus longtemps, au lieu de boucler.
+var _EC_REPRISES=[3000,10000,30000,60000];
+var _ec={pause:false,essai:0,court:0,lance:0,actif:0,minuteur:null,vusRes:{},dernier:{}};
 var ecouteContinue=false,recogContinue=null;
+function _ecCreer(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var r=new SR();
+  r.lang=lang==='fr'?'fr-FR':'en-US';
+  r.continuous=true;r.interimResults=true;
+  r.onstart=function(){_ec.vusRes={};};
+  r.onresult=function(e){
+    if(r!==recogContinue||!ecouteContinue)return;
+    _ec.essai=0;
+    // Chaque phrase est relue à chaque syllabe ajoutée (résultats
+    // provisoires) : c'est ce qui rend la remontée instantanée. Un article
+    // déjà remonté par CETTE phrase ne l'est pas une seconde fois.
+    for(var i=e.resultIndex;i<e.results.length;i++){
+      var ids=_articlesEntendus(e.results[i][0].transcript);
+      var vus=_ec.vusRes[i]||(_ec.vusRes[i]={});
+      ids=ids.filter(function(id){if(vus[id])return false;vus[id]=1;return true;});
+      if(ids.length)_ecRemonter(ids);
+    }
+  };
+  r.onerror=function(ev){
+    if(r!==recogContinue||!ecouteContinue)return;
+    var er=ev&&ev.error,fr=(lang!=='en');
+    if(er==='not-allowed'||er==='service-not-allowed'){
+      arreterEcouteContinue(true);showToast(fr?'Micro refusé':'Mic denied');return;
+    }
+    if(er==='audio-capture'){
+      arreterEcouteContinue(true);showToast(fr?'Pas de micro disponible':'No microphone available');return;
+    }
+    if(er==='network'){_ecPause();return;}
+    // no-speech, aborted : `onend` suit, et relance avec son frein.
+  };
+  r.onend=function(){
+    if(r!==recogContinue||!ecouteContinue||_ec.pause)return;
+    _ecRelancer();
+  };
+  return r;
+}
+function _ecDemarrer(){
+  _ec.minuteur=null;
+  if(!ecouteContinue||_ec.pause||!recogContinue)return;
+  _ec.lance=Date.now();
+  try{recogContinue.start();}catch(e){}
+}
+function _ecRelancer(){
+  clearTimeout(_ec.minuteur);_ec.minuteur=null;
+  if(navigator.onLine===false){_ecPause();return;}
+  var dure=Date.now()-(_ec.lance||0);
+  if(dure>10000)_ec.essai=0;
+  _ec.court=dure<2000?(_ec.court+1):0;
+  var d=_ec.court<=1?0:Math.min(30000,1000*Math.pow(2,_ec.court-2));
+  if(d)_ec.minuteur=setTimeout(_ecDemarrer,d);else _ecDemarrer();
+}
+function _ecPause(){
+  var deja=_ec.pause;
+  _ecCompterTemps();
+  _ec.pause=true;_ec.actif=0;
+  try{if(recogContinue)recogContinue.abort();}catch(e){}
+  clearTimeout(_ec.minuteur);
+  var d=_EC_REPRISES[Math.min(_ec.essai,_EC_REPRISES.length-1)];_ec.essai++;
+  _ec.minuteur=setTimeout(_ecReprendre,d);
+  if(!deja){
+    _ecStats('pa',1);_ecSauver();
+    showToast(lang!=='en'?'Écoute en pause — pas de réseau':'Listening paused — no network');
+  }
+  _ecEtat();try{majBoutonMic();}catch(e){}
+}
+function _ecReprendre(){
+  _ec.minuteur=null;
+  if(!ecouteContinue)return;
+  if(navigator.onLine===false){
+    var d=_EC_REPRISES[Math.min(_ec.essai,_EC_REPRISES.length-1)];_ec.essai++;
+    _ec.minuteur=setTimeout(_ecReprendre,d);
+    return;
+  }
+  _ec.pause=false;_ec.court=0;_ec.actif=Date.now();
+  _ecEtat();try{majBoutonMic();}catch(e){}
+  _ecDemarrer();
+}
+window.addEventListener('online',function(){
+  if(ecouteContinue&&_ec.pause){clearTimeout(_ec.minuteur);_ec.essai=0;_ecReprendre();}
+});
+window.addEventListener('offline',function(){if(ecouteContinue&&!_ec.pause)_ecPause();});
+// L'app passe en arrière-plan : on range le temps d'écoute tant qu'on peut.
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden&&ecouteContinue){_ecCompterTemps();_ecSauver();}
+});
 function toggleEcouteContinue(){
   if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}
   if(ecouteContinue){arreterEcouteContinue();return;}
-  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  recogContinue=new SR();
-  recogContinue.lang=lang==='fr'?'fr-FR':'en-US';
-  recogContinue.continuous=true;recogContinue.interimResults=true;
-  recogContinue.onresult=function(e){
-    var txt='';
-    for(var i=e.resultIndex;i<e.results.length;i++)txt+=' '+e.results[i][0].transcript;
-    txt=txt.toLowerCase();
-    var trouve=null;
-    (DB.articles||[]).forEach(function(p){if(txt.indexOf(p.nm.toLowerCase())!==-1)trouve=p;});
-    if(trouve){
-      mettreEnAvant(trouve.id);
-      var q=document.getElementById('src-c').value;
-      renderProd(q?DB.articles.filter(function(p){return p.nm.toLowerCase().includes(q.toLowerCase());}):DB.articles);
-      if(navigator.vibrate)navigator.vibrate(15);
-    }
-  };
-  recogContinue.onerror=function(ev){if(ev.error==='not-allowed'){arreterEcouteContinue();showToast('⛔ '+(lang==='fr'?'Micro refusé':'Mic denied'));}};
-  recogContinue.onend=function(){if(ecouteContinue){try{recogContinue.start();}catch(e){}}};
-  try{recogContinue.start();}catch(e){}
+  if(recogContinue){var _v=recogContinue;recogContinue=null;try{_v.abort();}catch(e){}}
+  recogContinue=_ecCreer();
   ecouteContinue=true;
+  _ec.pause=false;_ec.essai=0;_ec.court=0;_ec.dernier={};_ec.vusRes={};_ec.actif=Date.now();
+  clearTimeout(_ec.minuteur);_ec.minuteur=null;
+  _ecStats('s',1);_ecSauver();
   var b=document.getElementById('btn-mic');if(b)b.classList.add('on');
+  if(navigator.onLine===false){_ecPause();return;}
+  _ecDemarrer();
+  _ecEtat();
   try{majBoutonMic();}catch(e){}
-  showToast('🎙️ '+(lang==='fr'?'Écoute continue activée (dis un nom d\'article)':'Continuous listening on (say an item name)'));
+  showToast(lang==='fr'?'Écoute en continu : dis un nom d\'article':'Continuous listening: say an item name');
 }
-function arreterEcouteContinue(){
+function arreterEcouteContinue(silencieux){
+  _ecCompterTemps();
   ecouteContinue=false;
-  if(recogContinue){try{recogContinue.stop();}catch(e){}}
-  var b=document.getElementById('btn-mic');if(b)b.classList.remove('on');
+  clearTimeout(_ec.minuteur);_ec.minuteur=null;_ec.pause=false;_ec.actif=0;
+  if(recogContinue){var r=recogContinue;recogContinue=null;try{r.stop();}catch(e){}}
+  _ecSauver();
+  var b=document.getElementById('btn-mic');if(b)b.classList.remove('on','pause');
+  _ecEtat();
   try{majBoutonMic();}catch(e){}
-  showToast('🎙️ '+(lang==='fr'?'Écoute continue désactivée':'Continuous listening off'));
+  if(silencieux!==true)showToast(lang==='fr'?'Écoute en continu arrêtée':'Continuous listening off');
 }
 // ═══════════════════════════════════════════
 // V9 EXTENSIONS
@@ -29025,6 +29336,21 @@ function mergeDB(base,other){
   });
   base.encaissements=Object.keys(encById).map(function(k){return encById[k];}).filter(function(e){var t=_epochEvt(e);return t==null||t>=archUp;});
   _reconcilierEncaissements(base);
+  // ⭐ 23.22 — LES COMPTEURS DE L'ÉCOUTE (des nombres, ni son ni mot). Un
+  // compteur par téléphone, qui ne fait que monter : pour chaque téléphone,
+  // la copie la plus avancée gagne. Sans cette règle, la copie du serveur
+  // remettait à zéro ce que CE téléphone venait de compter.
+  try{
+    var _ecM={},_ecTot=function(o){return (Number(o.s)||0)+(Number(o.sec)||0)+(Number(o.tr)||0)+(Number(o.pa)||0);};
+    [base.ecoute,other.ecoute].forEach(function(m){
+      if(!m||typeof m!=='object'||Array.isArray(m))return;
+      Object.keys(m).forEach(function(k){
+        var x=m[k];if(!x||typeof x!=='object')return;
+        if(!_ecM[k]||_ecTot(x)>_ecTot(_ecM[k]))_ecM[k]=x;
+      });
+    });
+    if(Object.keys(_ecM).length)base.ecoute=_ecM;
+  }catch(e){}
   // Fixé APRÈS les articles ET les clients : c'est la liste complète de ce que
   // ce téléphone garde, que `_artSnapApresFusion()` relira juste après.
   _artGardeLocal=_snap?_gardeLocal:null;
@@ -29055,6 +29381,22 @@ function migrateDBData(d){
   if(!d)return d;
   d.cfg=d.cfg||{};
   try{_neutraliserTextes(d);}catch(e){}
+  // 23.22 — compteurs de l'écoute : des nombres sous un identifiant
+  // d'appareil, rien d'autre, et douze appareils au plus.
+  if(d.ecoute!=null){
+    if(typeof d.ecoute!=='object'||Array.isArray(d.ecoute))delete d.ecoute;
+    else{
+      var _ecP={};
+      Object.keys(d.ecoute).slice(-12).forEach(function(k){
+        var x=d.ecoute[k],id=String(k).replace(/[^A-Za-z0-9_.-]/g,'').slice(0,40);
+        if(!id||!x||typeof x!=='object')return;
+        var y={};['s','sec','tr','pa','jrs'].forEach(function(c){var n=Math.floor(Number(x[c])||0);y[c]=n>0?n:0;});
+        ['j0','j'].forEach(function(c){if(/^\d{4}-\d{2}-\d{2}$/.test(String(x[c]||'')))y[c]=String(x[c]);});
+        _ecP[id]=y;
+      });
+      d.ecoute=_ecP;
+    }
+  }
   if(!Array.isArray(d.suppr))d.suppr=[]; // tombstones : articles supprimés (survit à la fusion)
   if(!Array.isArray(d.journal))d.journal=[]; // S4 : journal des gestes sensibles (prix/stock/suppression)
   if(!Array.isArray(d.erreurs))d.erreurs=[]; // ventes qu'un vendeur dit avoir ratées, en attente du patron
