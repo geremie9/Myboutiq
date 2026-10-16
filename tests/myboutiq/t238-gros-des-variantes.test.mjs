@@ -23,7 +23,8 @@ t(/carton de 24/.test(tu[0].g) && /prix \?/.test(tu[0].g), `sans prix de carton 
 t(/6\s?800/.test(tu[1].g) && /carton de 24/.test(tu[1].g), `avec son prix : « ${tu[1].g} »`);
 t(tu.every(x => !x.coupe), 'rien n\'est coupé, même sur un écran de 360 px');
 const dehors = await p.evaluate(() => { const m = document.querySelector('.pgrid .pcard .pmedia'); return m ? Math.round(m.getBoundingClientRect().height) : 0; });
-t(tu.every(x => x.img >= 62) && Math.abs(tu[0].img - dehors) <= 4, `la place de la photo : ${tu[0].img} px dedans, ${dehors} px dehors (58 avant)`);
+// 23.24 — l'image des tuiles passe à 48 px de haut (t243), dedans comme dehors.
+t(tu.every(x => x.img >= 48) && Math.abs(tu[0].img - dehors) <= 4, `la place de la photo : ${tu[0].img} px dedans, ${dehors} px dehors (58 avant la 23.19)`);
 // La barre vend toujours le carton, au prix du carton.
 await p.locator('.vinline .vtile').nth(1).locator('.vt-gros').tap(); await p.waitForTimeout(400);
 const pan = await p.evaluate(() => { try { return { total: calcTotal(), cles: Object.keys(panier) }; } catch (e) { return { err: e.message }; } });

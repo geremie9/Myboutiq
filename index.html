@@ -1671,7 +1671,7 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 /* 23.19 — « l'endroit pour la photo, comme si c'est un peu petit » : 58 px
    fixes dans une variante, toute la largeur (jusqu'à 96 px) dehors. La même
    place, dedans comme dehors. */
-.vgrid:not(.v-liste) .vtile .pmedia{width:100%;height:clamp(62px,9vw + 30px,96px);margin:0 0 7px;border-radius:12px;overflow:hidden}
+.vgrid:not(.v-liste) .vtile .pmedia{width:100%;height:clamp(48px,7vw + 22.8px,80px);margin:0 0 7px;border-radius:12px;overflow:hidden}
 .vgrid:not(.v-liste) .vtile .pmedia.pcat img{object-fit:contain}
 /* Le même repère, sur un satellite du cercle. Posé en bas, comme la puce
    d'une tuile dehors : même place, même langage. Et la cible fait 44 px —
@@ -2433,7 +2433,7 @@ body{max-width:min(100%,1200px)}
    ⚠️ Les 13 px du bas restent : ils logent la cible de 44 px de la puce.
    ══════════════════════════════════════════════════════════════════ */
 .pgrid .pcard{padding:7px 7px 13px}
-.pgrid .pcard .pmedia{width:100%;height:clamp(62px,9vw + 30px,96px);margin:0 0 7px;border-radius:12px;overflow:hidden}
+.pgrid .pcard .pmedia{width:100%;height:clamp(48px,7vw + 22.8px,80px);margin:0 0 7px;border-radius:12px;overflow:hidden}
 .pgrid .pcard .pmedia.pphoto{background:var(--BG);font-size:30px}
 .pgrid .pcard .pmedia.pphoto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .pgrid .pcard .pmedia.pcat img{object-fit:contain}
@@ -2448,7 +2448,7 @@ body{max-width:min(100%,1200px)}
 .pgros.pg2 .pg-t i{font-style:normal;font-size:9.5px;font-weight:700;opacity:.8;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .pgros.pg2.punit{border-color:rgba(41,121,255,.32);color:var(--B)}
 .pgros.pg2 .pg-t{align-items:center}
-.pgrid .pcard>.pvbdg.pvn{top:calc(7px + clamp(62px,9vw + 30px,96px) - 24px);left:auto;right:12px}
+.pgrid .pcard>.pvbdg.pvn{top:calc(7px + clamp(48px,7vw + 22.8px,80px) - 24px);left:auto;right:12px}
 .cha-autres{display:block;width:100%;margin-top:8px;padding:10px 6px;min-height:44px;background:none;border:none;color:var(--B);font-size:12.5px;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer;text-align:center}
 .facon-sw{display:flex;flex:none;background:var(--BG);border-radius:11px;padding:3px;gap:2px}
 .facon-sw button{border:none;background:none;border-radius:8px;padding:8px 11px;min-height:40px;font-size:12.5px;font-weight:800;color:var(--M);font-family:'Outfit',sans-serif;cursor:pointer}
@@ -2476,6 +2476,31 @@ body{max-width:min(100%,1200px)}
 @keyframes pAppel{50%{transform:scale(1.07);box-shadow:0 0 0 4px rgba(0,150,136,.28)}}
 .pgrid .pbas .pgros{width:100%;min-height:44px;margin:0;border-radius:12px;justify-content:center;height:auto}
 .pgrid .pbas .pgros.vide{background:#fff;box-shadow:inset 0 0 0 1.5px #C9C3D6;opacity:1;color:#7E7794}
+/* ⭐ 23.24 — LES TUILES SE SERRENT, L'IMAGE NE RÉTRÉCIT PAS.
+   « Et concernant la taille des articles ? » Mesuré à 360 px : 201 px pour
+   une tuile avec gros, 158 pour une simple — et une rangée prend la
+   hauteur de sa plus haute tuile. Chez un grossiste, chaque rangée faisait
+   ~210 px : deux rangées par écran.
+   · L'étiquette d'une famille sans prix de gros (« palette ») était un
+     bouton encadré de 44 px pour un seul mot qui ne vend rien : elle
+     devient une étiquette de 36 px. La cible du doigt reste de 44 px
+     (`.pgros::after`, qui déborde dans le bas de la carte).
+   · Les marges entre l'image, le nom, le prix et la barre : 2 px chacune.
+   · Ça ne suffisait pas : 201 → 190 px, toujours six tuiles entières.
+     L'image passe de 62 à 48 px de haut (toujours toute la largeur ; même
+     règle dedans les variantes, 23.19) : 176 px, NEUF tuiles entières
+     visibles au lieu de six. Choisi par lui sur captures, option B.
+   · 3 tuiles par rangée, pas 4 : à 79 px, « 13 000 FCFA » ne tient plus. */
+.pgrid .pbas .pgros.vide{min-height:36px;border-radius:10px}
+/* Le bas de la carte passe de 13 à 7 px pour TOUTES les tuiles : une marge
+   qui changerait d'une tuile à l'autre décalerait les barres du gros d'une
+   même rangée (t222 l'a vu : 6 px). L'étiquette fait 36 px et sa cible
+   (top −3, 44 px) déborde de 5 px : ils tiennent dans les 7. */
+.pgrid .pcard{padding-bottom:7px}
+.pgrid .pcard .pmedia{margin-bottom:5px}
+.pgrid .pbas{padding-top:5px}
+.pgrid .ppr-ov{margin-top:2px}
+.pgrid{row-gap:8px}
 /* ══════════════════════════════════════════════════════════════════
    ⭐ 23.02 — LE GROSSISTE, DE L'ENREGISTREMENT À LA VENTE
    « N'avoir pas vendu en carton ne signifie pas que les grossistes ne
@@ -6776,7 +6801,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.23'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.24'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -12765,11 +12790,17 @@ function renderProd(lst){
       (function(){var _bv=hasV?_badgeVariantes(p):'',_coin=_bv.indexOf('pvn')>=0;
         // ⭐ 23.07 — EN HAUT, LA PIÈCE ; EN BAS, LE GROS (voir `_barreGros`).
         var _vide=hasV?(prixTxt==='—'):!(Number(p.px)>0);
+        // ⭐ 23.24 — « la pièce » ne se dit que s'il y a AUSSI un gros en
+        // bas : c'est alors elle qui distingue les deux prix. Seule, une
+        // tuile vend forcément la pièce — 14 px de moins par rangée. « le
+        // kilo », « le litre », eux, disent toujours quelque chose.
+        var _bas=_barreGros(p),_lib=hasV?'':_libPiece(p);
+        if(_lib&&!_bas&&_lib===(lang==='fr'?'la pièce':'each'))_lib='';
         return '<div class="pcard-overlay"><div class="pnm-ov">'+p.nm+'</div>'
           +(_vide?('<div class="ppr-ov ppr-vide"'+(hasV?'':(' onclick="prixPieceVide(event,'+p.id+')"'))+'>'+(lang==='fr'?'Prix ?':'Price?')+'</div>'):('<div class="ppr-ov">'+prixTxt+'</div>'))
-          +(hasV?'':('<div class="ppr-lib">'+escH(_libPiece(p))+'</div>'))
+          +(_lib?('<div class="ppr-lib">'+escH(_lib)+'</div>'):'')
           +(_coin?'':_bv)+'</div>'+(_coin?_bv:'')
-          +'<div class="pbas">'+_barreGros(p)+'</div>';})()+
+          +'<div class="pbas">'+_bas+'</div>';})()+
       (inc?'<div class="sinc">✏️ '+(lang==='fr'?'À compléter':'To complete')+'</div>':'')+
       (isLow&&!inc?'<div class="slow">⚠️ '+(lang==='fr'?'Bas':'Low')+'</div>':'')+
       (isOut&&!isNeg?'<div class="sout">⛔ '+(lang==='fr'?'Épuisé':'Out')+'</div>':'')+
