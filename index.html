@@ -1062,6 +1062,18 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 .tpil{display:flex;align-items:center;gap:4px;background:var(--C);border:2px solid var(--BD);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;font-family:'Outfit',sans-serif;cursor:pointer;white-space:nowrap;color:var(--T);transition:all .2s;box-shadow:0 2px 6px rgba(0,0,0,.04)}
 .tpil.on{background:var(--P);border-color:var(--P);color:var(--A)}
 .shdr{display:flex;align-items:center;justify-content:space-between;padding:10px 15px 6px}
+/* 23.23 — la caisse rend l'écran à la vente (voir #stk-rangement) */
+#s-caisse .stats-bar,#s-caisse .shdr{display:none}
+#s-caisse .ssec{padding-bottom:10px}
+.tabs-ligne{display:flex;align-items:center;gap:8px}
+.tabs-ligne .tscr{flex:1;min-width:0}
+.tabs-ligne #btn-libre{flex:none}
+#s-caisse #annonce-banner{padding:8px 10px 8px 12px!important;align-items:center!important;cursor:pointer}
+#s-caisse #annonce-banner #annonce-titre{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#s-caisse #annonce-banner:not(.ouvert) #annonce-msg,#s-caisse #annonce-banner:not(.ouvert) #annonce-dis{display:none}
+#s-caisse #annonce-banner.ouvert #annonce-titre{white-space:normal}
+body.stk-a-faire .bnav .ni.ni-stock .ne{position:relative}
+body.stk-a-faire .bnav .ni.ni-stock .ne::after{content:'';position:absolute;top:-1px;right:-4px;width:9px;height:9px;border-radius:50%;background:var(--R);box-shadow:0 0 0 2px #fff}
 .stit{font-size:11px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.8px}
 .sact{font-size:11px;font-weight:700;color:var(--B);background:none;border:none;cursor:pointer;font-family:'Outfit',sans-serif}
 /* 23.21 — « Montant libre » : un bouton qu'on voit, pas un mot de 11 px. */
@@ -3976,10 +3988,13 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
              et pendant l'écoute une tape l'arrête. -->
         <button class="bmic" id="btn-mic" onclick="micTape()" oncontextmenu="micLongPress(event)" title="Toucher pour dicter · rester appuyé pour l'écoute continue" aria-label="Dicter"><svg class="ic" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/></svg></button>
       </div>
-      <div class="tscr" id="tabs-c"></div>
+      <!-- 23.23 — une seule ligne : les catégories défilent, « Montant libre »
+           reste au bout. La ligne « TOUS LES ARTICLES · + Ajouter » disait ce
+           que l'onglet « Tout » dit déjà, et le « + » rond fait l'ajout. -->
+      <div class="tabs-ligne"><div class="tscr" id="tabs-c"></div><button class="sact sact-puce" id="btn-libre" onclick="ouvrirMontantLibre()" style="display:none"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/></svg><span>Montant libre</span></button></div>
     </div>
     <div id="topventes" style="display:none"></div>
-    <div class="shdr"><span class="stit" id="sec-lbl"></span><button class="sact sact-puce" id="btn-libre" onclick="ouvrirMontantLibre()" style="display:none"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/></svg><span>Montant libre</span></button><button class="sact" id="btn-add" onclick="ouvrirAjouter()" style="display:none">+ Ajouter</button></div>
+    <div class="shdr"><span class="stit" id="sec-lbl"></span><button class="sact" id="btn-add" onclick="ouvrirAjouter()" style="display:none">+ Ajouter</button></div>
     <div class="cash-guide" id="cash-guide">🟢 Taper = +1 · 💰 Prix · 🔴 ✕ = -1</div>
     <!-- ⚠️⚠️ 256 ARTICLES SUR 687, DANS LES VRAIES BOUTIQUES, NE PEUVENT PAS
          ÊTRE VENDUS. Deux boutiques n'ont RIEN de vendable, quatre en ont la
@@ -3989,14 +4004,6 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
     <div id="caisse-sansprix" style="display:none;margin:0 15px 10px;background:#FFF3E0;border:1.5px solid #FFB74D;
          border-radius:12px;padding:10px 12px;font-size:12px;font-weight:800;color:#B45309;cursor:pointer"
          onclick="ouvrirPrixVite()"></div>
-    <!-- ⭐ 23.01 — « PEUT-ÊTRE QUE LES GROSSISTES TROUVENT L'APP COMPLEXE. »
-         Chez eux, chaque carton sans prix était une question posée UNE
-         PAR UNE, en pleine vente, sur la tuile. Une boutique « en gros » voit
-         ici combien il en reste, et les règle d'un seul écran (« Tout
-         configurer » a déjà la colonne du carton). Voir `majBandeauSansGros`. -->
-    <div id="caisse-sansgros" style="display:none;margin:0 15px 10px;background:#E0F2F1;border:1.5px solid rgba(0,150,136,.45);
-         border-radius:12px;padding:10px 12px;font-size:12px;font-weight:800;color:#00695C;cursor:pointer"
-         onclick="ouvrirGrilleConfig('gros')"></div>
     <!-- ⭐ « À CHAQUE FOIS UN PEU PARTOUT » — mais refermable. Celui qui
          travaille dans un onglet de navigateur perd l'app dès qu'il ferme
          l'onglet ; celui qui a dit non une fois n'a pas à le redire. -->
@@ -4009,6 +4016,60 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       <div style="flex:1;min-width:0;font-size:11.5px;font-weight:700;color:#5C4B6E;line-height:1.4" id="cai-abo-t"></div>
       <button onclick="ecrireAbonnement()" style="flex-shrink:0;background:var(--A);color:#2E1065;border:none;border-radius:9px;padding:10px 12px;font-size:11.5px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap" id="cai-abo-b">Renouveler</button>
     </div>
+    <!-- ⭐ LE DÉMARRAGE GUIDÉ (22.89). Mesuré sur le serveur : au moins six
+         boutiques créées ce mois-ci n'ont JAMAIS reçu un article, et sur les
+         sept derniers jours une seule boutique a vendu — celle du patron.
+         Il ne savait pas où il en était. Trois pas, celui à faire en gros,
+         et la carte disparaît à la première vraie vente. -->
+    <div id="demarrage" style="display:none;margin:0 15px 10px"></div>
+    <div class="pgrid" id="pgrid"></div>
+    <div style="height:20px"></div>
+  </div>
+  <button class="fab-add" id="fab-add" onclick="ouvrirAjouter()" aria-label="Ajouter des articles" title="Ajouter des articles">+</button>
+  <!-- ⚠️ (22.98) « ENCAISSER » OUVRAIT LE PANIER, PAS LE PAIEMENT.
+       Toute la barre était un seul bouton vers « Mon panier », et il fallait
+       y toucher « PAYER » pour enfin voir le paiement : un écran de plus à
+       CHAQUE vente, devant un client qui attend. Le patron : « supprime
+       l'étape du panier ». Le vert va maintenant droit au paiement — le
+       client d'un crédit s'y choisit déjà. Le reste de la barre (le nombre
+       et le total, avec sa flèche) ouvre toujours le panier, pour corriger
+       une quantité ou un prix négocié. -->
+  <div class="fcart hide" id="fcart">
+    <button class="cpill" onclick="ouvrirPanier()">
+      <div style="display:flex;align-items:center"><div class="cbub" id="cc">0</div><div class="csum"><div class="csub" id="csb">articles</div><div class="ctot" id="ctot">0</div></div><span class="cvoir" aria-hidden="true">›</span></div>
+      <div class="benc" id="btn-enc" role="button" onclick="event.stopPropagation();procederPmt()">Encaisser</div>
+    </button>
+  </div>
+  <div class="bnav">
+    <button class="ni on" onclick="navTo('caisse',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.6l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.5L21.5 8H6"/></svg></span><span class="nl" id="n-caisse">Caisse</span></button>
+    <button class="ni ni-stock" onclick="navTo('stock',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></span><span class="nl" id="n-stock">Stock</span></button>
+    <button class="ni" onclick="navTo('rapports',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg></span><span class="nl" id="n-rapports">Rapports</span></button>
+    <button class="ni" onclick="navTo('clients',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.2A6.5 6.5 0 0 1 21.5 20"/></svg></span><span class="nl" id="n-clients">Clients</span></button>
+  </div>
+</div>
+
+<!-- STOCK -->
+<div id="s-stock" class="scr">
+  <div class="mhdr">
+    <div><div class="hg">Inventaire</div><div class="hn" id="h-stock">Stock</div></div>
+    <div class="hrgt"><button class="hbtn" id="btn-add-stk" onclick="ouvrirStk(null)" style="display:none" title="Ajouter" aria-label="Ajouter"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button class="hbtn bst" onclick="goSt()" title="Paramètres" aria-label="Paramètres"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="hbtn" onclick="logout()" title="Fermer la caisse" aria-label="Fermer la caisse"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button></div>
+  </div>
+  <div class="mcont" style="padding-bottom:96px">
+    <!-- ⭐ 23.23 — LE RANGEMENT VIT ICI, PLUS SUR LA CAISSE.
+         « Seulement la moitié de l'écran est utilisée pour la vente. »
+         Mesuré à 360 × 760 : 431 px empilés avant le premier article.
+         Régler les prix de gros, installer l'app, activer l'empreinte :
+         c'est du travail de patron, pas de vente. Ces cartes vivent dans
+         Stock ; une pastille sur l'onglet dit qu'il y a quelque chose. -->
+    <div id="stk-rangement" style="padding-top:12px">
+    <!-- ⭐ 23.01 — « PEUT-ÊTRE QUE LES GROSSISTES TROUVENT L'APP COMPLEXE. »
+         Chez eux, chaque carton sans prix était une question posée UNE
+         PAR UNE, en pleine vente, sur la tuile. Une boutique « en gros » voit
+         ici combien il en reste, et les règle d'un seul écran (« Tout
+         configurer » a déjà la colonne du carton). Voir `majBandeauSansGros`. -->
+    <div id="caisse-sansgros" style="display:none;margin:0 15px 10px;background:#E0F2F1;border:1.5px solid rgba(0,150,136,.45);
+         border-radius:12px;padding:10px 12px;font-size:12px;font-weight:800;color:#00695C;cursor:pointer"
+         onclick="ouvrirGrilleConfig('gros')"></div>
     <div id="cai-install" style="display:none;margin:0 15px 10px;background:#E8F5E9;border:1.5px solid #66BB6A;
          border-radius:12px;padding:10px 12px;display:none;align-items:center;gap:10px">
       <span style="flex-shrink:0;color:#2E7D32;display:flex"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10.5l5 5 5-5"/><path d="M5 20h14"/></svg></span>
@@ -4041,45 +4102,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       <button onclick="_bioOui()" style="flex-shrink:0;background:#1565C0;color:#fff;border:none;border-radius:9px;padding:10px 12px;font-size:11.5px;font-weight:900;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap" id="cai-bio-b">Activer</button>
       <button onclick="_bioPlusTard()" aria-label="Plus tard" style="flex-shrink:0;background:transparent;border:none;color:#0D47A1;font-size:15px;font-weight:900;cursor:pointer;padding:8px 4px">✕</button>
     </div>
-    <!-- ⭐ LE DÉMARRAGE GUIDÉ (22.89). Mesuré sur le serveur : au moins six
-         boutiques créées ce mois-ci n'ont JAMAIS reçu un article, et sur les
-         sept derniers jours une seule boutique a vendu — celle du patron.
-         Il ne savait pas où il en était. Trois pas, celui à faire en gros,
-         et la carte disparaît à la première vraie vente. -->
-    <div id="demarrage" style="display:none;margin:0 15px 10px"></div>
-    <div class="pgrid" id="pgrid"></div>
-    <div style="height:20px"></div>
-  </div>
-  <button class="fab-add" id="fab-add" onclick="ouvrirAjouter()" aria-label="Ajouter des articles" title="Ajouter des articles">+</button>
-  <!-- ⚠️ (22.98) « ENCAISSER » OUVRAIT LE PANIER, PAS LE PAIEMENT.
-       Toute la barre était un seul bouton vers « Mon panier », et il fallait
-       y toucher « PAYER » pour enfin voir le paiement : un écran de plus à
-       CHAQUE vente, devant un client qui attend. Le patron : « supprime
-       l'étape du panier ». Le vert va maintenant droit au paiement — le
-       client d'un crédit s'y choisit déjà. Le reste de la barre (le nombre
-       et le total, avec sa flèche) ouvre toujours le panier, pour corriger
-       une quantité ou un prix négocié. -->
-  <div class="fcart hide" id="fcart">
-    <button class="cpill" onclick="ouvrirPanier()">
-      <div style="display:flex;align-items:center"><div class="cbub" id="cc">0</div><div class="csum"><div class="csub" id="csb">articles</div><div class="ctot" id="ctot">0</div></div><span class="cvoir" aria-hidden="true">›</span></div>
-      <div class="benc" id="btn-enc" role="button" onclick="event.stopPropagation();procederPmt()">Encaisser</div>
-    </button>
-  </div>
-  <div class="bnav">
-    <button class="ni on" onclick="navTo('caisse',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.6l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.5L21.5 8H6"/></svg></span><span class="nl" id="n-caisse">Caisse</span></button>
-    <button class="ni" onclick="navTo('stock',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></span><span class="nl" id="n-stock">Stock</span></button>
-    <button class="ni" onclick="navTo('rapports',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg></span><span class="nl" id="n-rapports">Rapports</span></button>
-    <button class="ni" onclick="navTo('clients',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.2A6.5 6.5 0 0 1 21.5 20"/></svg></span><span class="nl" id="n-clients">Clients</span></button>
-  </div>
-</div>
-
-<!-- STOCK -->
-<div id="s-stock" class="scr">
-  <div class="mhdr">
-    <div><div class="hg">Inventaire</div><div class="hn" id="h-stock">Stock</div></div>
-    <div class="hrgt"><button class="hbtn" id="btn-add-stk" onclick="ouvrirStk(null)" style="display:none" title="Ajouter" aria-label="Ajouter"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button class="hbtn bst" onclick="goSt()" title="Paramètres" aria-label="Paramètres"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="hbtn" onclick="logout()" title="Fermer la caisse" aria-label="Fermer la caisse"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button></div>
-  </div>
-  <div class="mcont" style="padding-bottom:96px">
+    </div>
     <div style="padding:12px 15px">
       <input class="sinp" style="width:100%;margin-bottom:9px" id="src-s" oninput="filtrS(this.value)" placeholder="Chercher un article">
       <div class="stkf-row" id="stk-filtres">
@@ -4101,7 +4124,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   </div>
   <div class="bnav">
     <button class="ni" onclick="navTo('caisse',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.6l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.5L21.5 8H6"/></svg></span><span class="nl" id="n-caisse2">Caisse</span></button>
-    <button class="ni on" onclick="navTo('stock',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></span><span class="nl" id="n-stock2">Stock</span></button>
+    <button class="ni on ni-stock" onclick="navTo('stock',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></span><span class="nl" id="n-stock2">Stock</span></button>
     <button class="ni" onclick="navTo('rapports',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg></span><span class="nl" id="n-rapports2">Rapports</span></button>
     <button class="ni" onclick="navTo('clients',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.2A6.5 6.5 0 0 1 21.5 20"/></svg></span><span class="nl" id="n-clients2">Clients</span></button>
   </div>
@@ -4116,7 +4139,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   <div class="mcont" style="padding-bottom:96px"><div style="padding:13px 15px" id="rpt-cont"></div></div>
   <div class="bnav">
     <button class="ni" onclick="navTo('caisse',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.6l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.5L21.5 8H6"/></svg></span><span class="nl" id="n-caisse3">Caisse</span></button>
-    <button class="ni" onclick="navTo('stock',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></span><span class="nl" id="n-stock3">Stock</span></button>
+    <button class="ni ni-stock" onclick="navTo('stock',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></span><span class="nl" id="n-stock3">Stock</span></button>
     <button class="ni on" onclick="navTo('rapports',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg></span><span class="nl" id="n-rapports3">Rapports</span></button>
     <button class="ni" onclick="navTo('clients',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.2A6.5 6.5 0 0 1 21.5 20"/></svg></span><span class="nl" id="n-clients3">Clients</span></button>
   </div>
@@ -4131,7 +4154,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   <div class="mcont" style="padding-bottom:96px"><div style="padding:13px 15px" id="cli-cont"></div></div>
   <div class="bnav">
     <button class="ni" onclick="navTo('caisse',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.6l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.5L21.5 8H6"/></svg></span><span class="nl" id="n-caisse4">Caisse</span></button>
-    <button class="ni" onclick="navTo('stock',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></span><span class="nl" id="n-stock4">Stock</span></button>
+    <button class="ni ni-stock" onclick="navTo('stock',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></span><span class="nl" id="n-stock4">Stock</span></button>
     <button class="ni" onclick="navTo('rapports',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg></span><span class="nl" id="n-rapports4">Rapports</span></button>
     <button class="ni on" onclick="navTo('clients',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.2A6.5 6.5 0 0 1 21.5 20"/></svg></span><span class="nl" id="n-clients4">Clients</span></button>
   </div>
@@ -6753,7 +6776,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.22'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.23'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -20509,6 +20532,11 @@ function proposerRafraichirPhotos(){
   var fr=(lang==='fr');
   var b=document.getElementById('annonce-banner');
   if(!b)return;
+  // ⚠️ 23.23 — ELLE ÉCRASAIT UNE ANNONCE DE MYBOUTIQ. Vu au banc t242 : le
+  // message du jour à peine affiché, la proposition des photos prenait sa
+  // place (titre, texte, geste) — et l'annonce, jamais lue, n'était jamais
+  // marquée vue. Un seul message à la fois : celui qui est là reste.
+  if(b.style.display==='flex')return;
   _annonceCourante=null;
   document.getElementById('annonce-ico').innerHTML=window.ico('image',20);
   document.getElementById('annonce-titre').textContent=fr
@@ -25341,6 +25369,7 @@ function majCompteStock(lst){
 // et la recherche en cours, sinon tout réapparaissait après chaque vente.
 var _renderStockBase=renderStock;
 renderStock=function(lst){
+  try{majBandeauSansGros();}catch(e){}   // 23.23 — sa carte vit ici maintenant
   if(lst===DB.articles&&(_stkFiltre!=='tout'||_stkQ)){appliquerFiltreStock();return;}
   if(lst===DB.articles)majCompteStock(lst);
   try{majValeurStock();}catch(e){}
@@ -32732,6 +32761,25 @@ function majBoutonsInstaller(){
   function brancher(){
     var b=document.getElementById('annonce-banner');if(!b||!window.MutationObserver)return;
     new MutationObserver(function(){try{majBoutonsInstaller();}catch(e){}}).observe(b,{attributes:true,attributeFilter:['style']});
+    // 23.23 — sur la caisse, le bandeau tient sur UNE ligne : son titre.
+    // Une annonce de MyBoutiQ (sans geste attaché) s'ouvre en entier au
+    // toucher ; les propositions (photos, empreinte) gardent leur geste.
+    new MutationObserver(function(){
+      if(b.style.display!=='flex')b.classList.remove('ouvert');
+    }).observe(b,{attributes:true,attributeFilter:['style']});
+    b.addEventListener('click',function(ev){
+      if(b.onclick||(ev.target&&ev.target.closest&&ev.target.closest('button')))return;
+      b.classList.toggle('ouvert');
+    });
+    // La pastille de l'onglet Stock : une carte de rangement l'attend.
+    var cartes=['caisse-sansgros','cai-install','cai-bio'].map(function(id){return document.getElementById(id);}).filter(Boolean);
+    var majPastille=function(){
+      var a=cartes.some(function(c){return c.style.display&&c.style.display!=='none';});
+      document.body.classList.toggle('stk-a-faire',a);
+    };
+    var mo=new MutationObserver(majPastille);
+    cartes.forEach(function(c){mo.observe(c,{attributes:true,attributeFilter:['style']});});
+    majPastille();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',brancher);else brancher();
 })();

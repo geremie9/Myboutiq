@@ -112,9 +112,12 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
   // qui manquent se règlent d'un seul écran, pas un par un sous les tuiles.
   const band = await p.evaluate(() => { const z = document.getElementById('caisse-sansgros'); return { vu: z && z.style.display !== 'none', txt: z ? z.textContent : '' }; });
   t(band.vu && /2 articles sans prix de gros/.test(band.txt), `un bandeau compte les contenants sans prix (« ${band.txt} »)`);
+  // 23.23 — ce bandeau vit dans Stock (le rangement n'est plus sur la caisse).
+  await p.evaluate(() => navTo('stock', document.querySelector('#s-caisse .ni-stock'))); await p.waitForTimeout(400);
   await p.locator('#caisse-sansgros').click(); await p.waitForTimeout(400);
   t(await p.evaluate(() => !!document.querySelector('#ov-grille.show')), 'et ouvre « Tout configurer », qui a la colonne du carton');
-  await p.evaluate(() => document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')));
+  await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); navTo('caisse', document.querySelector('#s-stock .bnav .ni')); });
+  await p.waitForTimeout(400);
   await p.locator('#pc-6').click(); await p.waitForTimeout(250);
   await p.locator('#pc-6 .pbas .pbarre').click(); await p.waitForTimeout(300);
   const c = await panier6(p);
@@ -129,8 +132,9 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
 // elle-même est au banc t215)
 {
   const { ctx, p, errs } = await caisse(boutique('detail'));
-  await p.evaluate(() => { document.getElementById('btn-add').style.display = ''; });
-  await p.locator('#btn-add').click(); await p.waitForTimeout(1200);
+  // 23.23 — « + Ajouter » sur la caisse, c'est le bouton rond (la ligne
+  // « TOUS LES ARTICLES · + Ajouter » a rendu sa place aux articles).
+  await p.locator('#fab-add').click(); await p.waitForTimeout(1200);
   const a = await p.evaluate(() => ({ cat: !!document.querySelector('#ov-choixart.show'), porte: !!document.querySelector('#ov-porte.show'),
     tit: document.getElementById('cha-tit').textContent, lien: (document.getElementById('cha-autres') || {}).textContent || '' }));
   t(a.cat && !a.porte, '« + Ajouter » ouvre directement le catalogue — plus d\'écran de choix avant');

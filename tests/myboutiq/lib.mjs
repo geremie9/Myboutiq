@@ -43,6 +43,10 @@ const pw = charger();
 // travail le proxy bloque déjà ; en CI le réseau est ouvert, et sans cette
 // règle le banc lirait le Supabase de PRODUCTION.
 const SANS_RESEAU = '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1';
+// ⚠️ Et les requêtes du SERVICE WORKER doivent passer par la garde de
+// `couperInternet` (voir plus bas) : sans cette variable, Playwright ne les
+// montre pas au contexte, et elles sortent quand même.
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
 export const chromium = {
   async launch(opts = {}) {
     opts = { ...opts, args: [...(opts.args || []), SANS_RESEAU] };
@@ -73,5 +77,14 @@ export function compteur(nom) {
 // Rien ne sort vers Internet : seul le serveur local répond. Une page qui
 // attend un CDN ou le serveur de production ne doit pas faire varier un banc.
 export async function couperInternet(p, port) {
-  await p.route('**', r => r.request().url().includes('127.0.0.1:' + port) ? r.continue() : r.abort());
+  const garde = r => r.request().url().includes('127.0.0.1:' + port) ? r.continue() : r.abort();
+  await p.route('**', garde);
+  // ⚠️ Le service worker de l'app va chercher les photos du catalogue sur le
+  // stockage Supabase (`isProductImage`), et `page.route()` ne voit pas ses
+  // requêtes. Vu le 16/10/2026 : en touchant « 5 de tes articles peuvent
+  // avoir leur photo », le banc a ouvert des connexions vers la PRODUCTION
+  // — refusées par le proxy du conteneur, pas par le banc (la règle
+  // --host-resolver-rules ne les a pas arrêtées non plus). La garde du
+  // CONTEXTE, avec PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS, les voit.
+  try { await p.context().route('**', garde); } catch (_) {}
 }
