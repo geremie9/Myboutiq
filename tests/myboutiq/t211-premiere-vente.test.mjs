@@ -34,7 +34,8 @@ const prixPad = async (p, prix, nom) => {
   await p.evaluate(() => { window.__prompts = 0; window.prompt = () => { window.__prompts++; return null; }; });
   const g = await fantomes(p);
   const titre = await p.evaluate(() => (document.querySelector('#pgrid .etg-tete') || {}).textContent || '');
-  t(/Touche ce que tu vends/.test(titre) && /juste le prix/.test(titre), `elle dit quoi faire en une phrase : « ${titre.trim().slice(0, 60)}… »`);
+  // 23.26 : le prix courant est déjà écrit — la phrase le dit.
+  t(/Touche ce que tu vends/.test(titre) && /prix courant est déjà mis/.test(titre), `elle dit quoi faire en une phrase : « ${titre.trim().slice(0, 60)}… »`);
   t(g.length === 16 && g.includes('Riz') && g.includes('Huile') && g.includes('Bougie') && g[15] === 'Autre article',
     `les 15 articles que les boutiques mettent vraiment en rayon, plus « Autre article » (${g.length})`);
   t(await p.evaluate(() => !!Array.from(document.querySelectorAll('#pgrid button')).find(x => /Beaucoup d'articles d'un coup/.test(x.textContent))
