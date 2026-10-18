@@ -845,7 +845,12 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .rpt-ess{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
 .rpt-ess>div{background:var(--C);border-radius:14px;padding:11px 10px;box-shadow:0 2px 8px rgba(0,0,0,.04);display:flex;flex-direction:column;gap:2px;min-width:0}
 .rpt-ess span{font-size:10.5px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.3px}
-.rpt-ess b{font-size:17px;font-weight:900;color:var(--T);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 23.25 — « FCFA 36 … » : à 390 px, le montant de tête était COUPÉ (vu en
+   tournant la vidéo). Le chiffre ne se coupe plus jamais ; la devise, en
+   petit, passe dessous quand la place manque. */
+.rpt-ess b{font-size:17px;font-weight:900;color:var(--T);display:flex;flex-wrap:wrap;align-items:baseline;column-gap:4px;line-height:1.15}
+.rpt-ess b em{font-style:normal;white-space:nowrap}
+.rpt-ess b small{font-size:10.5px;font-weight:800;color:var(--M)}
 .rpt-ess b.g{color:#1B7A3A}.rpt-ess b.r{color:var(--R)}
 .rpt-ess i{font-style:normal;font-size:10.5px;font-weight:700;color:var(--M)}
 .rpt-plus>summary{list-style:none;cursor:pointer;position:relative;background:var(--C);border-radius:14px;padding:13px 40px 13px 14px;font-size:13.5px;font-weight:800;color:var(--T);box-shadow:0 2px 8px rgba(0,0,0,.04);display:flex;flex-direction:column;gap:2px;margin-bottom:11px}
@@ -2110,6 +2115,13 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .cli-ajout{margin-top:11px;display:flex;align-items:center;justify-content:center;gap:8px}
 .succ-det{min-height:22px;color:#fff;font-size:15px;font-weight:800;text-align:center;padding:0 24px;line-height:1.35}
 .succ-det:empty{display:none}
+.succ-push{margin:14px 20px 0;max-width:360px;background:#fff;border-radius:18px;padding:16px 16px 14px;text-align:center;box-shadow:0 10px 30px rgba(0,60,20,.25)}
+.succ-push-t{font-size:16px;font-weight:900;color:var(--T);line-height:1.25}
+.succ-push-s{font-size:12.5px;font-weight:700;color:var(--M);margin-top:4px;line-height:1.35}
+.succ-push-b{display:flex;gap:8px;margin-top:12px}
+.succ-push-b button{flex:1;min-height:46px;border-radius:12px;font-family:Outfit,sans-serif;font-size:14px;font-weight:800;cursor:pointer}
+#succ-push-oui{background:var(--G);color:#fff;border:none}
+#succ-push-non{background:#fff;color:var(--M);border:1.5px solid var(--BD)}
 .succ-det b{display:inline-block;background:#fff;color:#0B6B33;border-radius:10px;padding:5px 12px;margin-top:4px;font-size:20px;font-weight:900}
 
 /* ── REÇU ── */
@@ -6488,6 +6500,16 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   <div class="succ-tit" id="succ-tit">Vente enregistrée !</div>
   <div class="succ-amt" id="succ-amt">0</div>
   <div class="succ-det" id="succ-det"></div>
+  <!-- ⭐ 23.25 — « Une annonce qui arrive même sans avoir ouvert l'app. »
+       Mesuré en base le 18/10 : UN téléphone inscrit aux notifications sur
+       64 boutiques — le sien. Personne ne refuse : on ne demandait presque
+       jamais (un lien « Rappelle-moi demain », et Réglages). On demande ici,
+       au moment où l'app vient de rendre service. Voir `_succProposerPush`. -->
+  <div class="succ-push" id="succ-push" style="display:none">
+    <div class="succ-push-t" id="succ-push-t">MyBoutiQ peut te prévenir, même app fermée</div>
+    <div class="succ-push-s" id="succ-push-s">Rappels et nouveautés — jamais plus d'une par jour.</div>
+    <div class="succ-push-b"><button type="button" id="succ-push-oui" onclick="succPushOui()">Oui, préviens-moi</button><button type="button" id="succ-push-non" onclick="succPushNon()">Plus tard</button></div>
+  </div>
   <div style="display:flex;gap:10px;margin-top:18px">
     <button id="succ-recu" onclick="voirRecuDepuisSucces()" style="background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.5);border-radius:12px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;min-height:48px"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="vertical-align:-3px;margin-right:6px"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg><span id="succ-recu-l">Reçu</span></button>
     <button onclick="fermerSucces()" style="background:#fff;color:var(--G);border:none;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;min-height:48px"><span id="succ-suite-l">Vente suivante</span> →</button>
@@ -6801,7 +6823,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.24'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.25'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -19203,6 +19225,39 @@ function planifierFermetureSucces(sc,rendre){
   // Une monnaie à rendre se lit le temps de compter les billets.
   _succTimer=setTimeout(function(){sc.classList.remove('show');},rendre?4000:2200);
 }
+// ⭐ 23.25 — LA PROPOSITION DES NOTIFICATIONS, APRÈS UNE VENTE.
+// Au patron seulement (`_pushDemandable` : il peut, il n'a ni accepté, ni
+// refusé, ni coupé), DEUX fois au plus dans la vie de l'app, à une semaine
+// d'écart — la même retenue que la carte de l'empreinte. Tant qu'elle est
+// là, l'écran ne se ferme pas tout seul : on ne retire pas une question
+// sous le doigt de celui qui lit.
+var _CLE_PUSH_OFFRE='mb_push_offre';
+function _succProposerPush(){
+  var bx=document.getElementById('succ-push');if(!bx)return;
+  bx.style.display='none';
+  if(!_pushDemandable())return;
+  var o={};try{o=JSON.parse(localStorage.getItem(_CLE_PUSH_OFFRE)||'{}')||{};}catch(e){}
+  var n=Number(o.n)||0;
+  if(n>=2)return;
+  if(n===1&&Date.now()-(Number(o.t)||0)<7*864e5)return;
+  try{localStorage.setItem(_CLE_PUSH_OFFRE,JSON.stringify({n:n+1,t:Date.now()}));}catch(e){}
+  var fr=(lang!=='en');
+  document.getElementById('succ-push-t').textContent=fr?'MyBoutiQ peut te prévenir, même app fermée':'MyBoutiQ can notify you, even with the app closed';
+  document.getElementById('succ-push-s').textContent=fr?'Rappels et nouveautés — jamais plus d\'une par jour.':'Reminders and news — never more than one a day.';
+  document.getElementById('succ-push-oui').textContent=fr?'Oui, préviens-moi':'Yes, notify me';
+  document.getElementById('succ-push-non').textContent=fr?'Plus tard':'Later';
+  bx.style.display='block';
+  clearTimeout(_succTimer);
+}
+function succPushOui(){
+  var bx=document.getElementById('succ-push');if(bx)bx.style.display='none';
+  fermerSucces();
+  try{pushActiver(lang!=='en'?'C\'est fait : MyBoutiQ te préviendra, même app fermée':'Done: MyBoutiQ will notify you, even with the app closed');}catch(e){}
+}
+function succPushNon(){
+  var bx=document.getElementById('succ-push');if(bx)bx.style.display='none';
+  fermerSucces();
+}
 function fermerSucces(){
   clearTimeout(_succTimer);
   var sc=document.getElementById('succ');if(sc)sc.classList.remove('show');
@@ -26066,12 +26121,14 @@ function renderRpt(){
   // s'il y a une alerte. La ligne « à compter » reste dans le détail, la
   // même que la clôture (`caisseAttendue`), et la carte la reprend.
   var _cais=(_rptPer==='jour')?caisseAttendue():null,_fr=(lang==='fr');
+  var _mt=function(v){var sy=(DB.cfg&&DB.cfg.s)||'',t=fmt(v),n=sy?t.replace(sy,''):t;n=n.replace(/^\s*-\s*/,'-').trim();
+    return '<em>'+escH(n)+'</em>'+(sy?'<small>'+escH(sy)+'</small>':'');};
   var _ess='<div class="rpt-ess">'
-    +'<div><span>'+(_fr?'Ventes':'Sales')+'</span><b>'+fmt(_V)+'</b><i>'+_N+' '+(_fr?('vente'+(_N>1?'s':'')):('sale'+(_N>1?'s':'')))+'</i></div>'
-    +'<div><span>'+(_fr?'Bénéfice net':'Net profit')+'</span><b class="'+(benNet<0?'r':'g')+'">'+fmt(benNet)+'</b><i>'+(_fr?'marge ':'margin ')+m+' %</i></div>'
+    +'<div><span>'+(_fr?'Ventes':'Sales')+'</span><b>'+_mt(_V)+'</b><i>'+_N+' '+(_fr?('vente'+(_N>1?'s':'')):('sale'+(_N>1?'s':'')))+'</i></div>'
+    +'<div><span>'+(_fr?'Bénéfice net':'Net profit')+'</span><b class="'+(benNet<0?'r':'g')+'">'+_mt(benNet)+'</b><i>'+(_fr?'marge ':'margin ')+m+' %</i></div>'
     +(_cais!=null
-      ?('<div><span>'+(_fr?'Espèces à compter':'Cash to count')+'</span><b>'+fmt(_cais)+'</b><i>'+(_fr?'dans la caisse':'in the drawer')+'</i></div>')
-      :('<div><span>'+(_fr?'Dépenses':'Expenses')+'</span><b>'+fmt(totalDep)+'</b><i>'+escH(_motP)+'</i></div>'))
+      ?('<div><span>'+(_fr?'Espèces à compter':'Cash to count')+'</span><b>'+_mt(_cais)+'</b><i>'+(_fr?'dans la caisse':'in the drawer')+'</i></div>')
+      :('<div><span>'+(_fr?'Dépenses':'Expenses')+'</span><b>'+_mt(totalDep)+'</b><i>'+escH(_motP)+'</i></div>'))
     +'</div>';
   var _ouvert=false;try{_ouvert=sessionStorage.getItem('mb_rpt_plus')==='1';}catch(e){}
   c.innerHTML=_rptBarrePeriodes()+_ess+c.innerHTML+_alertes+_dernieres
@@ -31485,6 +31542,7 @@ encaisser=function(){
   var _rendu=0;try{_rendu=_succDetail(paiement,total,clientNm);}catch(e){}
   var sc=document.getElementById('succ');sc.classList.add('show');if(navigator.vibrate)navigator.vibrate([50,30,50]);
   planifierFermetureSucces(sc,_rendu>0);
+  try{_succProposerPush();}catch(e){}
   try{_guideApresVente(total,ben,lignes);}catch(e){}
 };
 // La ligne sous le montant : ce qu'il doit faire MAINTENANT. Le reçu en
