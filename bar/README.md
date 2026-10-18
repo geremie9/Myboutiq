@@ -245,6 +245,87 @@ consigne impossible. Il dit désormais que la vente n'est PAS enregistrée, et q
 Ce qui reste : l'archive se relit à la main (il n'y a pas d'import), et le quota
 n'est qu'un délai, pas une réponse — la réponse est la sauvegarde en ligne.
 
+## La sauvegarde en ligne
+
+Un téléphone se perd, se casse, se vole ; la mémoire du navigateur est bornée. La
+seule copie était un fichier que personne ne faisait. La sauvegarde en ligne garde
+une copie **chiffrée** du bar sur un serveur — sans que ce serveur puisse la lire.
+
+**Elle dort tant qu'aucun projet n'est configuré** (`SUPA_CFG` en tête du module, `window.MYBAR_SUPA`
+en test) : sans projet, la carte, le bouton « avec ma clé » et tout appel réseau
+sont absents (banc `nuage.test.js`, scénario 0).
+
+### Le principe
+
+- **Pas de compte.** Un patron de bar n'a pas toujours d'adresse e-mail, et un SMS de
+  vérification coûte à chaque connexion. La **clé de sauvegarde** EST l'identité :
+  20 symboles tirés au hasard (`crypto.getRandomValues`) dans un alphabet sans
+  I, L, O, U — 100 bits, affichés `XXXX-XXXX-XXXX-XXXX-XXXX`. À la saisie, majuscules,
+  tirets et espaces n'ont pas d'importance, et O/I/L se lisent 0/1/1.
+- **Le serveur ne peut rien lire.** De la clé, HKDF-SHA256 (sel `mybar-sauvegarde-v1`)
+  dérive deux choses *indépendantes* : un **identifiant** (info `identifiant`, 256 bits, base64url,
+  43 caractères) envoyé au serveur, qui ne le range que sous forme de **SHA-256** ; et une
+  **clé AES-GCM-256** (info `chiffrement`) qui ne quitte jamais le téléphone. La base est
+  compressée (gzip) puis chiffrée : `{v:1,z,iv,ct}`. Le banc la relit **depuis Node, sans le code de l'app**,
+  avec la seule clé — le format est un contrat.
+- **Sans les codes.** On envoie `copieSansCodes()` : jamais de code patron ni de code d'équipe,
+  comme dans le fichier de sauvegarde. Après une restauration depuis un téléphone neuf, le
+  code patron est redemandé (quatre chiffres ne se protègent pas par hachage).
+- **Perdre la clé, c'est perdre la sauvegarde.** C'est le prix d'un serveur aveugle, et
+  l'application le dit **avant** d'activer quoi que ce soit, sans rien envoyer tant que
+  le patron n'a pas confirmé « J'ai noté ma clé ». Un patron qui s'est trompé peut effacer la copie.
+
+### Le coût en données (mesuré)
+
+3 040 additions → ~50 Ko envoyés (compressées). Au plus **un envoi toutes les 30 minutes**,
+**jamais sans changement** (`save()` ne fait que lever un drapeau ; `nuageTic()` décide),
+jamais en mode « économie de données » (`navigator.connection.saveData`), jamais deux à la fois, plus
+**un envoi à la clôture du service** (le bon moment, une fois par jour). Après une erreur, un nouvel essai
+au plus toutes les 10 minutes. Le bouton « Sauvegarder maintenant » reste disponible dans tous les cas.
+
+### Deux téléphones, une clé : jamais de choix à la place du patron
+
+Chaque écriture porte la révision que le téléphone croit être en ligne. Si quelqu'un a écrit entre
+temps, le serveur répond `conflit` au lieu d'écraser. Un envoi **automatique** n'ouvre alors
+**aucune fenêtre** (on ne coupe pas une addition) : il lève une alerte rouge. Sur un geste du patron,
+il choisit — **reprendre la version en ligne** (ses codes locaux sont gardés, pas redemandés)
+ou **garder ce téléphone** (on écrase en connaissance de cause), ou décider plus tard.
+Ce n'est **pas** de la synchronisation : deux téléphones qui travaillent en même temps ont chacun
+des ventes que l'autre n'a pas, et une seule version survit au choix. La synchronisation multi-téléphones
+est la phase suivante.
+
+### Ce qui n'est pas couvert (à dire tel quel)
+
+- **La clé perdue ne se récupère pas.** Aucun courriel, aucun SMS, personne à appeler.
+- **Pas de limite de débit côté serveur** : un script qui invente des identifiants peut remplir
+  la base. Parade partielle : plafond de 300 Mo sur la table (`plein`) — **non testé en volume**, la
+  base gratuite est de 500 Mo. Une vraie limite demanderait un passage par une fonction de bord.
+- **Les navigateurs sans `CompressionStream`** envoient sans compresser (plus lourd) ; ceux sans
+  `DecompressionStream` ne peuvent pas relire une copie compressée par un autre (message dédié).
+- La copie en ligne n'est pas touchée par « Tout effacer » : le téléphone oublie la clé, l'écran de
+  confirmation le dit avant.
+- Le serveur n'a **jamais** été joint par un vrai navigateur sur un vrai projet Supabase :
+  le SQL est éprouvé sur un PostgreSQL 16 jetable, le client sur un faux domaine interceptant les
+  appels (voir ci-dessous).
+
+### Comment c'est vérifié
+
+- `tests/mybar/nuage.test.js` : 29 pas dans un vrai navigateur (activation sans rien envoyer, ce que
+  voit le serveur, relecture depuis Node, rythme, économie de données, hors-ligne, clôture,
+  restauration sur téléphone neuf avec clé mal saisie, conflits, copie altérée, droits, gros bars, effacement).
+  Le serveur est une copie JavaScript du contrat ; avec `MYBAR_PG_DB=<base migrée>` (+ `PGHOST`, `PGPORT`,
+  `PGUSER`), **la même suite passe contre le vrai PostgreSQL**, appelé en rôle `anon`.
+- `tests/mybar/sql/run.sh` : le SQL seul, sur une base jetable avec des rôles et des droits par défaut
+  « à la Supabase » — droits retirés, RLS sans règle, identifiant stocké en hachage, révisions, conflit,
+  course entre deux sessions.
+- Le banc a été **éprouvé par mutation** : douze défauts introduits un à un dans l'app (clé envoyée,
+  délai supprimé, fenêtre ouverte en plein service, `saveData` ignoré, codes envoyés, codes perdus à la reprise,
+  révision toujours 0, double envoi, conflit ignoré, clôture en économie de données, normalisation de la clé, texte clair
+  ajouté) — chacun fait échouer au moins un pas. Deux ont d'abord survécu (délai de 30 min masqué par le délai de
+  reprise ; clôture en économie de données) : les pas ont été corrigés.
+- Le SQL est dans `base-de-donnees/mybar/` : **il ne s'applique jamais au projet Supabase de MyBoutiQ**
+  (voir le LISEZMOI de ce dossier).
+
 ## Les deux adresses, et ce que ça coûte
 
 MyBar est servie à deux endroits : la racine de son sous-domaine, et le
@@ -291,7 +372,8 @@ réseau — ce qui ne concerne pas l'app posée sur l'écran d'accueil.
 ## Données
 
 Tout est dans `localStorage` (clé `mybar_v1`) : rien ne part sur
-Internet. Sauvegarde complète en `.json` et export des ventes en `.csv`
+Internet, **sauf si le patron active la sauvegarde en ligne** (copie chiffrée, voir plus haut).
+Sauvegarde complète en `.json` et export des ventes en `.csv`
 depuis les Paramètres. Vingt pays et monnaies ; les prix de la carte de
 départ sont transposés dans la monnaie locale à la création.
 

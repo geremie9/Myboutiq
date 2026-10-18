@@ -351,6 +351,9 @@ input,select,textarea,button{font-family:'Outfit',sans-serif}
 .inst-band.adr{background:var(--Na);border-color:var(--NaD)}
 .inst-band.adr .ib-t{color:var(--NaT)}
 .inst-band.adr .ib-b{background:#8A6100}
+.cle-nuage{font:800 clamp(14px,4.7vw,21px)/1.5 ui-monospace,Menlo,Consolas,monospace;letter-spacing:1px;white-space:nowrap;text-align:center;
+  background:var(--Nv);border:2px dashed var(--NvD);color:var(--NvT);border-radius:14px;padding:16px 8px;margin:0 0 12px;
+  word-break:break-all;user-select:all;-webkit-user-select:all}
 .jauge{height:9px;border-radius:6px;background:var(--BD);overflow:hidden;margin:6px 0 4px}
 .jauge i{display:block;height:100%;border-radius:6px;background:var(--B);transition:width .4s}
 .jauge.mid i{background:var(--A)}.jauge.haut i{background:var(--R)}
@@ -852,7 +855,7 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
      déchet.
    • on achète en casiers, on vend à la bouteille.
    ══════════════════════════════════════════════════════════════════ */
-var BUILD='1.9';
+var BUILD='2.0';
 
 /* ══════════════════════════════════════════════════════════════════
    LA LANGUE
@@ -1480,6 +1483,7 @@ function rendreVitrine(){
      '<button class="vit-cta" onclick="allerInscription()">'+L('Ouvrir mon bar — c\'est gratuit','Open my bar — it is free')+'</button>'+
      '<button class="vit-cta2" onclick="chargerDemo()">'+L("👀 Voir une soirée d'exemple",'👀 See a sample night')+'</button>'+
      '<button class="vit-cta3" onclick="goScreen(\'s-login\')">'+L("J'ai déjà un bar",'I already have a bar')+'</button>'+
+     '<button class="vit-cta3" onclick="ouvrirRetrouver()">🔑 '+L('Retrouver mon bar (nouveau téléphone)','Find my bar (new phone)')+'</button>'+
      '<button class="vit-cta3" id="vit-install" style="display:'+(_dejaInstallee()?'none':'')+'" onclick="installerApp()">'+
         L("📲 Installer l'application",'📲 Install the app')+'</button>'+
    '</div>'+
@@ -1854,13 +1858,267 @@ function demanderStockageDurable(){
     try{localStorage.setItem('mybar_persist',ok?'1':'0');}catch(e){}
   }).catch(function(){});}catch(e){}
 }
+
+/* ╔═ LA SAUVEGARDE EN LIGNE ════════════════════════════════════════════════
+   La mémoire d'un bar est bornée (~90 jours) et un téléphone se perd, se casse, se
+   vole : jusqu'ici, la seule copie était un fichier que personne ne faisait.
+
+   ⚠️ LE SERVEUR NE PEUT RIEN LIRE, PAR CONSTRUCTION. Le téléphone chiffre sa base
+   (AES-GCM, clé dérivée par HKDF d'une « clé de sauvegarde » de 20 caractères tirée
+   au hasard) avant de l'envoyer ; l'identifiant sous lequel le serveur la range est
+   dérivé de la même clé, mais ce n'est PAS la clé, et il n'en donne pas de quoi
+   déchiffrer. Les ardoises — noms et numéros de clients — ne sont pas à nous.
+   ⚠️ PAS DE COMPTE : un patron de bar n'a pas toujours d'adresse e-mail, et un SMS de
+   vérification coûte à chaque connexion. La clé EST l'identité. Perdue, la copie est
+   perdue : l'application le dit avant d'activer quoi que ce soit.
+   ⚠️ ET LES DONNÉES ONT UN PRIX : pas d'envoi plus d'une fois toutes les 30 minutes, jamais
+   sans changement, jamais en mode « économie de données », et une fois en fin de service. */
+var SUPA_CFG=window.MYBAR_SUPA||{url:'',key:''};
+var NUAGEKEY='mybar_nuage',APPAREILKEY='mybar_appareil',ALPHA_CLE='0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+var NUAGE_DELAI=30*60000,NUAGE_RETRY=10*60000,nuageEnCours=false,nuageVersion=0,nuageSaleLocal=false;
+function nuageDispo(){return !!(SUPA_CFG&&SUPA_CFG.url&&SUPA_CFG.key&&window.crypto&&crypto.subtle);}
+function nuageEtat(){var e={};try{e=JSON.parse(localStorage.getItem(NUAGEKEY)||'{}')||{};}catch(x){}return e;}
+function nuagePoser(m){var e=nuageEtat();for(var k in m)e[k]=m[k];try{localStorage.setItem(NUAGEKEY,JSON.stringify(e));}catch(x){}return e;}
+function nuageActif(){return nuageDispo()&&!!nuageEtat().cle;}
+function appareilNom(){
+  var id='';try{id=localStorage.getItem(APPAREILKEY)||'';}catch(e){}
+  if(!id){id=Math.random().toString(16).slice(2,6).toUpperCase();try{localStorage.setItem(APPAREILKEY,id);}catch(e){}}
+  return (poste()==='comptoir'?L('Comptoir','Counter'):poste()==='stock'?L('Stock','Stock'):L('Téléphone','Phone'))+' '+id;
+}
+function dateCourte(ts){return jour(ts)+' '+heure(ts);}
+function ilYa(ts){
+  if(!ts)return L('jamais','never');
+  var m=Math.floor((now()-ts)/60000);
+  if(m<1)return L("à l'instant",'just now');
+  if(m<60)return L('il y a '+m+' min',m+' min ago');
+  var h=Math.floor(m/60);if(h<48)return L('il y a '+h+' h',h+' h ago');
+  var j=Math.floor(h/24);return L('il y a '+j+' j',j+' d ago');
+}
+/* La clé : 20 symboles d'un alphabet sans I, L, O, U (on ne les confond pas à la lecture),
+   soit 100 bits — hors de port d'une recherche exhaustive. */
+function genererCleNuage(){var b=new Uint8Array(20),s='';crypto.getRandomValues(b);for(var i=0;i<20;i++)s+=ALPHA_CLE.charAt(b[i]&31);return s;}
+function formaterCle(c){return c.replace(/(.{4})(?=.)/g,'$1-');}
+function normaliserCle(t){
+  var s=String(t||'').toUpperCase().replace(/O/g,'0').replace(/[IL]/g,'1').replace(/[^0-9A-Z]/g,'');
+  return (s.length===20&&/^[0-9A-HJKMNP-TV-Z]+$/.test(s))?s:null;
+}
+function octetsB64(u){var s='';for(var i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s);}
+function b64Octets(t){var b=atob(t),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
+function b64u(u){return octetsB64(u).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+async function deriverCle(cle){
+  var te=new TextEncoder(),mat=await crypto.subtle.importKey('raw',te.encode(cle),'HKDF',false,['deriveBits','deriveKey']);
+  var sel=te.encode('mybar-sauvegarde-v1');
+  var id=await crypto.subtle.deriveBits({name:'HKDF',hash:'SHA-256',salt:sel,info:te.encode('identifiant')},mat,256);
+  var aes=await crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt:sel,info:te.encode('chiffrement')},mat,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+  return {id:b64u(new Uint8Array(id)),aes:aes};
+}
+async function fluxVers(u,flux){return new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(flux)).arrayBuffer());}
+async function emballer(obj,aes){
+  var u=new TextEncoder().encode(JSON.stringify(obj)),z=0;
+  if(typeof CompressionStream==='function'){try{u=await fluxVers(u,new CompressionStream('gzip'));z=1;}catch(e){}}
+  var iv=crypto.getRandomValues(new Uint8Array(12));
+  var ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},aes,u));
+  return JSON.stringify({v:1,z:z,iv:octetsB64(iv),ct:octetsB64(ct)});
+}
+async function deballer(txt,aes){
+  var e=JSON.parse(txt);if(!e||e.v!==1)throw new Error('format');
+  var u=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64Octets(e.iv)},aes,b64Octets(e.ct)));
+  if(e.z){if(typeof DecompressionStream!=='function')throw new Error('ancien');u=await fluxVers(u,new DecompressionStream('gzip'));}
+  return JSON.parse(new TextDecoder().decode(u));
+}
+async function appelNuage(fn,args,ms){
+  var ctl=(typeof AbortController==='function')?new AbortController():null,t=ctl?setTimeout(function(){ctl.abort();},ms||25000):0;
+  try{
+    var r=await fetch(SUPA_CFG.url.replace(/\/$/,'')+'/rest/v1/rpc/'+fn,{method:'POST',
+      headers:{'apikey':SUPA_CFG.key,'Authorization':'Bearer '+SUPA_CFG.key,'Content-Type':'application/json'},
+      body:JSON.stringify(args),signal:ctl?ctl.signal:undefined});
+    var j=null;try{j=await r.json();}catch(e){}
+    if(!r.ok||!j||typeof j!=='object')return {ok:false,erreur:'http'+r.status};
+    return j;
+  }catch(e){return {ok:false,erreur:'reseau'};}finally{if(t)clearTimeout(t);}
+}
+
+/* ── Envoyer ── */
+async function sauvegarderEnLigne(opt){
+  opt=opt||{};
+  if(!nuageActif()||!DB||nuageEnCours)return null;
+  if(navigator.onLine===false){
+    nuagePoser({essai:now(),erreur:'reseau'});
+    if(opt.manuel)toast(L('📶 Pas de réseau — la sauvegarde partira dès son retour.','📶 No network — the backup will go as soon as it is back.'));
+    return {ok:false,erreur:'reseau'};
+  }
+  nuageEnCours=true;var v0=nuageVersion,e=nuageEtat();
+  try{
+    var k=await deriverCle(e.cle);
+    var txt=await emballer(copieSansCodes(),k.aes);
+    if(txt.length>4000000){nuagePoser({essai:now(),erreur:'trop_gros'});return {ok:false,erreur:'trop_gros'};}
+    var r=await appelNuage('bar_ecrire',{p_id:k.id,p_rev:e.rev||0,p_data:txt,p_appareil:appareilNom(),p_build:BUILD});
+    if(r.ok){
+      var change=(nuageVersion!==v0);
+      nuagePoser({rev:r.rev,maj:now(),essai:now(),erreur:'',conf:null,octets:txt.length,sale:change?1:0});
+      nuageSaleLocal=change;
+    }else if(r.erreur==='conflit'){
+      nuagePoser({essai:now(),erreur:'conflit',conf:{rev:r.rev,maj:r.maj,appareil:r.appareil||''}});
+      /* ⚠️ Un envoi automatique ne doit JAMAIS ouvrir une fenêtre au milieu d'une addition :
+         il laisse la bannière d'alerte, et la fenêtre n'apparaît que sur un geste du patron. */
+      if(opt.manuel)proposerConflitNuage(nuageEtat().conf);
+    }else nuagePoser({essai:now(),erreur:r.erreur||'?'});
+    return r;
+  }catch(x){nuagePoser({essai:now(),erreur:'local'});return {ok:false,erreur:'local'};}
+  finally{nuageEnCours=false;}
+}
+/* Une planification, pas un envoi à chaque touche : save() ne fait que lever un drapeau. */
+function nuageTic(){
+  if(!nuageActif()||!DB||!moi||document.visibilityState!=='visible')return;
+  var e=nuageEtat();
+  if(!e.sale||e.auto===0||e.erreur==='conflit'||e.erreur==='trop_gros')return;
+  if(navigator.connection&&navigator.connection.saveData)return;
+  if(now()-(e.maj||0)<NUAGE_DELAI||now()-(e.essai||0)<NUAGE_RETRY)return;
+  sauvegarderEnLigne({auto:1});
+}
+setInterval(nuageTic,60000);
+window.addEventListener('online',function(){setTimeout(nuageTic,2000);});
+
+/* ── Deux téléphones, une clé : on ne choisit jamais à la place du patron ── */
+function proposerConflitNuage(c){
+  c=c||{};
+  modal(mhead(L('⚠️ Une version plus récente est en ligne','⚠️ A newer version is online'),
+              L('Un autre téléphone a continué après celui-ci','Another phone carried on after this one'))+
+   '<div class="ovc"><div class="note rouge" style="margin:0 0 12px">'+
+     L('Dernière sauvegarde en ligne : '+esc(c.maj?dateCourte(Date.parse(c.maj)):'?')+', depuis « '+esc(c.appareil||'?')+' ». Ce téléphone ne l\'a pas : les deux ont des ventes que l\'autre n\'a pas.',
+       'Last online backup: '+esc(c.maj?dateCourte(Date.parse(c.maj)):'?')+', from "'+esc(c.appareil||'?')+'". This phone does not have it: each has sales the other lacks.')+'</div>'+
+   '<button class="bpr" onclick="resoudreConflitNuage(\'reprendre\')">'+L('⬇️ Reprendre la version en ligne (remplace ce téléphone)','⬇️ Take the online version (replaces this phone)')+'</button>'+
+   '<button class="bse bdg2" onclick="resoudreConflitNuage(\'ecraser\','+(+c.rev||0)+')">'+L('⬆️ Garder CE téléphone et écraser la version en ligne','⬆️ Keep THIS phone and overwrite the online version')+'</button>'+
+   '<button class="bse" onclick="fermerModal()">'+L('Décider plus tard','Decide later')+'</button></div>');
+}
+function resoudreConflitNuage(choix,rev){
+  fermerModal();
+  if(choix==='ecraser'){nuagePoser({rev:rev,erreur:'',conf:null});sauvegarderEnLigne({manuel:1}).then(function(){rendreSettings();});return;}
+  restaurerDepuisNuage(null,true);
+}
+
+/* ── Activer / montrer la clé ── */
+function fenetreCleNuage(cle,activation){
+  modal(mhead('🔑 '+L('Ta clé de sauvegarde','Your backup key'),L('Note-la AVANT de continuer','Write it down BEFORE you continue'))+
+   '<div class="ovc"><div class="cle-nuage" id="nu-cle-aff">'+formaterCle(cle)+'</div>'+
+   '<div class="note rouge" style="margin:0 0 12px">'+L(
+     "Cette clé est la SEULE façon de retrouver ton bar sur un autre téléphone. Le serveur ne la connaît pas et ne peut pas la régénérer : perdue, la sauvegarde est perdue. Écris-la sur papier, ou fais une capture d'écran que tu t'envoies.",
+     "This key is the ONLY way to get your bar back on another phone. The server does not know it and cannot regenerate it: lost, the backup is lost. Write it on paper, or take a screenshot and send it to yourself.")+'</div>'+
+   '<button class="bse" onclick="copierCleNuage(\''+cle+'\')">📋 '+L('Copier','Copy')+'</button>'+
+   '<button class="bse" onclick="partagerCleNuage(\''+cle+'\')">📱 '+L("L'envoyer à moi-même",'Send it to myself')+'</button>'+
+   (activation?'<button class="bpr bok" onclick="confirmerCleNuage(\''+cle+'\')">✅ '+L("J'ai noté ma clé, activer",'I wrote my key down, turn on')+'</button>'+
+               '<button class="bse" onclick="fermerModal()">'+L('Annuler','Cancel')+'</button>'
+              :'<button class="bse" onclick="fermerModal()">'+L('Fermer','Close')+'</button>')+'</div>');
+}
+function activerNuage(){if(!estPatron()||!nuageDispo())return;fenetreCleNuage(genererCleNuage(),true);}
+function afficherCleNuage(){var e=nuageEtat();if(estPatron()&&e.cle)fenetreCleNuage(e.cle,false);}
+function copierCleNuage(c){
+  var t=formaterCle(c);
+  try{navigator.clipboard.writeText(t).then(function(){toast('📋 '+L('Clé copiée.','Key copied.'));});}
+  catch(e){toast(t);}
+}
+function partagerCleNuage(c){
+  var t=L('Clé de sauvegarde MyBar — '+(DB&&DB.cfg.nom||'')+' : ','MyBar backup key — '+(DB&&DB.cfg.nom||'')+': ')+formaterCle(c);
+  if(navigator.share){navigator.share({text:t}).catch(function(){});return;}
+  try{window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');}catch(e){}
+}
+async function confirmerCleNuage(cle){
+  nuagePoser({cle:cle,rev:0,auto:1,sale:1,maj:0,essai:0,erreur:'',conf:null});nuageSaleLocal=true;
+  fermerModal();
+  toast('⏳ '+L('Première sauvegarde…','First backup…'));
+  var r=await sauvegarderEnLigne({manuel:1});
+  if(r&&r.ok)toast('☁️ '+L('Sauvegarde en ligne activée.','Online backup is on.'));
+  else if(r&&r.erreur!=='conflit')toast('⚠️ '+L("Activée, mais l'envoi n'a pas abouti : il sera réessayé.",'On, but the upload failed: it will be retried.'));
+  rendreSettings();
+}
+function basculerAutoNuage(){var e=nuageEtat();nuagePoser({auto:e.auto===0?1:0});rendreSettings();}
+async function envoyerMaintenantNuage(){
+  toast('⏳ '+L('Envoi…','Sending…'));
+  var r=await sauvegarderEnLigne({manuel:1});
+  if(r&&r.ok)toast('☁️ '+L('Sauvegardé.','Backed up.'));
+  else if(r&&r.erreur&&r.erreur!=='conflit')toast('⚠️ '+messageNuage(r.erreur));
+  rendreSettings();
+}
+async function effacerNuage(){
+  var e=nuageEtat();if(!e.cle||!estPatron())return;
+  if(!confirm(L("Effacer la copie en ligne ET oublier la clé sur ce téléphone ? Tu ne pourras plus retrouver ton bar depuis le serveur.",
+                "Erase the online copy AND forget the key on this phone? You will no longer be able to get your bar back from the server.")))return;
+  var k=await deriverCle(e.cle),r=await appelNuage('bar_effacer',{p_id:k.id});
+  if(!r.ok){toast('⚠️ '+messageNuage(r.erreur));return;}
+  try{localStorage.removeItem(NUAGEKEY);}catch(x){}
+  nuageSaleLocal=false;rendreSettings();
+  toast('🗑️ '+L('Copie en ligne effacée.','Online copy erased.'));
+}
+function messageNuage(c){
+  var m={reseau:['Pas de réseau — nouvel essai automatique.','No network — automatic retry.'],
+    conflit:['Une version plus récente est en ligne.','A newer version is online.'],
+    trop_gros:['Trop volumineuse : archive les anciennes ventes.','Too large: archive old sales.'],
+    plein:['Le serveur est plein.','The server is full.'],
+    local:["Ce téléphone n'a pas pu préparer la sauvegarde.","This phone could not prepare the backup."]}[c];
+  return m?L(m[0],m[1]):L('Le serveur a refusé ('+c+').','The server refused ('+c+').');
+}
+
+/* ── Retrouver son bar : sur un téléphone neuf, avec la clé ── */
+function ouvrirRetrouver(){
+  modal(mhead('🔑 '+L('Retrouver mon bar','Find my bar'),L('Sur ce téléphone','On this phone'))+
+   '<div class="ovc">'+
+   (nuageDispo()?'<button class="bpr" onclick="ouvrirRestaurationNuage()">☁️ '+L('Avec ma clé de sauvegarde','With my backup key')+'</button>':'')+
+   '<button class="bse" onclick="fermerModal();document.getElementById(\'fic-restore\').click()">📂 '+L('Depuis un fichier de sauvegarde','From a backup file')+'</button>'+
+   '<button class="bse" onclick="fermerModal()">'+L('Annuler','Cancel')+'</button></div>');
+}
+function ouvrirRestaurationNuage(){
+  modal(mhead('☁️ '+L('Ta clé de sauvegarde','Your backup key'),L('20 caractères, par groupes de 4','20 characters, in groups of 4'))+
+   '<div class="ovc"><div class="fld"><input class="inp" id="nu-cle" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" style="font:700 17px ui-monospace,Menlo,Consolas,monospace;letter-spacing:1px;text-align:center"></div>'+
+   '<div class="note" style="margin:0 0 12px">'+L("Majuscules ou minuscules, avec ou sans tirets : peu importe. Les lettres O, I et L ne font pas partie des clés — on lit 0 et 1.","Upper or lower case, with or without dashes: it does not matter. The letters O, I and L are never part of a key — read 0 and 1.")+'</div>'+
+   '<button class="bpr" onclick="restaurerDepuisNuage(document.getElementById(\'nu-cle\').value)">'+L('Retrouver mon bar','Find my bar')+'</button>'+
+   '<button class="bse" onclick="fermerModal()">'+L('Annuler','Cancel')+'</button></div>');
+}
+async function restaurerDepuisNuage(saisie,garderCodes){
+  var cle=(saisie==null)?nuageEtat().cle:normaliserCle(saisie);
+  if(!cle){toast(L("Cette clé n'a pas la bonne forme : 20 caractères.",'This key is not the right shape: 20 characters.'));return;}
+  if(!nuageDispo()){toast(L("La sauvegarde en ligne n'est pas disponible ici.",'Online backup is not available here.'));return;}
+  toast('⏳ '+L('Recherche de ton bar…','Looking for your bar…'));
+  var k=await deriverCle(cle),r=await appelNuage('bar_lire',{p_id:k.id});
+  if(!r.ok){
+    toast(r.erreur==='absent'?L("Aucune sauvegarde sous cette clé. Vérifie-la caractère par caractère.",'No backup under this key. Check it character by character.')
+                            :'⚠️ '+messageNuage(r.erreur));
+    return;
+  }
+  var d=null;
+  try{d=await deballer(r.data,k.aes);}catch(e){
+    toast(L("Cette sauvegarde n'a pas pu être lue sur ce téléphone (navigateur trop ancien ?).","This backup could not be read on this phone (browser too old?)."));return;}
+  appliquerSauvegarde(d,{cle:cle,rev:r.rev,maj:r.maj,appareil:r.appareil,garderCodes:garderCodes});
+}
+
+/* ── Paramètres : la carte ── */
+function carteNuage(){
+  var e=nuageEtat(),h='<div class="rcard"><div class="rct">'+L('☁️ Sauvegarde en ligne','☁️ Online backup')+'</div>';
+  if(!e.cle){
+    return h+'<div class="note bleu" style="margin:0 0 10px">'+L(
+      "Une copie CHIFFRÉE de ton bar, gardée en ligne : si ce téléphone est perdu, cassé ou volé, tu retrouves tout sur un autre avec ta clé. Le serveur ne peut rien lire — ni tes ventes, ni tes clients.",
+      "An ENCRYPTED copy of your bar, kept online: if this phone is lost, broken or stolen, you get everything back on another with your key. The server can read nothing — not your sales, not your customers.")+'</div>'+
+      '<div class="note" style="margin:0 0 10px">'+L("Elle utilise tes données mobiles : quelques centaines de Ko par envoi, au plus une fois toutes les 30 minutes (plus une fois à la clôture du service), et seulement si quelque chose a changé. Rien n'est envoyé en mode « économie de données ».",
+        "It uses your mobile data: a few hundred KB per upload, at most once every 30 minutes (plus once when you close the service), and only if something changed. Nothing is sent in data-saver mode.")+'</div>'+
+      '<button class="bpr" onclick="activerNuage()">☁️ '+L('Activer la sauvegarde en ligne','Turn on online backup')+'</button></div>';
+  }
+  var etat=e.erreur?'<span style="color:var(--R)">'+esc(messageNuage(e.erreur))+'</span>'
+          :(e.sale?L('⏳ des changements attendent','⏳ changes waiting'):L('✅ à jour','✅ up to date'));
+  h+='<div class="kv"><span class="kv-l">'+L('Dernière sauvegarde','Last backup')+'</span><span class="kv-v">'+ilYa(e.maj)+(e.octets?' · '+Math.round(e.octets/1024)+' Ko':'')+'</span></div>'+
+     '<div class="kv"><span class="kv-l">'+L('État','Status')+'</span><span class="kv-v" style="font-size:12.5px">'+etat+'</span></div>'+
+     '<div class="chips" style="margin:10px 0"><div class="chip'+(e.auto===0?'':' on')+'" onclick="basculerAutoNuage()">'+L('Envoi automatique','Automatic upload')+'</div></div>'+
+     '<button class="bse" onclick="envoyerMaintenantNuage()">⬆️ '+L('Sauvegarder maintenant','Back up now')+'</button>'+
+     '<button class="bse" onclick="afficherCleNuage()">🔑 '+L('Voir ma clé','Show my key')+'</button>'+
+     '<button class="bse bdg2" onclick="effacerNuage()">🗑️ '+L('Effacer la copie en ligne','Erase the online copy')+'</button></div>';
+  return h;
+}
 function save(){try{
   var r=+localStorage.getItem(REVKEY)||0;
   if(r>revLocale)fusionnerStocke();
   revLocale=Math.max(r,revLocale)+1;
   localStorage.setItem(REVKEY,String(revLocale));   // la révision d'abord : l'autre fenêtre la lit en recevant l'avis
   var js=JSON.stringify(DB);derniereTaille=js.length;
-  localStorage.setItem(DBKEY,js);}catch(e){
+  localStorage.setItem(DBKEY,js);
+  nuageVersion++;if(!nuageSaleLocal&&nuageActif()){nuageSaleLocal=true;nuagePoser({sale:1});}}catch(e){
   toast(L("⚠️ Mémoire de MyBar pleine — la vente N'EST PAS enregistrée. Paramètres → Données → Archiver les anciennes ventes (libérer de la place sur le téléphone ne change rien).","⚠️ MyBar storage full — the sale is NOT saved. Settings → Data → Archive old sales (freeing phone space changes nothing)."));}}
 function migrer(d){
   if(!d)return d;
@@ -2486,8 +2744,13 @@ function alertes(){
   if(mem.pct>=70)a.push({e:'🗄️',cls:mem.pct>=90?'rouge':'',
     txt:L('La mémoire de MyBar est pleine à '+mem.pct+' %'+(mem.jours!=null?' — environ '+mem.jours+' jours avant qu\'elle refuse d\'enregistrer.':'.')+' Archive les anciennes ventes.',
           'MyBar storage is '+mem.pct+'% full'+(mem.jours!=null?' — about '+mem.jours+' days before it refuses to save.':'.')+' Archive old sales.'),go:'goSt()'});
+  if(estPatron()&&nuageActif()){
+    var ne=nuageEtat();
+    if(ne.erreur==='conflit')a.push({e:'☁️',cls:'rouge',txt:L('Une version plus récente de ton bar est en ligne : choisis laquelle garder.','A newer version of your bar is online: choose which to keep.'),go:'proposerConflitNuage(nuageEtat().conf)'});
+    else if(ne.sale&&ne.maj&&now()-ne.maj>3*86400000)a.push({e:'☁️',cls:'',txt:L('La sauvegarde en ligne n\'a pas abouti depuis '+Math.floor((now()-ne.maj)/86400000)+' jours.','The online backup has not gone through for '+Math.floor((now()-ne.maj)/86400000)+' days.'),go:'goSt()'});
+  }
   if(estPatron()){
-    var ref=DB.cfg.derniereSauv||DB.cfg.cree||0,ecart=ref?Math.floor((now()-ref)/86400000):0;
+    var ref=Math.max(DB.cfg.derniereSauv||0,nuageActif()?(nuageEtat().maj||0):0)||DB.cfg.cree||0,ecart=ref?Math.floor((now()-ref)/86400000):0;
     if(ref&&ecart>=7)a.push({e:'💾',cls:'',
       txt:DB.cfg.derniereSauv?L('Pas de sauvegarde depuis '+ecart+' jours. Un téléphone perdu, c\'est le bar perdu.','No backup for '+ecart+' days. A lost phone is a lost bar.')
                              :L('Ce bar n\'a jamais été sauvegardé. Un téléphone perdu, c\'est le bar perdu.','This bar has never been backed up. A lost phone is a lost bar.'),go:'sauvegarder()'});
@@ -3641,6 +3904,8 @@ function validerCloture(att){
   DB.cfg.fondCaisse=num($('cl-fond').value);
   DB.equipe.forEach(function(m){m.ca=0;m.tips=0;});
   save();fermerModal();rendreRapports();
+  /* Fin de service : le bon moment — une fois par jour, mais jamais en « économie de données ». */
+  if(nuageActif()&&!(navigator.connection&&navigator.connection.saveData))nuagePoser({essai:0}),sauvegarderEnLigne({auto:1,cloture:1});
   var d=compte-att;
   toast(d===0?L('🌙 Service clôturé, caisse juste.','🌙 Service closed, till balances.')
         :(d<0?L('🌙 Service clôturé — manque ','🌙 Service closed — ')+fmt(-d)+L(' en caisse.',' missing from the till.')
@@ -3946,6 +4211,7 @@ function rendreSettings(){
        "Ce réglage-ci n'appartient qu'à CE téléphone : il n'est pas dans la sauvegarde, et il ne change rien chez tes serveurs. \n\n⚠️ Deux téléphones ne partagent pas encore leurs données : chacun a SA base, ses ventes et son stock. Ce réglage sert aujourd'hui à un seul téléphone — le vôtre — selon ce qu'il fait ce soir.",
        "This one belongs to THIS phone only: it is not in the backup, and it changes nothing for your servers. \n\n⚠️ Two phones do not share their data yet: each has ITS OWN database, sales and stock. Today this setting serves a single phone — yours — depending on what it does tonight.")+'</div></div>';
   }
+  if(estPatron()&&nuageDispo())c+=carteNuage();
   var mem=memoire(),ar=estPatron()?aArchiver():null;
   var persiste=null;try{persiste=localStorage.getItem('mybar_persist');}catch(e){}
   c+='<div class="rcard"><div class="rct">'+L('📦 Données','📦 Data')+'</div>'+
@@ -4064,16 +4330,37 @@ function restaurer(input){
     var d=null;
     try{d=JSON.parse(r.result);}catch(e){
       toast(L("📂 Ce fichier n'est pas une sauvegarde MyBar.",'📂 This file is not a MyBar backup.'));return;}
+    appliquerSauvegarde(d,{});
+  };
+  r.readAsText(f);
+}
+/* Le fichier et la sauvegarde en ligne passent par la même porte : mêmes refus,
+   mêmes confirmations, et le même code patron redemandé — les codes ne voyagent
+   jamais (ni dans le fichier, ni en ligne). */
+function appliquerSauvegarde(d,opt){
+  opt=opt||{};
+  {
     /* On refuse tout ce qui n'a pas la forme d'un bar — une sauvegarde
        de MyBoutiQ, par exemple, a des `articles` et des `boutiques`. */
     if(!d||!d.cfg||!d.produits||!d.tables){
-      toast(L("📂 Ce fichier n'est pas une sauvegarde MyBar.",'📂 This file is not a MyBar backup.'));return;}
+      toast(L("📂 Ce n'est pas une sauvegarde MyBar.",'📂 This is not a MyBar backup.'));return;}
     var quoi=(d.produits.length)+L(' produits · ',' products · ')+(d.tables.length)+L(' tables · ',' tables · ')+
              ((d.ventes||[]).length)+L(' additions',' bills');
     var actuel=DB?((DB.ventes||[]).length+L(' additions',' bills')):L('rien','nothing');
-    if(!confirm(L('Restaurer « '+(d.cfg.nom||'?')+' » ('+quoi+') ?\n\nCe qui est sur ce téléphone ('+actuel+') sera REMPLACÉ.',
-                  'Restore "'+(d.cfg.nom||'?')+'" ('+quoi+')?\n\nWhat is on this phone ('+actuel+') will be REPLACED.')))return;
+    var detail=opt.maj?L('\nSauvegardée le '+dateCourte(Date.parse(opt.maj))+(opt.appareil?' depuis « '+opt.appareil+' »':'')+'.',
+                              '\nBacked up on '+dateCourte(Date.parse(opt.maj))+(opt.appareil?' from "'+opt.appareil+'"':'')+'.'):'';
+    if(!confirm(L('Restaurer « '+(d.cfg.nom||'?')+' » ('+quoi+') ?'+detail+'\n\nCe qui est sur ce téléphone ('+actuel+') sera REMPLACÉ.',
+                  'Restore "'+(d.cfg.nom||'?')+'" ('+quoi+')?'+detail+'\n\nWhat is on this phone ('+actuel+') will be REPLACED.')))return;
     if(!estPatron()&&DB){toast(L('🔒 Réservé au patron.','🔒 Owner only.'));return;}
+    if(opt.garderCodes&&DB&&DB.cfg&&DB.cfg.pin&&!d.cfg.pin){
+      /* Même téléphone (on reprend la version en ligne après un conflit) : ses codes sont
+         déjà là, les redemander ne protège personne et fait perdre une minute en plein service. */
+      d.cfg.pin=DB.cfg.pin;
+      (d.equipe||[]).forEach(function(m){
+        var l=(DB.equipe||[]).filter(function(x){return x.id===m.id;})[0];
+        m.pin=l?(l.pin||''):'';
+      });
+    }
     if(!d.cfg.pin){
       var code='';
       while(!/^\d{4}$/.test(code)){
@@ -4091,19 +4378,23 @@ function restaurer(input){
       save();
       moi=DB.equipe.filter(function(m){return m.role==='patron';})[0]||DB.equipe[0];
       if(DB.cfg.lang&&DB.cfg.lang!==lang)setLang(DB.cfg.lang,true);
+      if(opt.cle){   // la suite des sauvegardes continue SOUS LA MÊME CLÉ, à la révision qu'on vient de lire
+        nuagePoser({cle:opt.cle,rev:opt.rev||0,maj:now(),essai:now(),erreur:'',conf:null,sale:0,auto:1});nuageSaleLocal=false;
+      }
       fermerModal();
       ouvrirDepart();
       toast('✅ '+(DB.cfg.nom||'')+L(' restauré. Vérifie ton stock et tes ardoises.',' restored. Check your stock and tabs.'));
     }catch(e){
       toast(L('📂 Sauvegarde illisible — rien n\'a été remplacé.','📂 Unreadable backup — nothing was replaced.'));
     }
-  };
-  r.readAsText(f);
+  }
 }
 function toutEffacer(){
-  if(!confirm(L("Effacer TOUT : carte, tables, ventes, clients ? C'est définitif.",'Erase EVERYTHING: menu, tables, sales, customers? This cannot be undone.')))return;
+  var enLigne=nuageActif()?L("\n\n☁️ La copie en ligne n'est pas touchée, mais ce téléphone oublie la clé : note-la d'abord (Paramètres → Sauvegarde en ligne → Voir ma clé).",
+                              "\n\n☁️ The online copy is untouched, but this phone forgets the key: write it down first (Settings → Online backup → Show my key)."):'';
+  if(!confirm(L("Effacer TOUT : carte, tables, ventes, clients ? C'est définitif.",'Erase EVERYTHING: menu, tables, sales, customers? This cannot be undone.')+enLigne))return;
   if(!confirm(L('Vraiment ? Fais une sauvegarde avant si tu hésites.','Really? Take a backup first if you are unsure.')))return;
-  try{localStorage.removeItem(DBKEY);localStorage.removeItem(DBKEY_ANCIEN);localStorage.removeItem(COPIEKEY);localStorage.removeItem(REVKEY);}catch(e){}
+  try{localStorage.removeItem(DBKEY);localStorage.removeItem(DBKEY_ANCIEN);localStorage.removeItem(COPIEKEY);localStorage.removeItem(REVKEY);localStorage.removeItem(NUAGEKEY);}catch(e){}
   revLocale=0;DB=null;moi=null;hist=[];goScreen('s-vitrine');
   toast(L('🗑️ Tout a été effacé.','🗑️ Everything has been erased.'));
 }
