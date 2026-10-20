@@ -49,14 +49,14 @@ const prixPad = async (p, prix, nom) => {
   await p.locator('#src-c').fill(''); await p.waitForTimeout(400);
   t((await fantomes(p)).length === 16, 'la recherche effacée, l\'étagère revient');
 
-  // ── 2) UNE TOUCHE, UN PRIX ──
+  // ── 2) UNE TOUCHE, ET C'EST DANS LA CAISSE (23.28) ──
+  // Le prix courant est écrit sur la tuile ; toucher l'ajoute à ce prix, et
+  // « Changer le prix » reste à un toucher (avant : une fenêtre à chaque fois).
+  const pastille = await p.evaluate(() => { const c = Array.from(document.querySelectorAll('#pgrid .pcard.etg')).find(x => /Riz/.test(x.textContent)); return c ? c.querySelector('.etg-plus').textContent : ''; });
+  t(/600 F/.test(pastille), `la tuile « Riz » montre son prix avant qu'on la touche (« ${pastille} »)`);
   await p.locator('#pgrid .pcard.etg', { hasText: 'Riz' }).click(); await p.waitForTimeout(400);
-  t(await ouvert(p, 'ov-prixpad') && (await p.evaluate(() => document.getElementById('ppd-nm').textContent)) === 'Riz',
-    'toucher « Riz » ouvre UNE question : son prix');
-  await prixPad(p, '');
-  t(await ouvert(p, 'ov-prixpad') && await p.evaluate(() => DB.articles.length === 0) && /prix de vente/.test(await toasts(p)),
-    'sans prix, rien n\'est créé et il sait pourquoi');
-  await prixPad(p, 600);
+  t(!(await ouvert(p, 'ov-prixpad')) && await p.evaluate(() => DB.articles.length === 1),
+    'toucher « Riz » le met dans la caisse, sans fenêtre à remplir');
   const riz = await p.evaluate(() => { const a = DB.articles.find(x => x.nm === 'Riz'); return a && { id: a.id, px: a.px, rt: a.rt, stk0: a.stk0, um: a.um || null }; });
   t(riz && riz.px === 600 && riz.rt === true && riz.stk0 === 0 && !riz.um,
     `Riz est dans la caisse à 600, stock jamais compté, vendu à la pièce (${JSON.stringify(riz)})`);

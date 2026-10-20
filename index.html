@@ -591,6 +591,8 @@ html.porte-rapide #entree-rapide,html.porte-rapide #er-pin-wrap{display:block}
 #s-onboard{background:var(--P);align-items:center;padding:30px 24px 40px;overflow-y:auto}
 #s-onboard::before{content:'';position:absolute;width:280px;height:280px;background:radial-gradient(circle,rgba(245,166,35,.12),transparent 70%);top:-40px;right:-40px;border-radius:50%;pointer-events:none}
 .ob-logo{font-size:56px;margin-bottom:4px;animation:float 3s ease-in-out infinite}
+.ob-logo-m{line-height:0;animation:none}
+.ob5-langue{position:absolute;top:0;right:0;min-height:40px;padding:0 12px;border:1.5px solid rgba(255,255,255,.25);border-radius:12px;background:transparent;color:#fff;font-family:Outfit,sans-serif;font-size:12.5px;font-weight:800;cursor:pointer}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 .ob-brand{font-family:'Nunito',sans-serif;font-size:32px;font-weight:900;color:#fff;margin-bottom:4px}
 .ob-brand span{color:var(--A)}
@@ -2349,6 +2351,9 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 #ov-calc.pmt-simple #btn-autre-pmt{display:flex}
 .autre-pmt{width:100%;align-items:center;justify-content:space-between;gap:8px;min-height:44px;margin:0 0 9px;padding:8px 13px;background:#fff;border:1.5px solid var(--BG);border-radius:12px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:var(--T);cursor:pointer}
 .autre-pmt-s{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--M)}.autre-pmt-s .pm-pt{width:9px;height:9px}
+.etg-snack{position:fixed;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:900;display:none;align-items:center;gap:10px;padding:10px 10px 10px 14px;background:#1F2937;color:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13px;font-weight:800}
+.etg-snack.on{display:flex}.etg-snack span{flex:1;min-width:0}
+.etg-snack button{flex-shrink:0;min-height:40px;padding:0 12px;border:none;border-radius:10px;background:#FFB020;color:#1F2937;font-family:Outfit,sans-serif;font-size:12.5px;font-weight:900;cursor:pointer}
 .ppd-courants{display:flex;gap:8px;margin:0 0 10px}.ppd-c{flex:1;min-height:46px;border:1.5px solid var(--BG);background:#fff;border-radius:12px;font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;color:var(--T);cursor:pointer}.ppd-c.on{border-color:var(--G);background:#E8F5E9;color:#1B5E20}
 .ab-vues{display:flex;gap:6px;margin-bottom:10px}.ab-vues button{flex:1;min-height:40px;border:1.5px solid var(--BG);background:#fff;border-radius:10px;font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;color:var(--M);cursor:pointer}.ab-vues button.on{background:var(--T);border-color:var(--T);color:#fff}
 .ab-etape{display:inline-block;font-size:10.5px;font-weight:900;border-radius:6px;padding:2px 7px;margin-top:4px}
@@ -3733,7 +3738,9 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
 
 <!-- ONBOARDING -->
 <div id="s-onboard" class="scr">
-  <div class="ob-logo">🏪</div>
+  <!-- 23.28 — la marque de la porte (23.09), plus l'emoji : le premier écran
+       qu'il voit en créant sa boutique est le même signe que l'icône. -->
+  <div class="ob-logo ob-logo-m"><svg viewBox="96 96 320 320" width="64" height="64" role="img" aria-label="MyBoutiQ"><path d="M120 106H188V162A34 34 0 0 1 120 162Z" fill="#FFB020"/><path d="M188 106H256V162A34 34 0 0 1 188 162Z" fill="#FFD27A"/><path d="M256 106H324V162A34 34 0 0 1 256 162Z" fill="#FFB020"/><path d="M324 106H392V162A34 34 0 0 1 324 162Z" fill="#FFD27A"/><circle cx="256" cy="304" r="74" fill="none" stroke="#FFFFFF" stroke-width="38"/><path d="M286 334L338 386" stroke="#FFFFFF" stroke-width="38" stroke-linecap="round"/></svg></div>
   <div class="ob-brand">My<span>BoutiQ</span></div>
   <div class="ob-tagline" id="ob-tag">Ma boutique dans ma poche</div>
   <div class="ob-dots" id="ob-dots">
@@ -3779,8 +3786,9 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   </div>
 
   <!-- Step 5: Boutique info -->
-  <div class="ob-step" id="obs5">
+  <div class="ob-step" id="obs5" style="position:relative">
     <button class="btn-bk" onclick="retourDepuisBoutique()">←</button>
+    <button type="button" class="ob5-langue" id="ob5-langue" onclick="obBasculerLangue()">English</button>
     <div class="ob-step-h" id="ob5-h">🏪 Ta boutique</div>
     <!-- Le pays n'est plus une question : il se lit dans l'indicatif du
          numéro. Il reste VISIBLE et corrigeable d'un geste — on ne suppose
@@ -6868,7 +6876,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.27'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.28'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -7102,7 +7110,17 @@ function assurerConnexionSupa(){
 // Le bandeau prévient, puis il s'efface. Il ne doit PAS camper par-dessus
 // l'écran de vente toute la journée : il se réduit en pastille au bout de
 // 6 secondes, et ne reprend sa taille que si l'état CHANGE vraiment.
-var _connTimer=null,_connEtat=null;
+var _connTimer=null,_connEtat=null,_connDebut=Date.now(),_connRevoir=null;
+// ⭐ 23.28 — PAS D'ALARME PENDANT QUE L'APP SE PRÉPARE.
+// Vu au banc sur une boutique qu'on vient de créer : « Pas de liaison avec
+// le serveur — toucher pour réessayer », en orange, par-dessus les articles
+// de l'étagère. Avec du réseau, cet état ne veut dire qu'une chose dans
+// les premières secondes : la bibliothèque du serveur arrive encore — un
+// téléchargement de plusieurs secondes sur une 3G camerounaise. Le premier
+// écran qu'il voit lui annonçait une panne qui n'existe pas. On attend
+// 15 s avant d'en parler ; « Hors ligne » (pas de réseau du tout) reste
+// annoncé tout de suite : celui-là est vrai.
+var CONN_GRACE=15000;
 function majEtatConnexion(){
   var b=document.getElementById('conn-bar');if(!b)return;
   // ⚠️ La boutique d'exemple ne parle JAMAIS au serveur (règle 2) : une
@@ -7113,6 +7131,13 @@ function majEtatConnexion(){
   var connecte=!!supa&&navigator.onLine;
   var etat=connecte?'ok':(navigator.onLine?'srv':'off');
   if(connecte){b.style.display='none';b.classList.remove('mini');clearTimeout(_connTimer);_connEtat=etat;return;}
+  var reste=CONN_GRACE-(Date.now()-_connDebut);
+  if(etat==='srv'&&reste>0){
+    b.style.display='none';
+    clearTimeout(_connRevoir);
+    _connRevoir=setTimeout(function(){try{majEtatConnexion();}catch(e){}},reste+50);
+    return;
+  }
   var change=(etat!==_connEtat);_connEtat=etat;
   b.style.display='flex';
   if(ico)ico.innerHTML=window.ico(navigator.onLine?'alerte':'horsligne',18);
@@ -8549,6 +8574,15 @@ function ouvrirInvitationVendeur(){
   showToast('👋 '+(lang==='fr'?'Entre ton prénom pour rejoindre la boutique':'Enter your first name to join the store'));
 }
 function ouvrirDepuisVitrine(mode){
+  // ⭐ 23.28 — « CRÉER MA BOUTIQUE », ET ON Y EST.
+  // Mesuré au banc sur un écran de 360 px : depuis le site, « Créer ma
+  // boutique » ouvrait la porte… sur un second « Créer ma boutique » et un
+  // bouton « Commencer l'inscription », puis un écran de langue déjà réglé
+  // sur le français et son « Continuer ». Trois écrans et trois touchers
+  // avant le premier champ, pour quelqu'un qui avait déjà dit ce qu'il
+  // voulait. Il arrive maintenant sur « Ta boutique » ; la langue se change
+  // d'un toucher en haut de cet écran.
+  if(mode==='new'){ouvrirInscriptionDirecte();return;}
   setModeEntree(mode);
   goScreen('s-login');
   // Le retour n'apparaît QUE si on vient du site : quelqu'un qui a déjà sa
@@ -9898,6 +9932,21 @@ function apresRegion(){
   }
   goOb(4);
 }
+function ouvrirInscriptionDirecte(){
+  var l='fr';try{l=_vitrineEnAnglais()?'en':'fr';}catch(e){}
+  lang=l;
+  ouvrirInscriptionDepuisLogin();
+  goOb(5);
+}
+function majBoutonLangueOb(){
+  var b=document.getElementById('ob5-langue');if(!b)return;
+  b.textContent=(obLang==='en')?'Français':'English';
+  b.setAttribute('aria-label',(obLang==='en')?'Passer en français':'Switch to English');
+}
+function obBasculerLangue(){
+  setLang(obLang==='en'?'fr':'en');
+  majBoutonLangueOb();
+}
 function retourDepuisBoutique(){
   goOb(1);   // il n'y a plus que la langue avant : région et secteur sont masqués
 }
@@ -10014,7 +10063,7 @@ function goOb(n){
     });
   }
   if(n===7)buildObConfirm();
-  if(n===5){try{if(!obPays)obPays=paysParDefaut();majLignePays();}catch(e){}}
+  if(n===5){try{if(!obPays)obPays=paysParDefaut();majLignePays();}catch(e){}try{majBoutonLangueOb();}catch(e){}}
 }
 // Contrôle avant de quitter l'étape « Ta boutique » : le nom, le PIN et
 // surtout le NUMÉRO, qui servira à se reconnecter.
@@ -12156,8 +12205,13 @@ function _etagereHtml(vide){
       +'<span>'+(fr?'Touche pour l\'ajouter. Ces suggestions partent après ta première vente.'
                    :'Tap to add it. These suggestions go away after your first sale.')+'</span></div>';
   }
+  // 23.28 — la pastille porte le prix courant : il le voit AVANT de
+  // toucher, et toucher le met dans la caisse à ce prix (voir etagereChoisir).
+  var _sct='boutique';try{_sct=(DB&&DB.cfg&&DB.cfg.secteur)||'boutique';}catch(e){}
+  var _base=_ETAGERE[_sct]||_ETAGERE.boutique;
   _etagereListe().forEach(function(x){
-    h+=_etagereTuile(x,'etagereChoisir('+x.i+')',fr?'+ Ajouter':'+ Add');
+    var pc=_base[x.i]&&_ETAGERE_PRIX[_base[x.i][0]];
+    h+=_etagereTuile(x,'etagereChoisir('+x.i+')',pc?('+ '+Number(pc[1]).toLocaleString('fr-FR')+' F'):(fr?'+ Ajouter':'+ Add'));
   });
   h+=_etagereTuile({nm:fr?'Autre article':'Other item',e:'✏️'},'etagereAutre()',fr?'+ Écrire':'+ Type');
   if(vide){
@@ -12180,7 +12234,66 @@ function etagereChoisir(i){
   var dj=_articleExistant(nm);
   if(dj){_direDejaLa(dj);return;}
   _parcoursCompter('etg');
-  ouvrirPrixPad({nom:nm,e:x[1],etagere:true,courants:_ETAGERE_PRIX[x[0]]||null});
+  var pc=_ETAGERE_PRIX[x[0]]||null;
+  // ⭐ 23.28 — UN TOUCHER, ET C'EST DANS LA CAISSE.
+  // Mesuré en base le 19/10 : une boutique neuve a touché trois articles
+  // de l'étagère (« etg: 3 ») et n'en a mis AUCUN dans sa caisse
+  // (« etgOk » absent), puis elle est partie au bout d'une minute. Chaque
+  // toucher ouvrait une fenêtre — le prix, trois boutons, « C'est mon
+  // prix » — là où la tuile disait « + Ajouter ». Il touchait pour
+  // ajouter ; on lui posait une question.
+  // Le prix courant est maintenant écrit SUR la tuile (« + 600 F ») : il le
+  // voit avant de toucher, et toucher l'ajoute à ce prix. « Changer le
+  // prix » reste à un toucher, juste après (voir _etgSnack).
+  if(pc){_etagereAjouter(nm,x[1],pc);return;}
+  ouvrirPrixPad({nom:nm,e:x[1],etagere:true,courants:null});
+}
+function _etagereAjouter(nm,e,pc){
+  var art=_creerArticleRapide(nm,Number(pc[1]),{etagere:true,e:e});
+  if(!art)return;
+  _parcoursCompter('etgOk');_parcoursCompter('etgCourant');
+  renderProd(DB.articles);renderStock(DB.articles);
+  try{initTabs();}catch(x){}
+  _etagereApresAjout(art,nm,Number(pc[1]),pc);
+}
+// Ce qui suit un article ajouté depuis l'étagère, qu'il vienne d'un toucher
+// ou de la fenêtre du prix.
+function _etagereApresAjout(art,nom,px,pc){
+  var fr=(lang==='fr');
+  if(navigator.vibrate)navigator.vibrate(25);
+  try{var c=document.getElementById('pc-'+art.id);if(c)c.classList.add('etg-neuf');}catch(x){}
+  _etgSnack(art,pc);
+  // Le premier article a son prix : on lui montre tout de suite comment le
+  // vendre — une fois, pas à chaque article.
+  if(!_etgGuideFait&&!(DB.ventes||[]).some(function(v){return v&&!v.annulee;})){
+    _etgGuideFait=true;
+    setTimeout(function(){try{demarrageVendre();}catch(x){}},900);
+  }else{
+    // ⚠️ La caisse vient d'être redessinée : la carte que montrait la bulle
+    // a été remplacée, et la bulle restait cachée sans cible. On la recale.
+    try{if(_guideReel&&_guide===1)setTimeout(function(){try{_guideDemo(1);}catch(x){}},60);}catch(x){}
+  }
+}
+// Le message « dans ta caisse », avec de quoi changer le prix tout de suite.
+var _etgSnackT=null;
+function _etgSnack(art,pc){
+  var fr=(lang==='fr'),el=document.getElementById('etg-snack');
+  if(!el){
+    el=document.createElement('div');el.id='etg-snack';el.className='etg-snack';el.setAttribute('role','status');
+    el.innerHTML='<span id="etg-snack-t"></span><button type="button" id="etg-snack-b"></button>';
+    document.body.appendChild(el);
+  }
+  document.getElementById('etg-snack-t').textContent=art.nm+' · '+Number(art.px).toLocaleString('fr-FR')+' F — '+(fr?'dans ta caisse':'in your till');
+  var b=document.getElementById('etg-snack-b');
+  b.textContent=fr?'Changer le prix':'Change price';
+  b.onclick=function(){
+    el.classList.remove('on');clearTimeout(_etgSnackT);
+    _parcoursCompter('etgChange');
+    ouvrirPrixPad({nom:art.nm,e:art.e,etagere:true,courants:pc||null,editId:art.id});
+  };
+  el.classList.add('on');
+  clearTimeout(_etgSnackT);
+  _etgSnackT=setTimeout(function(){el.classList.remove('on');},7000);
 }
 function etagereAutre(){
   if(!_peutCreerEnVendant())return;
@@ -12219,7 +12332,7 @@ function ouvrirPrixPad(o){
     set('ppd-q',fr?('Prix courant, '+pc[3]+' :'):('Usual price, '+un+':'));
     set('ppd-aide',fr?'Touche ton prix, ou écris le tien. Le stock et le prix d\'achat, plus tard.'
                      :'Tap your price, or type your own. Stock and cost price later.');
-    set('ppd-ok','✅ '+(fr?'C\'est mon prix':'That\'s my price'));
+    set('ppd-ok','✅ '+(_ppd.editId!=null?(fr?'Mettre ce prix':'Use this price'):(fr?'C\'est mon prix':'That\'s my price')));
     px.value=String(pc[1]);
     cb.innerHTML=pc.slice(0,3).map(function(v){
       return '<button type="button" class="ppd-c'+(v===pc[1]?' on':'')+'" data-v="'+Number(v)+'" onclick="prixPadCourant('+Number(v)+')">'+Number(v).toLocaleString('fr-FR')+'</button>';
@@ -12266,6 +12379,20 @@ function prixPadValider(){
     return;
   }
   var o=_ppd;
+  // 23.28 — « Changer le prix » d'un article qu'on vient d'ajouter : on
+  // corrige CELUI-LÀ (le chercher par son nom le trouverait lui-même et
+  // l'ouvrirait comme un doublon).
+  if(o.editId!=null){
+    var ae=(DB.articles||[]).find(function(a){return a&&a.id===o.editId;});
+    _ppd=null;closeSheet('ov-prixpad');
+    if(!ae)return;
+    ae.px=px;
+    if(nom&&nom!==ae.nm)ae.nm=nom;
+    save();
+    renderProd(DB.articles);renderStock(DB.articles);
+    showToast('✅ '+ae.nm+' · '+fmt(px));
+    return;
+  }
   // Le nom a pu changer dans la fenêtre : on revérifie, et on emmène sur
   // celui qui existe plutôt que d'en créer un deuxième.
   var dj=_articleExistant(nom);
@@ -12295,19 +12422,7 @@ function prixPadValider(){
   // Depuis l'étagère, on AJOUTE, on ne vend pas : un panier rempli en
   // installant sa boutique deviendrait une vente fantôme au premier
   // « Encaisser ».
-  if(navigator.vibrate)navigator.vibrate(25);
-  showToast('✅ '+nom+' · '+fmt(px)+' — '+(fr?'dans ta caisse':'in your till'));
-  try{var c=document.getElementById('pc-'+art.id);if(c)c.classList.add('etg-neuf');}catch(x){}
-  // Le premier article a son prix : on lui montre tout de suite comment le
-  // vendre — une fois, pas à chaque article.
-  if(!_etgGuideFait&&!(DB.ventes||[]).some(function(v){return v&&!v.annulee;})){
-    _etgGuideFait=true;
-    setTimeout(function(){try{demarrageVendre();}catch(x){}},900);
-  }else{
-    // ⚠️ La caisse vient d'être redessinée : la carte que montrait la bulle
-    // a été remplacée, et la bulle restait cachée sans cible. On la recale.
-    try{if(_guideReel&&_guide===1)setTimeout(function(){try{_guideDemo(1);}catch(x){}},60);}catch(x){}
-  }
+  _etagereApresAjout(art,nom,px,o.courants);
 }
 // Un article qu'on peut vendre tout de suite : un nom, un prix. Stock jamais
 // compté (`rt` + stk0 0) : ni « épuisé » ni « -3 » tant qu'il ne l'a pas
@@ -29712,7 +29827,9 @@ function migrateDBData(d){
       var _pq={n:{}},_po=d.parcours;
       ['art1','vente1','retour','dj'].forEach(function(k){if(/^\d{4}-\d{2}-\d{2}$/.test(String(_po[k]||'')))_pq[k]=String(_po[k]);});
       var _pn=(_po.n&&typeof _po.n==='object'&&!Array.isArray(_po.n))?_po.n:{};
-      ['jours','etg','etgOk','etgCourant','simple','autre'].forEach(function(k){var n=Math.floor(Number(_pn[k])||0);if(n>0)_pq.n[k]=n;});
+      // (la liste écrite ici, pas _PARC_N : migrateDBData peut tourner avant
+      // que la ligne qui la définit ait été lue)
+      ['jours','etg','etgOk','etgCourant','etgChange','simple','autre'].forEach(function(k){var n=Math.floor(Number(_pn[k])||0);if(n>0)_pq.n[k]=n;});
       d.parcours=_pq;
     }
   }
@@ -30786,7 +30903,7 @@ function _telephonePlein(){
 //  Règle de fusion dans `mergeDB` : la date la plus ancienne, le compteur
 //  le plus haut.
 // ══════════════════════════════════════════════════════════════════
-var _PARC_N=['jours','etg','etgOk','etgCourant','simple','autre'];
+var _PARC_N=['jours','etg','etgOk','etgCourant','etgChange','simple','autre'];
 function _parcours(){
   if(!DB||!DB.cfg)return null;
   try{if(estDemo())return null;}catch(e){}

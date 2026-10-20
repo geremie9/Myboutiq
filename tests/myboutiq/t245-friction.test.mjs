@@ -63,40 +63,43 @@ const fermer = p => p.evaluate(() => { document.querySelectorAll('.ov').forEach(
   await ctx.close();
 }
 
-// ── 2. L'étagère d'une boutique neuve : le prix courant déjà écrit ──
+// ── 2. L'étagère d'une boutique neuve : le prix courant, puis « Changer » ──
+// (23.28 : un toucher ajoute au prix écrit sur la tuile ; la fenêtre du prix
+//  s'ouvre par « Changer le prix », avec les prix courants d'un toucher.)
 {
   const db = nouvelleBoutique({ articles: [], ventes: [] });
   const { ctx, p, errs } = await ouvrirCaisse(b, port, db, { tactile: true });
   const tuile = nm => p.locator('.pcard.etg', { hasText: nm }).first();
+  const changer = async () => { await p.locator('#etg-snack-b').tap(); await p.waitForTimeout(450); };
   t(await tuile('Riz').count() === 1, 'la caisse vide montre l’étagère (Riz, Sucre, Huile…)');
   await tuile('Riz').tap(); await p.waitForTimeout(450);
+  let a = await p.evaluate(() => DB.articles.map(x => x.nm + ':' + x.px));
+  const snack = await p.evaluate(() => { const e = document.getElementById('etg-snack'); return e && e.classList.contains('on') ? e.textContent : ''; });
+  t(a.join() === 'Riz:600' && /Riz · 600 F — dans ta caisse/.test(snack) && /Changer le prix/.test(snack), `« Riz » : dans la caisse à 600, sans un chiffre tapé (« ${snack} »)`);
+  await tuile('Sucre').tap(); await p.waitForTimeout(450);
+  await changer();
   let pad = await p.evaluate(() => ({ v: document.getElementById('ppd-px').value, q: document.getElementById('ppd-q').textContent,
     ok: document.getElementById('ppd-ok').textContent, c: [...document.querySelectorAll('#ppd-courants .ppd-c')].map(x => x.textContent + (x.classList.contains('on') ? '*' : '')),
     focus: document.activeElement && document.activeElement.id }));
-  t(pad.v === '600' && pad.c.join(' ') === '500 600* 800' && /kilo/.test(pad.q),
-    `« Riz » s’ouvre sur 600 déjà écrit, et 500 · 800 à côté (« ${pad.q} » ${pad.c.join(' ')})`);
+  t(pad.v === '800' && pad.c.join(' ') === '700 800* 850' && /kilo/.test(pad.q) && /Mettre ce prix/.test(pad.ok),
+    `« Changer le prix » : 800 déjà écrit, 700 · 850 à côté (« ${pad.q} » ${pad.c.join(' ')}, « ${pad.ok.trim()} »)`);
   t(pad.focus !== 'ppd-px' && pad.focus !== 'ppd-nm-inp', 'le clavier ne s’ouvre pas : il cacherait les prix et le bouton');
-  await p.locator('#ppd-ok').tap(); await p.waitForTimeout(400);
-  let a = await p.evaluate(() => DB.articles.map(x => x.nm + ':' + x.px));
-  t(a.join() === 'Riz:600' && /mon prix/i.test(pad.ok), `« C’est mon prix » : Riz est dans la caisse à 600, sans un chiffre tapé (${a.join()})`);
-  await fermer(p);
-  await tuile('Sucre').tap(); await p.waitForTimeout(450);
   await p.locator('#ppd-courants .ppd-c', { hasText: '850' }).tap();
   await p.locator('#ppd-ok').tap(); await p.waitForTimeout(400);
-  await fermer(p);
   await tuile('Huile').tap(); await p.waitForTimeout(450);
+  await changer();
   await p.locator('#ppd-px').fill('1250');
   const on = await p.evaluate(() => document.querySelectorAll('#ppd-courants .ppd-c.on').length);
   await p.locator('#ppd-ok').tap(); await p.waitForTimeout(400);
   a = await p.evaluate(() => DB.articles.map(x => x.nm + ':' + x.px));
-  t(a.join() === 'Riz:600,Sucre:850,Huile:1250' && on === 0, `un autre prix d’un toucher (Sucre 850), ou le sien tapé (Huile 1250) : ${a.join()}`);
-  await fermer(p);
+  t(a.join() === 'Riz:600,Sucre:850,Huile:1250' && on === 0, `un autre prix d’un toucher (Sucre 850), ou le sien tapé (Huile 1250), sans doublon : ${a.join()}`);
+  await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); });
   await p.locator('.pcard.etg', { hasText: 'Autre article' }).tap(); await p.waitForTimeout(450);
-  const autre = await p.evaluate(() => ({ c: document.getElementById('ppd-courants').style.display, v: document.getElementById('ppd-px').value }));
-  t(autre.c === 'none' && autre.v === '', '« Autre article » : pas de prix inventé, le champ reste vide');
-  await fermer(p);
+  const autre = await p.evaluate(() => ({ c: document.getElementById('ppd-courants').style.display, v: document.getElementById('ppd-px').value, ouvert: document.getElementById('ov-prixpad').classList.contains('show') }));
+  t(autre.ouvert && autre.c === 'none' && autre.v === '', '« Autre article » : la fenêtre du prix, sans prix inventé');
+  await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); });
   const n = await p.evaluate(() => DB.parcours.n);
-  t(n.etg === 3 && n.etgOk === 3 && n.etgCourant === 1, `compteurs : ${n.etg} proposés touchés, ${n.etgOk} mis en caisse, ${n.etgCourant} au prix courant tel quel`);
+  t(n.etg === 3 && n.etgOk === 3 && n.etgCourant === 3 && n.etgChange === 2, `compteurs : ${n.etg} touchés, ${n.etgOk} en caisse, ${n.etgCourant} au prix courant, ${n.etgChange} prix changés`);
   t(errs.length === 0, 'aucune erreur JS (étagère)' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }
