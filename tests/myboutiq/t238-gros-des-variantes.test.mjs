@@ -19,7 +19,9 @@ const ouvrir = async () => { await p.evaluate(() => { viderPanier(); Array.from(
 await ouvrir();
 const tu = await p.evaluate(() => Array.from(document.querySelectorAll('.vinline .vtile')).map(t => { const g = t.querySelector('.vt-gros'), b = g && g.querySelector('b');
   return { g: g ? g.innerText.replace(/\s+/g, ' ').trim() : '', coupe: !!b && b.scrollWidth > b.clientWidth + 1, img: Math.round((t.querySelector('.pmedia') || t).getBoundingClientRect().height) }; }));
-t(/carton de 24/.test(tu[0].g) && /prix \?/.test(tu[0].g), `sans prix de carton : « ${tu[0].g} », comme dehors`);
+// 23.30 — sans prix, le MOT seul, exactement comme la barre dehors (« carton / prix ? ») :
+// avec sa taille, « palette de 12 » se coupait en « palette de 1 » à 360 px.
+t(/carton/.test(tu[0].g) && !/de 24/.test(tu[0].g) && /prix \?/.test(tu[0].g), `sans prix de carton : « ${tu[0].g} », comme dehors`);
 t(/6\s?800/.test(tu[1].g) && /carton de 24/.test(tu[1].g), `avec son prix : « ${tu[1].g} »`);
 t(tu.every(x => !x.coupe), 'rien n\'est coupé, même sur un écran de 360 px');
 const dehors = await p.evaluate(() => { const m = document.querySelector('.pgrid .pcard .pmedia'); return m ? Math.round(m.getBoundingClientRect().height) : 0; });
