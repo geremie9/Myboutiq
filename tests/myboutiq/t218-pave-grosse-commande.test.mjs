@@ -137,7 +137,7 @@ const nombre = x => Number(String(x).replace(/[^\d]/g, ''));
   const l = await ligne(p, '30-1');
   t(l.q === 24 && l.lots === 2 && l.total === 20000, `2 cartons de 1 L : ${l.q} bouteilles, ${l.total} F`);
   const badge = await p.evaluate(() => { const x = Array.from(document.querySelectorAll('#vinline-lst .vtile')).find(e => (e.querySelector('.vt-nm') || {}).textContent === '1 L');
-    return x ? (x.querySelector('.vt-badge') || {}).textContent : 'panneau fermé'; });
+    return x ? (x.querySelector('.vt-badge b') || {}).textContent : 'panneau fermé'; });   // 23.31 : le nombre, puis ✕
   t(badge === '24', `le panneau des variantes suit (${badge})`);
   // Les pièces d'une variante : par chgVQ, la règle de la caisse.
   await p.evaluate(() => { const x = Array.from(document.querySelectorAll('#vinline-lst .vtile')).find(e => (e.querySelector('.vt-nm') || {}).textContent === '2 L');

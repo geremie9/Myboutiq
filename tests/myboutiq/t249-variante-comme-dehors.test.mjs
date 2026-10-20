@@ -48,6 +48,15 @@ await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classLi
 await ouvrir(145);
 await p.locator('.vtile').nth(1).tap(); await p.waitForTimeout(300);
 t(await p.evaluate(() => panier['145-2'] === 1), 'toucher « Jus ananas 25cl » le met au panier, comme avant');
+// 23.31 — « Pourquoi + et − sur la variante ? » : la même pastille que dehors.
+await p.locator('.vtile').nth(1).tap(); await p.waitForTimeout(300);
+const pa = await p.evaluate(() => { const x = document.querySelectorAll('.vtile')[1], bd = x.querySelector('.vt-badge'), r = bd && bd.getBoundingClientRect();
+  return { q: panier['145-2'], moins: !!x.querySelector('.vt-moins'), plus: !!x.querySelector('.vt-plus'), txt: bd ? bd.innerText.replace(/\s+/g, '') : '', w: r ? Math.round(r.width) : 0,
+    dehors: getComputedStyle(document.querySelector('.qbdg')).backgroundColor, dedans: bd ? getComputedStyle(bd).backgroundColor : '' }; });
+t(pa.q === 2 && !pa.moins && !pa.plus && pa.txt === '2✕' && pa.dedans === pa.dehors,
+  `deux touchers : une seule pastille rouge « ${pa.txt} », comme dehors — plus de « − » ni de « + » à part`);
+await p.locator('.vtile').nth(1).locator('.vt-badge').tap(); await p.waitForTimeout(300);
+t(await p.evaluate(() => panier['145-2'] === 1), 'toucher la pastille en retire un, comme dehors');
 t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
 await ctx.close();
 await b.close(); s.close();

@@ -75,16 +75,17 @@ const ligne = (p, k) => p.evaluate(k => {
   t(c.barre === 10900, `et la barre du panier affiche le même total (${c.barre} F, pas 13 × 900)`);
   const dit = await p.evaluate(() => (window.__toasts || []).join(' | '));
   t(/1 carton/.test(dit) && !/× FCFA 900/.test(dit), `et l'app le dit en cartons, jamais « 12 × 900 » (« ${dit} »)`);
-  await toucher(p, '1 L', '.vt-moins'); await p.waitForTimeout(250);
+  // 23.31 — la pastille de quantité retire, comme dehors (plus de « − » à part).
+  await toucher(p, '1 L', '.vt-badge'); await p.waitForTimeout(250);
   c = await ligne(p, '30-1');
-  t(c.q === 12 && c.lots === 1 && c.total === 10000, `« − » retire d'abord la bouteille en vrac : ${c.q}, ${c.total} F`);
-  await toucher(p, '1 L', '.vt-moins'); await p.waitForTimeout(250);
+  t(c.q === 12 && c.lots === 1 && c.total === 10000, `la pastille retire d'abord la bouteille en vrac : ${c.q}, ${c.total} F`);
+  await toucher(p, '1 L', '.vt-badge'); await p.waitForTimeout(250);
   c = await ligne(p, '30-1');
   t(c.q === 0 && c.lots === 0 && c.total === 0, `puis le carton ENTIER, jamais onze bouteilles au détail : ${c.q}, ${c.total} F`);
   await toucher(p, '1 L', '.vt-gros'); await p.waitForTimeout(250);
-  await toucher(p, '1 L', '.vt-plus'); await p.waitForTimeout(250);
+  await toucher(p, '1 L'); await p.waitForTimeout(250);
   c = await ligne(p, '30-1');
-  t(c.q === 13 && c.lots === 1 && c.total === 10900, `« + » ajoute une bouteille, comme le corps : ${c.q}, ${c.total} F`);
+  t(c.q === 13 && c.lots === 1 && c.total === 10900, `toucher la tuile ajoute une bouteille, comme dehors : ${c.q}, ${c.total} F`);
   await toucher(p, '5 L'); await p.waitForTimeout(250);
   c = await ligne(p, '30-3');
   t(c.q === 1 && c.lots === 0, `« 5 L » vend la pièce (${c.q})`);
