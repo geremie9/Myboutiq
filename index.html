@@ -2354,6 +2354,12 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .etg-snack{position:fixed;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:900;display:none;align-items:center;gap:10px;padding:10px 10px 10px 14px;background:#1F2937;color:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13px;font-weight:800}
 .etg-snack.on{display:flex}.etg-snack span{flex:1;min-width:0}
 .etg-snack button{flex-shrink:0;min-height:40px;padding:0 12px;border:none;border-radius:10px;background:#FFB020;color:#1F2937;font-family:Outfit,sans-serif;font-size:12.5px;font-weight:900;cursor:pointer}
+.cmp-sugg{display:block;width:100%;margin:-4px 0 12px;padding:8px 10px;border:1px dashed #F9A825;border-radius:9px;background:#FFF8E1;color:#8D6E00;font-family:Outfit,sans-serif;font-size:11.5px;font-weight:800;text-align:left;cursor:pointer}
+.cmp-sugg.pris{border-style:solid;background:#E8F5E9;border-color:#66BB6A;color:#1B5E20}
+.cmp-sugg-mot{margin:-4px 0 12px;font-size:11px;font-weight:800;color:var(--B)}
+#ov-completer .bnxt{position:sticky;bottom:6px;z-index:2;box-shadow:0 -6px 14px rgba(255,255,255,.9)}
+.exp-hab{display:block;width:100%;margin:2px 0 8px;padding:10px 12px;border:1.5px dashed #F9A825;border-radius:12px;background:#FFF8E1;color:#8D6E00;font-family:Outfit,sans-serif;font-size:13px;font-weight:900;text-align:left;cursor:pointer}
+.exp-hab span{display:block;font-size:10.5px;font-weight:700;margin-top:2px;opacity:.85}
 .ppd-courants{display:flex;gap:8px;margin:0 0 10px}.ppd-c{flex:1;min-height:46px;border:1.5px solid var(--BG);background:#fff;border-radius:12px;font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;color:var(--T);cursor:pointer}.ppd-c.on{border-color:var(--G);background:#E8F5E9;color:#1B5E20}
 .ab-vues{display:flex;gap:6px;margin-bottom:10px}.ab-vues button{flex:1;min-height:40px;border:1.5px solid var(--BG);background:#fff;border-radius:10px;font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;color:var(--M);cursor:pointer}.ab-vues button.on{background:var(--T);border-color:var(--T);color:#fff}
 .ab-etape{display:inline-block;font-size:10.5px;font-weight:900;border-radius:6px;padding:2px 7px;margin-top:4px}
@@ -4744,6 +4750,15 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
           style="background:none;border:none;color:var(--B);font-size:11.5px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;padding:4px 0;text-decoration:underline">Modifier le nom</button>
       </div>
       <div class="pig" id="cmp-nm-row"><label class="pl" id="cmp-nm-lbl">Nom de l'article (obligatoire)</label><input class="pi sm" id="cmp-nm" type="text" style="font-weight:700"></div>
+      <!-- ⭐ 23.29 — LE PRIX D'ABORD. L'écran disait « Il ne manque que le
+           prix » et montrait le champ du prix en 7e position, sous l'image, le
+           nom, deux blocs sur la façon de vendre — et « Enregistrer » hors de
+           l'écran, mesuré à 360 × 640. Le seul chiffre qui manque vient
+           maintenant juste sous le nom, avec le prix habituel d'un toucher. -->
+      <div style="display:flex;gap:8px" id="cmp-prix-row">
+        <div class="pig" style="flex:1"><label class="pl" id="cmp-pv-lbl">Prix de vente</label><input class="pi sm" id="cmp-pv" type="number" inputmode="numeric" oninput="cmpMajAch()"></div>
+      </div>
+      <div id="cmp-pv-sugg"></div>
       <div id="cmp-vars" style="display:none"></div>
       <button type="button" id="cmp-fam-add" onclick="cmpAddVar()" style="display:none;width:100%;background:#F0F4FF;color:var(--B);border:1.5px dashed var(--B);border-radius:10px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:11px">➕ <span id="cmp-fam-add-l">Ajouter une variante</span></button>
       <!-- ⚠️ « Le sucre se vend en kilogrammes, l'app le sait déjà. Pourquoi
@@ -4782,9 +4797,6 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
            Le prix d'achat et le stock restent là, entiers, derrière une
            ligne qui dit À QUOI ILS SERVENT : on ne demande jamais un
            chiffre sans dire pourquoi. -->
-      <div style="display:flex;gap:8px" id="cmp-prix-row">
-        <div class="pig" style="flex:1"><label class="pl" id="cmp-pv-lbl">Prix de vente</label><input class="pi sm" id="cmp-pv" type="number" inputmode="numeric" oninput="cmpMajAch()"></div>
-      </div>
       <button type="button" id="cmp-plus-btn" onclick="cmpPlus()"
         style="width:100%;background:#F0F4FF;color:var(--B);border:1.5px dashed var(--B);border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:11px;text-align:left">
         <span id="cmp-plus-l">+ Prix d'achat et stock</span>
@@ -6876,7 +6888,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.28'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.29'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -12754,7 +12766,7 @@ function ouvrirPrixVite(){
         +(Number(getStk(p))>0?('<div style="font-size:10px;font-weight:700;color:var(--M)">'+fmtQ(getStk(p))+' '+uniteArt(p)+' '+(fr?'en stock':'in stock')+'</div>'):'')
         +'</div>'
         +'<input class="pi sm" type="number" inputmode="numeric" data-pxv="'+p.id+'" placeholder="'+(fr?'Prix':'Price')+'" style="width:96px;margin:0;flex-shrink:0;text-align:right">'
-        +'</div>';
+        +'</div>'+_pxvSugg(p);
     }
     // Famille, ou nom jamais personnalisé : sa fiche, pas un nombre.
     return '<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--BG)">'
@@ -12763,7 +12775,37 @@ function ouvrirPrixVite(){
       +'<button type="button" class="mini-btn blue" onclick="pxvOuvrirFiche('+p.id+')">'+(fr?'Ouvrir':'Open')+'</button>'
       +'</div>';
   }).join('');
+  // 23.29 — « Mettre les prix habituels (N) » : le prix de VENTE seulement,
+  // écrit dans les champs sous ses yeux ; rien n'est enregistré avant qu'il
+  // touche « Enregistrer les prix ».
+  var _nh=_pxvIds.filter(function(id){var q=(DB.articles||[]).find(function(x){return x.id===id;});return q&&prixHabituel(q.nm,q.id);}).length;
+  if(_nh>=2)document.getElementById('pxv-lst').insertAdjacentHTML('afterbegin',
+    '<button type="button" class="exp-hab" id="pxv-hab" onclick="pxvPrendreTout()">'+(fr?('Mettre les prix habituels ('+_nh+')'):('Use usual prices ('+_nh+')'))
+    +'<span>'+(fr?'Le prix de vente seulement — vérifie avant d\'enregistrer':'Selling price only — check before saving')+'</span></button>');
   document.getElementById('ov-prixvite').classList.add('show');
+}
+function _pxvSugg(p){
+  try{
+    var ph=prixHabituel(p.nm,p.id);if(!ph)return '';
+    var fr=(lang!=='en');
+    return '<button type="button" class="cmp-sugg" style="margin:4px 0 6px" data-pxvs="'+p.id+'" onclick="pxvPrendre('+p.id+','+Number(ph.px)+')">'
+      +(fr?'Prix habituel : ':'Usual price: ')+escH(fmt(ph.px))+' · '+escH(prixHabituelMot(ph))+'</button>';
+  }catch(e){return '';}
+}
+function pxvPrendre(id,v){
+  var i=document.querySelector('#pxv-lst [data-pxv="'+id+'"]');if(i)i.value=String(v);
+  var b=document.querySelector('#pxv-lst [data-pxvs="'+id+'"]');if(b)b.classList.add('pris');
+}
+function pxvPrendreTout(){
+  var n=0;
+  _pxvIds.forEach(function(id){
+    var q=(DB.articles||[]).find(function(x){return x.id===id;});if(!q)return;
+    var i=document.querySelector('#pxv-lst [data-pxv="'+id+'"]');
+    if(!i||String(i.value||'').trim())return;      // ce qu'il a déjà tapé reste à lui
+    var ph=prixHabituel(q.nm,q.id);if(!ph)return;
+    pxvPrendre(id,ph.px);n++;
+  });
+  if(n)showToast('✅ '+n+' '+(lang==='fr'?'prix habituels écrits — vérifie, puis enregistre':'usual prices filled — check, then save'));
 }
 function pxvOuvrirFiche(id){
   var p=(DB.articles||[]).find(function(x){return x.id===id;});if(!p)return;
@@ -13878,6 +13920,7 @@ function ouvrirCompleterArticle(p,vidFocus,pourVendre){
   }else{
     document.getElementById('cmp-pa').value=p.pa||'';
     document.getElementById('cmp-pv').value=p.px||'';
+    try{_cmpSuggPrix(p);}catch(e){}
     // La taille du gros est REMISE quand on la connaît : il ne retape pas
     // « 24 » à chaque fois. Elle ne divise rien tant qu'il n'a pas dit
     // « en gros » — et ce choix, lui, repart toujours de « à l'unité ».
@@ -13894,6 +13937,27 @@ function ouvrirCompleterArticle(p,vidFocus,pourVendre){
   // Venu d'une variante : on l'amène sous ses yeux et on la désigne. Sans ça
   // il ouvre une liste de dix variantes et doit chercher la sienne.
   if(vidFocus!=null)setTimeout(function(){_cmpViserVariante(vidFocus);},300);
+}
+// 23.29 — le prix habituel sous le champ, d'un toucher (jamais écrit à sa
+// place, jamais le prix d'achat).
+function _cmpSuggPrix(p){
+  var box=document.getElementById('cmp-pv-sugg');if(!box)return;
+  box.innerHTML='';
+  if(!p||(p.vr&&p.vr.length))return;
+  var fr=(lang!=='en');
+  if(Number(p.px)>0){
+    if(p._sugg)box.innerHTML='<div class="cmp-sugg-mot">'+(fr?'Prix indicatif — vérifie que c\'est le tien':'Suggested price — check it is yours')+'</div>';
+    return;
+  }
+  var ph=prixHabituel(p.nm,p.id);if(!ph)return;
+  box.innerHTML='<button type="button" class="cmp-sugg" id="cmp-sugg-b" onclick="cmpPrendrePrix('+Number(ph.px)+')">'
+    +(fr?'Prix habituel : ':'Usual price: ')+escH(fmt(ph.px))+' · '+escH(prixHabituelMot(ph))+' — '+(fr?'toucher':'tap')+'</button>';
+}
+function cmpPrendrePrix(v){
+  var i=document.getElementById('cmp-pv');if(!i)return;
+  i.value=String(v);
+  try{cmpMajAch();}catch(e){}
+  var b=document.getElementById('cmp-sugg-b');if(b)b.classList.add('pris');
 }
 function _cmpViserVariante(vid){
   try{
@@ -14536,6 +14600,8 @@ function validerCompleter(){
       showToast('🧮 '+(fr?'Indique la taille du '+giV.nomGros+' pour que je divise':'Give the '+giV.nomGros+' size'));return;
     }
     p.nm=nm;p.px=pv;
+    // 23.29 — il a enregistré ce prix lui-même : ce n'est plus une proposition.
+    try{delete p._sugg;}catch(e){}
     p.pa=cmpPaUnit()||p.pa||0;
     // ⚠️ ON ÉCRIT 'pc', PAS null. Avec null, `_umDe` retombe sur le nom :
     // « Savon au kg » remis à la pièce redevenait du kilo à la lecture
@@ -20763,6 +20829,62 @@ function _tailleDe(nm){
   var m=t.match(/(\d+(?:\.\d+)?)\s*(kg|g|l|cl|ml|w|cc)\b/);
   return m?(m[1]+m[2]):null;
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.29 — LE PRIX HABITUEL, INTELLIGEMMENT.
+//
+//  « Ça peut fausser le calcul des bénéfices, un prix habituel — ça
+//  serait mieux intelligemment. » Il a raison, et la règle en découle :
+//   · le BÉNÉFICE, c'est prix de vente − prix d'achat. Un prix d'achat
+//     deviné fabrique un bénéfice faux, que personne ne voit plus jamais.
+//     On ne devine donc JAMAIS un prix d'achat : tant qu'il ne l'a pas
+//     donné, le bénéfice reste « inconnu », comme aujourd'hui.
+//   · seul le prix de VENTE se propose, et dans cet ordre : d'abord SA
+//     boutique (un article qu'il vend déjà sous le même nom — « Riz
+//     parfumé 1 kg » quand il a « Riz parfumé » à 650 : c'est 650, pas le
+//     600 du catalogue), puis le prix courant du catalogue, puis celui de
+//     l'étagère. Jamais quand les deux contenances diffèrent (50 cl ≠
+//     60 cl).
+//   · ce qui vient de SA boutique peut s'écrire dans le champ ; ce qui
+//     vient du catalogue se propose d'un toucher, et l'article garde la
+//     marque « prix indicatif — vérifie » tant qu'il n'y a pas touché.
+//  Mesuré au banc : le catalogue ne retrouvait un prix que pour 227 de ses
+//  1 290 noms — « Riz parfumé » ne voyait pas « Riz parfumé 1 kg »,
+//  « Allumettes » pas « Allumettes (boîte) ». Le nom de BASE (sans
+//  contenance, sans parenthèse) les rapproche.
+// ══════════════════════════════════════════════════════════════════
+function _nomBase(n){
+  return txtNorm(String(n||'')).replace(/\([^)]*\)/g,' ')
+    .replace(/(\d+(?:[.,]\d+)?)\s*(kg|g|l|cl|ml|w|cc)\b/g,' ')
+    .replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+function _taillesCompatibles(a,b){var ta=_tailleDe(a),tb=_tailleDe(b);return !(ta&&tb&&ta!==tb);}
+function prixHabituel(nom,exclId){
+  var base=_nomBase(nom);if(!base||base.length<2)return null;
+  // 1. Sa boutique : un article au même nom de base, qu'il a lui-même mis
+  //    à prix (pas une proposition qui se recopierait de proche en proche).
+  try{
+    var a=(DB&&DB.articles||[]).find(function(x){
+      return x&&x.id!==exclId&&Number(x.px)>0&&!x._sugg&&!(x.vr&&x.vr.length)
+        &&_nomBase(x.nm)===base&&_taillesCompatibles(nom,x.nm);
+    });
+    if(a)return {px:Number(a.px),src:'boutique',ref:a.nm};
+  }catch(e){}
+  // 2. Le catalogue du Cameroun.
+  try{var f=ficheCatalogue(nom);if(f&&f.px>0)return {px:Number(f.px),src:'catalogue',ref:f.nm};}catch(e){}
+  // 3. L'étagère (les quinze articles de départ).
+  try{
+    var k=Object.keys(_ETAGERE_PRIX).find(function(x){return _nomBase(x)===base;});
+    if(k)return {px:Number(_ETAGERE_PRIX[k][1]),src:'courant',ref:k};
+  }catch(e){}
+  return null;
+}
+function prixHabituelMot(ph){
+  var fr=(lang!=='en');
+  if(!ph)return '';
+  return ph.src==='boutique'
+    ?(fr?('comme ton « '+ph.ref+' »'):('like your “'+ph.ref+'”'))
+    :(fr?'prix courant — vérifie':'usual price — check');
+}
 function ficheCatalogue(nom){
   var cle=txtNorm(nom||'').replace(/\s+/g,' ').trim();
   if(!cle||cle.length<2)return null;
@@ -20785,6 +20907,18 @@ function ficheCatalogue(nom){
       o.px=Number(x.px)||0;o.pa=Number(x.pa)||0;return true;
     });
   }
+  // 23.29 — même nom de BASE (sans contenance ni parenthèse), et une
+  // contenance qui ne contredit pas celle qu'il a écrite.
+  if(!(o.px>0)&&memeTaille){
+    var b=_nomBase(nom),b2=_nomBase(o.nm);
+    idx.some(function(x){
+      if(!(x.px>0))return false;
+      var bx=_nomBase(x.plein||x.nm);
+      if(bx!==b&&bx!==b2)return false;
+      if(!_taillesCompatibles(nom,x.plein||x.nm))return false;
+      o.px=Number(x.px)||0;o.pa=Number(x.pa)||0;return true;
+    });
+  }
   return o;
 }
 // Pose sur un article neuf ce que le catalogue sait, et RIEN de plus :
@@ -20794,7 +20928,9 @@ function appliquerFicheCatalogue(a,nom){
   if(!f)return null;
   var pose=[];
   if(!(Number(a.px)>0)&&f.px>0){a.px=f.px;pose.push('px');}
-  if(!(Number(a.pa)>0)&&f.pa>0){a.pa=f.pa;pose.push('pa');}
+  // ⚠️ 23.29 — JAMAIS le prix d'achat du catalogue : c'est le prix d'un
+  // autre, et il fabriquerait un bénéfice faux. Le bénéfice reste
+  // « inconnu » tant qu'il n'a pas donné le sien.
   if(!a.um&&f.um){a.um=f.um;pose.push('um');}
   if(!(Number(a.umSac)>0)&&f.sac>0){a.umSac=f.sac;if(f.cont)a.umCont=f.cont;pose.push('sac');}
   if(!a.cat&&f.cat)a.cat=f.cat;
@@ -22052,10 +22188,10 @@ function importerPhotosMasse(ev){
               px:0,pa:0,stk:0,al:5,vd:0,vr:[],rt:true,_srcName:file.name,_autoNm:nm};
       if(_fiche){
         if(_fiche.px>0)_a.px=_fiche.px;
-        if(_fiche.pa>0)_a.pa=_fiche.pa;
+        // 23.29 — pas le prix d'achat du catalogue (voir prixHabituel).
         if(_fiche.um)_a.um=_fiche.um;
         if(_fiche.sac>0){_a.umSac=_fiche.sac;if(_fiche.cont)_a.umCont=_fiche.cont;}
-        if(_a.px>0||_a.pa>0)_a._sugg=1;
+        if(_a.px>0)_a._sugg=1;
       }
       DB.articles.push(_a);
       importedIds.push(newId);
@@ -22878,6 +23014,8 @@ function expAjouterFormat(i,f){
 function expPrixDirect(i,val){
   var a=_expListe[i];if(!a)return;
   a.px=Math.max(0,parseFloat(String(val||'').replace(',','.'))||0);
+  // Il a écrit son prix : ce n'est plus une proposition.
+  delete a._sugg;delete a._suggSrc;delete a._suggRef;
   // pas de redessin : on ne touche pas au champ pendant qu'il tape
   try{_expMajCompte();}catch(e){}
 }
@@ -22893,24 +23031,37 @@ var _expOuvert=-1;
 // le MONTRE, et une tape le prend : il garde la main, il gagne la frappe.
 function _expSuggestion(a,i){
   try{
-    var f=ficheCatalogue(a.nm);
-    if(!f||!(f.px>0))return '';
+    // 23.29 — déjà proposé et écrit dans le champ : on dit d'où il vient.
+    if(a._sugg&&a.px>0){
+      return '<div style="margin-top:3px;font-size:10.5px;font-weight:800;color:var(--B)">'+escH(prixHabituelMot({src:a._suggSrc,ref:a._suggRef}))+'</div>';
+    }
+    var ph=prixHabituel(a.nm);
+    if(!ph)return '';
     var fr=(lang==='fr');
+    // ⚠️ 23.29 — le prix d'ACHAT du catalogue n'est plus montré : affiché
+    // à côté d'un bouton « prendre », il se prenait pour le sien.
     return '<button type="button" onclick="event.stopPropagation();expPrendreSugg('+i+')" '
       +'style="display:block;margin-top:4px;background:#FFF8E1;border:1px dashed #F9A825;color:#8D6E00;border-radius:8px;'
-      +'padding:5px 8px;font-size:11px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;text-align:left">💡 '
-      +(fr?'Prix habituel : ':'Usual price: ')+fmt(f.px)+(f.pa>0?(' · '+(fr?'achat ':'cost ')+fmt(f.pa)):'')
+      +'padding:5px 8px;font-size:11px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;text-align:left">'
+      +(fr?'Prix habituel : ':'Usual price: ')+fmt(ph.px)+' · '+escH(prixHabituelMot(ph))
       +' — '+(fr?'toucher pour le prendre':'tap to use')+'</button>';
   }catch(e){return '';}
 }
-function expPrendreSugg(i){
-  var a=_expListe[i];if(!a)return;
-  var f=null;try{f=ficheCatalogue(a.nm);}catch(e){}
-  if(!f||!(f.px>0))return;
-  a.px=f.px;
-  if(!(a.pa>0)&&f.pa>0)a.pa=f.pa;
-  a._sugg=1;
+function expPrendreSugg(i,sansRedessin){
+  var a=_expListe[i];if(!a)return false;
+  var ph=prixHabituel(a.nm);
+  if(!ph)return false;
+  a.px=ph.px;          // le prix de VENTE seulement — jamais l'achat
+  a._sugg=1;a._suggSrc=ph.src;a._suggRef=ph.ref;
+  if(!sansRedessin)expRender();
+  return true;
+}
+// « Mettre les prix habituels » : toutes les lignes sans prix d'un toucher.
+function expPrendreTout(){
+  var n=0;
+  _expListe.forEach(function(a,i){if(a&&!(a.px>0)&&!(a._vr&&a._vr.length)&&expPrendreSugg(i,true))n++;});
   expRender();
+  if(n)showToast('✅ '+n+' '+(lang==='fr'?('prix habituel'+(n>1?'s':'')+' mis — vérifie-les'):'usual prices set — check them'));
 }
 // ══════════════════════════════════════════════════════════════════
 //  ⭐ 23.02 — « LEURS PRIX », CHEZ UN GROSSISTE : LE CARTON D'ABORD
@@ -23117,7 +23268,14 @@ function expRender(){
     +'<span style="color:var(--M)"> · '+(fr?'Compte comme tu ranges : en cartons, en sacs.':'Count the way you store: boxes, bags.')+'</span>';
   else
   c.textContent=_expListe.length+' '+(fr?('article'+(_expListe.length>1?'s':'')+' prêt'+(_expListe.length>1?'s':'')):('item'+(_expListe.length>1?'s':'')+' ready'));
-  box.innerHTML=_expListe.map(function(a,i){
+  // 23.29 — « Mettre les prix habituels (N) » quand plusieurs lignes n'ont
+  // pas de prix et que l'app en connaît un.
+  var _nHab=0;
+  if(!_stock)_expListe.forEach(function(a){try{if(a&&!(a.px>0)&&!(a._vr&&a._vr.length)&&!_expGros(a)&&prixHabituel(a.nm))_nHab++;}catch(e){}});
+  box.innerHTML=(_nHab>=2?('<button type="button" class="exp-hab" id="exp-hab" onclick="expPrendreTout()">'
+      +(fr?('Mettre les prix habituels ('+_nHab+')'):('Use usual prices ('+_nHab+')'))
+      +'<span>'+(fr?'Le prix de vente seulement — ton prix d\'achat reste le tien':'Selling price only — your cost stays yours')+'</span></button>'):'')
+    +_expListe.map(function(a,i){
     _expLigneComplete(a);
     if(_stock)return _expLigneStock(a,i);
     if(_expGros(a))return _expLigneGros(a,i);
@@ -23165,11 +23323,11 @@ function expRender(){
           ? ('<div style="font-size:10.5px;font-weight:700;color:var(--B)">'
              +a._vr.length+' '+(fr?('contenance'+(a._vr.length>1?'s':'')+', chacune son prix et son stock')
                                   :'sizes, each with its own price and stock')+'</div>')
-          : !(a.px>0)
-          ? ('<input class="pi sm" type="number" inputmode="numeric" value="" '
+          : (!(a.px>0)||a._sugg)
+          ? ('<input class="pi sm" type="number" inputmode="numeric" value="'+(a.px>0?Number(a.px):'')+'" '
              +'placeholder="'+(fr?'Prix de vente':'Sell price')+'" '
              +'onclick="event.stopPropagation()" oninput="expPrixDirect('+i+',this.value)" '
-             +'style="margin-top:3px;height:34px;font-size:13px;border-color:var(--O)">'
+             +'style="margin-top:3px;height:34px;font-size:13px;border-color:'+(a.px>0?'var(--B)':'var(--O)')+'">'
              +_expSuggestion(a,i))
           : ('<div style="font-size:10.5px;font-weight:700;color:'+(perte?'var(--R)':sansPa?'var(--O)':'var(--M)')+'">'+
               fmt(a.px)+'/'+u+
@@ -23320,6 +23478,7 @@ function expCreerTous(){
     else if(a._imgUrl)art.img=a._imgUrl;
     if(a._e)art.e=a._e;
     if(a._cat)art.cat=a._cat;
+    if(a._sugg&&a._suggSrc!=='boutique')art._sugg=1;   // « prix indicatif — vérifie »
     appliquerPhotosCatalogue([art]);appliquerConditionnementCatalogue([art],true);   // photo + conditionnement connus du catalogue
     // ⚠️ Les VARIANTES arrivent avec le modèle. Sans ce bloc, un import de
     // « Sucreries » avec ses quatre parfums créait un article vide : les
@@ -23888,6 +24047,9 @@ function chaValider(){
     if(DB.articles.some(function(p){return txtNorm(p.nm)===txtNorm(s.nm);}))return;
     if(_expListe.some(function(x){return txtNorm(x.nm)===txtNorm(s.nm);}))return;
     var _l={nm:s.nm,px:0,pa:0,stk:0,_img600:s.img,_e:s.e,_cat:s.cat};
+    // 23.29 — un article qu'il vend déjà sous ce nom : son prix à LUI est
+    // écrit dans le champ. Le catalogue, lui, se propose seulement.
+    try{var _ph=prixHabituel(s.nm);if(_ph&&_ph.src==='boutique'){_l.px=_ph.px;_l._sugg=1;_l._suggSrc='boutique';_l._suggRef=_ph.ref;}}catch(e){}
     // Le conditionnement voyage avec l'article, au lieu d'être redemandé.
     if(s.sac>0){_l.umSac=s.sac;_l.umCont=s.cont||null;}
     _expListe.push(_l);
