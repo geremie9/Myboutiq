@@ -34,13 +34,13 @@ const prixPad = async (p, prix, nom) => {
   await p.evaluate(() => { window.__prompts = 0; window.prompt = () => { window.__prompts++; return null; }; });
   const g = await fantomes(p);
   const titre = await p.evaluate(() => (document.querySelector('#pgrid .etg-tete') || {}).textContent || '');
-  // 23.26 : le prix courant est déjà écrit — la phrase le dit.
-  t(/Touche ce que tu vends/.test(titre) && /prix courant est déjà mis/.test(titre), `elle dit quoi faire en une phrase : « ${titre.trim().slice(0, 60)}… »`);
+  // 23.32 : une question, « Tu vends quoi ? » (le prix courant est sur chaque tuile).
+  t(/Tu vends quoi/.test(titre), `elle pose une seule question : « ${titre.trim().slice(0, 60)} »`);
   t(g.length === 16 && g.includes('Riz') && g.includes('Huile') && g.includes('Bougie') && g[15] === 'Autre article',
     `les 15 articles que les boutiques mettent vraiment en rayon, plus « Autre article » (${g.length})`);
-  t(await p.evaluate(() => !!Array.from(document.querySelectorAll('#pgrid button')).find(x => /Beaucoup d'articles d'un coup/.test(x.textContent))
+  t(await p.evaluate(() => !!Array.from(document.querySelectorAll('#pgrid button')).find(x => /Chercher dans le catalogue/.test(x.textContent))
     && !!Array.from(document.querySelectorAll('#pgrid button')).find(x => /boutique d'exemple/.test(x.textContent))),
-    'les autres chemins restent : le catalogue (« beaucoup d\'articles d\'un coup ») et la boutique d\'exemple');
+    'les autres chemins restent : le catalogue (« chercher dans le catalogue ») et la boutique d\'exemple');
   t(await p.evaluate(() => DB.articles.length === 0), 'rien n\'est créé d\'avance : pas quinze articles à zéro franc à nettoyer');
   // Il tape ce qu'il vend, dans une boutique encore vide : on le lui propose.
   await p.locator('#src-c').fill('Tomate'); await p.waitForTimeout(500);
@@ -140,8 +140,8 @@ const prixPad = async (p, prix, nom) => {
   const { ctx, p } = await ouvrirCaisse(b, port, d);
   await p.evaluate(() => { lang = 'en'; renderProd(DB.articles); });
   const g = await fantomes(p);
-  t(g.includes('Rice') && g.includes('Other item') && /Tap what you sell/.test(await p.evaluate(() => document.getElementById('pgrid').textContent)),
-    'en anglais : « Tap what you sell », « Rice »');
+  t(g.includes('Rice') && g.includes('Other item') && /What do you sell/.test(await p.evaluate(() => document.getElementById('pgrid').textContent)),
+    'en anglais : « What do you sell? », « Rice »');
   await ctx.close();
 }
 {

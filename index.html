@@ -2250,6 +2250,20 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 @keyframes etgNeuf{0%{transform:scale(.6);opacity:.2}60%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){.pcard.etg-neuf{animation:none}}
 .etg-pied{grid-column:1/-1;text-align:center;padding:12px 6px 6px}
+/* 23.32 — « Tu vends quoi ? » : six métiers en images, puis tout le rayon d'un toucher. */
+.etg-rayons{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:2px 2px 4px}
+.etg-ray{display:flex;flex-direction:column;align-items:center;gap:5px;min-height:76px;padding:9px 4px 8px;border-radius:14px;
+  border:2px solid var(--BD);background:var(--C);color:var(--T);font-family:'Outfit',sans-serif;cursor:pointer}
+.etg-ray.on{border-color:var(--A);background:#FFF6E5;box-shadow:0 0 0 2px rgba(240,169,62,.2)}
+.etg-ray-i{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px}
+.etg-ray-t{font-size:12px;font-weight:800;line-height:1.15;text-align:center}
+.etg-ray:active{transform:scale(.97)}
+.etg-tout{grid-column:1/-1;text-align:center;padding:6px 2px 4px}
+.etg-tout button{width:100%;min-height:52px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:14px;
+  background:var(--P);color:#fff;font-family:'Outfit',sans-serif;font-size:16px;font-weight:900;cursor:pointer}
+.etg-tout button .ic{stroke:var(--A)}
+.etg-tout button:active{transform:scale(.98)}
+.etg-tout .s{font-size:12px;font-weight:700;color:var(--M);line-height:1.4;margin-top:6px}
 .etg-lien{background:none;border:none;color:var(--B);font-size:12.5px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;padding:8px;text-decoration:underline}
 #ppd-px::-webkit-outer-spin-button,#ppd-px::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 #ppd-px{-moz-appearance:textfield}
@@ -6913,7 +6927,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.31'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.32'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -8173,23 +8187,28 @@ var _ICOART={
   tube:'<path d="M8.5 4.5h7v2.6l-.9 12.4a1 1 0 0 1-1 .9h-3.2a1 1 0 0 1-1-.9L8.5 7.1z"/><path d="M10.3 4.5v-1h3.4v1"/>',
   phone:'<rect x="7.5" y="3" width="9" height="18" rx="2.4"/><path d="M11 18h2"/>',
   pill:'<rect x="4.5" y="9.2" width="15" height="5.6" rx="2.8"/><path d="M12 9.2v5.6"/>',
-  bag:'<path d="M6.5 8.5h11l-.9 11.5a1 1 0 0 1-1 .9H8.4a1 1 0 0 1-1-.9z"/><path d="M9.3 8.5v-1.5a2.7 2.7 0 0 1 5.4 0v1.5"/>'
+  bag:'<path d="M6.5 8.5h11l-.9 11.5a1 1 0 0 1-1 .9H8.4a1 1 0 0 1-1-.9z"/><path d="M9.3 8.5v-1.5a2.7 2.7 0 0 1 5.4 0v1.5"/>',
+  shirt:'<path d="M9 3.5L4 6.5l2 3.6 2-1V20.5h8V9.1l2 1 2-3.6-5-3a3 3 0 0 1-6 0z"/>'
 };
 var _RAYON={amber:{bg:'#FBEEDA',fg:'#B4790F'},blue:{bg:'#E6F1FB',fg:'#185FA5'},red:{bg:'#FCEBEB',fg:'#A32D2D'},teal:{bg:'#E1F5EE',fg:'#0F6E56'},purple:{bg:'#EFEDFD',fg:'#534AB7'},indigo:{bg:'#E8EAF6',fg:'#3949AB'},green:{bg:'#EAF3DE',fg:'#3B6D11'},gray:{bg:'#EFEFF1',fg:'#5F5E5A'}};
 function _rayonFamille(cat){var c=txtNorm(cat||'');if(/autre|other/.test(c))return 'gray';if(/boisson|drink/.test(c))return 'blue';if(/alcool|alcohol|biere/.test(c))return 'red';if(/menage|household/.test(c))return 'teal';if(/hygiene/.test(c))return 'purple';if(/electro/.test(c))return 'indigo';if(/medic|pharma/.test(c))return 'green';return 'amber';}
 function iconArticle(p){
   var s=txtNorm((p&&p.nm)||''),ico='bag';
-  if(/riz|farine|sucre|mais|semoule|\bmil\b|\bble\b|rice|flour/.test(s))ico='grain';
-  else if(/huile|oil|petrole|bidon|\beau\b|water/.test(s))ico='bottle';
-  else if(/coca|soda|\bjus\b|fanta|sprite|boisson|drink|\bthe\b|cafe|tea|coffee/.test(s))ico='cup';
-  else if(/biere|beer|\bvin\b|whisky|alcool|liqueur/.test(s))ico='cup';
+  // ⚠️ 23.32 — « rice » et « oil » sans bornes de mot : « dentifRICE »
+  // recevait le sac de riz, « savon de tOILette » la bouteille d'huile, et
+  // « SUCREerie » (une boisson) le sac de sucre. Vu au banc sur l'étagère.
+  if(/riz|farine|\bsucre\b|mais|semoule|\bmil\b|\bble\b|\brice\b|flour/.test(s))ico='grain';
+  else if(/huile|\boil\b|petrole|bidon|\beau\b|water/.test(s))ico='bottle';
+  else if(/coca|soda|\bjus\b|fanta|sprite|boisson|drink|\bthe\b|cafe|tea|coffee|sucrerie|malta|energisant|canette/.test(s))ico='cup';
+  else if(/biere|beer|\bvin\b|whisky|alcool|liqueur|guinness/.test(s))ico='cup';
   else if(/lait|milk|yaourt|yogourt/.test(s))ico='milk';
   else if(/pain|bread|beignet|brioche|gateau|biscuit/.test(s))ico='bread';
   else if(/sardine|conserve|tomate|maquereau|boite|\bpoisson\b|fish/.test(s))ico='can';
   else if(/maggi|\bcube\b|\bsel\b|bouillon|epice/.test(s))ico='cube';
-  else if(/savon|lessive|\bomo\b|detergent|javel|menage/.test(s))ico='soap';
-  else if(/creme|\bgel\b|shampoing|dentifrice|pommade|parfum|couche/.test(s))ico='tube';
-  else if(/telephone|phone|chargeur|ecouteur|cable|\bpile\b|batterie|ampoule|torche/.test(s))ico='phone';
+  else if(/savon|lessive|\bomo\b|detergent|javel|menage|eponge/.test(s))ico='soap';
+  else if(/creme|\bgel\b|shampoing|dentifrice|pommade|parfum|couche|vaseline|deodorant/.test(s))ico='tube';
+  else if(/telephone|phone|chargeur|ecouteur|cable|\bpile\b|batterie|ampoule|torche|cle usb|carte memoire|rallonge|lampe rechargeable/.test(s))ico='phone';
+  else if(/robe|pantalon|chemise|t-shirt|tshirt|\bshort\b|veste|pagne|foulard|casquette/.test(s))ico='shirt';
   else if(/medicament|paracetamol|comprime|pharma|doli/.test(s))ico='pill';
   return {ico:ico,ray:_rayonFamille(p&&p.cat)};
 }
@@ -12160,13 +12179,75 @@ var _ETAGERE={
   boutique:[['Riz','🍚'],['Huile','🫗'],['Sucre','🍬'],['Lait','🥛'],['Pain','🍞'],['Sardines','🐟'],['Farine','🌾'],
     ['Cube','🧊'],['Café','☕'],['Jus','🧃'],['Bière','🍺'],['Savon','🧼'],['Lessive','🧺'],['Bougie','🕯️'],['Allumettes','🔥']],
   mode:[['Robe','👗'],['Pantalon','👖'],['Chemise','👔'],['T-shirt','👕'],['Short','🩳'],['Veste','🧥'],['Pagne','🧵'],
-    ['Chaussures','👟'],['Sandales','👡'],['Sac','👜'],['Casquette','🧢'],['Foulard','🧣'],['Chaussettes','🧦'],['Bijoux','💍'],['Lunettes','🕶️']]
+    ['Chaussures','👟'],['Sandales','👡'],['Sac','👜'],['Casquette','🧢'],['Foulard','🧣'],['Chaussettes','🧦'],['Bijoux','💍'],['Lunettes','🕶️']],
+  // 23.32 — quatre métiers de plus (voir _RAYONS). Leurs listes ne sont pas
+  // tirées des boutiques de la base, il y en a trop peu de ces métiers :
+  // ce sont les articles du catalogue du Cameroun qui ont un prix de vente
+  // connu (CATALOGUE_CM), sous leur nom de tous les jours. Un article sans
+  // prix connu n'y est pas : on n'invente pas de prix.
+  boissons:[['Sucrerie','🥤'],['Eau minérale','💧'],['Sachet d\'eau','💧'],['Bière','🍺'],['Guinness','🍺'],['Malta','🥤'],
+    ['Énergisant','⚡'],['Canette','🥤'],['Jus','🧃'],['Yaourt','🥛'],['Vin','🍷']],
+  beaute:[['Savon de toilette','🧼'],['Dentifrice','🪥'],['Brosse à dents','🪥'],['Serviettes hygiéniques','🩹'],['Couches bébé','👶'],
+    ['Crème','🧴'],['Vaseline','🧴'],['Déodorant','🧴'],['Papier hygiénique','🧻'],['Lame de rasoir','🪒'],['Mouchoirs','🤧'],
+    ['Peigne','🪮'],['Coton-tige','🦯']],
+  tel:[['Pile','🔋'],['Ampoule','💡'],['Chargeur','🔌'],['Câble USB','🔌'],['Écouteurs','🎧'],['Torche','🔦'],
+    ['Lampe rechargeable','🏮'],['Clé USB','💾'],['Carte mémoire','💾'],['Rallonge','🔌']],
+  menage:[['Savon de lessive','🧼'],['Lessive','🧺'],['Eau de javel','🧴'],['Détergent','🧴'],['Insecticide','🦟'],['Spirale','🌀'],
+    ['Seau','🪣'],['Cuvette','🪣'],['Éponge','🧽'],['Balai','🧹'],['Sachets plastique','🛍️'],['Briquet','🔥'],['Bougie','🕯️'],
+    ['Allumettes','🔥'],['Corde à linge','🧵']]
 };
+// ⭐ 23.32 — « TU VENDS QUOI ? »
+// Mesuré le 22/10 sur les 42 boutiques extérieures (30 commerçants) :
+// 23 n'ont JAMAIS mis un seul article, et 9 commerçants ont créé 2 à 4
+// boutiques le même jour, les premières vides. Aucune n'a fait plus de
+// cinq ventes. L'étagère proposait le riz, l'huile et le sucre à TOUT LE
+// MONDE : la vendeuse de cosmétiques ou le vendeur de chargeurs y voyait
+// une caisse qui n'était pas la sienne. Et il fallait toucher les
+// articles un par un.
+// Une question en images (le métier, un toucher), la liste qui va avec,
+// et « Tout mettre dans ma caisse » : quinze articles à leur prix courant
+// en UN toucher. Ces prix restent marqués « indicatif » (_sugg) tant qu'il
+// ne les a pas regardés un par un, et « Annuler » retire tout d'un coup.
+// Le choix se garde dans DB.cfg.rayon : ni `secteur` (dont dépendent
+// d'autres écrans) ni le serveur n'en dépendent.
+var _RAYONS=[
+  {id:'boutique',fr:'Épicerie',en:'Grocery',rep:'Riz'},
+  {id:'boissons',fr:'Boissons',en:'Drinks',rep:'Bière'},
+  {id:'beaute',fr:'Beauté',en:'Beauty',rep:'Savon de toilette'},
+  {id:'tel',fr:'Téléphone, piles',en:'Phone, batteries',rep:'Chargeur'},
+  {id:'menage',fr:'Ménage',en:'Household',rep:'Eau de javel'},
+  {id:'mode',fr:'Vêtements',en:'Clothes',rep:'Robe'}
+];
+// La catégorie de ce qu'il met depuis un métier. ⚠️ Déduite du nom, elle
+// se trompait : mesuré au banc, « Dentifrice », « Déodorant » et « Pile »
+// tombaient en « Alimentation », « Eau de javel » et « Seau » en
+// « Boissons » — une boutique de cosmétiques se retrouvait avec un onglet
+// Alimentation. L'épicerie garde la déduction par le nom (ses articles
+// sont de plusieurs rayons).
+var _RAYON_CAT={boissons:'Boissons',beaute:'Hygiène',tel:'Électronique',menage:'Ménage',mode:'Vêtements'};
+function _rayonCat(nm,ray){
+  return _RAYON_CAT[ray||_rayonCourant()]||categorieDepuisNomProduit(nm);
+}
+function _rayonCourant(){
+  var r='';
+  try{r=(DB&&DB.cfg&&(DB.cfg.rayon||DB.cfg.secteur))||'';}catch(e){}
+  return _ETAGERE[r]?r:'boutique';
+}
 var _ETAGERE_EN={'Riz':'Rice','Huile':'Oil','Sucre':'Sugar','Lait':'Milk','Pain':'Bread','Sardines':'Sardines','Farine':'Flour',
   'Cube':'Stock cube','Café':'Coffee','Jus':'Juice','Bière':'Beer','Savon':'Soap','Lessive':'Washing powder','Bougie':'Candle',
   'Allumettes':'Matches','Robe':'Dress','Pantalon':'Trousers','Chemise':'Shirt','T-shirt':'T-shirt','Short':'Shorts','Veste':'Jacket',
   'Pagne':'Wax fabric','Chaussures':'Shoes','Sandales':'Sandals','Sac':'Bag','Casquette':'Cap','Foulard':'Scarf',
-  'Chaussettes':'Socks','Bijoux':'Jewellery','Lunettes':'Glasses'};
+  'Chaussettes':'Socks','Bijoux':'Jewellery','Lunettes':'Glasses',
+  'Sucrerie':'Soft drink','Eau minérale':'Mineral water','Sachet d\'eau':'Water sachet','Guinness':'Guinness','Malta':'Malta',
+  'Énergisant':'Energy drink','Canette':'Can','Yaourt':'Yoghurt','Vin':'Wine',
+  'Savon de toilette':'Toilet soap','Dentifrice':'Toothpaste','Brosse à dents':'Toothbrush','Serviettes hygiéniques':'Sanitary pads',
+  'Couches bébé':'Nappies','Crème':'Cream','Vaseline':'Vaseline','Déodorant':'Deodorant','Papier hygiénique':'Toilet paper',
+  'Lame de rasoir':'Razor blade','Mouchoirs':'Tissues','Peigne':'Comb','Coton-tige':'Cotton buds',
+  'Pile':'Battery','Ampoule':'Bulb','Chargeur':'Charger','Câble USB':'USB cable','Écouteurs':'Earphones','Torche':'Torch',
+  'Lampe rechargeable':'Rechargeable lamp','Clé USB':'USB stick','Carte mémoire':'Memory card','Rallonge':'Extension lead',
+  'Savon de lessive':'Laundry soap','Eau de javel':'Bleach','Détergent':'Detergent','Insecticide':'Insecticide',
+  'Spirale':'Mosquito coil','Seau':'Bucket','Cuvette':'Basin','Éponge':'Sponge','Balai':'Broom',
+  'Sachets plastique':'Plastic bags','Briquet':'Lighter','Corde à linge':'Clothes line'};
 // ⭐ 23.26 — LE PRIX COURANT, DÉJÀ ÉCRIT.
 // Mesuré le 18/10 : 26 boutiques sur 64 n'ont jamais mis un seul article
 // — 8 de plus ce mois-ci, APRÈS l'étagère. Toucher « Riz » ouvrait un
@@ -12188,17 +12269,36 @@ var _ETAGERE_PRIX={
   'T-shirt':[2000,3000,5000,'la pièce'],'Short':[2000,3000,5000,'la pièce'],'Veste':[8000,15000,25000,'la pièce'],
   'Pagne':[3500,6000,12000,'la pièce'],'Chaussures':[5000,10000,15000,'la paire'],'Sandales':[1500,3000,5000,'la paire'],
   'Sac':[3000,5000,10000,'la pièce'],'Casquette':[1000,2000,3000,'la pièce'],'Foulard':[1000,1500,2500,'la pièce'],
-  'Chaussettes':[300,500,1000,'la paire'],'Bijoux':[500,1000,2000,'la pièce'],'Lunettes':[1000,2000,3500,'la paire']
+  'Chaussettes':[300,500,1000,'la paire'],'Bijoux':[500,1000,2000,'la pièce'],'Lunettes':[1000,2000,3500,'la paire'],
+  // 23.32 — le prix courant de CATALOGUE_CM (Coca 60 cl 600, Tangui 1,5 L
+  // 500, Guinness 65 cl 950, Lux 500, Colgate 900, pile R6 150, Azur 650…)
+  'Sucrerie':[500,600,700,'la bouteille'],'Eau minérale':[400,500,600,'la bouteille'],'Sachet d\'eau':[25,50,100,'le sachet'],
+  'Guinness':[800,950,1000,'la bouteille'],'Malta':[550,650,700,'la bouteille'],'Énergisant':[600,700,800,'la canette'],
+  'Canette':[400,500,600,'la canette'],'Yaourt':[700,900,1000,'la bouteille'],'Vin':[2200,2700,3000,'le carton'],
+  'Savon de toilette':[400,500,650,'le morceau'],'Dentifrice':[700,900,1000,'le tube'],'Brosse à dents':[250,400,500,'la brosse'],
+  'Serviettes hygiéniques':[900,1100,1200,'le paquet'],'Couches bébé':[150,200,250,'la couche'],'Crème':[1200,1500,2000,'le pot'],
+  'Vaseline':[500,650,800,'le pot'],'Déodorant':[900,1200,1500,'la pièce'],'Papier hygiénique':[200,300,350,'le rouleau'],
+  'Lame de rasoir':[50,100,150,'la lame'],'Mouchoirs':[100,150,200,'le paquet'],'Peigne':[200,300,400,'la pièce'],
+  'Coton-tige':[300,400,500,'la boîte'],
+  'Pile':[100,150,250,'la pile'],'Ampoule':[700,1000,1500,'l\'ampoule'],'Chargeur':[1500,2500,3500,'la pièce'],
+  'Câble USB':[500,1000,1500,'la pièce'],'Écouteurs':[700,1200,2000,'la paire'],'Torche':[2500,3500,4500,'la pièce'],
+  'Lampe rechargeable':[3500,5000,6000,'la pièce'],'Clé USB':[3500,5000,6000,'la pièce'],'Carte mémoire':[4000,6000,7000,'la pièce'],
+  'Rallonge':[2000,3000,4000,'la pièce'],
+  'Savon de lessive':[500,650,700,'la barre'],'Eau de javel':[400,500,600,'le litre'],'Détergent':[700,900,1000,'la bouteille'],
+  'Insecticide':[1200,1500,2200,'la bombe'],'Spirale':[200,300,350,'le paquet'],'Seau':[1200,1500,2000,'la pièce'],
+  'Cuvette':[1500,2000,2500,'la pièce'],'Éponge':[100,150,200,'la pièce'],'Balai':[500,700,1000,'la pièce'],
+  'Sachets plastique':[300,450,500,'le paquet'],'Briquet':[100,150,200,'la pièce'],'Corde à linge':[400,600,800,'la pièce']
 };
 var _ETAGERE_UNITE_EN={'le kilo':'per kilo','le litre':'per litre','le sachet':'per sachet','la baguette':'per loaf',
   'la boîte':'per tin','le cube':'per cube','la bouteille':'per bottle','le morceau':'per bar','la bougie':'per candle',
-  'la pièce':'per piece','la paire':'per pair'};
+  'la pièce':'per piece','la paire':'per pair','la canette':'per can','le carton':'per carton','le tube':'per tube',
+  'la brosse':'per brush','le paquet':'per pack','la couche':'per nappy','le pot':'per jar','le rouleau':'per roll',
+  'la lame':'per blade','la pile':'per battery','l\'ampoule':'per bulb','la barre':'per bar','la bombe':'per can'};
 var _etgGuideFait=false;
 // Les suggestions encore utiles : ni déjà en rayon (« Huile » se tait dès
 // qu'il a « Huile d'arachide »), ni écartées.
-function _etagereListe(){
-  var sct='boutique';try{sct=(DB&&DB.cfg&&DB.cfg.secteur)||'boutique';}catch(e){}
-  var base=_ETAGERE[sct]||_ETAGERE.boutique,fr=(lang==='fr');
+function _etagereListe(ray){
+  var base=_ETAGERE[ray||_rayonCourant()]||_ETAGERE.boutique,fr=(lang==='fr');
   var noms=((DB&&DB.articles)||[]).map(function(p){return txtNorm((p&&p.nm)||'');});
   return base.map(function(x,i){return {i:i,nm:fr?x[0]:(_ETAGERE_EN[x[0]]||x[0]),e:x[1]};})
     .filter(function(x){
@@ -12217,35 +12317,93 @@ function _etagereMontrer(tout){
     if((DB.articles||[]).length>=40)return false;
     if((DB.ventes||[]).some(function(v){return v&&!v.annulee;}))return false;
     if(DB.arch&&Array.isArray(DB.arch.resume)&&DB.arch.resume.length)return false;
-    return _etagereListe().length>0||!(DB.articles||[]).length;
+    // 23.32 — tant qu'un des métiers a encore quelque chose à proposer : il
+    // a tout mis de l'épicerie, il vend aussi des boissons.
+    return !(DB.articles||[]).length||_RAYONS.some(function(r){return _etagereListe(r.id).length>0;});
   }catch(e){return false;}
+}
+// Les métiers, en images : le même dessin que l'article qui les représente.
+function _rayonsHtml(){
+  var fr=(lang==='fr'),cur=_rayonCourant(),h='<div class="etg-rayons" role="radiogroup" aria-label="'+(fr?'Ce que tu vends':'What you sell')+'">';
+  _RAYONS.forEach(function(r){
+    var m={bg:'var(--BG)',fg:'var(--T)',svg:''};
+    try{m=mediaArtInner({nm:r.rep,cat:_rayonCat(r.rep,r.id)},26);}catch(e){}
+    var on=(r.id===cur);
+    h+='<button type="button" class="etg-ray'+(on?' on':'')+'" role="radio" aria-checked="'+(on?'true':'false')+'" data-rayon="'+r.id+'" onclick="etagereRayon(\''+r.id+'\')">'
+      +'<span class="etg-ray-i" style="background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</span>'
+      +'<span class="etg-ray-t">'+escH(fr?r.fr:r.en)+'</span></button>';
+  });
+  return h+'</div>';
+}
+// Ce que « Tout mettre » mettrait : la liste du métier, chacun à son prix courant.
+function _etagereAMettre(){
+  var base=_ETAGERE[_rayonCourant()]||_ETAGERE.boutique;
+  return _etagereListe().map(function(x){return {x:x,pc:_ETAGERE_PRIX[base[x.i][0]]||null};})
+    .filter(function(o){return o.pc&&o.pc[1]>0;});
+}
+function etagereRayon(id){
+  if(!_ETAGERE[id]||!DB||!DB.cfg)return;
+  if(_rayonCourant()===id)return;
+  DB.cfg.rayon=id;
+  _parcoursCompter('rayon');
+  save();
+  renderProd(DB.articles);
+}
+// ⭐ 23.32 — LA VRAIE PHOTO, QUAND MYBOUTIQ EN A CERTIFIÉ UNE.
+// « Utilise les vraies photos filmées dans l'app. » L'étagère d'une
+// boutique neuve ne montrait que des dessins ; l'article créé n'avait pas
+// de photo (« Depuis l'étagère, ni photo… », voir _creerArticleRapide).
+// Mesuré en base le 22/10 : 369 articles portent une photo prise dans une
+// boutique, 296 n'ont rien. Seules les photos CERTIFIÉES sont prises ici
+// (_photoManif._cert : prises par MyBoutiQ, vérifiées une à une, voir
+// ouvrirEquiperCatalogue) — ni les cartes dessinées du catalogue, ni la
+// photo d'un autre commerçant qui n'a rien demandé. Il voit la photo sur
+// la tuile avant de toucher : c'est elle qui entre dans sa caisse.
+// Sans réseau, le manifeste n'a pas de certifiées : le dessin, comme avant.
+function _photoReelle(nm){
+  try{
+    if(!_photoManif||!_photoManif._cert)return '';
+    var c=_slugsPourNom(nm);
+    for(var i=0;i<c.length;i++){var u=_photoManif._cert[c[i]];if(u&&srcSure(u))return u;}
+  }catch(e){}
+  return '';
 }
 function _etagereTuile(x,onclick,plus){
   var m={bg:'var(--BG)',fg:'var(--T)',svg:''};
-  try{var _m=mediaArtInner({nm:x.nm,e:x.e,cat:categorieDepuisNomProduit(x.nm)},32);m={bg:_m.bg,fg:_m.fg,svg:_m.svg};}catch(e){}
+  try{var _m=mediaArtInner({nm:x.nm,e:x.e,cat:_rayonCat(x.nm)},32);m={bg:_m.bg,fg:_m.fg,svg:_m.svg};}catch(e){}
   // 23.10 — le dessin de la tuile, pas l'emoji du catalogue : la même image
   // avant et après l'ajout. « Autre article » garde son crayon.
   var _vis=x.e==='✏️'?ico('crayon',30):(m.svg||escH(x.e||''));
+  var _ph=x.e==='✏️'?'':_photoReelle(x.nm);
+  // Même vignette que la carte qu'elle deviendra (.pphoto) : le dessin
+  // dessous, qui reprend la place si la photo ne vient pas.
   return '<div class="pcard etg" role="button" tabindex="0" onclick="'+onclick+'">'
-    +'<div class="pmedia" style="background:'+m.bg+';color:'+m.fg+';font-size:30px">'+_vis+'</div>'
+    +(_ph?('<div class="pmedia pphoto" style="background:'+m.bg+';color:'+m.fg+'"><span>'+m.svg+'</span><img src="'+srcSure(_ph)+'" loading="lazy" alt="" onerror="this.remove()"></div>')
+         :('<div class="pmedia" style="background:'+m.bg+';color:'+m.fg+';font-size:30px">'+_vis+'</div>'))
     +'<div class="pcard-overlay"><div class="pnm-ov">'+escH(x.nm)+'</div>'
     +'<span class="etg-plus">'+plus+'</span></div></div>';
 }
 function _etagereHtml(vide){
   var fr=(lang==='fr'),h='';
   if(vide){
-    h+='<div class="etg-tete"><div class="t">'+(fr?'Touche ce que tu vends':'Tap what you sell')+'</div>'
-      +'<div class="s">'+(fr?'Le prix courant est déjà mis : tu confirmes, ou tu changes. Pas de stock, pas de formulaire.'
-                            :'The usual price is already there: confirm or change it. No stock, no form.')+'</div></div>';
+    h+='<div class="etg-tete"><div class="t">'+(fr?'Tu vends quoi ?':'What do you sell?')+'</div></div>';
   }else{
     h+='<div class="etg-sep">'+(fr?'Tu vends aussi… ?':'Do you also sell…?')
       +'<span>'+(fr?'Touche pour l\'ajouter. Ces suggestions partent après ta première vente.'
                    :'Tap to add it. These suggestions go away after your first sale.')+'</span></div>';
   }
+  // 23.32 — le métier d'abord, puis tout son rayon d'un toucher.
+  h+=_rayonsHtml();
+  var _am=_etagereAMettre();
+  if(_am.length>=2){
+    h+='<div class="etg-tout"><button type="button" id="etg-tout" onclick="etagereToutMettre()">'
+      +ico('valider',20)+' '+(fr?('Tout mettre dans ma caisse ('+_am.length+')'):('Put them all in my till ('+_am.length+')'))+'</button>'
+      +'<div class="s">'+(fr?'Au prix courant. Tu changes après ce qui n\'est pas ton prix, ou tu touches un seul article.'
+                            :'At the usual price. Change what is not your price later, or tap a single item.')+'</div></div>';
+  }
   // 23.28 — la pastille porte le prix courant : il le voit AVANT de
   // toucher, et toucher le met dans la caisse à ce prix (voir etagereChoisir).
-  var _sct='boutique';try{_sct=(DB&&DB.cfg&&DB.cfg.secteur)||'boutique';}catch(e){}
-  var _base=_ETAGERE[_sct]||_ETAGERE.boutique;
+  var _base=_ETAGERE[_rayonCourant()]||_ETAGERE.boutique;
   _etagereListe().forEach(function(x){
     var pc=_base[x.i]&&_ETAGERE_PRIX[_base[x.i][0]];
     h+=_etagereTuile(x,'etagereChoisir('+x.i+')',pc?('+ '+Number(pc[1]).toLocaleString('fr-FR')+' F'):(fr?'+ Ajouter':'+ Add'));
@@ -12253,7 +12411,9 @@ function _etagereHtml(vide){
   h+=_etagereTuile({nm:fr?'Autre article':'Other item',e:'✏️'},'etagereAutre()',fr?'+ Écrire':'+ Type');
   if(vide){
     h+='<div class="etg-pied">'
-      +'<div><button class="eg-btn2" onclick="ouvrirAjouter()">'+(fr?'Beaucoup d\'articles d\'un coup':'Many items at once')+'</button></div>'
+      // 23.32 — « Beaucoup d'articles d'un coup » se confondait avec « Tout
+      // mettre dans ma caisse » : celui-ci ouvre le catalogue en photos.
+      +'<div><button class="eg-btn2" onclick="ouvrirAjouter()">'+(fr?'Chercher dans le catalogue (600 articles)':'Search the catalogue (600 items)')+'</button></div>'
       +'<div><button class="eg-btn2" onclick="entrerDemo()" style="border-color:var(--B);color:var(--B)">'
       +(fr?'Voir d\'abord une boutique d\'exemple':'See an example shop first')+'</button></div>'
       +_htmlAideCreation()+_htmlRappelDemain()+'</div>';
@@ -12265,8 +12425,7 @@ function _etagereHtml(vide){
 }
 function etagereChoisir(i){
   if(!_peutCreerEnVendant())return;
-  var sct='boutique';try{sct=(DB&&DB.cfg&&DB.cfg.secteur)||'boutique';}catch(e){}
-  var x=(_ETAGERE[sct]||_ETAGERE.boutique)[i];if(!x)return;
+  var x=(_ETAGERE[_rayonCourant()]||_ETAGERE.boutique)[i];if(!x)return;
   var nm=(lang==='fr')?x[0]:(_ETAGERE_EN[x[0]]||x[0]);
   var dj=_articleExistant(nm);
   if(dj){_direDejaLa(dj);return;}
@@ -12286,12 +12445,70 @@ function etagereChoisir(i){
   ouvrirPrixPad({nom:nm,e:x[1],etagere:true,courants:null});
 }
 function _etagereAjouter(nm,e,pc){
-  var art=_creerArticleRapide(nm,Number(pc[1]),{etagere:true,e:e});
+  var art=_creerArticleRapide(nm,Number(pc[1]),{etagere:true,e:e,cat:_rayonCat(nm),img:_photoReelle(nm)});
   if(!art)return;
   _parcoursCompter('etgOk');_parcoursCompter('etgCourant');
   renderProd(DB.articles);renderStock(DB.articles);
   try{initTabs();}catch(x){}
   _etagereApresAjout(art,nm,Number(pc[1]),pc);
+}
+// ⭐ 23.32 — TOUT SON RAYON, D'UN TOUCHER.
+// Chaque article garde « prix indicatif — vérifie » (_sugg) : il n'a pas
+// regardé ces prix un par un, contrairement au toucher sur une tuile qui
+// montre son prix. Un seul enregistrement pour le lot, pas quinze.
+function etagereToutMettre(){
+  if(!_peutCreerEnVendant())return;
+  var fr=(lang==='fr'),l=_etagereAMettre(),ids=[];
+  if(!l.length)return;
+  l.forEach(function(o){
+    if(_articleExistant(o.x.nm))return;
+    var art=_creerArticleRapide(o.x.nm,Number(o.pc[1]),{etagere:true,e:o.x.e,cat:_rayonCat(o.x.nm),img:_photoReelle(o.x.nm),differer:true});
+    if(!art)return;
+    art._sugg=1;art._suggSrc='courant';
+    ids.push(art.id);
+  });
+  if(!ids.length)return;
+  _parcoursCompter('tout');
+  save();
+  renderProd(DB.articles);renderStock(DB.articles);
+  try{initTabs();}catch(x){}
+  if(navigator.vibrate)navigator.vibrate(25);
+  try{window.scrollTo(0,0);}catch(x){}
+  _etgSnackTout(ids);
+  if(!_etgGuideFait&&!(DB.ventes||[]).some(function(v){return v&&!v.annulee;})){
+    _etgGuideFait=true;
+    setTimeout(function(){try{demarrageVendre();}catch(x){}},900);
+  }
+}
+function _etgSnackTout(ids){
+  var fr=(lang==='fr');
+  _etgSnack({nm:'',px:0},null);   // crée la barre si elle n'existe pas encore
+  var el=document.getElementById('etg-snack');
+  document.getElementById('etg-snack-t').textContent=fr
+    ?(ids.length+' articles dans ta caisse, au prix courant')
+    :(ids.length+' items in your till, at the usual price');
+  var b=document.getElementById('etg-snack-b');
+  b.textContent=fr?'Annuler':'Undo';
+  b.onclick=function(){
+    el.classList.remove('on');clearTimeout(_etgSnackT);
+    etagereAnnulerTout(ids);
+  };
+  clearTimeout(_etgSnackT);
+  _etgSnackT=setTimeout(function(){el.classList.remove('on');},9000);
+}
+// « Annuler » retire le lot — sauf un article déjà vendu entre-temps, qui a
+// maintenant une histoire (le stock se calcule depuis ses ventes).
+function etagereAnnulerTout(ids){
+  var vendus={};
+  (DB.ventes||[]).forEach(function(v){((v&&v.lignes)||[]).forEach(function(l){if(l)vendus[l.pid]=1;});});
+  var a_retirer=(ids||[]).filter(function(id){return !vendus[id];});
+  if(!a_retirer.length)return;
+  if(!Array.isArray(DB.suppr))DB.suppr=[];
+  a_retirer.forEach(function(id){DB.suppr.push(id);});
+  DB.articles=(DB.articles||[]).filter(function(a){return a_retirer.indexOf(a.id)<0;});
+  save();
+  renderProd(DB.articles);renderStock(DB.articles);
+  try{initTabs();}catch(x){}
 }
 // Ce qui suit un article ajouté depuis l'étagère, qu'il vienne d'un toucher
 // ou de la fenêtre du prix.
@@ -12469,7 +12686,7 @@ function _creerArticleRapide(nom,px,o){
   var fr=(lang==='fr'),e=o.src||null;
   try{
     var art={id:_prochainIdArticle(),nm:nom,e:o.e||(e&&e.e)||emojiDepuisNomProduit(nom),
-      cat:(e&&e.cat)||categorieDepuisNomProduit(nom),
+      cat:o.cat||(e&&e.cat)||categorieDepuisNomProduit(nom),
       px:px,pa:0,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true,
       um:(e&&e.um&&e.um!=='pc')?e.um:null,umSac:(e&&e.sac)||null,umCont:(e&&e.cont)||null};
     if(o.vendre){
@@ -12481,10 +12698,12 @@ function _creerArticleRapide(nom,px,o){
     // ⚠️ Depuis l'étagère, ni photo ni conditionnement du catalogue : « Riz »
     // deviendrait « au kilo, sac de 25 », et la première touche ouvrirait
     // la pesée au lieu de vendre. Il le dira s'il vend autrement.
+    // 23.32 — sauf la vraie photo certifiée qu'il a vue sur la tuile.
+    if(o.img&&!art.img&&srcSure(o.img))art.img=String(o.img);
     DB.articles.push(art);
     try{journalAjouter('creation',nom,'',o.vendre?(fr?('créé en vendant · '+fmt(px)):'created while selling')
                                               :(fr?('créé depuis l\'étagère · '+fmt(px)):'created from the starter shelf'));}catch(x){}
-    save();
+    if(!o.differer)save();   // 23.32 — « Tout mettre » enregistre le lot une seule fois
     return art;
   }catch(x){
     showToast('⚠️ '+(fr?'Article non créé — réessaie':'Item not created — try again'));
@@ -30048,7 +30267,7 @@ function migrateDBData(d){
       var _pn=(_po.n&&typeof _po.n==='object'&&!Array.isArray(_po.n))?_po.n:{};
       // (la liste écrite ici, pas _PARC_N : migrateDBData peut tourner avant
       // que la ligne qui la définit ait été lue)
-      ['jours','etg','etgOk','etgCourant','etgChange','simple','autre'].forEach(function(k){var n=Math.floor(Number(_pn[k])||0);if(n>0)_pq.n[k]=n;});
+      ['jours','etg','etgOk','etgCourant','etgChange','simple','autre','rayon','tout'].forEach(function(k){var n=Math.floor(Number(_pn[k])||0);if(n>0)_pq.n[k]=n;});
       d.parcours=_pq;
     }
   }
@@ -31119,10 +31338,12 @@ function _telephonePlein(){
 //                             et mis au prix courant proposé tel quel
 //    n.simple / autre          écran de paiement ouvert sur l'essentiel,
 //                             et « Autre paiement » touché
+//    n.rayon / tout            (23.32) métier changé dans « Tu vends quoi ? »,
+//                             et « Tout mettre dans ma caisse » touché
 //  Règle de fusion dans `mergeDB` : la date la plus ancienne, le compteur
 //  le plus haut.
 // ══════════════════════════════════════════════════════════════════
-var _PARC_N=['jours','etg','etgOk','etgCourant','etgChange','simple','autre'];
+var _PARC_N=['jours','etg','etgOk','etgCourant','etgChange','simple','autre','rayon','tout'];
 function _parcours(){
   if(!DB||!DB.cfg)return null;
   try{if(estDemo())return null;}catch(e){}
@@ -34890,6 +35111,9 @@ if('serviceWorker' in navigator){
       // de compter ce qui pourrait changer et de le lui PROPOSER une fois.
       setTimeout(function(){chargerManifestePhotos().then(function(){
         try{proposerRafraichirPhotos();}catch(e){}
+        // 23.32 — les vraies photos arrivent après le premier dessin de
+        // l'étagère : on la redessine, si elle est là et qu'il ne cherche pas.
+        try{if(document.querySelector('#pgrid .pcard.etg')&&_photoManif&&_photoManif._cert&&Object.keys(_photoManif._cert).length)renderProd(DB.articles);}catch(e){}
       });},2500);
       setInterval(function(){chercherAnnonces();},15*60*1000);
       document.addEventListener('visibilitychange',function(){if(!document.hidden)chercherAnnonces();});
