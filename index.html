@@ -6927,7 +6927,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.32'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.33'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -12176,8 +12176,18 @@ function creerEnVendant(i){
 //  sous « Beaucoup d'articles d'un coup ».
 // ══════════════════════════════════════════════════════════════════
 var _ETAGERE={
-  boutique:[['Riz','🍚'],['Huile','🫗'],['Sucre','🍬'],['Lait','🥛'],['Pain','🍞'],['Sardines','🐟'],['Farine','🌾'],
-    ['Cube','🧊'],['Café','☕'],['Jus','🧃'],['Bière','🍺'],['Savon','🧼'],['Lessive','🧺'],['Bougie','🕯️'],['Allumettes','🔥']],
+  // ⭐ 23.33 — « BOUTIQUE · ALIMENTATION », UN PEU DE TOUT.
+  // Mesuré le 25/10 sur les 24 boutiques qui ont au moins 5 articles :
+  // 19 vendent dans 3 rayons ou plus (alimentation, boissons, ménage,
+  // divers), UNE seule ne vend que de l'alimentation. La boutique de
+  // quartier est polyvalente : sa liste mélange les rayons, dans l'ordre
+  // de ce que les boutiques de la base mettent vraiment en rayon (riz,
+  // huile, sardines, cube, sucrerie, bière, savon… la liste de KODJI).
+  // Farine et café sortent, ils n'y étaient presque pas ; les boissons,
+  // les biscuits et les piles entrent.
+  boutique:[['Riz','🍚'],['Huile','🫗'],['Sucre','🍬'],['Lait','🥛'],['Pain','🍞'],['Sardines','🐟'],['Spaghetti','🍝'],
+    ['Cube','🧊'],['Sucrerie','🥤'],['Bière','🍺'],['Eau minérale','💧'],['Jus','🧃'],['Savon','🧼'],['Lessive','🧺'],
+    ['Biscuits','🍪'],['Bonbons','🍬'],['Bougie','🕯️'],['Allumettes','🔥'],['Pile','🔋']],
   mode:[['Robe','👗'],['Pantalon','👖'],['Chemise','👔'],['T-shirt','👕'],['Short','🩳'],['Veste','🧥'],['Pagne','🧵'],
     ['Chaussures','👟'],['Sandales','👡'],['Sac','👜'],['Casquette','🧢'],['Foulard','🧣'],['Chaussettes','🧦'],['Bijoux','💍'],['Lunettes','🕶️']],
   // 23.32 — quatre métiers de plus (voir _RAYONS). Leurs listes ne sont pas
@@ -12210,13 +12220,16 @@ var _ETAGERE={
 // ne les a pas regardés un par un, et « Annuler » retire tout d'un coup.
 // Le choix se garde dans DB.cfg.rayon : ni `secteur` (dont dépendent
 // d'autres écrans) ni le serveur n'en dépendent.
+// 23.33 — les mots des enseignes d'ici, pas ceux de France : « Épicerie »
+// ne se dit pas au Cameroun, « Alimentation » et « Boutique » s'écrivent
+// sur les façades ; « Dépôt », « Cosmétiques », « Friperie » aussi.
 var _RAYONS=[
-  {id:'boutique',fr:'Épicerie',en:'Grocery',rep:'Riz'},
-  {id:'boissons',fr:'Boissons',en:'Drinks',rep:'Bière'},
-  {id:'beaute',fr:'Beauté',en:'Beauty',rep:'Savon de toilette'},
-  {id:'tel',fr:'Téléphone, piles',en:'Phone, batteries',rep:'Chargeur'},
-  {id:'menage',fr:'Ménage',en:'Household',rep:'Eau de javel'},
-  {id:'mode',fr:'Vêtements',en:'Clothes',rep:'Robe'}
+  {id:'boutique',fr:'Boutique · Alimentation',en:'Shop · Groceries',rep:'Riz'},
+  {id:'boissons',fr:'Dépôt de boissons',en:'Drinks depot',rep:'Bière'},
+  {id:'beaute',fr:'Cosmétiques',en:'Cosmetics',rep:'Savon de toilette'},
+  {id:'tel',fr:'Téléphonie, accessoires',en:'Phones, accessories',rep:'Chargeur'},
+  {id:'menage',fr:'Ménage, maison',en:'Household',rep:'Eau de javel'},
+  {id:'mode',fr:'Prêt-à-porter, friperie',en:'Clothes',rep:'Robe'}
 ];
 // La catégorie de ce qu'il met depuis un métier. ⚠️ Déduite du nom, elle
 // se trompait : mesuré au banc, « Dentifrice », « Déodorant » et « Pile »
@@ -12225,12 +12238,36 @@ var _RAYONS=[
 // Alimentation. L'épicerie garde la déduction par le nom (ses articles
 // sont de plusieurs rayons).
 var _RAYON_CAT={boissons:'Boissons',beaute:'Hygiène',tel:'Électronique',menage:'Ménage',mode:'Vêtements'};
+// 23.33 — la boutique polyvalente mélange les rayons : chacun de ses
+// articles a sa catégorie écrite ici. Déduite du nom, « Sucrerie » partait
+// en Alimentation (« sucre »), « Bougie » et « Allumettes » aussi.
+var _ETAGERE_CAT={'Sucrerie':'Boissons','Bière':'Boissons','Eau minérale':'Boissons','Jus':'Boissons',
+  'Savon':'Ménage','Lessive':'Ménage','Bougie':'Ménage','Allumettes':'Ménage','Pile':'Ménage'};
 function _rayonCat(nm,ray){
-  return _RAYON_CAT[ray||_rayonCourant()]||categorieDepuisNomProduit(nm);
+  return _RAYON_CAT[ray||_rayonCourant()]||_ETAGERE_CAT[nm]||categorieDepuisNomProduit(nm);
+}
+// ⭐ 23.33 — LE MÉTIER SE LIT SUR L'ENSEIGNE. « Cosmétiques Awa », « Dépôt
+// Ngo », « Friperie du marché » : le nom tapé à l'inscription dit déjà ce
+// qu'il vend, sans un écran de plus (l'entrée en a été allégée en 19.93).
+// En base le 25/10, la plupart des noms commencent par « Ets » : rien à
+// lire, et c'est la boutique polyvalente qui s'ouvre. Un choix touché
+// (DB.cfg.rayon) passe toujours avant.
+function _rayonDuNom(nom){
+  var n=txtNorm(nom||'');
+  if(!n)return '';
+  if(/cosmeti|beaute|meche|parfum|coiffure/.test(n))return 'beaute';
+  if(/telephon|call ?box|cellulaire|\bgsm\b|accessoire|electroni/.test(n))return 'tel';
+  if(/pret.a.porter|friperie|\bfripe|couture|vetement|chaussure|\bpagne|textile|\bmode\b/.test(n))return 'mode';
+  if(/boisson|\bdepot\b|brasserie|casier/.test(n))return 'boissons';
+  if(/\bmenage\b|plastique/.test(n))return 'menage';
+  return '';
 }
 function _rayonCourant(){
   var r='';
-  try{r=(DB&&DB.cfg&&(DB.cfg.rayon||DB.cfg.secteur))||'';}catch(e){}
+  try{
+    var c=(DB&&DB.cfg)||{};
+    r=c.rayon||((c.secteur&&c.secteur!=='boutique'&&_ETAGERE[c.secteur])?c.secteur:'')||_rayonDuNom(c.nom);
+  }catch(e){}
   return _ETAGERE[r]?r:'boutique';
 }
 var _ETAGERE_EN={'Riz':'Rice','Huile':'Oil','Sucre':'Sugar','Lait':'Milk','Pain':'Bread','Sardines':'Sardines','Farine':'Flour',
@@ -12247,7 +12284,8 @@ var _ETAGERE_EN={'Riz':'Rice','Huile':'Oil','Sucre':'Sugar','Lait':'Milk','Pain'
   'Lampe rechargeable':'Rechargeable lamp','Clé USB':'USB stick','Carte mémoire':'Memory card','Rallonge':'Extension lead',
   'Savon de lessive':'Laundry soap','Eau de javel':'Bleach','Détergent':'Detergent','Insecticide':'Insecticide',
   'Spirale':'Mosquito coil','Seau':'Bucket','Cuvette':'Basin','Éponge':'Sponge','Balai':'Broom',
-  'Sachets plastique':'Plastic bags','Briquet':'Lighter','Corde à linge':'Clothes line'};
+  'Sachets plastique':'Plastic bags','Briquet':'Lighter','Corde à linge':'Clothes line',
+  'Spaghetti':'Spaghetti','Biscuits':'Biscuits','Bonbons':'Sweets'};
 // ⭐ 23.26 — LE PRIX COURANT, DÉJÀ ÉCRIT.
 // Mesuré le 18/10 : 26 boutiques sur 64 n'ont jamais mis un seul article
 // — 8 de plus ce mois-ci, APRÈS l'étagère. Toucher « Riz » ouvrait un
@@ -12287,13 +12325,16 @@ var _ETAGERE_PRIX={
   'Savon de lessive':[500,650,700,'la barre'],'Eau de javel':[400,500,600,'le litre'],'Détergent':[700,900,1000,'la bouteille'],
   'Insecticide':[1200,1500,2200,'la bombe'],'Spirale':[200,300,350,'le paquet'],'Seau':[1200,1500,2000,'la pièce'],
   'Cuvette':[1500,2000,2500,'la pièce'],'Éponge':[100,150,200,'la pièce'],'Balai':[500,700,1000,'la pièce'],
-  'Sachets plastique':[300,450,500,'le paquet'],'Briquet':[100,150,200,'la pièce'],'Corde à linge':[400,600,800,'la pièce']
+  'Sachets plastique':[300,450,500,'le paquet'],'Briquet':[100,150,200,'la pièce'],'Corde à linge':[400,600,800,'la pièce'],
+  // 23.33 — CATALOGUE_CM : spaghetti 500 g 650, biscuit Pom's 150, bonbon 25
+  'Spaghetti':[500,650,700,'le paquet'],'Biscuits':[100,150,500,'le paquet'],'Bonbons':[10,25,50,'le bonbon']
 };
 var _ETAGERE_UNITE_EN={'le kilo':'per kilo','le litre':'per litre','le sachet':'per sachet','la baguette':'per loaf',
   'la boîte':'per tin','le cube':'per cube','la bouteille':'per bottle','le morceau':'per bar','la bougie':'per candle',
   'la pièce':'per piece','la paire':'per pair','la canette':'per can','le carton':'per carton','le tube':'per tube',
   'la brosse':'per brush','le paquet':'per pack','la couche':'per nappy','le pot':'per jar','le rouleau':'per roll',
-  'la lame':'per blade','la pile':'per battery','l\'ampoule':'per bulb','la barre':'per bar','la bombe':'per can'};
+  'la lame':'per blade','la pile':'per battery','l\'ampoule':'per bulb','la barre':'per bar','la bombe':'per can',
+  'le bonbon':'per sweet'};
 var _etgGuideFait=false;
 // Les suggestions encore utiles : ni déjà en rayon (« Huile » se tait dès
 // qu'il a « Huile d'arachide »), ni écartées.

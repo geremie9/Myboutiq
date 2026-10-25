@@ -29,7 +29,7 @@ const fermer = p => p.evaluate(() => { document.querySelectorAll('.ov').forEach(
   });
   t(/Tu vends quoi/.test(v.titre) && v.n === 6 && v.on === 'boutique', `« ${v.titre.trim()} » et six métiers en images, l'épicerie choisie d'office (${v.n}, ${v.on})`);
   t(!v.coupe, 'aucun nom de métier coupé à 360 px');
-  t(/Tout mettre dans ma caisse \(15\)/.test(v.bouton) && v.vu, `« ${v.bouton} », visible sans faire défiler`);
+  t(/Tout mettre dans ma caisse \(19\)/.test(v.bouton) && v.vu, `« ${v.bouton} », visible sans faire défiler`);
 
   await p.locator('.etg-ray[data-rayon=beaute]').tap(); await p.waitForTimeout(400);
   const g = await p.evaluate(() => ({ rayon: DB.cfg.rayon, noms: [...document.querySelectorAll('#pgrid .pcard.etg .pnm-ov')].map(x => x.textContent),
@@ -103,6 +103,39 @@ const fermer = p => p.evaluate(() => { document.querySelectorAll('.ov').forEach(
   t(r.sucre === 'grain' && r.riz === 'grain' && r.huile === 'bottle' && r.oil === 'bottle' && r.robe === 'shirt', `le riz, le sucre et l'huile gardent leur dessin ; la robe a le sien (${r.sucre}, ${r.riz}, ${r.huile}, ${r.oil}, ${r.robe})`);
   t(r.ph === 900 && r.fanta === null, `prix habituel : le dentifrice connaît 900, « Fanta » reste sans prix inventé (${r.ph}, ${r.fanta})`);
   t(errs.length === 0, 'aucune erreur JS (dessins)' + (errs.length ? ' : ' + errs.join(' | ') : ''));
+  await ctx.close();
+}
+// ── 3b. (23.33) « Boutique · Alimentation » : un peu de tout, les mots d'ici, le métier lu sur l'enseigne ──
+{
+  const { ctx, p, errs } = await ouvrirCaisse(b, port, neuve(), { tactile: true });
+  const r = await p.evaluate(() => ({
+    libs: [...document.querySelectorAll('#pgrid .etg-ray .etg-ray-t')].map(x => x.textContent),
+    on: (document.querySelector('.etg-ray.on') || {}).dataset.rayon,
+    noms: [...document.querySelectorAll('#pgrid .pcard.etg .pnm-ov')].map(x => x.textContent),
+    devine: ['Alimentation La Grâce', 'Ets Marie', 'Cosmétiques Awa', 'DÉPÔT DE BOISSONS NGO', 'Call box Chez Paul', 'Prêt-à-porter Élégance', 'Friperie du marché', 'Quincaillerie Fotso']
+      .map(n => n + '=' + (_rayonDuNom(n) || '·')),
+    cats: (() => { const o = {}; ['Sucrerie', 'Bougie', 'Pile', 'Riz', 'Savon'].forEach(n => { o[n] = _rayonCat(n, 'boutique'); }); return o; })()
+  }));
+  t(r.libs[0] === 'Boutique · Alimentation' && r.on === 'boutique' && r.libs.includes('Dépôt de boissons') && r.libs.includes('Cosmétiques') && !r.libs.includes('Épicerie'),
+    `les mots des enseignes d'ici, la boutique polyvalente d'office : ${r.libs.join(' | ')}`);
+  t(['Riz', 'Sardines', 'Sucrerie', 'Bière', 'Savon', 'Biscuits', 'Pile'].every(n => r.noms.includes(n)) && !r.noms.includes('Farine'),
+    `un peu de tout : alimentation, boissons, ménage et piles dans la même liste (${r.noms.length} articles)`);
+  t(r.cats.Sucrerie === 'Boissons' && r.cats.Bougie === 'Ménage' && r.cats.Pile === 'Ménage' && r.cats.Riz === 'Alimentation',
+    `chaque article dans son rayon, pas deviné de travers : ${JSON.stringify(r.cats)}`);
+  t(r.devine.join(',') === 'Alimentation La Grâce=·,Ets Marie=·,Cosmétiques Awa=beaute,DÉPÔT DE BOISSONS NGO=boissons,Call box Chez Paul=tel,Prêt-à-porter Élégance=mode,Friperie du marché=mode,Quincaillerie Fotso=·',
+    `le métier lu sur l'enseigne : ${r.devine.join(' · ')}`);
+  t(errs.length === 0, 'aucune erreur JS (boutique polyvalente)' + (errs.length ? ' : ' + errs.join(' | ') : ''));
+  await ctx.close();
+}
+{
+  const db = neuve(); db.cfg.nom = 'Cosmétiques Awa';
+  const { ctx, p, errs } = await ouvrirCaisse(b, port, db, { tactile: true });
+  const r = await p.evaluate(() => ({ on: (document.querySelector('.etg-ray.on') || {}).dataset.rayon, premier: (document.querySelector('#pgrid .pcard.etg .pnm-ov') || {}).textContent }));
+  await p.locator('.etg-ray[data-rayon=boutique]').tap(); await p.waitForTimeout(300);
+  const r2 = await p.evaluate(() => ({ on: (document.querySelector('.etg-ray.on') || {}).dataset.rayon, rayon: DB.cfg.rayon }));
+  t(r.on === 'beaute' && r.premier === 'Savon de toilette', `« Cosmétiques Awa » ouvre sur les cosmétiques, sans rien demander (${r.on}, « ${r.premier} »)`);
+  t(r2.on === 'boutique' && r2.rayon === 'boutique', 'un toucher sur un autre métier passe avant le nom, et se garde');
+  t(errs.length === 0, 'aucune erreur JS (enseigne)' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }
 // ── 4. « Utilise les vraies photos » : la photo certifiée, et elle seule ──

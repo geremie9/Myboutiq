@@ -36,8 +36,9 @@ const prixPad = async (p, prix, nom) => {
   const titre = await p.evaluate(() => (document.querySelector('#pgrid .etg-tete') || {}).textContent || '');
   // 23.32 : une question, « Tu vends quoi ? » (le prix courant est sur chaque tuile).
   t(/Tu vends quoi/.test(titre), `elle pose une seule question : « ${titre.trim().slice(0, 60)} »`);
-  t(g.length === 16 && g.includes('Riz') && g.includes('Huile') && g.includes('Bougie') && g[15] === 'Autre article',
-    `les 15 articles que les boutiques mettent vraiment en rayon, plus « Autre article » (${g.length})`);
+  // 23.33 : la boutique polyvalente (« Boutique · Alimentation ») propose 19 articles de tous les rayons.
+  t(g.length === 20 && g.includes('Riz') && g.includes('Huile') && g.includes('Bougie') && g.includes('Bière') && g[19] === 'Autre article',
+    `les 19 articles que les boutiques mettent vraiment en rayon, plus « Autre article » (${g.length})`);
   t(await p.evaluate(() => !!Array.from(document.querySelectorAll('#pgrid button')).find(x => /Chercher dans le catalogue/.test(x.textContent))
     && !!Array.from(document.querySelectorAll('#pgrid button')).find(x => /boutique d'exemple/.test(x.textContent))),
     'les autres chemins restent : le catalogue (« chercher dans le catalogue ») et la boutique d\'exemple');
@@ -47,7 +48,7 @@ const prixPad = async (p, prix, nom) => {
   t(await p.evaluate(() => !!Array.from(document.querySelectorAll('#pgrid [onclick]')).find(e => /creerEnVendant\(-1\)/.test(e.getAttribute('onclick')))),
     'boutique vide : taper « Tomate » dans Chercher propose de le créer en le vendant (avant : le guide revenait)');
   await p.locator('#src-c').fill(''); await p.waitForTimeout(400);
-  t((await fantomes(p)).length === 16, 'la recherche effacée, l\'étagère revient');
+  t((await fantomes(p)).length === 20, 'la recherche effacée, l\'étagère revient');
 
   // ── 2) UNE TOUCHE, ET C'EST DANS LA CAISSE (23.28) ──
   // Le prix courant est écrit sur la tuile ; toucher l'ajoute à ce prix, et
