@@ -842,6 +842,11 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .vb-trou{display:flex;gap:8px;align-items:center;margin-top:10px;padding:10px 12px;border-radius:12px;background:#FFF4E5;color:#B45309;font-size:12px;font-weight:700;cursor:pointer}
 .vb-si{margin-top:12px;font-size:12.5px;font-weight:600;color:var(--T);line-height:1.5}
 .vb-der{margin-top:10px;font-size:11.5px;font-weight:600;color:var(--M);line-height:1.45}
+.stk-plus-ligne{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--BD);margin-top:2px}
+.stk-plus-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--M);font-size:12.5px;font-weight:800;font-family:'Outfit',sans-serif;padding:11px 2px 7px;cursor:pointer;text-align:left}
+.stk-autre{color:var(--B)}
+.stk-plus-btn .stk-plus-f{font-size:11px}
+#stk-plus{padding-top:6px}
 .stk-photo{display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--BD);
   background:var(--BG);color:var(--B);font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;cursor:pointer}
 .rpt-ess{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
@@ -5452,17 +5457,13 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
 <!-- STOCK ENTRÉE -->
 <div class="ov" id="ov-stk" onclick="closeOv(event,'ov-stk')">
   <div class="bsht"><div class="shndl"></div>
-    <div class="shhdr"><div class="shtit" id="ov-stk-t">Mouvement de stock</div><button class="bcl" onclick="closeSheet('ov-stk')">✕</button></div>
+    <div class="shhdr"><div class="shtit" id="ov-stk-t">Ajouter au stock</div><button class="bcl" onclick="closeSheet('ov-stk')">✕</button></div>
     <div class="pstps">
       <div class="sth" id="stk-sel-h">Quel article ?</div>
       <div class="agpx" id="agstk" style="max-height:38vh;margin-bottom:13px"></div>
       <div id="stk-form" style="display:none">
         <div class="arcp"><span id="stk-e" onclick="stkPhoto()" style="width:46px;height:46px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;flex-shrink:0"></span><div><div id="stk-n" style="font-size:14px;font-weight:800;color:var(--T)">Article</div><div style="font-size:11px;font-weight:600;color:var(--M)">Stock: <span id="stk-cur">0</span></div><button type="button" id="stk-photo" class="stk-photo" onclick="stkPhoto()" style="display:none"></button></div></div>
         <div id="stk-var-row" style="display:none;flex-wrap:wrap;gap:7px;margin-bottom:11px"></div>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <div class="abtn on" id="stk-sens-in" onclick="stkSens('in')" style="flex:1;padding:10px"><span class="aemo"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 3v10"/><path d="M8 9l4 4 4-4"/><path d="M4 14v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg></span><span class="albl" id="lbl-sens-in">J'ai reçu</span></div>
-          <div class="abtn" id="stk-sens-out" onclick="stkSens('out')" style="flex:1;padding:10px"><span class="aemo"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 14V4"/><path d="M8 8l4-4 4 4"/><path d="M4 14v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg></span><span class="albl" id="lbl-sens-out">J'ai perdu</span></div>
-        </div>
         <div class="pig"><label class="pl" id="lbl-qte-recu">Quantité reçue</label>
           <!-- ⚠️⚠️ « LES APPROVISIONNEMENTS SE FONT PAR GROS, LES NÉGOCIATIONS
                EN GROS : 4 cartons, 4 sacs de tel, tu me le vends à combien ? »
@@ -5522,20 +5523,13 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
           </div>
           <input class="pi sm" type="text" id="inp-motif" placeholder="Ou écris la raison" style="margin-top:7px">
         </div>
-        <div class="pig" id="stk-umnom-row"><label class="pl" id="lbl-stk-umnom">Ça se compte en quoi ? (tas, botte, cuvette…)</label>
-          <input class="pi sm" type="text" id="inp-sumnom" maxlength="12" placeholder="laisse vide pour « unités »">
-        </div>
-        <div class="pig" id="stk-consigne-row"><label class="pl" id="lbl-stk-cons">Consigne de l'emballage (0 si aucune)</label>
-          <input class="pi" type="number" id="inp-scons" inputmode="numeric" placeholder="0" oninput="majApercuStk()">
-          <div style="font-size:10.5px;font-weight:600;color:var(--M);margin-top:4px" id="cons-aide">Bouteille, casier, bidon de gaz : la somme que le client laisse et récupère en rendant l'emballage. Elle n'est jamais comptée dans ton bénéfice.</div>
-        </div>
-        <div class="pig" id="stk-pa-row"><label class="pl" id="lbl-stk-pa">Prix d'achat</label>
+        <div class="pig" id="stk-pa-row"><label class="pl" id="lbl-stk-pa">À combien tu l'as acheté ?</label>
           <!-- ⚠️ « 4 sacs de tel, tu me le vends à combien ? » — le
                fournisseur répond un prix PAR SAC. C'était le seul des trois
                niveaux que l'app ne savait pas entendre : elle offrait
                l'unité (le mauvais niveau) ou le total (juste, mais il
                fallait déjà avoir compté les unités). -->
-          <div style="display:flex;gap:8px;margin-bottom:7px">
+          <div id="stk-pamode-row" style="display:flex;gap:8px;margin-bottom:7px">
             <div class="abtn" id="spa-c" onclick="stkPaMode('c')" style="flex:1;padding:8px;display:none"><span class="albl" id="spa-c-l">Le carton</span></div>
             <div class="abtn on" id="spa-u" onclick="stkPaMode('u')" style="flex:1;padding:8px"><span class="albl" id="spa-u-l">Par unité</span></div>
             <div class="abtn" id="spa-t" onclick="stkPaMode('t')" style="flex:1;padding:8px"><span class="albl" id="spa-t-l">Total payé</span></div>
@@ -5543,15 +5537,35 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
           <input class="pi" type="number" id="inp-spa" inputmode="numeric" oninput="majApercuStk()" placeholder="—">
           <div id="stk-pa-info" style="font-size:11px;font-weight:700;color:var(--M);margin-top:5px"></div>
         </div>
-        <div class="pig" id="stk-fourn-row"><label class="pl" id="lbl-fourn">Fournisseur</label><input class="pi sm" type="text" id="inp-fourn" placeholder="Optionnel"></div>
         <div id="stk-apercu" style="display:none;border-radius:9px;padding:8px 10px;font-size:12px;font-weight:800;margin-bottom:9px"></div>
+        <!-- ⚠️ 23.35 — « LE MOUVEMENT DE STOCK, PRIX D'ACHAT, PRIX DE VENTE…
+             TRÈS TRÈS TRÈS COMPLEXE. » Mesuré à 360 px : la feuille faisait
+             1 286 px pour 681 visibles, neuf blocs (reçu/perdu, quantité,
+             sac, unité de compte, consigne, prix d'achat en trois modes,
+             fournisseur), et la quantité — la seule chose qu'il vient dire —
+             passait sous le bouton collé. Une arrivée, c'est deux réponses :
+             combien, et à combien. Le reste existe toujours, replié ici. -->
+        <div class="stk-plus-ligne"><button type="button" id="stk-plus-btn" class="stk-plus-btn" onclick="stkPlus()"><span id="stk-plus-l">Plus de choix</span> <span class="stk-plus-f">▾</span></button><button type="button" class="stk-plus-btn stk-autre" onclick="stkChanger()" id="btn-chg-art"><span id="lbl-chg-art">Un autre article</span></button></div>
+        <div id="stk-plus" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:12px" id="stk-sens-row">
+          <div class="abtn on" id="stk-sens-in" onclick="stkSens('in')" style="flex:1;padding:10px"><span class="aemo"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 3v10"/><path d="M8 9l4 4 4-4"/><path d="M4 14v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg></span><span class="albl" id="lbl-sens-in">J'ai reçu</span></div>
+          <div class="abtn" id="stk-sens-out" onclick="stkSens('out')" style="flex:1;padding:10px"><span class="aemo"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 14V4"/><path d="M8 8l4-4 4 4"/><path d="M4 14v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg></span><span class="albl" id="lbl-sens-out">J'ai perdu</span></div>
+        </div>
+        <div class="pig" id="stk-umnom-row"><label class="pl" id="lbl-stk-umnom">Ça se compte en quoi ? (tas, botte, cuvette…)</label>
+          <input class="pi sm" type="text" id="inp-sumnom" maxlength="12" placeholder="laisse vide pour « unités »">
+        </div>
+        <div class="pig" id="stk-consigne-row"><label class="pl" id="lbl-stk-cons">Consigne de l'emballage (0 si aucune)</label>
+          <input class="pi" type="number" id="inp-scons" inputmode="numeric" placeholder="0" oninput="majApercuStk()">
+          <div style="font-size:10.5px;font-weight:600;color:var(--M);margin-top:4px" id="cons-aide">Bouteille, casier, bidon de gaz : la somme que le client laisse et récupère en rendant l'emballage. Elle n'est jamais comptée dans ton bénéfice.</div>
+        </div>
+        <div class="pig" id="stk-fourn-row"><label class="pl" id="lbl-fourn">Fournisseur</label><input class="pi sm" type="text" id="inp-fourn" placeholder="Optionnel"></div>
+        </div>
         <!-- ⚠️ MESURÉ à 1130 px sur un écran de 640 : QUATRE CENT QUATRE-VINGT-DIX
              pixels sous le bord, bien pire que l'écran Prix. Le commerçant
              saisissait son entrée de stock et ne trouvait pas comment
              valider. Même correction : le pied reste collé en bas. -->
         <div class="pied-collant">
           <button class="bnxt" onclick="saveStk()" id="btn-save-stk"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span id="lbl-enreg-stk">Enregistrer</span></button>
-          <button class="bvid" style="margin-top:7px" onclick="document.getElementById('stk-form').style.display='none'" id="btn-chg-art">← <span id="lbl-chg-art">Changer</span></button>
         </div>
       </div>
     </div>
@@ -6969,7 +6983,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.34'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.35'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -12125,7 +12139,7 @@ function _grilleCatalogueCaisse(q){
       // La photo du catalogue visuel d'abord (600 articles), sinon celle de
       // la bibliothèque partagée par les commerçants.
       var img='';
-      try{img=_photo600(e.img600)||photoCatalogue(e.plein)||'';}catch(x){}
+      try{img=photoCatalogue(e.plein)||'';}catch(x){}
       var vign=img
         ?('<img src="'+img+'" style="width:46px;height:46px;border-radius:12px;object-fit:cover;flex-shrink:0">')
         :('<span style="width:46px;height:46px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--BG);font-size:22px">'+emojiDepuisNomProduit(e.plein)+'</span>');
@@ -12781,7 +12795,6 @@ function _creerArticleRapide(nom,px,o){
       um:(e&&e.um&&e.um!=='pc')?e.um:null,umSac:(e&&e.sac)||null,umCont:(e&&e.cont)||null};
     if(o.vendre){
       // Sa photo, tout de suite : celle du catalogue visuel si l'article en vient.
-      if(e&&e.img600){try{art.img=_photo600(e.img600);}catch(x){}}
       try{appliquerPhotosCatalogue([art]);}catch(x){}
       if(!art.um||!art.umSac){try{appliquerConditionnementCatalogue([art],true);}catch(x){}}
     }
@@ -21154,10 +21167,6 @@ function _chercherEntree600(cle,idx,garde){
   }
   return trouve;
 }
-function _chercherPhoto600(cle,idx){
-  var trouve=_chercherEntree600(cle,idx,function(e){return !!e.img600;});
-  return trouve?_photo600(trouve.img600):'';
-}
 // ══════════════════════════════════════════════════════════════════
 //  ⭐⭐ CE QUE LE CATALOGUE SAIT DÉJÀ, ET QU'ON LUI FAISAIT RETAPER
 //
@@ -21326,42 +21335,11 @@ function photoCatalogue(nom){
       }
     }
   }catch(e){}
-  // ── Le catalogue visuel ensuite : 600 articles, chacun sa photo ──
-  // On cherche dans son index (nom, famille, mots-clés — donc aussi les
-  // fautes de frappe). C'est ce qui permet à une boutique DÉJÀ remplie de
-  // recevoir les nouvelles photos sur ses articles existants.
-  try{
-    if(_cat600&&_cat600.entrees){
-      var _idx=catalogueIndex();
-      if(_phCacheIdx!==_idx){_phCache={};_phCacheIdx=_idx;}
-      if(_phCache[cle]===undefined)_phCache[cle]=_chercherPhoto600(cle,_idx);
-      if(_phCache[cle])return _phCache[cle];
-    }
-  }catch(e){}
-  if(!_photoManif||!_photoManif.base)return '';
-  var idx=_indexPhotos();
-  var cands=(idx.cles[cle]||[]).slice();
-  cands.push(_slugPhoto(nom));
-  // Rien d'exact. Le commerçant écrit « Savon Azur » là où le catalogue dit
-  // « Savon Azur (barre) », ou juste « Nido » pour « Lait Nido 400 g ».
-  // On cherche alors l'entrée qui contient TOUS ses mots — et seulement
-  // parmi celles dont la photo existe : jamais une URL qui finirait en 404.
-  if(!cands.some(function(s){return _photoManif._set[s];})){
-    // Il écrit « 400g », « 1kg », « 50cl » collés ; le catalogue écrit
-    // « 400 g ». On décolle chiffres et lettres avant de comparer.
-    var mots=cle.replace(/(\d)([a-z])/g,'$1 $2').replace(/([a-z])(\d)/g,'$1 $2')
-                .split(' ').filter(function(m){return m.length>=3;});
-    if(mots.length)idx.entrees.forEach(function(e){
-      if(!_photoManif._set[e.s])return;
-      if(mots.every(function(m){return e.k.indexOf(m)>=0;}))cands.push(e.s);
-    });
-  }
-  for(var i=0;i<cands.length;i++){
-    if(!_photoManif._set[cands[i]])continue;
-    // Photo offerte par un commerçant : elle a sa propre adresse.
-    if(_photoManif._url&&_photoManif._url[cands[i]])return _photoManif._url[cands[i]];
-    return _photoManif.base+cands[i]+(_photoManif.ext||'.jpg');
-  }
+  // ⚠️⚠️ 23.35 — PLUS RIEN APRÈS LA CERTIFIÉE. Venaient ensuite les 600
+  // cartes du catalogue (des emojis dessinés, que le commerçant a pris pour
+  // nos « photos » et jugés pour ce qu'ils sont) et la bibliothèque des
+  // photos offertes, jamais vérifiées. MyBoutiQ ne propose plus que ce
+  // qu'elle a vu : une vraie photo, certifiée. Sinon, le dessin de la caisse.
   return '';
 }
 // Pose la photo partagée sur les articles qui n'en ont pas. Ne REMPLACE
@@ -21400,7 +21378,9 @@ function _articlesARafraichir(){
 }
 function proposerRafraichirPhotos(){
   if(role!=='patron')return;
-  try{if(localStorage.getItem('myboutiq_photos_proposees')==='1')return;}catch(e){}
+  // 23.35 — une nouvelle clé : « non merci » aux cartes emoji d'avant ne
+  // vaut pas refus des vraies photos, qu'on ne lui a jamais montrées.
+  try{if(localStorage.getItem('myboutiq_photos_reelles_vues')==='1')return;}catch(e){}
   var l=_articlesARafraichir();
   if(l.length<3)return;                    // pas la peine de déranger pour deux
   var fr=(lang==='fr');
@@ -21414,11 +21394,11 @@ function proposerRafraichirPhotos(){
   _annonceCourante=null;
   document.getElementById('annonce-ico').innerHTML=window.ico('image',20);
   document.getElementById('annonce-titre').textContent=fr
-    ?(l.length+' de tes articles peuvent avoir leur photo')
-    :(l.length+' of your items can get a photo');
+    ?(l.length+' de tes articles peuvent avoir une vraie photo')
+    :(l.length+' of your items can get a real photo');
   document.getElementById('annonce-msg').textContent=fr
-    ?'Touche ici pour voir. Tes ventes et tes chiffres ne bougent pas.'
-    :'Tap to see. Your sales and totals stay untouched.';
+    ?'Prises en boutique, vérifiées par MyBoutiQ. Touche pour les voir.'
+    :'Shot in real shops, checked by MyBoutiQ. Tap to see them.';
   b.style.borderLeftColor='#B8860B';
   b.style.display='flex';
   b.onclick=function(ev){
@@ -21499,7 +21479,7 @@ function _rafRendre(l,demandes){
       +(fr?'Tes ventes · ton chiffre d\'affaires · tes bénéfices · tes prix · ton stock · tes clients et leurs dettes. Rien de tout cela n\'est touché.'
           :'Your sales, revenue, profits, prices, stock, customers and debts stay untouched.')+'</div></div>'
       +'<div style="font-size:12.5px;font-weight:800;color:var(--T);margin-bottom:9px">'
-      +(fr?(l.length+' article(s) recevront leur photo'):(l.length+' item(s) will get a photo'))+'</div>'
+      +(fr?(l.length+' article(s) recevront une vraie photo'):(l.length+' item(s) will get a real photo'))+'</div>'
       +l.slice(0,40).map(function(x){
         return '<div style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--BD)">'
           +'<img src="'+srcSure(x.url)+'" loading="lazy" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--BG)" onerror="this.style.opacity=.2">'
@@ -21531,14 +21511,14 @@ function appliquerRafraichirPhotos(){
   if(n){
     save();
     try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
-    journalAjouter('photos',fr?'Photos du catalogue':'Catalogue photos','',n+(fr?' article(s)':' item(s)'));
+    journalAjouter('photos',fr?'Vraies photos vérifiées':'Checked real photos','',n+(fr?' article(s)':' item(s)'));
   }
-  try{localStorage.setItem('myboutiq_photos_proposees','1');}catch(e){}
+  try{localStorage.setItem('myboutiq_photos_reelles_vues','1');}catch(e){}
   closeSheet('ov-raf');
   showToast('🖼️ '+n+' '+(fr?'photo(s) posée(s) — tes chiffres n\'ont pas bougé':'photo(s) applied — your figures unchanged'));
 }
 function refuserRafraichirPhotos(){
-  try{localStorage.setItem('myboutiq_photos_proposees','1');}catch(e){}
+  try{localStorage.setItem('myboutiq_photos_reelles_vues','1');}catch(e){}
   closeSheet('ov-raf');
   showToast('👍 '+(lang==='fr'?'Rien n\'a été touché. C\'est dans Réglages si tu changes d\'avis.':'Nothing changed.'));
 }
@@ -21670,10 +21650,6 @@ async function chargerCatalogue600(){
     if(r.ok){_cat600=await r.json();_catIdx=null;}   // l'index doit être refait
   }catch(e){}
   return _cat600;
-}
-function _photo600(img){
-  if(!img||!_cat600)return '';
-  return (_cat600.base||'')+img+(_cat600.ext||'.jpg');
 }
 var _catIdx=null;
 // La table de réponses du catalogue et sa mémoire vivent AVEC l'index : elles
@@ -23465,7 +23441,7 @@ function _expLaPiece(a){
 function _expTailleLib(a){return _expMot(a)+(lang==='fr'?' de ':' of ')+_avecUnite({nm:a.nm,um:a.um},Number(a.umSac)||0);}
 function _expMediaHtml(a){
   var ph='';
-  try{ph=a._img600?_photo600(a._img600):(a._imgUrl||'');}catch(e){ph=a._imgUrl||'';}
+  ph=(a._imgUrl&&!_estCarteCatalogue(a._imgUrl)?a._imgUrl:'')||photoCatalogue(a.nm)||'';
   var m=mediaArtInner({nm:a.nm,cat:categorieDepuisNomProduit(a.nm)},22);
   // L'émoji (ou l'icône) DESSOUS, la photo par-dessus : sans réseau, on
   // reconnaît l'article quand même (la leçon du catalogue en 22.99).
@@ -23653,7 +23629,7 @@ function expRender(){
     // et pour quelqu'un qui ne lit pas, la ligne ne disait plus rien du tout.
     var m=mediaArtInner({nm:a.nm,cat:categorieDepuisNomProduit(a.nm)},18);
     var _ph='';
-    try{_ph=a._img600?_photo600(a._img600):(a._imgUrl||'');}catch(e){_ph=a._imgUrl||'';}
+    try{_ph=(a._imgUrl&&!_estCarteCatalogue(a._imgUrl)?a._imgUrl:'')||photoCatalogue(a.nm)||'';}catch(e){_ph='';}
     var u=_expUmLbl(a),paU=_expPaUnit(a);
     var sansPa=!(paU>0),ben=a.px-paU,perte=!sansPa&&ben<=0;
     var achat=a.gros>0
@@ -23840,8 +23816,7 @@ function expCreerTous(){
     // ⚠️ La photo qu'il a CHOISIE — dans les 600 images ou chez un voisin —
     // se perdait ici : on ne la reportait pas sur l'article créé, et il
     // repartait avec une icône alors qu'il avait touché une photo.
-    if(a._img600){try{art.img=_photo600(a._img600);}catch(x){}}
-    else if(a._imgUrl)art.img=a._imgUrl;
+    if(a._imgUrl&&!_estCarteCatalogue(a._imgUrl))art.img=a._imgUrl;
     if(a._e)art.e=a._e;
     if(a._cat)art.cat=a._cat;
     if(a._sugg&&a._suggSrc!=='boutique')art._sugg=1;   // « prix indicatif — vérifie »
@@ -24229,8 +24204,11 @@ function _chaTuile(cle,nm,img,emo,cat,sous,onclick,gros){
   // plus l'emoji du catalogue : même image sans réseau, sur tous les téléphones.
   var _md={bg:'var(--BG)',fg:'var(--M)',svg:''};try{_md=mediaArtInner({nm:nm,e:emo,cat:cat},40);}catch(x){}
   var _sous='<span style="background:'+_md.bg+';color:'+_md.fg+'">'+(_md.svg||ico('stock',30))+'</span>';
-  var media=img
-    ?('<div class="cha-m">'+_sous+'<img src="'+_photo600(img)+'" loading="lazy" alt="" onerror="this.remove()"></div>')
+  // 23.35 — plus la carte emoji du catalogue par-dessus : une vraie photo
+  // certifiée quand MyBoutiQ en a une, sinon le dessin seul.
+  var _vr='';try{_vr=photoCatalogue(nm)||'';}catch(x){}
+  var media=_vr
+    ?('<div class="cha-m">'+_sous+'<img src="'+srcSure(_vr)+'" loading="lazy" alt="" onerror="this.remove()"></div>')
     :('<div class="cha-m">'+_sous+'</div>');
   return '<div onclick="'+onclick+'" style="position:relative;cursor:pointer;border:2px solid '+(pris?'var(--B)':'transparent')+';border-radius:13px;padding:3px;background:'+(pris?'var(--BG)':'transparent')+'">'
     +media
@@ -24381,7 +24359,7 @@ function majChaBouton(){
   l.innerHTML=cles.map(function(k){
     var s=_chaSel[k];
     var media='<div class="cha-m cha-m-p">'+dessinArt({nm:s.nm,e:s.e,cat:s.cat},26,'width:100%;height:100%')
-      +(s.img?('<img src="'+_photo600(s.img)+'" loading="lazy" alt="" onerror="this.remove()">'):'')+'</div>';
+      +(function(){var u='';try{u=photoCatalogue(s.nm)||'';}catch(x){}return u?('<img src="'+srcSure(u)+'" loading="lazy" alt="" onerror="this.remove()">'):'';})()+'</div>';
     return '<div onclick="chaRetirer(\''+k+'\')" title="'+String(s.nm).replace(/"/g,'')+'" '
       +'style="position:relative;width:54px;height:54px;border-radius:12px;overflow:hidden;flex-shrink:0;cursor:pointer;border:2px solid var(--B)">'
       +media
@@ -26331,7 +26309,11 @@ function _apresMouvementStock(){
   try{renderStock(DB.articles);renderProd(DB.articles);renderAgstk();}catch(e){}
   // On repart de la liste, pas du formulaire rempli : sinon la quantité
   // précédente resterait à l'écran et serait resaisie sans y penser.
+  // ⚠️ 23.35 — Venu pour UN article, il a fini : la feuille se ferme.
+  // Venu de la liste (une livraison de dix articles), il y retourne.
   try{
+    var _ouv=document.getElementById('ov-stk'),_lst=_stkDepuisListe;
+    if(_ouv&&_ouv.classList.contains('show')){if(_lst)stkChanger();else closeSheet('ov-stk');}
     var f=document.getElementById('stk-form'); if(f)f.style.display='none';
     artStkCours=null; artStkVarCours=null;
     var q=document.getElementById('inp-sqte'); if(q)q.value='';
@@ -26339,8 +26321,63 @@ function _apresMouvementStock(){
     var r=document.getElementById('ov-stk'); if(r){var c=r.querySelector('.bsht'); if(c)c.scrollTop=0;}
   }catch(e){}
 }
-function ouvrirStk(p){if(!(role==='patron'||hasPerm('stock')))return;document.getElementById('stk-form').style.display='none';renderAgstk();if(p)selArtStk(p);document.getElementById('ov-stk').classList.add('show');}
-function renderAgstk(){var g=document.getElementById('agstk');if(!g)return;g.innerHTML='';DB.articles.forEach(function(p){var ts=getStk(p),d=document.createElement('div');d.className='apcd';d.innerHTML=_vignettePicker(p)+'<div style="font-size:10px;font-weight:700;color:var(--T);margin-bottom:2px">'+p.nm+'</div><div style="font-size:10px;font-weight:800;color:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'">'+fmtQ(ts)+'</div>';d.onclick=function(){selArtStk(p);};g.appendChild(d);});}
+function ouvrirStk(p){if(!(role==='patron'||hasPerm('stock')))return;if(p)selArtStk(p);else stkChanger();document.getElementById('ov-stk').classList.add('show');}
+// ⚠️ 23.35 — Ouverte depuis un article (le « + » d'une alerte, la ligne du
+// Stock, la tuile épuisée), la feuille montrait D'ABORD la grille « Quel
+// article ? » au-dessus de l'article qu'il venait de toucher : on lui
+// redemandait ce qu'il avait déjà dit. La grille n'apparaît plus que quand
+// il ouvre « Ajouter » sans article, ou qu'il demande « Un autre article ».
+var _stkDepuisListe=false;
+function stkChanger(){
+  var fr=lang==='fr';
+  _stkDepuisListe=true;
+  var f=document.getElementById('stk-form');if(f)f.style.display='none';
+  var h=document.getElementById('stk-sel-h'),g=document.getElementById('agstk');
+  if(h){h.style.display='';h.textContent=fr?'Quel article ?':'Which item?';}
+  if(g)g.style.display='';
+  var tt=document.getElementById('ov-stk-t');if(tt)tt.textContent=fr?'Ajouter au stock':'Add stock';
+  renderAgstk();
+  var r=document.getElementById('ov-stk');if(r){var c=r.querySelector('.bsht');if(c)c.scrollTop=0;}
+}
+// Le reste de la feuille — sortie de stock, unité de compte, consigne,
+// fournisseur, prix « total payé » — replié sous un seul lien.
+function stkPlus(ouvrir){
+  var b=document.getElementById('stk-plus');if(!b)return;
+  var o=(typeof ouvrir==='boolean')?ouvrir:(b.style.display==='none');
+  b.style.display=o?'block':'none';
+  var fr=lang==='fr',l=document.getElementById('stk-plus-l'),fl=document.querySelector('#stk-plus-btn .stk-plus-f');
+  if(l)l.textContent=o?(fr?'Moins de choix':'Fewer options'):(fr?'Plus de choix':'More options');
+  if(fl)fl.textContent=o?'▴':'▾';
+  _majModePaStk();
+}
+// Les trois façons de dire le prix d'achat ne s'affichent que quand elles
+// servent : l'app connaît le carton (« le carton » ou « par pièce »), ou il a
+// ouvert « Plus de choix ». Sinon, un champ, déjà rempli de son dernier prix.
+function _majModePaStk(){
+  var row=document.getElementById('stk-pamode-row');if(!row)return;
+  var sc=0;try{sc=_stkTailleCont();}catch(e){}
+  var plus=document.getElementById('stk-plus'),po=!!plus&&plus.style.display!=='none';
+  var vu=sc>0||po||_stkPaMode!=='u';
+  row.style.display=vu?'flex':'none';
+  var tt=document.getElementById('spa-t');if(tt)tt.style.display=(po||_stkPaMode==='t')?'block':'none';
+  var i=document.getElementById('inp-spa');
+  if(i&&artStkCours){var fr=lang==='fr',u=uniteArtUn(artStkCours);
+    i.placeholder=vu?'—':(fr?('Prix d\'un'+(/^(unité|botte|cuvette|boîte|bouteille|pièce|plaquette|tasse)$/i.test(u)?'e ':' ')+u):('Price of one '+u));}
+}
+// « Ajouter 2 cartons au stock » : le bouton répète ce qu'il a compris.
+function _majBoutonStk(){
+  var b=document.getElementById('lbl-enreg-stk');if(!b)return;
+  var fr=lang==='fr',a=artStkCours;
+  if(_stkSens!=='in'){b.textContent=fr?'Enregistrer la sortie':'Save removal';return;}
+  var q=Math.round((parseFloat(String((document.getElementById('inp-sqte')||{}).value||'').replace(',','.'))||0)*100)/100;
+  if(!(q>0)||!a){b.textContent=fr?'Ajouter au stock':'Add to stock';return;}
+  var dit=fmtQ(q)+' '+uniteArt(a);
+  var sc=0;try{sc=_stkTailleCont();}catch(e){}
+  if(_stkQMode==='c'&&sc>0){var n=Math.round(q/sc*100)/100;
+    if(Math.abs(n-Math.round(n))<0.001){var mot=_motContenant(a,artStkVarCours||null);dit=n+' '+mot+(n>1&&!/s$/.test(mot)?'s':'');}}
+  b.textContent=fr?('Ajouter '+dit+' au stock'):('Add '+dit+' to stock');
+}
+function renderAgstk(){var g=document.getElementById('agstk');if(!g)return;g.innerHTML='';DB.articles.forEach(function(p){var ts=getStk(p),d=document.createElement('div');d.className='apcd';d.innerHTML=_vignettePicker(p)+'<div style="font-size:10px;font-weight:700;color:var(--T);margin-bottom:2px">'+p.nm+'</div><div style="font-size:10px;font-weight:800;color:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'">'+fmtQ(ts)+'</div>';d.onclick=function(){selArtStk(p,true);};g.appendChild(d);});}
 var artStkVarCours=null;
 // ⚠️ 23.15 — « METTRE LA PHOTO D'UN ARTICLE EST DEVENU COMPLIQUÉ. » Les
 // chemins : un rond de 20 px sur la vignette du Stock (seulement s'il n'y a
@@ -26360,8 +26397,13 @@ function stkPhoto(){
   var p=artStkCours;if(!p||!(role==='patron'||hasPerm('produits')))return;
   artCtx=p;var inp=document.getElementById('inp-photo-real-ctx');if(inp)inp.click();
 }
-function selArtStk(p){
+function selArtStk(p,depuisListe){
   artStkCours=p;var ts=getStk(p);
+  _stkDepuisListe=!!depuisListe;
+  var _gh=document.getElementById('stk-sel-h'),_gg=document.getElementById('agstk');
+  if(_gh)_gh.style.display='none';if(_gg)_gg.style.display='none';
+  try{stkPlus(false);}catch(e){}
+  var _ch=document.getElementById('lbl-chg-art');if(_ch)_ch.textContent=lang==='fr'?'Un autre article':'Another item';
   // Chaque ouverture repart en mode "entrée" (le cas le plus fréquent)
   var _si=document.getElementById('inp-sqte');if(_si)_si.value='';
   var _sc0=document.getElementById('inp-scont');if(_sc0)_sc0.value='';
@@ -26434,9 +26476,29 @@ function selArtStk(p){
   // efface le prix qu'on vient d'écrire. Mesuré au banc, c'était le cas.
   var _spa=document.getElementById('inp-spa');if(_spa)_spa.value=(p.pa>0?p.pa:'');
   stkSens('in'); // repart toujours sur "J'ai reçu"
+  // ⭐ 23.35 — Il compte en cartons : il paie au carton. Le prix proposé est
+  // celui du carton (son dernier prix × ce qu'il y a dedans), au même niveau
+  // que la quantité juste au-dessus. Il n'a rien à convertir de tête.
+  try{
+    var _scP=_stkTailleCont();
+    // ⚠️ Pas sur une famille à variantes : chaque sorte peut avoir SON
+    // carton (25 quand la famille dit 24), et le prix redivisé changerait
+    // en silence le prix d'achat de la pièce.
+    if(_stkQMode==='c'&&_scP>0&&!(p.vr.length&&!utiliseStockBase(p))){stkPaMode('c',true);if(_spa)_spa.value=(p.pa>0?Math.round(p.pa*_scP):'');majApercuStk();}
+  }catch(e){}
   document.getElementById('stk-form').style.display='block';
   document.getElementById('inp-sqte').value='';
   document.getElementById('inp-fourn').value='';
+  _majBoutonStk();
+  // Le curseur attend dans la quantité : c'est la première réponse.
+  setTimeout(function(){
+    try{
+      var ov=document.getElementById('ov-stk');if(!ov||!ov.classList.contains('show')||artStkCours!==p)return;
+      var i=document.getElementById(_stkQMode==='c'?'inp-scont':'inp-sqte');
+      if(i&&i.offsetParent)i.focus({preventScroll:true});
+      var c=ov.querySelector('.bsht');if(c)c.scrollTop=0;
+    }catch(e){}
+  },350);
 }
 var _stkPaMode='u';
 // `conserver` : l'ouverture de la fiche remet le niveau à « par unité » et
@@ -26628,21 +26690,26 @@ function stkSens(s){
   var unr=document.getElementById('stk-umnom-row');
   if(unr)unr.style.display=(s==='in'&&!estMesure(artStkCours))?'block':'none';
   var pal=document.getElementById('lbl-stk-pa');
-  if(pal)pal.textContent=(fr?'Prix d\'achat':'Cost price')+(artStkCours&&!(artStkCours.pa>0)?(fr?' — manquant !':' — missing!'):(fr?' (facultatif)':' (optional)'));
+  if(pal)pal.textContent=(fr?'À combien tu l\'as acheté ?':'What did you pay for it?')+(artStkCours&&!(artStkCours.pa>0)?(fr?' — manquant':' — missing'):'');
+  var tt=document.getElementById('ov-stk-t');
+  if(tt)tt.textContent=s==='in'?(fr?'Ajouter au stock':'Add stock'):(fr?'Sortie de stock':'Stock removal');
+  var lsi=document.getElementById('lbl-sens-in'),lso=document.getElementById('lbl-sens-out');
+  if(lsi)lsi.textContent=fr?'J\'ai reçu':'Received';
+  if(lso)lso.textContent=fr?'J\'en ai perdu':'Lost some';
+  // Une sortie se choisit dans « Plus de choix » : elle y reste visible.
+  if(s==='out')try{stkPlus(true);}catch(e){}
   var pau=document.getElementById('spa-u-l'),pat=document.getElementById('spa-t-l');
   if(pau)pau.textContent=fr?('Par '+(artStkCours?uniteArt(artStkCours):'unité')):('Per '+(artStkCours?uniteArt(artStkCours):'unit'));
   if(pat)pat.textContent=fr?'Total payé':'Total paid';
   // Le niveau auquel il négocie, quand l'app sait ce qu'il y a dedans.
   var pac=document.getElementById('spa-c'),pacl=document.getElementById('spa-c-l');
   var _sc=0;try{_sc=_stkTailleCont();}catch(e){}
-  if(pac)pac.style.display=(s==='in'&&_sc>0)?'flex':'none';
+  if(pac)pac.style.display=(s==='in'&&_sc>0)?'block':'none';
   if(pacl&&_sc>0&&artStkCours)pacl.textContent=(fr?'Le ':'Per ')+_motContenant(artStkCours,artStkVarCours||null);
   var sqcl=document.getElementById('sq-c-l'),squl=document.getElementById('sq-u-l');
   if(sqcl&&_sc>0&&artStkCours)sqcl.textContent=(fr?'Par ':'Per ')+_motContenant(artStkCours,artStkVarCours||null);
   if(squl)squl.textContent=fr?('En '+(artStkCours?uniteArt(artStkCours):'unités')):('In '+(artStkCours?uniteArt(artStkCours):'units'));
   if(s!=='in'||!(_sc>0)){if(_stkPaMode==='c')stkPaMode('u');}
-  var b=document.getElementById('lbl-enreg-stk');
-  if(b)b.textContent=s==='in'?(fr?'Enregistrer l\'entrée':'Save entry'):(fr?'Enregistrer la sortie':'Save removal');
   majApercuStk();
 }
 function stkMotif(m){
@@ -26654,6 +26721,7 @@ function majApercuStk(){
   var box=document.getElementById('stk-apercu');if(!box||!artStkCours)return;
   var q=Math.round((parseFloat(String((document.getElementById('inp-sqte')||{}).value||'').replace(',','.'))||0)*100)/100;
   try{majCompteurCont();}catch(e){}
+  try{_majBoutonStk();_majModePaStk();}catch(e){}
   majApercuPaStk(q);
   if(!q){box.style.display='none';return;}
   var cible=(artStkCours.vr.length&&!utiliseStockBase(artStkCours)&&artStkVarCours)?artStkVarCours:artStkCours;
@@ -26781,7 +26849,9 @@ function saveStk(){
     var corr=corrigerPrixGros(a.nm,paU,Number(a.px)||0,uniteArt(a));
     paU=(corr===null)?0:corr;
   }
-  if(paU>0&&Number(a.pa)!==paU){
+  // Le prix du carton pré-rempli redivisé donne 416,67 pour un 416,666… :
+  // ce n'est pas un nouveau prix, on ne l'écrit pas au journal.
+  if(paU>0&&Math.abs((Number(a.pa)||0)-paU)>=0.01){
     journalAjouter('prix',a.nm+(fr?' (achat)':' (cost)'),fmt(a.pa||0),fmt(paU));
     a.pa=paU;
     if(a.paRefuse)delete a.paRefuse;   // il sait maintenant : le refus n'a plus lieu d'être
@@ -30372,6 +30442,25 @@ function migrateDBData(d){
   if(!d)return d;
   d.cfg=d.cfg||{};
   try{_neutraliserTextes(d);}catch(e){}
+  // ⚠️⚠️ 23.35 — « LES PHOTOS QUE MYBOUTIQ PROPOSE, CE SONT LES EMOJIS. »
+  // Les 600 images du catalogue (/APP/catalogue/) sont des emojis dessinés
+  // sur une carte, générés le 27/08 — pas des photos. Mesuré en base le
+  // 28/10 : 126 articles dans 15 boutiques les portaient, présentés comme
+  // « leur photo ». Ils reprennent le dessin au trait de la caisse, le même
+  // que tous les autres articles. On ne retire QUE ces cartes : une photo
+  // prise par le commerçant n'est jamais à cette adresse.
+  try{
+    var _carte=function(u){return !!u&&String(u).indexOf('/APP/catalogue/')>=0;};
+    (d.articles||[]).forEach(function(a){
+      if(!a)return;
+      if(_carte(a.img)){delete a.img;delete a._imgCat;}
+      (a.vr||[]).forEach(function(v){
+        if(!v)return;
+        if(_carte(v.img))delete v.img;
+        if(_carte(v._img))delete v._img;
+      });
+    });
+  }catch(e){}
   // 23.22 — compteurs de l'écoute : des nombres sous un identifiant
   // d'appareil, rien d'autre, et douze appareils au plus.
   if(d.ecoute!=null){

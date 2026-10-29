@@ -50,7 +50,8 @@ await p.evaluate(() => filtreStock('tout'));
 await p.evaluate(() => ouvrirStk(DB.articles.find(a => a.id === 6))); await p.waitForTimeout(500);
 vu(await releve(p), 'mouvement de stock');
 const ms = await p.evaluate(() => ({ tit: document.getElementById('ov-stk-t').textContent, in: !!document.querySelector('#stk-sens-in svg'), out: !!document.querySelector('#stk-sens-out svg') }));
-t(ms.tit === 'Mouvement de stock' && ms.in && ms.out, `« ${ms.tit} », reçu / perdu dessinés`);
+// 23.35 : la feuille s'appelle « Ajouter au stock » ; reçu / perdu sont sous « Plus de choix ».
+t(ms.tit === 'Ajouter au stock' && ms.in && ms.out, `« ${ms.tit} », reçu / perdu dessinés`);
 // Une entrée passe toujours : on n'a touché qu'au dessin.
 const avant = await p.evaluate(() => getStk(DB.articles.find(a => a.id === 6)));
 await p.evaluate(() => { const i = document.getElementById('inp-sqte'); if (i) { i.value = '24'; i.dispatchEvent(new Event('input', { bubbles: true })); } });
