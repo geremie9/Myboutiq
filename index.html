@@ -842,6 +842,19 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .vb-trou{display:flex;gap:8px;align-items:center;margin-top:10px;padding:10px 12px;border-radius:12px;background:#FFF4E5;color:#B45309;font-size:12px;font-weight:700;cursor:pointer}
 .vb-si{margin-top:12px;font-size:12.5px;font-weight:600;color:var(--T);line-height:1.5}
 .vb-der{margin-top:10px;font-size:11.5px;font-weight:600;color:var(--M);line-height:1.45}
+.snack-ph{white-space:nowrap;position:fixed;left:50%;bottom:92px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:400;display:flex;align-items:center;gap:14px;background:#1E1B2E;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;font-size:13px;font-weight:700;font-family:'Outfit',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:all .25s}
+.snack-ph.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.snack-ph button{background:none;border:none;color:var(--O);font-weight:900;font-size:13.5px;font-family:'Outfit',sans-serif;cursor:pointer;padding:4px 2px}
+.stk-photos{align-items:center;gap:8px;background:#E3F2FD;color:#0D47A1;border-radius:12px;padding:9px 12px;margin-bottom:9px;font-size:12px;font-weight:700;cursor:pointer}
+.stk-photos span{flex:1}.stk-photos b{font-weight:900;white-space:nowrap}
+.phot-cpt{font-size:11.5px;font-weight:800;color:var(--M);text-align:center;margin-bottom:10px}
+.phot-art{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:16px}
+.phot-m{width:120px;height:120px;border-radius:26px;display:flex;align-items:center;justify-content:center}
+.phot-nm{font-size:19px;font-weight:900;color:var(--T);text-align:center}
+.phot-px{font-size:13px;font-weight:800;color:var(--M)}
+.phot-go{display:flex;align-items:center;justify-content:center;gap:9px;padding:15px}
+.phot-fin{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:14px 4px 18px;color:var(--G)}
+.phot-fin b{font-size:17px;color:var(--T)}.phot-fin span{font-size:12px;font-weight:700;color:var(--M)}
 .cond-art{font-size:15px;font-weight:900;color:var(--T)}
 .cond-q{font-size:12px;font-weight:700;color:var(--M);margin:2px 0 11px;line-height:1.4}
 .cond-n{position:relative;border:2px solid var(--B);border-radius:14px;padding:10px 11px;margin-bottom:9px;background:var(--C)}
@@ -4302,6 +4315,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
         <button class="stkf" id="sf-vend" onclick="filtreStock('vend')">Qui tournent</button>
       </div>
       <div id="stk-valeur" style="font-size:11.5px;font-weight:700;color:var(--M);margin-bottom:7px;line-height:1.45"></div>
+      <div id="stk-photos" class="stk-photos" style="display:none" onclick="ouvrirPhotographier()"></div>
       <div id="stk-compte" style="font-size:11px;font-weight:700;color:var(--M);margin-bottom:9px"></div>
       <button class="bpay" id="btn-exp-stk" style="margin-bottom:11px;display:none" onclick="exportStockCSV()">Exporter le stock (Excel)</button>
       <div id="stk-lst"></div>
@@ -4509,6 +4523,8 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
         <div class="stit2" onclick="ouvrirPrix(null);goBack()"><div class="stico" style="background:#E3F2FD">💰</div><div class="stii"><div class="stitl" id="st-prix">Modifier les prix</div><div class="stisub" id="st-prix-s">Prix achat, vente, bénéfice</div></div><span class="starr">›</span></div>
         <div class="stit2" onclick="ouvrirStk(null);goBack()"><div class="stico" style="background:#E8F5E9">📦</div><div class="stii"><div class="stitl" id="st-stk">Entrée de stock</div><div class="stisub" id="st-stk-s">Ajouter des quantités</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="afficherVentesRapides()"><div class="stico" style="background:#FFFDE7">⚡</div><div class="stii"><div class="stitl">Remettre les ventes rapides</div><div class="stisub">La rangée des articles qui partent le plus, en haut de la caisse</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="ouvrirPhotographier()"><div class="stico" style="background:#E3F2FD">📷</div><div class="stii"><div class="stitl">Photographier mes articles</div><div class="stisub" id="st-phot-s">Un par un, appareil ouvert</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="basculerPartagePhotos()"><div class="stico" style="background:#E8F5E9">🤝</div><div class="stii"><div class="stitl">Partager mes photos</div><div class="stisub">Proposées aux autres boutiques, vérifiées avant publication. Ta boutique n'est jamais nommée.</div></div><button class="tog off" id="tog-partage"></button></div>
         <div class="stit2" onclick="ouvrirRafraichirPhotos()"><div class="stico" style="background:#FFF8E1">🖼️</div><div class="stii"><div class="stitl">Photos de mes articles</div><div class="stisub">Poser les photos du catalogue — tes chiffres ne bougent pas</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="ouvrirRanger()"><div class="stico" style="background:#FFF3E0">🔗</div><div class="stii"><div class="stitl" id="st-rng">Regrouper mes articles</div><div class="stisub" id="st-rng-s">Mettre ensemble ce qui va ensemble (Savon Lux + Savon Protex)</div></div><span class="starr">›</span></div>
       </div>
@@ -6602,6 +6618,17 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   </div>
 </div>
 
+<!-- ⭐ 23.37 — « Photographier mes articles » : l'appareil ouvert, un
+     article après l'autre, « Passer » quand il ne l'a pas sous la main. -->
+<div class="ov" id="ov-phot" onclick="closeOv(event,'ov-phot')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="phot-tit">Photographier mes articles</div><button class="bcl" onclick="closeSheet('ov-phot')">✕</button></div>
+    <div class="pstps"><div id="phot-cont"></div>
+      <input type="file" id="inp-phot" accept="image/*" capture="environment" style="display:none" onchange="photPrise(event)">
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="ov-lang" onclick="closeOv(event,'ov-lang')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">🌍 Langue & Devise</div><button class="bcl" onclick="closeSheet('ov-lang')">✕</button></div>
@@ -7029,7 +7056,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.36'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.37'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -8859,7 +8886,7 @@ function navTo(tab,btn){
   if(tab==='clients')renderClients();
   if(tab==='stock')renderStock(DB.articles);
 }
-function goSt(){if(role!=='patron'){showToast('⛔ Réservé au patron');return;}screenHist.push('s-settings');construireOngletsParams();majModeParametres();goScreen('s-settings');}
+function goSt(){if(role!=='patron'){showToast('⛔ Réservé au patron');return;}screenHist.push('s-settings');construireOngletsParams();majModeParametres();try{_majLignesPhotos();}catch(e){}goScreen('s-settings');}
 // ═══════════════════════════════════════════════════════════════════
 // SE SOUVENIR DE QUI ENTRE — sans affaiblir la porte
 // Le patron voulait ne taper qu'UNE chose. La bonne réponse n'est pas de
@@ -20832,37 +20859,276 @@ function uploadBlobProduit(blob){
     return SUPA_URL+'/storage/v1/object/public/APP/'+path;
   });
 }
-function uploadPhotoReelle(ev,mode){
-  var file=ev.target.files&&ev.target.files[0];if(!file)return;
-  if(!supa){showToast('⛔ '+(lang==='fr'?'Connexion requise pour uploader une photo':'Connection required to upload a photo'));ev.target.value='';return;}
-  ouvrirCrop(file,function(croppedBlob){
-    ev.target.value='';
-    if(!croppedBlob)return;
-    var btn=mode==='new'?document.getElementById('btn-photo-real'):null;
-    if(btn)btn.classList.add('busy');
-    showToast('🔄 '+(lang==='fr'?'Envoi...':'Uploading...'));
-    uploadBlobProduit(croppedBlob).then(function(publicUrl){
-      var sizeKo=Math.round(croppedBlob.size/1024);
-      if(mode==='new'){
-        selImg=publicUrl;
-        majIdentitePastille();
-        document.getElementById('photo-real-img').src=publicUrl;
-        document.getElementById('photo-real-txt').textContent=(lang==='fr'?'Photo prête':'Photo ready')+' ('+sizeKo+' Ko)';
-        document.getElementById('photo-real-preview').style.display='flex';
-      }else if(mode==='ctx'&&artCtx){
-        artCtx.img=publicUrl;save();renderProd(DB.articles);renderStock(DB.articles);
-        try{if(artStkCours===artCtx&&document.querySelector('#ov-stk.show')){var _se2=document.getElementById('stk-e');_se2.innerHTML='<img src="'+srcSure(publicUrl)+'" style="width:100%;height:100%;object-fit:cover">';_se2.style.background='#fff';_majStkPhoto(artCtx);}}catch(x){}
-      }
-      showToast('✅ '+(lang==='fr'?'Photo ajoutée !':'Photo added!')+' ('+sizeKo+' Ko)');
-      // Sa photo peut servir à tous les autres. On lui demande — jamais tout seul.
-      var _nomPhoto=(mode==='ctx'&&artCtx)?artCtx.nm:((document.getElementById('art-nm')||{}).value||'');
-      setTimeout(function(){proposerPhotoPartagee(_nomPhoto,publicUrl);},700);
-    }).catch(function(e){
-      showToast('❌ '+(e&&e.message?e.message:(lang==='fr'?'Échec de l\'envoi':'Upload failed')));
-    }).finally(function(){
-      if(btn)btn.classList.remove('busy');
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.37 — « METTRE LES PHOTOS EST DEVENU UN PEU COMPLIQUÉ : ÇA PREND
+//     PLUSIEURS TEMPS, PLUSIEURS TECHNIQUES. »
+//
+//  Refait au banc, une photo d'article coûtait : sans réseau, un refus net
+//  (« Connexion requise ») — la photo prise était perdue ; avec réseau,
+//  l'écran de recadrage À CHAQUE FOIS, une attente de l'envoi (5 à 15 s sur
+//  une connexion camerounaise), puis une question « partager ? » après
+//  CHAQUE photo. Pour vingt articles : vingt recadrages, vingt questions.
+//
+//  Maintenant :
+//   · la photo est recadrée en carré au centre, toute seule, et posée sur
+//     l'article TOUT DE SUITE (une vignette de 240 px gardée dans la
+//     boutique) ; « Recadrer » reste à un toucher, jamais imposé ;
+//   · la vraie photo (600 px) attend sur le téléphone (IndexedDB) et part
+//     dès que le réseau est là — maintenant, au retour du réseau, ou au
+//     prochain lancement. Elle remplace alors la vignette ;
+//   · le partage se demande UNE fois, pour toutes ; Réglages le change.
+//  `_imgAttente` = « appareil|clé » : seul le téléphone qui a pris la photo
+//  l'envoie (les autres reçoivent la vignette par la synchro, sans le
+//  fichier).
+// ══════════════════════════════════════════════════════════════════
+var _PH_DB=null;
+function _phIdb(){
+  return new Promise(function(res){
+    try{
+      if(_PH_DB)return res(_PH_DB);
+      if(!window.indexedDB)return res(null);
+      var r=indexedDB.open('myboutiq_photos',1);
+      r.onupgradeneeded=function(){try{r.result.createObjectStore('p');}catch(e){}};
+      r.onsuccess=function(){_PH_DB=r.result;res(_PH_DB);};
+      r.onerror=function(){res(null);};
+    }catch(e){res(null);}
+  });
+}
+function _phTx(mode,fn){
+  return _phIdb().then(function(db){
+    if(!db)return null;
+    return new Promise(function(res){
+      try{var tx=db.transaction('p',mode),st=tx.objectStore('p'),q=fn(st);
+        tx.oncomplete=function(){res(q&&q.result!==undefined?q.result:true);};
+        tx.onerror=tx.onabort=function(){res(null);};
+      }catch(e){res(null);}
     });
   });
+}
+function _phGarder(k,blob){return _phTx('readwrite',function(st){return st.put(blob,k);});}
+function _phLire(k){return _phTx('readonly',function(st){return st.get(k);});}
+function _phOublier(k){return _phTx('readwrite',function(st){return st.delete(k);});}
+function _phMoi(){return String(_deviceId||'')+'|';}
+function _phOublierDe(p){
+  var m=_phMoi();
+  if(p&&typeof p._imgAttente==='string'&&p._imgAttente.indexOf(m)===0)_phOublier(p._imgAttente.slice(m.length));
+}
+// Carré au centre, fond blanc, lumière égalisée : ce que faisait l'écran de
+// recadrage dans 9 cas sur 10, sans le demander.
+function _phCarre(src,cote,q){
+  return new Promise(function(res,rej){
+    var url=URL.createObjectURL(src),img=new Image();
+    img.onload=function(){
+      var w=img.naturalWidth,h=img.naturalHeight,c=Math.min(w,h);
+      var cv=document.createElement('canvas');cv.width=cote;cv.height=cote;
+      var ctx=cv.getContext('2d');
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,cote,cote);
+      ctx.drawImage(img,(w-c)/2,(h-c)/2,c,c,0,0,cote,cote);
+      try{egaliserPhoto(cv,ctx);}catch(e){}
+      URL.revokeObjectURL(url);
+      cv.toBlob(function(b){if(b)res(b);else rej(new Error('photo'));},'image/jpeg',q);
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);rej(new Error('photo illisible'));};
+    img.src=url;
+  });
+}
+function _phDataUrl(blob){
+  return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(String(r.result||''));};r.onerror=rej;r.readAsDataURL(blob);});
+}
+function _phBlobDe(u){
+  var m=String(u||'').match(/^data:([^;]+);base64,(.*)$/);if(!m)return null;
+  var b=atob(m[2]),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);
+  return new Blob([a],{type:m[1]});
+}
+// La photo d'un article, de bout en bout. `src` : le fichier pris, ou le
+// carré sorti de « Recadrer ». o.lot : le mode « Photographier mes
+// articles » (pas de « Recadrer » proposé, pas de question).
+function _photoPourArticle(p,src,o){
+  o=o||{};
+  var fr=(lang==='fr');
+  if(!p||!src)return Promise.resolve(false);
+  return Promise.all([_phCarre(src,600,0.85),_phCarre(src,240,0.72)]).then(function(r){
+    return _phDataUrl(r[1]).then(function(vign){
+      var k='ph'+Date.now()+'_'+Math.floor(Math.random()*1e5);
+      _phOublierDe(p);
+      p.img=vign;p._imgAttente=_phMoi()+k;delete p._imgCat;
+      return _phGarder(k,r[0]).then(function(){
+        save();
+        try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+        try{if(artStkCours===p&&document.querySelector('#ov-stk.show')){var se=document.getElementById('stk-e');se.innerHTML='<img src="'+srcSure(vign)+'" style="width:100%;height:100%;object-fit:cover">';se.style.background='#fff';_majStkPhoto(p);}}catch(e){}
+        if(!o.lot){
+          showToast('📷 '+(navigator.onLine
+            ?(fr?'Photo posée sur « '+p.nm+' »':'Photo set on "'+p.nm+'"')
+            :(fr?'Photo posée — elle part au retour du réseau':'Photo set — uploads when online')));
+          if(!o.recadree)_snackRecadrer(p,src);
+          setTimeout(_demanderPartageUneFois,1200);
+        }
+        setTimeout(_photosEnvoyer,400);
+        return true;
+      });
+    });
+  }).catch(function(){showToast('❌ '+(fr?'Cette photo ne se lit pas — reprends-la':'Unreadable photo — take it again'));return false;});
+}
+// « Recadrer » à un toucher, quelques secondes, puis il disparaît.
+var _snackT=null;
+function _snackRecadrer(p,src){
+  var fr=(lang==='fr'),s=document.getElementById('snack-ph');
+  if(!s){s=document.createElement('div');s.id='snack-ph';s.className='snack-ph';document.body.appendChild(s);}
+  s.innerHTML='<span>'+(fr?'Mal cadrée ?':'Badly framed?')+'</span><button type="button" id="snack-ph-b">'+(fr?'Recadrer':'Crop')+'</button>';
+  s.classList.add('show');
+  document.getElementById('snack-ph-b').onclick=function(){
+    s.classList.remove('show');
+    ouvrirCrop(src,function(b){if(b)_photoPourArticle(p,b,{recadree:true});});
+  };
+  clearTimeout(_snackT);_snackT=setTimeout(function(){s.classList.remove('show');},6000);
+}
+var _phEnVol=false;
+function _photosEnvoyer(){
+  try{
+    if(_phEnVol||!navigator.onLine||!DB||!DB.articles)return;
+    if(typeof estDemo==='function'&&estDemo())return;
+    var moi=_phMoi();
+    var l=DB.articles.filter(function(p){return p&&typeof p._imgAttente==='string'&&p._imgAttente.indexOf(moi)===0;});
+    if(!l.length)return;
+    _phEnVol=true;
+    var i=0;
+    (function suivant(){
+      if(i>=l.length){_phEnVol=false;return;}
+      var id=l[i++].id,a0=DB.articles.find(function(x){return x.id===id;});
+      if(!a0||typeof a0._imgAttente!=='string'||a0._imgAttente.indexOf(moi)!==0){suivant();return;}
+      var cle=a0._imgAttente,k=cle.slice(moi.length),vign=a0.img;
+      _phLire(k).then(function(b){
+        var blob=(b&&b.size)?b:_phBlobDe(vign);
+        if(!blob)throw new Error('rien');
+        return uploadBlobProduit(blob);
+      }).then(function(url){
+        // L'article a pu changer de photo pendant l'envoi : on ne remplace
+        // que la vignette qu'on était en train d'envoyer.
+        var a=DB.articles.find(function(x){return x.id===id;});
+        if(a&&a._imgAttente===cle){
+          a.img=url;delete a._imgAttente;save();
+          try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+          _partagerSiAccord(a.nm,url);
+        }
+        _phOublier(k);suivant();
+      }).catch(function(){_phEnVol=false;});   // réseau retombé : la prochaine occasion
+    })();
+  }catch(e){_phEnVol=false;}
+}
+window.addEventListener('online',function(){setTimeout(_photosEnvoyer,2500);});
+setInterval(function(){try{_photosEnvoyer();}catch(e){}},90000);
+setTimeout(function(){try{_photosEnvoyer();}catch(e){}},8000);
+// ── Le partage : une question, une fois ──
+function _partageAccord(){try{return localStorage.getItem('myboutiq_partage_photos')||'';}catch(e){return '';}}
+function _demanderPartageUneFois(){
+  if(_partageAccord()||role!=='patron')return;
+  var fr=(lang==='fr');
+  var ok=confirm(fr
+    ?'📷 Tes photos peuvent servir aux autres commerçants : celles des produits connus (riz, savon, boissons…) leur sont proposées, vérifiées avant publication. Ta boutique n\'est jamais nommée.\n\nPartager tes photos ?\n\nJe ne te le redemanderai plus — tu peux changer dans Réglages.'
+    :'📷 Share your product photos with other shops? (asked once — change it in Settings)');
+  try{localStorage.setItem('myboutiq_partage_photos',ok?'oui':'non');}catch(e){}
+  try{_majLignesPhotos();}catch(e){}
+  // Les photos déjà envoyées de cette session partent maintenant.
+  if(ok)(DB.articles||[]).forEach(function(a){if(a&&a.img&&/\/storage\/v1\/object\/public\/APP\/products\//.test(a.img)&&!a._imgAttente)_partagerSiAccord(a.nm,a.img);});
+}
+function _partagerSiAccord(nm,url){
+  if(_partageAccord()!=='oui'||!nm||!url)return;
+  try{proposerPhotoPartagee(nm,url,true);}catch(e){}
+}
+function basculerPartagePhotos(){
+  var v=_partageAccord()==='oui'?'non':'oui';
+  try{localStorage.setItem('myboutiq_partage_photos',v);}catch(e){}
+  _majLignesPhotos();
+  showToast(v==='oui'?('🤝 '+(lang==='fr'?'Tes photos seront proposées aux autres boutiques':'Your photos will be shared')):('🔒 '+(lang==='fr'?'Tes photos restent chez toi':'Your photos stay private')));
+}
+function _sansPhoto(){
+  return (DB&&DB.articles||[]).filter(function(p){return p&&p.nm&&!p.img;});
+}
+function _majLignesPhotos(){
+  var fr=(lang==='fr'),t=document.getElementById('tog-partage');
+  if(t)t.className='tog '+(_partageAccord()==='oui'?'on':'off');
+  var n=_sansPhoto().length,s=document.getElementById('st-phot-s');
+  if(s)s.textContent=n?(fr?(n+' article'+(n>1?'s':'')+' sans photo — un par un, appareil ouvert'):(n+' without a photo')):(fr?'Tous tes articles ont leur photo':'All your items have a photo');
+}
+// ── « Photographier mes articles » : appareil ouvert, un article après l'autre ──
+var _phot=null;
+function ouvrirPhotographier(){
+  if(!(role==='patron'||hasPerm('produits'))){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  var l=_sansPhoto().slice().sort(function(a,b){return (Number(b.vd)||0)-(Number(a.vd)||0);});
+  _phot={ids:l.map(function(p){return p.id;}),i:0,n:0,tot:l.length};
+  var sn=document.getElementById('snack-ph');if(sn)sn.classList.remove('show');
+  _photRendre();
+  document.getElementById('ov-phot').classList.add('show');
+}
+function _photRendre(){
+  var fr=(lang==='fr'),c=document.getElementById('phot-cont');if(!c||!_phot)return;
+  var p=null;
+  while(_phot.i<_phot.ids.length){
+    p=DB.articles.find(function(x){return x.id===_phot.ids[_phot.i];});
+    if(p&&!p.img)break;
+    _phot.i++;p=null;
+  }
+  if(!p){
+    c.innerHTML='<div class="phot-fin">'+ico('appareil',34)+'<b>'+(_phot.n?(fr?(_phot.n+' photo'+(_phot.n>1?'s':'')+' posée'+(_phot.n>1?'s':'')):(_phot.n+' photo(s) set')):(fr?'Rien à photographier':'Nothing left'))+'</b>'
+      +'<span>'+(fr?'Elles partent toutes seules dès que le réseau est là.':'They upload as soon as there is network.')+'</span></div>'
+      +'<button class="bnxt" onclick="closeSheet(\'ov-phot\')">'+(fr?'Terminé':'Done')+'</button>';
+    return;
+  }
+  var m=mediaArtInner(p,64);
+  c.innerHTML='<div class="phot-cpt">'+(fr?('Article '+(_phot.i+1)+' sur '+_phot.tot):((_phot.i+1)+' of '+_phot.tot))+'</div>'
+    +'<div class="phot-art"><span class="phot-m" style="background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</span>'
+    +'<div class="phot-nm">'+escH(p.nm)+'</div><div class="phot-px">'+(Number(p.px)>0?fmt(p.px):'')+'</div></div>'
+    +'<button class="bnxt phot-go" onclick="photPrendre()">'+ico('appareil',20)+'<span>'+(fr?'Prendre la photo':'Take the photo')+'</span></button>'
+    +'<button class="bvid" style="margin-top:8px" onclick="photPasser()">'+(fr?'Passer ›':'Skip ›')+'</button>';
+}
+function photPrendre(){var i=document.getElementById('inp-phot');if(i)i.click();}
+function photPasser(){if(!_phot)return;_phot.i++;_photRendre();}
+function photPrise(ev){
+  var file=ev.target.files&&ev.target.files[0];ev.target.value='';
+  if(!file||!_phot)return;
+  var p=DB.articles.find(function(x){return x.id===_phot.ids[_phot.i];});
+  if(!p)return;
+  _photoPourArticle(p,file,{lot:true}).then(function(ok){
+    if(ok){_phot.n++;_phot.i++;}
+    _photRendre();
+    if(ok&&_phot.n===1)setTimeout(_demanderPartageUneFois,600);
+  });
+}
+// ── La bande du Stock : il voit combien il en manque, et y va d'un toucher ──
+function majBandeauPhotos(){
+  var b=document.getElementById('stk-photos');if(!b)return;
+  var fr=(lang==='fr'),n=_sansPhoto().length;
+  var peut=(role==='patron'||hasPerm('produits'));
+  if(!peut||n<3){b.style.display='none';return;}
+  b.style.display='flex';
+  b.innerHTML=ico('appareil',16)+'<span>'+(fr?(n+' articles sans photo'):(n+' items without a photo'))+'</span><b>'+(fr?'Les photographier ›':'Take them ›')+'</b>';
+}
+function uploadPhotoReelle(ev,mode){
+  var file=ev.target.files&&ev.target.files[0];if(!file)return;
+  ev.target.value='';
+  // ⭐ 23.37 — un article existant : la photo est posée tout de suite, sans
+  // écran de recadrage, réseau ou pas.
+  if(mode==='ctx'&&artCtx){_photoPourArticle(artCtx,file);return;}
+  if(mode==='new'){_photoNouvelArticle(file);return;}
+}
+// Le formulaire d'un article neuf : il n'a pas encore d'identifiant. La
+// vignette va dans `selImg`, la vraie photo attend sous sa clé, et
+// l'article créé hérite de l'attente (voir `_selImgAttente`).
+var _selImgAttente=null;
+function _photoNouvelArticle(file){
+  var fr=(lang==='fr');
+  Promise.all([_phCarre(file,600,0.85),_phCarre(file,240,0.72)]).then(function(r){
+    return _phDataUrl(r[1]).then(function(vign){
+      var k='ph'+Date.now()+'_'+Math.floor(Math.random()*1e5);
+      return _phGarder(k,r[0]).then(function(){
+        selImg=vign;_selImgAttente=_phMoi()+k;
+        majIdentitePastille();
+        document.getElementById('photo-real-img').src=vign;
+        document.getElementById('photo-real-txt').textContent=fr?'Photo prête':'Photo ready';
+        document.getElementById('photo-real-preview').style.display='flex';
+      });
+    });
+  }).catch(function(){showToast('❌ '+(fr?'Cette photo ne se lit pas':'Unreadable photo'));});
 }
 function uploadPhotoReelleOLD(ev,mode){
   var file=ev.target.files&&ev.target.files[0];if(!file)return;
@@ -21171,7 +21437,7 @@ function _slugsPourNom(nom){
 // à l'avance ce que les vraies boutiques vendent — la bibliothèque se remplit
 // donc par l'usage, pas par une liste écrite d'avance.
 // Elle ne part JAMAIS toute seule : le patron de MyBoutiQ approuve d'abord.
-async function proposerPhotoPartagee(nomArticle,url){
+async function proposerPhotoPartagee(nomArticle,url,dejaAccorde){
   try{
     if(!nomArticle||!url)return;
     var fr=(lang==='fr');
@@ -21196,21 +21462,22 @@ async function proposerPhotoPartagee(nomArticle,url){
     var offertes={};
     try{offertes=JSON.parse(localStorage.getItem('myboutiq_photos_offertes')||'{}')||{};}catch(e){}
     if(offertes[slug])return;
-    if(!confirm(fr
+    // 23.37 — il a dit oui une fois pour toutes : on ne redemande pas.
+    if(!dejaAccorde&&!confirm(fr
       ?(dejaUne
         ?('📷 Une photo de « '+nomArticle+' » existe déjà pour tous.\n\nProposer la tienne à la place ?\nCelle que les commerçants gardent le plus l\'emporte. Ta boutique n\'est pas nommée.')
         :('📷 Partager cette photo de « '+nomArticle+' » avec les autres commerçants ?\n\nElle sera vérifiée avant d\'être publiée. Ta boutique n\'est pas nommée.'))
       :(dejaUne?('A photo of "'+nomArticle+'" already exists. Offer yours instead?')
                :('Share this photo of "'+nomArticle+'" with other shops?'))))return;
     assurerConnexionSupa();
-    if(!supa||!navigator.onLine){showToast('📡 '+(fr?'Réseau requis':'Network required'));return;}
+    if(!supa||!navigator.onLine){if(!dejaAccorde)showToast('📡 '+(fr?'Réseau requis':'Network required'));return;}
     var r=await supa.from('photos_partagees').insert({
       slug:slug,url:url,article_nm:String(nomArticle).slice(0,80),
       code_source:(DB&&DB.cfg&&DB.cfg.code)||null
     });
     if(r.error){showToast('❌ '+(fr?'Envoi refusé':'Refused'));return;}
     try{offertes[slug]=1;localStorage.setItem('myboutiq_photos_offertes',JSON.stringify(offertes));}catch(e){}
-    showToast('🙏 '+(fr?'Merci ! Ta photo est proposée à toutes les boutiques.':'Thanks! Your photo is proposed to all shops.'));
+    if(!dejaAccorde)showToast('🙏 '+(fr?'Merci ! Ta photo est proposée à toutes les boutiques.':'Thanks! Your photo is proposed to all shops.'));
   }catch(e){}
 }
 // ════════════════════════════════════════════════════════════════════
@@ -22847,7 +23114,7 @@ function importerPhotosMasse(ev){
   }
   step();
 }
-function retirerPhotoReelle(){selImg=null;document.getElementById('photo-real-preview').style.display='none';majIdentitePastille();}
+function retirerPhotoReelle(){selImg=null;_selImgAttente=null;document.getElementById('photo-real-preview').style.display='none';majIdentitePastille();}
 // ══════════════════════════════════════════════════════════════════
 //  ⚠️ UNE LISTE DE PRÉFIXES NE COUVRE PAS LES TÉLÉPHONES.
 //
@@ -25862,7 +26129,7 @@ if(!pv){showToast(t('errPrix'));return;}var _sac=Math.round((parseFloat(String((
 var _parc=Math.round((parseFloat(String((document.getElementById('ainp-parcont')||{}).value||'').replace(',','.'))||0)*100)/100;
 var _sacRetenu=(_sac>0?_sac:_parc)||0;
 var _contRetenu=(_parc>0&&achatTypeA&&achatTypeA!=='unite')?String(achatTypeA):null;
-var _artNeuf={id:_prochainIdArticle(),nm,e:selEmo,img:selImg||null,cat:selCat||'Autre',px:pv,pa:pxAUA||0,stk:0,stk0:0,al,vd:0,vr:[],rt:ruptSel,um:umSel==='pc'?null:umSel,umSac:_sacRetenu>0?_sacRetenu:null,umCont:_contRetenu,umNom:(umSel==='pc'?((document.getElementById('ainp-umnom')||{}).value||'').trim().slice(0,12)||null:null)};
+var _artNeuf={id:_prochainIdArticle(),nm,e:selEmo,img:selImg||null,_imgAttente:((selImg&&/^data:/.test(selImg)&&_selImgAttente)?_selImgAttente:undefined),cat:selCat||'Autre',px:pv,pa:pxAUA||0,stk:0,stk0:0,al,vd:0,vr:[],rt:ruptSel,um:umSel==='pc'?null:umSel,umSac:_sacRetenu>0?_sacRetenu:null,umCont:_contRetenu,umNom:(umSel==='pc'?((document.getElementById('ainp-umnom')||{}).value||'').trim().slice(0,12)||null:null)};
 DB.articles.push(_artNeuf);
 // ⚠️ Le stock saisi etait pose directement sur l'article, SANS stk0. Or le
 // stock se RECALCULE (stk0 + appros − ventes) : au premier recalcul il
@@ -26603,7 +26870,8 @@ function majCompteStock(lst){
 // et la recherche en cours, sinon tout réapparaissait après chaque vente.
 var _renderStockBase=renderStock;
 renderStock=function(lst){
-  try{majBandeauSansGros();}catch(e){}   // 23.23 — sa carte vit ici maintenant
+  try{majBandeauSansGros();}catch(e){}
+  try{majBandeauPhotos();}catch(e){}   // 23.23 — sa carte vit ici maintenant
   if(lst===DB.articles&&(_stkFiltre!=='tout'||_stkQ)){appliquerFiltreStock();return;}
   if(lst===DB.articles)majCompteStock(lst);
   try{majValeurStock();}catch(e){}
