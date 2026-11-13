@@ -855,6 +855,14 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .phot-go{display:flex;align-items:center;justify-content:center;gap:9px;padding:15px}
 .phot-fin{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:14px 4px 18px;color:var(--G)}
 .phot-fin b{font-size:17px;color:var(--T)}.phot-fin span{font-size:12px;font-weight:700;color:var(--M)}
+.qte-mes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.qte-m{border:2px solid var(--B);background:var(--C);border-radius:13px;padding:9px 6px;font-family:'Outfit',sans-serif;cursor:pointer;text-align:center}
+.qte-m b{display:block;font-size:14px;font-weight:800;color:var(--T)}.qte-m span{font-size:16px;font-weight:900;color:var(--B)}
+.qte-mt{margin-top:8px}.qte-mt .pl{margin-bottom:6px}
+.qte-mt-ch{display:flex;gap:7px}.qte-mt-ch button{flex:1;border:none;border-radius:11px;background:#1E1B2E;color:var(--A);font-size:14px;font-weight:900;padding:11px 2px;font-family:'Outfit',sans-serif;cursor:pointer}
+.qte-mt-l{display:flex;gap:7px;margin-top:7px}.qte-mt-l input{flex:1;min-width:0}.qte-mt-l button{flex:0 0 76px;border:none;border-radius:11px;background:var(--B);color:#fff;font-weight:900;font-family:'Outfit',sans-serif}
+.cond-mes-t{font-size:12px;font-weight:800;color:var(--M);margin:2px 0 7px}
+.cond-n.cond-pm{border-style:dashed}
 .cond-art{font-size:15px;font-weight:900;color:var(--T)}
 .cond-q{font-size:12px;font-weight:700;color:var(--M);margin:2px 0 11px;line-height:1.4}
 .cond-n{position:relative;border:2px solid var(--B);border-radius:14px;padding:10px 11px;margin-bottom:9px;background:var(--C)}
@@ -4977,6 +4985,15 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
     <div class="shhdr"><div class="shtit" id="qte-tit">⚖️ Quantité</div><button class="bcl" onclick="closeSheet('ov-qte')">✕</button></div>
     <div style="padding:8px 19px 24px">
       <div id="qte-art" style="font-size:14px;font-weight:800;margin-bottom:12px">Article</div>
+      <!-- ⭐ 23.41 — LES MESURES DE LA BOUTIQUE, et « pour un montant ».
+           « Un sac de riz peut être vendu en kg, un quart, un demi, un petit,
+           un grand. » L'app ne connaissait que le kilo, et son quart valait
+           toujours le prix du kilo divisé par quatre (175 F) quand la boutique
+           le vend 200. Et « donne-moi du riz pour 500 » — la demande de tous
+           les jours — obligeait à calculer le poids de tête. -->
+      <div id="qte-mes" class="qte-mes"></div>
+      <div id="qte-mt" class="qte-mt"></div>
+      <div class="pl" id="qte-poids-l" style="margin:10px 0 6px">Au poids</div>
       <div class="qte-grid">
         <button class="qte-b" onclick="qteRapide(0.25)">¼</button>
         <button class="qte-b" onclick="qteRapide(0.5)">½</button>
@@ -6645,6 +6662,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
     <div class="pstps">
       <div class="cond-art" id="cond-art"></div>
       <div class="cond-q" id="cond-q"></div>
+      <div id="cond-pm"></div>
       <div id="cond-niv"></div>
       <button type="button" class="cond-plus" id="cond-plus" onclick="condAjouterNiveau()"></button>
       <div id="cond-ach"></div>
@@ -7091,7 +7109,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.40'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.41'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -8603,6 +8621,12 @@ function _demarrerApp(){
       // montre, sa caisse à une tape. L'icône de l'app ouvre /index.html —
       // donc la porte, comme avant. Voir `_veutLeSite()`.
       if(!_invitationCode&&_veutLeSite()){_montrerVitrine(true);return;}
+      // ⭐ 23.41 — LA PREMIÈRE JOURNÉE SANS PORTE (voir `_porteLibre`).
+      if(_porteLibre()){
+        try{_finishLoginP();}catch(e){}
+        setTimeout(_proposerCodeApresPorteLibre,1600);
+        return;
+      }
       setModeEntree('old');
       goScreen('s-login');
       // ══════════════════════════════════════════════════════════════
@@ -10667,6 +10691,7 @@ async function _finaliserObSuite(nm,tel,pin,_relacher){
     stats:{totalUsers:1,boutiquesActives:1,patrons:1,vendeurs:0}
   };
   save();
+  try{_porteLibreNoter(code);}catch(e){}   // 23.41 — sa première journée sans porte
   if(horsReseau){
     // Elle est à lui, elle est sur son téléphone, il peut vendre. Le
     // compte serveur suivra ; on le DIT, au lieu d'un code d'erreur.
@@ -10944,6 +10969,50 @@ async function _codeOuvJuste(v){
 // Jamais en pleine vente (une feuille ouverte : on se tait), jamais plus
 // d'une fois tous les trois jours, trois fois au plus ; « Ne plus me
 // proposer » le fait taire pour de bon. Rien ne part au serveur.
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.41 — LA PREMIÈRE JOURNÉE SANS PORTE
+//  « Fluidifier la première journée de connexion : six chiffres, c'est
+//  lent, et l'alternative est cachée. »
+//  Le jour où il crée sa boutique, il quitte l'app dix fois (WhatsApp, un
+//  appel, l'écran qui s'éteint) et chaque retour lui réclamait six
+//  chiffres — pour protéger une boutique encore vide. Le code à quatre
+//  chiffres n'arrivait qu'après, dans une feuille de plus.
+//  Pendant 24 h, SUR LE TÉLÉPHONE QUI A CRÉÉ LA BOUTIQUE, elle s'ouvre
+//  sans code. Au premier retour, une seule question : ses quatre chiffres.
+//  Dès qu'ils sont posés, ou les 24 h passées, la porte revient. Le PIN à
+//  six chiffres reste le mot de passe du compte (nouveau téléphone, oubli).
+//  Décision du patron (13/11) : pendant ces 24 h, qui tient le téléphone
+//  ouvre la caisse.
+// ══════════════════════════════════════════════════════════════════
+var _CLE_PORTE='mb_porte_libre';
+function _porteLibreNoter(code){
+  try{localStorage.setItem(_CLE_PORTE,JSON.stringify({c:String(code||''),t:Date.now()}));}catch(e){}
+}
+function _porteLibre(){
+  try{
+    var o=JSON.parse(localStorage.getItem(_CLE_PORTE)||'null');
+    if(!o||!DB||!DB.cfg||!DB.cfg.code)return false;
+    if(String(o.c)!==String(DB.cfg.code))return false;
+    var age=Date.now()-Number(o.t||0);
+    if(!(age>=0&&age<864e5)){localStorage.removeItem(_CLE_PORTE);return false;}
+    if(codeOuvertureActif())return false;                  // il a posé son code : la porte est là
+    if(!String(DB.cfg.pin||_pinGarde()||''))return false;   // rien pour prouver au serveur
+    return true;
+  }catch(e){return false;}
+}
+function _proposerCodeApresPorteLibre(){
+  try{
+    if(role!=='patron'||codeOuvertureActif())return;
+    if(_coPropLire().non)return;
+    if(document.querySelector('.ov.show'))return;
+    _coProposeT=Date.now();
+    ouvrirCodeOuverture(true);
+    var n=document.getElementById('co-note');
+    if(n)n.textContent=(lang==='fr')
+      ?'Choisis 4 chiffres pour ouvrir ta caisse sur ce téléphone, comme son écran de verrouillage. Ton PIN à 6 chiffres reste valable partout.'
+      :'Pick 4 digits to open your till on this phone. Your 6-digit PIN keeps working everywhere.';
+  }catch(e){}
+}
 var _CLE_COPROP='mb_co_prop',_coProposeT=0;
 function _coPropLire(){try{return JSON.parse(localStorage.getItem(_CLE_COPROP)||'{}')||{};}catch(e){return {};}}
 function _coPropEcrire(o){try{localStorage.setItem(_CLE_COPROP,JSON.stringify(o));}catch(e){}}
@@ -15184,14 +15253,77 @@ function ouvrirQteMesure(p){
   document.getElementById('qte-lbl').textContent=(lang==='fr'?'Autre quantité':'Other quantity')+' ('+u+')';
   document.getElementById('qte-inp').value='';
   document.getElementById('qte-apercu').textContent='';
+  try{_qteRendreMesures(p);}catch(e){}
   document.getElementById('ov-qte').classList.add('show');
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.41 — LES MESURES
+//  `p.mes=[{nm,q,px}]` : un nom de la boutique (quart, boîte, petit
+//  sachet), ce qu'elle pèse dans l'unité du stock (`q`, en kg ou en L), et
+//  SON prix. Une mesure vendue entre au panier comme un lot — le même
+//  mécanisme que le carton (`_empilerLot`, `_montantDesLots`) : le stock
+//  baisse de `q`, la ligne vaut `px`. Aucun calcul nouveau.
+//  « Pour un montant » est une mesure d'un instant : 500 F de riz à 700 le
+//  kilo, c'est 0,71 kg vendu 500.
+// ══════════════════════════════════════════════════════════════════
+function _mesuresDe(p){
+  return ((p&&p.mes)||[]).filter(function(m){return m&&m.nm&&Number(m.q)>0&&Number(m.px)>0;});
+}
+function _qteRendreMesures(p){
+  var fr=(lang==='fr'),box=document.getElementById('qte-mes'),mt=document.getElementById('qte-mt');
+  var L=_mesuresDe(p);
+  if(box)box.innerHTML=L.map(function(m,i){
+    return '<button type="button" class="qte-m" onclick="qteMesure('+i+')"><b>'+escH(m.nm)+'</b><span>'+fmt(m.px)+'</span></button>';
+  }).join('');
+  var pl=document.getElementById('qte-poids-l');
+  if(pl)pl.textContent=fr?('Au poids ('+uniteArt(p)+')'):('By weight ('+uniteArt(p)+')');
+  if(mt){
+    if(!(Number(p.px)>0)){mt.innerHTML='';return;}
+    mt.innerHTML='<div class="pl">'+(fr?'Pour un montant':'For an amount')+'</div><div class="qte-mt-ch">'
+      +[100,200,500,1000].map(function(v){return '<button type="button" onclick="qtePourMontant('+v+')">'+fmtQ(v).replace(/(\d)(?=(\d{3})+$)/g,'$1 ')+'</button>';}).join('')
+      +'</div><div class="qte-mt-l"><input class="pi sm" type="number" inputmode="numeric" id="qte-mt-i" placeholder="'+(fr?'un autre montant':'another amount')+'"><button type="button" onclick="qtePourMontant()">OK</button></div>';
+  }
+}
+function _ajouterMesure(p,q,px,mot){
+  q=Math.round(q*100)/100;
+  if(!(q>0)||!(px>0))return false;
+  var key=p.id+'-0',cur=panier[key]||0,ts=getStk(p);
+  if(cur+q>ts&&!p.rt){showToast(t('stockInsuf'));return false;}
+  panier[key]=Math.round((cur+q)*100)/100;
+  // Le coût de la mesure : son poids au prix d'achat de l'unité.
+  var pa=(Number(p.pa)>0)?Math.round(Number(p.pa)*q*100)/100:0;
+  _grosPanier[key]=_empilerLot(_grosPanier[key],q,mot,{px:px,pa:pa},Number(p.px)||0,_umDe(p));
+  var l=_grosPanier[key].lots;l[l.length-1].mes=1;
+  updatePUI(p.id);
+  closeSheet('ov-qte');
+  showToast('🛒 '+mot+' — '+p.nm+' · '+fmt(px));
+  if(navigator.vibrate)navigator.vibrate(25);
+  return true;
+}
+function qteMesure(i){
+  var p=_qteArt,m=p?_mesuresDe(p)[i]:null;if(!m)return;
+  _ajouterMesure(p,Number(m.q),Number(m.px),String(m.nm));
+}
+function qtePourMontant(v){
+  var p=_qteArt;if(!p)return;
+  var fr=(lang==='fr');
+  var M=(v>0)?v:(parseFloat(String((document.getElementById('qte-mt-i')||{}).value||'').replace(',','.'))||0);
+  if(!(M>0)){showToast('⚠️ '+(fr?'Dis pour combien':'Enter an amount'));return;}
+  var px=Number(p.px)||0;if(!(px>0))return;
+  var q=Math.round(M/px*100)/100;
+  if(!(q>0)){showToast('⚠️ '+(fr?'Trop peu pour être pesé':'Too little to weigh'));return;}
+  _ajouterMesure(p,q,Math.round(M),(fr?'pour ':'for ')+fmt(Math.round(M)));
 }
 function apercuQte(){
   var p=_qteArt;if(!p)return;
   var q=parseFloat(String(document.getElementById('qte-inp').value||'').replace(',','.'))||0;
   document.getElementById('qte-apercu').textContent=q>0?('= '+fmt(p.px*q)):'';
 }
-function qteRapide(q){ajouterQteMesure(q);}
+function qteRapide(q){
+  var p=_qteArt,m=p?_mesuresDe(p).find(function(x){return Math.abs(Number(x.q)-q)<0.001;}):null;
+  if(m){_ajouterMesure(p,Number(m.q),Number(m.px),String(m.nm));return;}
+  ajouterQteMesure(q);
+}
 function validerQte(){
   var q=parseFloat(String(document.getElementById('qte-inp').value||'').replace(',','.'))||0;
   if(q<=0){showToast('⚠️ '+(lang==='fr'?'Entre une quantité':'Enter a quantity'));return;}
@@ -18062,7 +18194,9 @@ function _ligneMontant(key,p,v,qty){
 // son côté, les deux finiraient par ne plus dire la même chose — et c'est
 // le total encaissé qui trancherait, après coup, devant le client.
 function _montantDesLots(lots,pxU,paU,qty){
-  lots=(lots||[]).filter(function(l){return l&&l.n>1&&l.px>0;});
+  // 23.41 — une MESURE (quart, boîte, « pour 500 ») est un lot plus petit que
+  // l'unité : marquée `mes`, elle passe le même filtre que le carton.
+  lots=(lots||[]).filter(function(l){return l&&(l.n>1||(l.mes&&l.n>0))&&l.px>0;});
   if(!lots.length)
     return {total:pxU*qty, cout:paU*qty, benConnu:(paU>0?(pxU-paU)*qty:0),
             nbGros:0, qDetail:qty, lots:[]};
@@ -18081,7 +18215,7 @@ function _montantDesLots(lots,pxU,paU,qty){
     }
     total+=l.px; cout+=pa; if(pa>0)ben+=(l.px-pa);
     reste=Math.round((reste-l.n)*100)/100;
-    pris.push({n:l.n,px:l.px,pa:pa,mot:l.mot});
+    pris.push({n:l.n,px:l.px,pa:pa,mot:l.mot,mes:l.mes});
   });
   // ══════════════════════════════════════════════════════════════════
   //  ⚠️⚠️ « SI JE SOUSTRAIS UNE UNITÉ DANS UN CARTON… ÇA BANNIT LA
@@ -19336,7 +19470,13 @@ function ouvrirConditionnement(o){
   var tot=_condTotal(niv);
   var pa=Number(cible.pa)||0,pag=Number(cible.paGros)||0;
   var ach=niv.length?(pag>0?pag:(pa>0?Math.round(pa*tot):0)):pa;
-  _cond={p:p,v:v,ligne:a,cible:cible,fam:fam,nm:nm,mes:mes,unite:unite,
+  // 23.41 — les petites mesures d'un article au poids (quart, boîte, sachet).
+  var _pm=null;
+  if(mes&&p&&!v&&!a&&!(p.vr&&p.vr.length)){
+    _pm=((p.mes)||[]).map(function(m){return {nm:m.nm,q:Number(m.q)||0,px:Number(m.px)||0};});
+    if(!_pm.length)_pm=[{nm:(lang==='fr'?'quart':'quarter'),q:0.25,px:0},{nm:(lang==='fr'?'demi':'half'),q:0.5,px:0}];
+  }
+  _cond={pm:_pm,p:p,v:v,ligne:a,cible:cible,fam:fam,nm:nm,mes:mes,unite:unite,
          px:Number(cible.px)||0,niv:niv,ach:ach,propose:propose,
          avecPrix:o.avecPrix!==false,apres:o.apres||null};
   document.getElementById('cond-tit').textContent=fr?'Comment tu le vends ?':'How do you sell it?';
@@ -19355,8 +19495,31 @@ function _condOptions(liste,cur){
   return l.map(function(m){return '<option value="'+escH(m)+'"'+(m===cur?' selected':'')+'>'+escH(m)+'</option>';}).join('')
     +'<option value="__autre">'+(lang==='fr'?'autre mot…':'other…')+'</option>';
 }
+var COND_PM=['quart','demi','boîte','verre','tas','petit sachet','grand sachet','louche'];
+function _condRendrePM(){
+  var c=_cond,box=document.getElementById('cond-pm');if(!box)return;
+  if(!c.pm){box.innerHTML='';return;}
+  var fr=(lang==='fr'),u=escH((DB&&DB.cfg&&DB.cfg.s)||'F'),um=(c.mes==='kg')?'kg':'L';
+  var h='<div class="cond-mes-t">'+(fr?'Tes petites mesures — chacune à son prix. Sans prix, elle n\'est pas proposée.':'Your small measures — each at its own price.')+'</div>';
+  c.pm.forEach(function(m,i){
+    h+='<div class="cond-n cond-pm"><button type="button" class="cond-x" onclick="condPmRetirer('+i+')" aria-label="'+(fr?'Retirer':'Remove')+'">✕</button>'
+      +'<div class="cond-l1"><select id="cond-pm-n-'+i+'" onchange="condPm('+i+',\'nm\',this.value)">'+_condOptions(COND_PM,m.nm)+'</select> ='
+      +' <input class="cond-nb" type="number" inputmode="decimal" step="0.05" id="cond-pm-q-'+i+'" value="'+(m.q>0?String(m.q):'')+'" oninput="condPm('+i+',\'q\',this.value)"> <span>'+um+'</span></div>'
+      +'<div class="cond-l2"><span>'+(fr?'tu le vends':'you sell it')+'</span><div class="cond-px"><input type="number" inputmode="numeric" id="cond-pm-p-'+i+'" value="'+(m.px>0?m.px:'')+'" placeholder="'+((c.px>0&&m.q>0)?((fr?'au poids : ':'by weight: ')+fmt(Math.round(c.px*m.q))):'—')+'" oninput="condPm('+i+',\'px\',this.value)"><i>'+u+'</i></div></div></div>';
+  });
+  if(c.pm.length<6)h+='<button type="button" class="cond-plus" onclick="condPmAjouter()">+ '+(fr?'Une mesure (boîte, verre, sachet…)':'A measure (tin, glass, bag…)')+'</button>';
+  box.innerHTML=h;
+}
+function condPm(i,ch,v){
+  var m=_cond&&_cond.pm&&_cond.pm[i];if(!m)return;
+  if(ch==='nm'){if(v==='__autre')v=_condMotLibre(m.nm);m.nm=v;_condRendrePM();return;}
+  m[ch]=_condNum(v);
+}
+function condPmAjouter(){_cond.pm.push({nm:'boîte',q:0,px:0});_condRendrePM();try{document.getElementById('cond-pm-q-'+(_cond.pm.length-1)).focus();}catch(e){}}
+function condPmRetirer(i){_cond.pm.splice(i,1);_condRendrePM();}
 function _condRendre(){
   var c=_cond,fr=(lang==='fr'),u=escH((DB&&DB.cfg&&DB.cfg.s)||'F');
+  try{_condRendrePM();}catch(e){}
   document.getElementById('cond-q').textContent=(c.propose
     ?(fr?'Voici comment il se vend d\'habitude — corrige si chez toi c\'est autrement.':'This is how it usually sells — fix it if needed.')
     :(fr?'Du plus petit au plus grand, comme tu le dis au client.':'From the smallest to the biggest, as you tell the customer.'));
@@ -19455,6 +19618,15 @@ function condEnregistrer(){
     }
   }
   var cible=c.cible,fam=c.fam,av=c.ligne?'':_libelleCond(c.p,c.v);
+  // 23.41 — les petites mesures : gardées seulement avec leur poids ET leur prix.
+  if(c.pm){
+    var _g=c.pm.filter(function(m){return m.nm&&m.q>0&&m.px>0;}).map(function(m){return {nm:String(m.nm).slice(0,18),q:m.q,px:Math.round(m.px)};});
+    var _avM=JSON.stringify(c.p.mes||[]),_apM=JSON.stringify(_g);
+    if(_avM!==_apM){
+      journalAjouter('mesures',c.nm,(c.p.mes||[]).map(function(m){return m.nm+' '+fmt(m.px);}).join(', '),_g.map(function(m){return m.nm+' '+fmt(m.px);}).join(', ')||(fr?'aucune':'none'));
+      if(_g.length)c.p.mes=_g;else delete c.p.mes;
+    }
+  }
   // Le mot de l'unité : « pièce » est le mot par défaut, il ne s'écrit pas.
   if(!c.mes){
     var um=(c.unite&&!/^(pièce|unité)$/i.test(c.unite))?c.unite:null;
@@ -31166,6 +31338,12 @@ function migrateDBData(d){
     (d.articles||[]).forEach(function(a){
       if(!a)return;
       if(_carte(a.img)){delete a.img;delete a._imgCat;}
+      // 23.41 — les mesures : un nom, un poids, un prix ; six au plus.
+      if(a.mes!=null){
+        var _ms=Array.isArray(a.mes)?a.mes.filter(function(m){return m&&typeof m==='object'&&Number(m.q)>0&&Number(m.px)>0&&String(m.nm||'').trim();}).slice(0,6)
+          .map(function(m){return {nm:String(m.nm).replace(/[<>"]/g,'').trim().slice(0,18),q:Math.round(Number(m.q)*1000)/1000,px:Math.round(Number(m.px))};}):[];
+        if(_ms.length)a.mes=_ms;else delete a.mes;
+      }
       (a.vr||[]).forEach(function(v){
         if(!v)return;
         if(_carte(v.img))delete v.img;
@@ -33214,7 +33392,7 @@ encaisser=function(){
       var _grp={},_ordre=[];
       _mm.lots.forEach(function(l){
         var k2=l.n+'|'+(l.px);
-        if(!_grp[k2]){_grp[k2]={n:l.n,px:l.px,pa:l.pa,mot:l.mot||_motContenant(p,v||null),nb:0};_ordre.push(k2);}
+        if(!_grp[k2]){_grp[k2]={n:l.n,px:l.px,pa:l.pa,mot:l.mot||_motContenant(p,v||null),nb:0,mes:l.mes};_ordre.push(k2);}
         _grp[k2].nb++;
       });
       // Le dépassement (vendu au-delà du stock) se compte d'abord sur le
@@ -33224,7 +33402,7 @@ encaisser=function(){
       _ordre.forEach(function(k2){
         var G=_grp[k2],_qG=G.nb*G.n;
         var _dG=Math.min(_depRest,_qG);_depRest-=_dG;
-        lignes.push({nm:_nomV+' — '+G.mot+' de '+fmtQ(G.n),px:G.px,pa:G.pa,
+        lignes.push({nm:_nomV+' — '+(G.mes?G.mot:(G.mot+' de '+fmtQ(G.n))),px:G.px,pa:G.pa,
                      qte:G.nb,qty:G.nb,pid:p.id,vid:vid&&vid!=='0'?vid:null,qBase:G.n,
                      dep:Math.round(_dG/G.n*100)/100,dt:_dt,gros:{nb:G.nb,mot:G.mot}});
       });
