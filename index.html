@@ -1925,6 +1925,17 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .calc-inp{width:100%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.12);border-radius:12px;padding:13px;color:#fff;font-size:26px;font-weight:900;font-family:'Outfit',sans-serif;outline:none;text-align:center;transition:border-color .2s;margin-bottom:10px}
 .calc-inp:focus{border-color:var(--A)}
 .calc-shcts{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.calc-pied{position:sticky;bottom:0;z-index:5;background:linear-gradient(180deg,rgba(255,255,255,0) 0,var(--C) 12px,var(--C) 100%);padding-top:10px!important;padding-bottom:6px!important}
+.bil-box{display:block}
+.bil-q{display:flex;align-items:center;gap:7px;color:#fff;font-size:12.5px;font-weight:800;margin:2px 0 8px;opacity:.92}
+.bil-g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bil{position:relative;height:52px;border-radius:9px;border:2px solid rgba(0,0,0,.18);box-shadow:inset 0 0 0 3px rgba(255,255,255,.2);color:#fff;font-size:20px;font-weight:900;font-family:'Outfit',sans-serif;cursor:pointer}
+.bil:active,.pce:active{transform:scale(.96)}
+.bil-juste{background:none;border:2px dashed rgba(255,255,255,.35);box-shadow:none;font-size:13.5px;font-weight:800}
+.bil em,.pce em{display:none;position:absolute;left:-6px;top:-8px;min-width:24px;height:24px;border-radius:12px;background:var(--A);color:#1E1B2E;font-style:normal;font-size:13px;font-weight:900;align-items:center;justify-content:center;border:2px solid var(--P)}
+.bil-p{display:flex;gap:8px;margin:9px 0 2px}
+.pce{position:relative;flex:1;height:44px;border-radius:22px;background:#D9D6C8;color:#4A4636;border:2px solid #BDB9A6;font-size:15px;font-weight:900;font-family:'Outfit',sans-serif;cursor:pointer}
+.pce-x{flex:0 0 44px;background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.2)}
 .calc-shct{background:rgba(255,255,255,.09);color:#fff;border:none;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif}
 .calc-shct:active{background:rgba(255,255,255,.18)}
 .calc-res{border-radius:12px;padding:13px;text-align:center;margin-bottom:14px}
@@ -4862,7 +4873,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
         <div style="text-align:center;font-size:12px;color:var(--M);font-weight:700;margin-top:9px" id="calc-mobile-hint">Montant exact reçu via mobile money — aucune monnaie à rendre</div>
       </div>
     </div>
-    <div style="padding:0 19px">
+    <div class="calc-pied" style="padding:0 19px">
       <button class="bpay" onclick="closeSheet('ov-calc');encaisser()" id="btn-conf-vente"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span id="lbl-conf-vente">Confirmer la vente</span></button>
       <button class="bvid" onclick="closeSheet('ov-calc')" id="btn-ann-calc">Annuler</button>
     </div>
@@ -7080,7 +7091,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.39'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.40'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -19905,8 +19916,11 @@ function procederPmt(){
   var _cn=document.getElementById('pmv-credit-nm');if(_cn)_cn.textContent=lang==='fr'?'Crédit':'Credit';
   ['especes','orange','mtn','moov','credit'].forEach(function(m){var el=document.getElementById('pmv-'+m);if(el)el.classList.toggle('on',m==='especes');});
   var shcts=document.getElementById('calc-shcts');shcts.innerHTML='';
+  if(_billetsDe()){_billetsRendre();}
+  else{
   var rds=[Math.ceil(total/500)*500,Math.ceil(total/1000)*1000,Math.ceil(total/2000)*2000,Math.ceil(total/5000)*5000].filter(function(v,i,a){return a.indexOf(v)===i&&v>=total;}).slice(0,4);
   rds.forEach(function(r){var b=document.createElement('button');b.className='calc-shct';b.textContent=fmt(r);b.onclick=function(){document.getElementById('calc-recu').value=r;calcMonnaie(true);};shcts.appendChild(b);});
+  }
   // ⚠️ Le cadre « Consigne » gardait la vente PRÉCÉDENTE : après 2 bières
   // consignées, un sac de riz s'ouvrait sur « Emballages emportés : 2 ».
   // Les compteurs étaient bien remis à zéro, seul l'affichage restait.
@@ -20179,6 +20193,57 @@ function basculerVoix(){
   showToast(on?('🔊 '+(lang==='fr'?'L\'app te parlera':'The app will speak'))
               :('🔇 '+(lang==='fr'?'L\'app se tait':'The app is silent')));
   if(on)parler(lang==='fr'?'Je te dirai la monnaie à rendre.':'I will tell you the change.');
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.40 — LA MONNAIE AVEC LES BILLETS
+//  « Servir une communauté non lettrée, moins à l'aise avec les outils. »
+//  Pour dire ce que le client donne, il fallait TAPER un montant, ou
+//  choisir parmi quatre nombres calculés (« 1 500 · 2 000 · 5 000 ») qui
+//  changent à chaque vente. Un billet, lui, se reconnaît à sa couleur et
+//  ne change jamais de place : il touche ceux qu'on lui tend, l'app
+//  additionne, écrit ce qu'il rend et le dit. Le champ reste là pour qui
+//  préfère taper. Francs CFA seulement (XAF, XOF) ; ailleurs, les
+//  raccourcis d'avant.
+// ══════════════════════════════════════════════════════════════════
+var _BILLETS={
+  XAF:{b:[[10000,'#6A4C93'],[5000,'#2E7D4F'],[2000,'#C2456B'],[1000,'#2463A6'],[500,'#8A6A3B']],p:[100,50,25]},
+  XOF:{b:[[10000,'#6A4C93'],[5000,'#2E7D4F'],[2000,'#2463A6'],[1000,'#A8483A'],[500,'#B5762B']],p:[200,100,50,25]}
+};
+var _billetsPris={};
+function _billetsDe(){var d=String((DB&&DB.cfg&&DB.cfg.d)||'').toUpperCase();return _BILLETS[d]||null;}
+function _billetsRendre(){
+  var B=_billetsDe(),box=document.getElementById('calc-shcts');if(!B||!box)return;
+  var fr=(lang==='fr');
+  _billetsPris={};
+  var h='<div class="bil-q">'+ico('doigt',16)+'<span>'+(fr?'Touche ce que le client te donne':'Tap what the customer gives you')+'</span></div><div class="bil-g">';
+  B.b.forEach(function(x){h+='<button type="button" class="bil" data-v="'+x[0]+'" style="background:'+x[1]+'" onclick="billetToucher('+x[0]+')"><em></em>'+fmtQ(x[0]).replace(/(\d)(?=(\d{3})+$)/g,'$1 ')+'</button>';});
+  h+='<button type="button" class="bil bil-juste" onclick="billetJuste()">'+(fr?'Le compte juste':'Exact amount')+'</button></div><div class="bil-p">';
+  B.p.forEach(function(v){h+='<button type="button" class="pce" data-v="'+v+'" onclick="billetToucher('+v+')"><em></em>'+v+'</button>';});
+  h+='<button type="button" class="pce pce-x" onclick="billetEffacer()" aria-label="'+(fr?'Effacer':'Clear')+'">✕</button></div>';
+  box.innerHTML=h;box.classList.add('bil-box');
+}
+function _billetsMaj(){
+  document.querySelectorAll('#calc-shcts [data-v]').forEach(function(b){
+    var n=_billetsPris[b.getAttribute('data-v')]||0,e=b.querySelector('em');
+    if(e){e.textContent=n||'';e.style.display=n?'flex':'none';}
+  });
+}
+function billetToucher(v){
+  var i=document.getElementById('calc-recu');if(!i)return;
+  // Il avait tapé un montant à la main : les billets repartent de là.
+  var cur=parseFloat(i.value)||0;
+  _billetsPris[v]=(_billetsPris[v]||0)+1;
+  i.value=cur+v;_billetsMaj();calcMonnaie(true);
+  try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}
+}
+function billetJuste(){
+  var i=document.getElementById('calc-recu');if(!i)return;
+  _billetsPris={};i.value=calcAPayer();_billetsMaj();calcMonnaie(true);
+}
+function billetEffacer(){
+  var i=document.getElementById('calc-recu');if(!i)return;
+  _billetsPris={};i.value='';_billetsMaj();
+  var r=document.getElementById('calc-res');if(r)r.style.display='none';
 }
 function calcMonnaie(immediat){
   _reveillerVoix();
