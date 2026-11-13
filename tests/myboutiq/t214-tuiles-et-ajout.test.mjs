@@ -68,7 +68,9 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
   const g = await p.evaluate(() => ({ plein: document.querySelectorAll('#pgrid .pcard.has-photo').length, puces: document.querySelectorAll('#pgrid .pbas .pbarre, #pgrid .pbas .pgros').length }));
   const huile = await tuile(p, 21), sucre = await tuile(p, 20), savon = await tuile(p, 6), biere = await tuile(p, 22);
   t(g.plein === 0 && huile.photo, `la photo se range dans la vignette, plus aucune carte à photo pleine page (${g.plein})`);
-  t(huile.nomCouleur !== 'rgb(255, 255, 255)', `le nom sous une photo s'écrit en noir, plus en blanc sur un voile (${huile.nomCouleur})`);
+  // 23.42 — décision du patron (choix A, 13/11) : la photo prend la tuile et le
+  // nom se pose dessus, en blanc sur un voile. La 23.01 le voulait en noir dessous.
+  t(huile.nomCouleur === 'rgb(255, 255, 255)', `le nom se pose sur la photo, en blanc sur un voile (${huile.nomCouleur})`);
   t(huile.nomY === sucre.nomY, `photo ou dessin, le nom tombe à la même hauteur (${huile.nomY} / ${sucre.nomY} px)`);
   t(!sucre.chip && !huile.chip, `un sac ou un carton SANS prix ne s'affiche plus sous la tuile (sucre « ${sucre.chip} », huile « ${huile.chip} »)`);
   t(/13\s?000/.test(savon.chip) && /carton de 24/.test(savon.chip), `le carton qui a un prix se montre, avec son montant : « ${savon.chip} »`);

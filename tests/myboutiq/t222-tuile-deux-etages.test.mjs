@@ -49,8 +49,10 @@ for (const facon of ['detail', 'gros']) {
   vu[facon] = { sv, su, fa, hu };
 
   // ── 1) EN HAUT LA PIÈCE, EN BAS LE CARTON ──
-  t(/^600/.test(sv.prix) && /13\s?000/.test(sv.barre) && sv.barreY > sv.prixY,
-    `${F}, savon : 600 en haut, le carton de 13 000 en bas (« ${sv.prix} » · « ${sv.barre} »)`);
+  // 23.42 — décision du patron (choix A, 13/11) : une seule étiquette sous la
+  // planche, et le carton en pastille SUR la photo. La 23.07 le voulait en bas.
+  t(/^600/.test(sv.prix) && /13\s?000/.test(sv.barre) && sv.barreY < sv.prixY,
+    `${F}, savon : 600 sur l'étiquette, le carton de 13 000 en pastille sur la photo (« ${sv.prix} » · « ${sv.barre} »)`);
   t(/^700/.test(su.prix) && /^600/.test(fa.prix) && /25\s?000/.test(su.barre) && /25\s?000/.test(fa.barre),
     `${F}, sucre et farine : le kilo en haut, le sac en bas, les deux pareils (« ${su.prix} » / « ${fa.prix} »)`);
   t(/dès 900/.test(hu.prix) && /dès 9\s?800/.test(hu.barre), `${F}, la famille : la bouteille en haut, le carton en bas (« ${hu.prix} » · « ${hu.barre} »)`);
@@ -68,14 +70,14 @@ for (const facon of ['detail', 'gros']) {
   const ecart = Math.max(0, ...rangs.map(r => Math.max(...r.map(x => x.bas)) - Math.min(...r.map(x => x.bas))));
   const pied = Math.max(0, ...rangs.flat().map(x => x.carte - x.bas));
   t(rangs.length > 0 && ecart <= 1, `${F} : dans une rangée, les barres du gros tombent à la même hauteur (écart ${ecart} px, ${rangs.length} rangées)`);
-  t(pied <= 16, `${F} : la barre est au pied de la tuile (${pied} px du bord)`);
+  t(pied >= 40, `${F} : la pastille du gros est sur la photo, plus au pied de la tuile (${pied} px du bord)`);
 
   // ── 3) LE CORPS VEND LA PIÈCE, LA BARRE VEND LE CARTON ──
-  await p.locator('#pc-6 .pnm-ov').click(); await p.waitForTimeout(200);
+  await p.locator('#pc-6 .ppr-ov').click(); await p.waitForTimeout(200);
   t(await q(p, '6-0') === 1, `${F}, toucher le savon = une pièce (${await q(p, '6-0')})`);
   await p.locator('#pc-6 .pbas > *').first().click(); await p.waitForTimeout(250);
   t(await q(p, '6-0') === 25, `${F}, toucher sa barre = un carton de 24 (${await q(p, '6-0')})`);
-  await p.locator('#pc-20 .pnm-ov').click(); await p.waitForTimeout(300);
+  await p.locator('#pc-20 .ppr-ov').click(); await p.waitForTimeout(300);
   const qte = await p.evaluate(() => !!document.querySelector('#ov-qte.show'));
   t(qte && await q(p, '20-0') === 0, `${F}, toucher le sucre demande les kilos, jamais un sac d'office`);
   await p.evaluate(() => document.getElementById('ov-qte').classList.remove('show'));

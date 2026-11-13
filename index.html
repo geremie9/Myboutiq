@@ -851,16 +851,35 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
    seule la peau change. Les cartes « Tu vends aussi » (.etg) ne sont pas des
    articles de sa boutique : elles restent des cases. */
 #s-caisse{background:#F6EFE3}
-#s-caisse #pgrid{column-gap:0;row-gap:10px;padding:0 9px}
-#s-caisse #pgrid .pcard:not(.etg){background:linear-gradient(180deg,#C89A5B,#9A6D33) no-repeat 0 64px/100% 10px;border:none;box-shadow:none;border-radius:0;padding:0 5px;display:flex;flex-direction:column}
-#s-caisse #pgrid .pcard:not(.etg) .pmedia{width:100%;height:60px;margin:4px 0 0;border-radius:13px 13px 3px 3px;box-shadow:0 7px 8px -5px rgba(60,35,5,.4)}
-#s-caisse #pgrid .pcard:not(.etg) .pmedia svg{width:36px;height:36px}
-#s-caisse #pgrid .pcard:not(.etg) .pcard-overlay{display:flex;flex-direction:column;margin-top:13px;background:#fff;border:1.5px solid #E3D6BF;border-radius:9px;padding:2px 3px 3px;box-shadow:0 2px 3px rgba(60,35,5,.1)}
-#s-caisse #pgrid .pcard:not(.etg) .ppr-ov{order:-1;font-size:15px;line-height:1.15;color:var(--T);margin:0}
-#s-caisse #pgrid .pcard:not(.etg) .pnm-ov{font-size:10px;line-height:1.2;font-weight:700;color:var(--M);min-height:0;-webkit-line-clamp:1}
+#s-caisse #pgrid{column-gap:0;row-gap:9px;padding:0 9px}
+/* ⚠️ « PAS D'ÉCONOMIE D'ESPACE : un produit qui se vend en gros et en détail
+   prend énormément de place, et la photo doit être vue en totalité, pas un
+   petit espace qu'on regarde à peine. » Le premier essai gardait une image
+   de 60 px et empilait trois étages (étiquette, nom, carton) : 180 px pour un
+   article à carton. La stratégie : la photo prend la tuile (toute la largeur,
+   80 px, ENTIÈRE — `contain`, jamais rognée), le nom se pose SUR elle, une
+   seule étiquette dessous, et le gros devient une pastille sur la photo. Une
+   tuile fait la même hauteur avec ou sans gros. */
+#s-caisse #pgrid .pcard:not(.etg){display:block;background:linear-gradient(180deg,#C89A5B,#9A6D33) no-repeat 0 84px/100% 9px;border:none;box-shadow:none;border-radius:0;padding:0 4px}
+#s-caisse #pgrid .pcard:not(.etg) .pmedia{grid-column:1/-1;width:100%;height:80px;margin:4px 0 0;border-radius:12px 12px 3px 3px;box-shadow:0 7px 8px -5px rgba(60,35,5,.4);background-color:#fff}
+#s-caisse #pgrid .pcard:not(.etg) .pmedia.pphoto img{object-fit:contain}
+#s-caisse #pgrid .pcard:not(.etg) .pmedia svg{width:42px;height:42px}
+#s-caisse #pgrid .pcard:not(.etg) .pcard-overlay{grid-column:1/-1;display:flex;flex-direction:column;justify-content:center;margin-top:12px;min-height:26px;background:#fff;border:1.5px solid #E3D6BF;border-radius:8px;padding:1px 2px 2px;box-shadow:0 2px 3px rgba(60,35,5,.1);position:static}
+#s-caisse #pgrid .pcard:not(.etg) .ppr-ov{font-size:15px;line-height:1.2;color:var(--T);margin:0;white-space:nowrap}
+#s-caisse #pgrid .pcard:not(.etg) .ppr-lib{display:none}
+#s-caisse #pgrid .pcard:not(.etg) .pnm-ov{position:absolute;left:4px;right:4px;top:66px;height:18px;min-height:0;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;line-height:18px;font-weight:800;color:#fff;background:linear-gradient(180deg,rgba(30,27,46,0),rgba(30,27,46,.72));border-radius:0 0 3px 3px;padding:0 5px;text-align:left;z-index:2}
 #s-caisse #pgrid .pcard:not(.etg).sel{background-color:transparent}
 #s-caisse #pgrid .pcard:not(.etg).sel .pmedia{outline:3px solid var(--G);outline-offset:-3px}
-#s-caisse #pgrid .pcard:not(.etg) .pbarre{margin-top:4px;border-radius:9px}
+/* Le gros : UNE pastille posée sur la photo (le carton et son prix), pas une
+   seconde étiquette. Une seule étiquette par article : ce que vend un toucher. */
+#s-caisse #pgrid .pcard:not(.etg) .pbas{position:absolute;right:7px;top:8px;z-index:3;margin:0;display:block;width:auto}
+#s-caisse #pgrid .pcard:not(.etg) .pbarre{flex-direction:row-reverse;gap:3px;margin:0;min-height:22px;width:auto;padding:2px 6px;border-radius:11px;box-shadow:0 2px 4px rgba(0,0,0,.18)}
+#s-caisse #pgrid .pcard:not(.etg) .pbarre b{font-size:10.5px;white-space:nowrap}
+#s-caisse #pgrid .pcard:not(.etg) .pbarre i{font-size:0;line-height:0;display:flex}
+#s-caisse #pgrid .pcard:not(.etg) .pbarre i svg{width:12px;height:12px}
+#s-caisse #pgrid .pcard:not(.etg) .pgros.vide{margin:0;min-height:22px;width:26px;padding:0;border-radius:11px;justify-content:center;background:rgba(255,255,255,.85)}
+#s-caisse #pgrid .pcard:not(.etg) .pgros.vide span{display:none}
+#s-caisse #pgrid .pcard:not(.etg).sel .pbas{top:30px}
 .snack-ph{white-space:nowrap;position:fixed;left:50%;bottom:92px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:400;display:flex;align-items:center;gap:14px;background:#1E1B2E;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;font-size:13px;font-weight:700;font-family:'Outfit',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:all .25s}
 .snack-ph.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .snack-ph button{background:none;border:none;color:var(--O);font-weight:900;font-size:13.5px;font-family:'Outfit',sans-serif;cursor:pointer;padding:4px 2px}
@@ -13428,6 +13447,18 @@ function demarrageVendre(){
   try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}
   setTimeout(function(){try{_guideDemo(1);}catch(e){}},350);
 }
+// 23.42 — la tuile sait si elle porte un prix de gros (`agros`) ou
+// l'invitation à le dire (`ainv`) : ses prix se rangent alors sur une ligne.
+// (`:has()` le dirait en CSS, mais pas sur les vieux WebViews.)
+function _marquerGrosTuiles(){
+  try{document.querySelectorAll('#pgrid .pcard').forEach(function(c){
+    var b=c.querySelector('.pbas');
+    c.classList.toggle('agros',!!(b&&b.querySelector('.pbarre')));
+    c.classList.toggle('ainv',!!(b&&!b.querySelector('.pbarre')&&b.children.length));
+  });}catch(e){}
+}
+var _renderProdBase=renderProd;
+renderProd=function(lst){var r=_renderProdBase(lst);_marquerGrosTuiles();return r;};
 function renderProd(lst){
   try{majDemarrage();}catch(e){}
   // La grille est reconstruite : le panneau des variantes n'y survivrait pas,
