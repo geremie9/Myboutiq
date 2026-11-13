@@ -7166,7 +7166,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.42'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.43'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -12855,7 +12855,7 @@ function etagereAnnulerTout(ids){
 function _etagereApresAjout(art,nom,px,pc){
   var fr=(lang==='fr');
   if(navigator.vibrate)navigator.vibrate(25);
-  try{var c=document.getElementById('pc-'+art.id);if(c)c.classList.add('etg-neuf');}catch(x){}
+  try{var c=_tuileCaisse(art.id);if(c)c.classList.add('etg-neuf');}catch(x){}
   _etgSnack(art,pc);
   // Le premier article a son prix : on lui montre tout de suite comment le
   // vendre — une fois, pas à chaque article.
@@ -13486,8 +13486,9 @@ function renderProd(lst){
   try{renderTopVentes();}catch(e){}
   var _tout=!!(lst&&DB&&DB.articles&&(lst===DB.articles||lst.length===DB.articles.length));
   lst=appliquerOrdrePrio(lst);
+  lst=_plusVendusDabord(lst,_tout);
   try{majBandeauSansPrix();}catch(e){}
-  var g=document.getElementById('pgrid');g.innerHTML='';
+  var g=document.getElementById('pgrid');var _vus=_tuilesVues(g);g.innerHTML='';
   if(!lst.length){
     var fr=lang==='fr';
     if(!DB.articles.length&&(role==='patron'||hasPerm('produits'))){
@@ -13566,7 +13567,12 @@ function renderProd(lst){
     }
     return;
   }
-  lst.forEach(function(p){
+  // Il était descendu jusqu'à la 300e tuile et la grille se redessine (un
+  // prix corrigé, une synchro) : on redessine jusque-là, sinon la page
+  // raccourcit sous son doigt et il se retrouve ailleurs.
+  var _deja=(_listeCaisse&&_listeCaisse.length===lst.length)?_vus:0;
+  _rendusCaisse=0;_listeCaisse=lst;_etagereApres=false;
+  var _dessiner=function(p){
     var ts=getStk(p),hasV=p.vr.length>0,isOut=ts<=0,isNeg=ts<0,isLow=!isOut&&!isNeg&&ts<=p.al&&p.al>0,inc=articleIncomplet(p)&&!_grosSeul(p);
     // Jamais compté : ni « ⛔ Épuisé » ni « 📦 -3 » — il n'y a rien à épuiser.
     if(p.rt&&_stockJamaisCompte(p)){isOut=false;isNeg=false;isLow=false;}
@@ -13685,8 +13691,80 @@ function renderProd(lst){
       (isOut&&!isNeg?'<div class="sout">⛔ '+(lang==='fr'?'Épuisé':'Out')+'</div>':'')+
       (isNeg?'<div class="sneg">📦 -'+Math.abs(ts)+'</div>':'');
     g.appendChild(d);
-  });
-  if(_etagereMontrer(_tout))g.insertAdjacentHTML('beforeend',_etagereHtml(false));
+  };
+  _dessinerCaisse=_dessiner;
+  _etagereApres=!!_etagereMontrer(_tout);
+  _suiteCaisse(_deja);
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.43 — BEAUCOUP D'ARTICLES : « 100, 1 000 ou plus… comment naviguer ? »
+//  Mesuré le 13/11, processeur ralenti six fois : 1 000 articles se
+//  dessinaient en 0,81 s (13 000 nœuds) et la caisse faisait 60 écrans de
+//  haut, dans l'ordre de création. Deux réponses, sans rien ajouter à
+//  l'écran :
+//   · les plus vendus de la boutique d'abord (30 jours), dès qu'il y a
+//     plus de 30 articles — derrière ceux que ce téléphone touche déjà ;
+//   · on ne dessine que ce qui se voit : 60 tuiles, puis les suivantes
+//     quand il approche du bas.
+// ══════════════════════════════════════════════════════════════════
+var _rendusCaisse=0,_listeCaisse=[],_dessinerCaisse=null,_etagereApres=false,_obsCaisse=null;
+var _LOT_CAISSE=60;
+function _plusVendusDabord(lst,tout){
+  try{
+    if(!tout||!lst||lst.length<=30)return lst;
+    // Ce que CE téléphone a déjà touché reste devant, dans son ordre
+    // (`appliquerOrdrePrio`, 22.xx). Mais un téléphone neuf, ou celui d'un
+    // vendeur qui arrive, n'a rien touché : pour tout le reste, c'est la
+    // boutique qui dit ce qui sort le plus.
+    var q=qteVendueParArticle(30),qq=function(p){return Number(q[p.id])||0;};
+    if(!lst.some(function(p){return qq(p)>0;}))return lst;
+    var touche={};(ordrePrio||[]).forEach(function(id){touche[id]=1;});
+    try{_entendusActifs().forEach(function(id){touche[id]=1;});}catch(e){}
+    var devant=[],reste=[];
+    lst.forEach(function(p){(touche[p.id]?devant:reste).push(p);});
+    var rang={};reste.forEach(function(p,i){rang[p.id]=i;});
+    reste.sort(function(a,b){return (qq(b)-qq(a))||(rang[a.id]-rang[b.id]);});
+    return devant.concat(reste);
+  }catch(e){return lst;}
+}
+// Une tuile pas encore dessinée (article tout juste créé, rangé en bas) :
+// on dessine jusqu'à elle, pour que le geste qui la cherche la trouve.
+function _tuileCaisse(id){
+  var d=document.getElementById('pc-'+id),garde=0;
+  while(!d&&_rendusCaisse<_listeCaisse.length&&garde++<200){_suiteCaisse();d=document.getElementById('pc-'+id);}
+  return d;
+}
+// Jusqu'où il était descendu : la dernière tuile à portée de son écran.
+// Remonté en haut, on revient à 60 — sinon une seule descente au fond
+// ferait tout redessiner pour le reste de la journée.
+function _tuilesVues(g){
+  try{
+    if(!g||_rendusCaisse<=_LOT_CAISSE)return 0;
+    var cs=g.querySelectorAll('.pcard:not(.etg)'),bas=(window.innerHeight||700)+900;
+    for(var i=cs.length-1;i>=_LOT_CAISSE;i--){if(cs[i].getBoundingClientRect().top<bas)return i+1;}
+  }catch(e){}
+  return 0;
+}
+function _suiteCaisse(auMoins){
+  var g=document.getElementById('pgrid');if(!g||!_dessinerCaisse)return;
+  var s0=document.getElementById('pgrid-suite');if(s0)s0.remove();
+  var fin=Math.min(_listeCaisse.length,Math.max(_rendusCaisse+_LOT_CAISSE,auMoins||0));
+  for(var i=_rendusCaisse;i<fin;i++){try{_dessinerCaisse(_listeCaisse[i]);}catch(e){}}
+  _rendusCaisse=fin;
+  try{_marquerGrosTuiles();}catch(e){}
+  if(_rendusCaisse<_listeCaisse.length){
+    // Sans IntersectionObserver (très vieux WebView) : tout, comme avant.
+    if(!window.IntersectionObserver){_LOT_CAISSE=1e9;_suiteCaisse();return;}
+    var s=document.createElement('div');s.id='pgrid-suite';s.style.cssText='grid-column:1/-1;height:1px';
+    g.appendChild(s);
+    if(_obsCaisse)try{_obsCaisse.disconnect();}catch(e){}
+    _obsCaisse=new IntersectionObserver(function(en){
+      if(en.some(function(x){return x.isIntersecting;})){try{_obsCaisse.disconnect();}catch(e){}_suiteCaisse();}
+    },{rootMargin:'900px 0px'});
+    _obsCaisse.observe(s);
+    return;
+  }
+  if(_etagereApres){_etagereApres=false;g.insertAdjacentHTML('beforeend',_etagereHtml(false));}
 }
 // Rangée "Ventes rapides" : les 5-6 articles les plus vendus, en 1 tap
 // Masquée pour de bon, mais jamais perdue : elle revient depuis Réglages.
@@ -15274,7 +15352,7 @@ function validerCompleter(){
 // le reste part directement au panier.
 function _reprendreVente(p){
   if(!p)return;
-  var d=document.getElementById('pc-'+p.id);
+  var d=_tuileCaisse(p.id);
   if(p.vr&&p.vr.length){if(d)ouvrirVarInline(p,d);return;}
   if(estMesure(p)){ouvrirQteMesure(p);return;}
   addPanier(p,null);
