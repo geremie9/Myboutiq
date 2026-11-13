@@ -2366,6 +2366,11 @@ body.cli-a-faire .bnav .ni.ni-cli .ne::after{content:'';position:absolute;top:2p
   padding:12px 0 4px;margin-top:6px}
 .ctxm{position:fixed;z-index:150;background:var(--C);border-radius:15px;padding:7px;box-shadow:0 8px 30px rgba(0,0,0,.2);min-width:185px;display:none;max-height:72vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .ctxm.show{display:block}
+.ctxm:not(.plus) .ctx-sec{display:none!important}
+.ctxm.plus #ctxi-plus{display:none}
+#ctxi-plus{color:var(--M);border-top:1px solid var(--BD);border-radius:0 0 9px 9px;margin-top:3px}
+.cxic{display:inline-flex;width:20px;justify-content:center;color:var(--M);font-style:normal}
+.ctxi.danger .cxic{color:var(--R)}
 .ctxi{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;color:var(--T);transition:background .15s}
 .ctxi:active{background:var(--BG)}.ctxi.danger{color:var(--R)}
 
@@ -2428,6 +2433,12 @@ body.cli-a-faire .bnav .ni.ni-cli .ne::after{content:'';position:absolute;top:2p
 /* ── V9 DASHBOARD / HISTORY / FIDELITE / COMMANDES / NOTIFS ── */
 .loyalty-box,.dash-card,.hist-card,.notif-card,.cmd-card{background:var(--C);border:1px solid var(--BD);border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
 .loyalty-box{padding:0;margin:0 15px 10px;background:none;border:none;box-shadow:none}.loyalty-top{display:none}.loyalty-btn{width:100%;display:flex;align-items:center;gap:7px;background:var(--C);border:1px solid var(--BD);border-radius:12px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--M);cursor:pointer}.loyalty-btn.has-cli{color:var(--T);border-color:var(--P)}.loyalty-sel{font-size:12px;color:var(--M);font-weight:700;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.loyalty-sel strong{color:var(--T)}.loyalty-act{display:flex;gap:7px;margin-top:8px}.loyalty-act button{flex:1}
+/* ⚠️ 23.38 — LES POINTS DE FIDÉLITÉ. Mesuré en base le 13/11 : 2 618 ventes,
+   30 ont rapporté des points, AUCUNE n'en a jamais utilisé. « Bronze · 6 pts »
+   s'affichait sous chaque client, et « Client fidèle » dans chaque panier,
+   pour une mécanique que personne n'a touchée. Masqués ; les points
+   continuent de se compter sans bruit, `cfg.fidelite` les rallume. */
+body:not(.fidelite) .lv-badge,body:not(.fidelite) .lv-bar,body:not(.fidelite) .lv-meta,body:not(.fidelite) #btn-use-points,body:not(.fidelite) .fid-seul{display:none!important}
 .lv-badge{display:inline-flex;align-items:center;gap:5px;background:#FFF8E1;color:#8D5A00;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:800;margin-top:4px}.lv-bar{height:8px;background:var(--BG);border-radius:999px;overflow:hidden;margin-top:7px}.lv-fill{height:100%;background:linear-gradient(90deg,var(--A),var(--G));border-radius:999px}.lv-meta{display:flex;justify-content:space-between;font-size:10px;color:var(--M);font-weight:700;margin-top:5px}
 .dash-card{padding:13px}
 .dash-track{height:10px;background:var(--BG);border-radius:999px;overflow:hidden}.dash-fill{height:100%;background:linear-gradient(90deg,var(--B),var(--A));border-radius:999px}
@@ -3384,19 +3395,25 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
        mieux au moment de l'achat, dans la fiche de stock.
        Une seule entrée : « Prix ». Le calculateur reste à UNE tape de là,
        dans la fiche, sous un nom qui dit à quoi il sert. -->
-  <div class="ctxi" id="ctxi-qte" onclick="ctxQte()">🔢 <span id="cxq">Saisir une quantité</span></div>
-  <div class="ctxi" onclick="ctxNom()">🔤 <span id="cx9">Renommer</span></div>
-  <div class="ctxi" id="ctxi-cont2" onclick="ctxContenance()">🥤 <span id="cx10">Ajouter une contenance</span></div>
-  <div class="ctxi" onclick="ctxPV()">💰 <span id="cx1">Prix</span></div>
-  <div class="ctxi" onclick="ctxAV()">🔀 <span id="cx3">Ajouter variante</span></div>
-  <div class="ctxi" id="ctxi-gros" onclick="ctxGros()"><span class="ctxi-emo">📦</span> <span id="cx3b">Vendre par carton</span></div>
-  <div class="ctxi" id="ctxi-cond" onclick="ctxCond()"><span class="ctxi-emo">📦</span> <span id="cxcond">Corriger le conditionnement</span></div>
-  <div class="ctxi" id="ctxi-fam" onclick="ctxFam()">🔗 <span id="cx8">Mettre dans une famille</span></div>
-  <div class="ctxi" onclick="ctxST()">➕ <span id="cx4">Entrée stock</span></div>
-  <div class="ctxi" onclick="ctxPhoto()">🖼️ <span id="cx6">Changer photo</span></div>
-  <div class="ctxi" id="ctxi-signal" onclick="ctxSignalerPhoto()">🚩 <span id="cxsig">Cette photo ne correspond pas</span></div>
-  <div class="ctxi" onclick="ctxToggleRupt()">🔄 <span id="cx7">Vente en rupture</span></div>
-  <div class="ctxi danger" onclick="ctxDL()">🗑️ <span id="cx5">Supprimer</span></div>
+  <!-- ⚠️ 23.38 — TREIZE LIGNES, TREIZE EMOJIS. Relevé à 360 px : le menu
+       couvrait l'écran, « Supprimer » à un pouce de « Vente en rupture », et
+       les cinq gestes de tous les jours noyés parmi huit réglages rares.
+       L'essentiel d'abord, au trait comme le reste de la caisse ; le reste
+       sous « Plus d'actions ». Rien n'est retiré. -->
+  <div class="ctxi" id="ctxi-qte" onclick="ctxQte()"><i class="cxic" data-ic="piece"></i><span id="cxq">Saisir une quantité</span></div>
+  <div class="ctxi" onclick="ctxPV()"><i class="cxic" data-ic="billet"></i><span id="cx1">Prix</span></div>
+  <div class="ctxi" onclick="ctxST()"><i class="cxic" data-ic="entree"></i><span id="cx4">Entrée stock</span></div>
+  <div class="ctxi" onclick="ctxPhoto()"><i class="cxic" data-ic="appareil"></i><span id="cx6">Changer photo</span></div>
+  <div class="ctxi" id="ctxi-cond" onclick="ctxCond()"><i class="cxic" data-ic="stock"></i><span id="cxcond">Comment tu le vends</span></div>
+  <div class="ctxi" id="ctxi-plus" onclick="ctxPlus(event)"><i class="cxic" data-ic="plus"></i><span id="cxplus">Plus d'actions</span></div>
+  <div class="ctxi ctx-sec" onclick="ctxNom()"><i class="cxic" data-ic="crayon"></i><span id="cx9">Renommer</span></div>
+  <div class="ctxi ctx-sec" id="ctxi-cont2" onclick="ctxContenance()"><i class="cxic" data-ic="goutte"></i><span id="cx10">Ajouter une contenance</span></div>
+  <div class="ctxi ctx-sec" onclick="ctxAV()"><i class="cxic" data-ic="plus"></i><span id="cx3">Ajouter variante</span></div>
+  <div class="ctxi ctx-sec" id="ctxi-gros" onclick="ctxGros()"><i class="cxic" data-ic="stock"></i><span id="cx3b">Vendre par carton</span></div>
+  <div class="ctxi ctx-sec" id="ctxi-fam" onclick="ctxFam()"><i class="cxic" data-ic="clients"></i><span id="cx8">Mettre dans une famille</span></div>
+  <div class="ctxi ctx-sec" id="ctxi-signal" onclick="ctxSignalerPhoto()"><i class="cxic" data-ic="alerte"></i><span id="cxsig">Cette photo ne correspond pas</span></div>
+  <div class="ctxi ctx-sec" onclick="ctxToggleRupt()"><i class="cxic" data-ic="horsligne"></i><span id="cx7">Vente en rupture</span></div>
+  <div class="ctxi ctx-sec danger" onclick="ctxDL()"><i class="cxic" data-ic="sortir"></i><span id="cx5">Supprimer</span></div>
 </div>
 <input type="file" id="inp-photo-real-ctx" accept="image/*" style="display:none" onchange="uploadPhotoReelle(event,'ctx')">
 
@@ -4561,7 +4578,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       </div>
       <div class="sttit">🏬 Multi-boutiques & Support</div>
       <div class="stcd">
-        <div class="stit2" onclick="changerDeBoutique()"><div class="stico" style="background:#EDE7F6">🔀</div><div class="stii"><div class="stitl" id="st-chgb">Changer de boutique</div><div class="stisub" id="st-chgb-s">Ouvrir une autre boutique de ce numéro, sans re-saisir le PIN</div></div><span class="starr">›</span></div>
+        <div class="stit2" data-exp="1" onclick="changerDeBoutique()"><div class="stico" style="background:#EDE7F6">🔀</div><div class="stii"><div class="stitl" id="st-chgb">Changer de boutique</div><div class="stisub" id="st-chgb-s">Ouvrir une autre boutique de ce numéro, sans re-saisir le PIN</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="ouvrirMesBoutiques()"><div class="stico" style="background:#FFF3E0">🏬</div><div class="stii"><div class="stitl">Ajouter une boutique par son code</div><div class="stisub">Rejoindre une boutique qui n'est pas sur ce numéro</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="contacterSupport()"><div class="stico" style="background:#E8F5E9">📞</div><div class="stii"><div class="stitl">Contacter le support</div><div class="stisub">Assistance via WhatsApp</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="ouvrirParrainage()"><div class="stico" style="background:#EDE7F6">🤝</div><div class="stii"><div class="stitl">Programme parrainage</div><div class="stisub">Inviter une boutique et gagner des bonus</div></div><span class="starr">›</span></div>
@@ -4738,7 +4755,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
     <div class="plst" id="pan-lst"></div>
     <div class="pftr">
       <div class="loyalty-box" style="margin:0 0 11px">
-        <button class="loyalty-btn" id="loyalty-btn" onclick="ouvrirClientVente()">👤 <span class="loyalty-sel" id="client-vente-info">Client fidèle (optionnel)</span></button>
+        <button class="loyalty-btn" id="loyalty-btn" onclick="ouvrirClientVente()">👤 <span class="loyalty-sel" id="client-vente-info">Client (optionnel)</span></button>
       </div>
       <div class="trow"><span class="tlbl" id="lbl-total">TOTAL</span><span class="tamt" id="pan-tot">0</span></div>
       <button class="bpay" id="btn-pay" onclick="procederPmt()">✅ <span id="lbl-payer">PAYER</span></button>
@@ -6667,7 +6684,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
 <!-- CLIENT VENTE -->
 <div class="ov" id="ov-client-vente" onclick="closeOv(event,'ov-client-vente')">
   <div class="bsht"><div class="shndl"></div>
-    <div class="shhdr"><div class="shtit">👤 Client fidèle</div><button class="bcl" onclick="closeSheet('ov-client-vente')">✕</button></div>
+    <div class="shhdr"><div class="shtit">Quel client ?</div><button class="bcl" onclick="closeSheet('ov-client-vente')">✕</button></div>
     <div style="padding:15px 19px 20px">
       <button class="bnxt" style="margin-bottom:12px" onclick="nouveauClientPourVente()">➕ <span id="lbl-newcli-vente">Nouveau client</span></button>
       <div class="hist-card" id="client-vente-list"></div>
@@ -7056,7 +7073,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.37'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.38'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -9948,7 +9965,9 @@ function majModeParametres(){
   var emojiBtn=document.getElementById('btn-photo-emoji');
   if(emojiBtn)emojiBtn.style.display='none'; // fonctionnalité annulée (direction photos)
   var t=document.getElementById('st-adv-t'),s=document.getElementById('st-adv-s'),a=document.getElementById('st-adv-arr');
-  if(t)t.textContent=adv?(lang==='fr'?'Mode expert activé':'Expert mode enabled'):(lang==='fr'?'Activer le mode expert':'Enable expert mode');
+  // 23.38 — deux lignes s'appelaient « mode expert » (celle-ci, et la
+  // comptabilité dans Ventes). Celle-ci dit ce qu'elle fait.
+  if(t)t.textContent=adv?(lang==='fr'?'Tous les réglages sont affichés':'All settings are shown'):(lang==='fr'?'Afficher tous les réglages':'Show all settings');
   if(s)s.textContent=adv?(lang==='fr'?'Sauvegardes, imprimante, langue, suppressions':'Backups, printer, language, deletions')
                         :(lang==='fr'?'Tout ce qui fait tourner la boutique est déjà là':'Everything you run the shop with is already here');
   if(a)a.textContent=adv?'˅':'›';
@@ -15285,18 +15304,9 @@ function uploadPhotoVarCtx(ev){
   var v=_varPhotoCible,p=varArtCours;
   ev.target.value='';
   if(!v){return;}
-  if(!supa){showToast('⛔ '+(lang==='fr'?'Connexion requise pour la photo':'Connection required'));return;}
-  showToast('🔄 '+(lang==='fr'?'Envoi de la photo…':'Uploading…'));
-  compresserImage(file,300,0.6).then(function(blob){return uploadBlobProduit(blob);}).then(function(url){
-    if(!url)throw new Error('upload');
-    v.img=url;
-    try{save();}catch(e){}
-    try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
-    try{if(_varBox&&p)renderVarLst(p);}catch(e){}
-    showToast('✅ '+(lang==='fr'?'Photo mise sur ':'Photo set on ')+(v.nm||''));
-  }).catch(function(){
-    showToast('⚠️ '+(lang==='fr'?'La photo n\'est pas partie — réessaie':'Upload failed — try again'));
-  });
+  // 23.38 — le même chemin que l'article : posée tout de suite, envoyée
+  // quand le réseau le permet.
+  _photoPourArticle(p,file,{cible:v});
 }
 function _vApres(){
   try{save();}catch(e){}
@@ -15471,9 +15481,18 @@ function _placerMenu(m,e){
   m.style.left=x+'px';m.style.top=y+'px';
   m.scrollTop=0;
 }
+var _ctxEv=null;
+function ctxPlus(ev){
+  if(ev)ev.stopPropagation();      // le menu reste ouvert : il se déplie
+  var m=document.getElementById('ctxm');if(!m)return;
+  m.classList.add('plus');_placerMenu(m,_ctxEv);
+}
 function showCtx(e,p){
   artCtx=p;
-  var m=document.getElementById('ctxm');m.classList.add('show');
+  var m=document.getElementById('ctxm');m.classList.remove('plus');m.classList.add('show');
+  _ctxEv={clientX:(e&&e.clientX)||60,clientY:(e&&e.clientY)||120};
+  m.querySelectorAll('.cxic[data-ic]').forEach(function(i){if(!i.firstChild)i.innerHTML=ico(i.getAttribute('data-ic'),17);});
+  var _lp=document.getElementById('cxplus');if(_lp)_lp.textContent=lang==='fr'?'Plus d\'actions':'More actions';
   // 23.04 — le geste le plus fréquent d'abord, comme dans le menu d'une variante.
   var _cq=document.getElementById('ctxi-qte');
   if(_cq)_cq.style.display=(p.vr&&p.vr.length)?'none':'flex';
@@ -15489,7 +15508,7 @@ function showCtx(e,p){
   if(_eg){var _ie=_eg.querySelector('.ctxi-emo');if(_ie)_ie.textContent=_emojiCont(_mg);}
   document.getElementById('cx4').textContent=lang==='fr'?'Entrée stock':'Stock entry';
   document.getElementById('cx6').textContent=lang==='fr'?'Changer photo':'Change photo';
-  document.getElementById('cx7').textContent=(lang==='fr'?'Vente en rupture':'Sell when out of stock')+' : '+(p.rt?(lang==='fr'?'✅ Activée':'✅ On'):(lang==='fr'?'⛔ Désactivée':'⛔ Off'));
+  document.getElementById('cx7').textContent=(lang==='fr'?'Vente en rupture':'Sell when out of stock')+' : '+(p.rt?(lang==='fr'?'activée':'on'):(lang==='fr'?'désactivée':'off'));
   document.getElementById('cx8').textContent=lang==='fr'?'Mettre dans une famille':'Put into a family';
   var _cf=document.getElementById('ctxi-fam');if(_cf)_cf.style.display=(p.vr.length||estMesure(p))?'none':'flex';
   // « Ajouter une contenance » n'a de sens que pour une boisson que le
@@ -20947,6 +20966,9 @@ function _photoPourArticle(p,src,o){
   o=o||{};
   var fr=(lang==='fr');
   if(!p||!src)return Promise.resolve(false);
+  // 23.38 — `o.cible` : une variante. Elle refusait encore le hors-ligne.
+  var _art=p,_nm=p.nm+(o.cible?(' — '+(o.cible.nm||'')):'');
+  if(o.cible)p=o.cible;
   return Promise.all([_phCarre(src,600,0.85),_phCarre(src,240,0.72)]).then(function(r){
     return _phDataUrl(r[1]).then(function(vign){
       var k='ph'+Date.now()+'_'+Math.floor(Math.random()*1e5);
@@ -20955,12 +20977,13 @@ function _photoPourArticle(p,src,o){
       return _phGarder(k,r[0]).then(function(){
         save();
         try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+        try{if(o.cible&&_varBox)renderVarLst(_art);}catch(e){}
         try{if(artStkCours===p&&document.querySelector('#ov-stk.show')){var se=document.getElementById('stk-e');se.innerHTML='<img src="'+srcSure(vign)+'" style="width:100%;height:100%;object-fit:cover">';se.style.background='#fff';_majStkPhoto(p);}}catch(e){}
         if(!o.lot){
           showToast('📷 '+(navigator.onLine
-            ?(fr?'Photo posée sur « '+p.nm+' »':'Photo set on "'+p.nm+'"')
+            ?(fr?'Photo posée sur « '+_nm+' »':'Photo set on "'+_nm+'"')
             :(fr?'Photo posée — elle part au retour du réseau':'Photo set — uploads when online')));
-          if(!o.recadree)_snackRecadrer(p,src);
+          if(!o.recadree)_snackRecadrer(_art,src,o.cible||null);
           setTimeout(_demanderPartageUneFois,1200);
         }
         setTimeout(_photosEnvoyer,400);
@@ -20971,14 +20994,14 @@ function _photoPourArticle(p,src,o){
 }
 // « Recadrer » à un toucher, quelques secondes, puis il disparaît.
 var _snackT=null;
-function _snackRecadrer(p,src){
+function _snackRecadrer(p,src,cible){
   var fr=(lang==='fr'),s=document.getElementById('snack-ph');
   if(!s){s=document.createElement('div');s.id='snack-ph';s.className='snack-ph';document.body.appendChild(s);}
   s.innerHTML='<span>'+(fr?'Mal cadrée ?':'Badly framed?')+'</span><button type="button" id="snack-ph-b">'+(fr?'Recadrer':'Crop')+'</button>';
   s.classList.add('show');
   document.getElementById('snack-ph-b').onclick=function(){
     s.classList.remove('show');
-    ouvrirCrop(src,function(b){if(b)_photoPourArticle(p,b,{recadree:true});});
+    ouvrirCrop(src,function(b){if(b)_photoPourArticle(p,b,{recadree:true,cible:cible||null});});
   };
   clearTimeout(_snackT);_snackT=setTimeout(function(){s.classList.remove('show');},6000);
 }
@@ -20988,14 +21011,25 @@ function _photosEnvoyer(){
     if(_phEnVol||!navigator.onLine||!DB||!DB.articles)return;
     if(typeof estDemo==='function'&&estDemo())return;
     var moi=_phMoi();
-    var l=DB.articles.filter(function(p){return p&&typeof p._imgAttente==='string'&&p._imgAttente.indexOf(moi)===0;});
+    var _mien=function(x){return x&&typeof x._imgAttente==='string'&&x._imgAttente.indexOf(moi)===0;};
+    var _cible=function(r){
+      var a=DB.articles.find(function(x){return x.id===r.a;});if(!a)return null;
+      if(r.v==null)return a;
+      return (a.vr||[]).find(function(x){return String(x.id)===String(r.v);})||null;
+    };
+    var l=[];
+    DB.articles.forEach(function(p){
+      if(!p)return;
+      if(_mien(p))l.push({a:p.id,v:null});
+      (p.vr||[]).forEach(function(v){if(_mien(v))l.push({a:p.id,v:v.id});});
+    });
     if(!l.length)return;
     _phEnVol=true;
     var i=0;
     (function suivant(){
       if(i>=l.length){_phEnVol=false;return;}
-      var id=l[i++].id,a0=DB.articles.find(function(x){return x.id===id;});
-      if(!a0||typeof a0._imgAttente!=='string'||a0._imgAttente.indexOf(moi)!==0){suivant();return;}
+      var ref=l[i++],a0=_cible(ref);
+      if(!_mien(a0)){suivant();return;}
       var cle=a0._imgAttente,k=cle.slice(moi.length),vign=a0.img;
       _phLire(k).then(function(b){
         var blob=(b&&b.size)?b:_phBlobDe(vign);
@@ -21004,11 +21038,11 @@ function _photosEnvoyer(){
       }).then(function(url){
         // L'article a pu changer de photo pendant l'envoi : on ne remplace
         // que la vignette qu'on était en train d'envoyer.
-        var a=DB.articles.find(function(x){return x.id===id;});
+        var a=_cible(ref);
         if(a&&a._imgAttente===cle){
           a.img=url;delete a._imgAttente;save();
           try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
-          _partagerSiAccord(a.nm,url);
+          if(ref.v==null)_partagerSiAccord(a.nm,url);
         }
         _phOublier(k);suivant();
       }).catch(function(){_phEnVol=false;});   // réseau retombé : la prochaine occasion
@@ -21129,34 +21163,6 @@ function _photoNouvelArticle(file){
       });
     });
   }).catch(function(){showToast('❌ '+(fr?'Cette photo ne se lit pas':'Unreadable photo'));});
-}
-function uploadPhotoReelleOLD(ev,mode){
-  var file=ev.target.files&&ev.target.files[0];if(!file)return;
-  if(!supa){showToast('⛔ '+(lang==='fr'?'Connexion requise pour uploader une photo':'Connection required to upload a photo'));ev.target.value='';return;}
-  var btn=mode==='new'?document.getElementById('btn-photo-real'):null;
-  if(btn)btn.classList.add('busy');
-  showToast('🔄 '+(lang==='fr'?'Compression et envoi...':'Compressing and uploading...'));
-  compresserImage(file,300,0.6).then(function(blob){
-    return uploadBlobProduit(blob).then(function(publicUrl){
-      var sizeKo=Math.round(blob.size/1024);
-      if(mode==='new'){
-        selImg=publicUrl;
-        majIdentitePastille();
-        document.getElementById('photo-real-img').src=publicUrl;
-        document.getElementById('photo-real-txt').textContent=(lang==='fr'?'Photo prête':'Photo ready')+' ('+sizeKo+' Ko)';
-        document.getElementById('photo-real-preview').style.display='flex';
-      }else if(mode==='ctx'&&artCtx){
-        artCtx.img=publicUrl;save();renderProd(DB.articles);renderStock(DB.articles);
-      }
-      showToast('✅ '+(lang==='fr'?'Photo ajoutée !':'Photo added!')+' ('+sizeKo+' Ko)');
-    });
-  }).catch(function(e){
-    console.warn('Upload photo:',e);
-    showToast('⛔ '+(lang==='fr'?"Échec de l'envoi de la photo":'Photo upload failed'));
-  }).finally(function(){
-    if(btn)btn.classList.remove('busy');
-    ev.target.value='';
-  });
 }
 function nettoyerNomFichierProduit(name){
   var base=String(name||'').replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
@@ -32828,6 +32834,7 @@ updateNotifBadge=function(){
   // 23.34 — une dette qui arrive à échéance marque aussi l'onglet Clients,
   // comme le stock marque l'onglet Stock : on sait où aller.
   document.body.classList.toggle('cli-a-faire',cr.length>0);
+  try{document.body.classList.toggle('fidelite',!!(DB&&DB.cfg&&DB.cfg.fidelite));}catch(e){}
 };
 function renderNotifPanel(){
   var c=document.getElementById('notif-list');if(!c||!DB)return;
@@ -32900,7 +32907,7 @@ var _logoutBase=logout;logout=function(){clientVente=null;remisePoints=0;remiseV
 // s'encaisse à 5 500 F. Le montant était resté caché, et même sauvé sur le
 // téléphone pour revenir au prochain démarrage.
 viderPanier=function(){panier={};panierLibre=[];_grosPanier={};_negoLigne={};remisePoints=0;remiseVente=0;consignePrises=0;consigneRendues=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');try{_panierOublier();}catch(e){}try{_guidePanier();}catch(e){}};
-function renderClientVenteList(){var c=document.getElementById('client-vente-list');if(!c||!DB)return;c.innerHTML=DB.clients.length?DB.clients.map(function(cl){majNiveauClient(cl);return '<div class="hist-sale" onclick="choisirClientVente('+cl.id+')"><div class="hist-h"><div><div class="hist-d">'+cl.nm+'</div><div class="hist-s">'+cl.niveau+' · '+(cl.points||0)+' pts</div></div><div class="hist-t">'+fmt(cl.credit||0)+'</div></div></div>';}).join(''):'<div class="dash-empty">Aucun client enregistré</div>'; }
+function renderClientVenteList(){var c=document.getElementById('client-vente-list');if(!c||!DB)return;c.innerHTML=DB.clients.length?DB.clients.map(function(cl){majNiveauClient(cl);return '<div class="hist-sale" onclick="choisirClientVente('+cl.id+')"><div class="hist-h"><div><div class="hist-d">'+cl.nm+'</div><div class="hist-s fid-seul">'+cl.niveau+' · '+(cl.points||0)+' pts</div></div><div class="hist-t">'+fmt(cl.credit||0)+'</div></div></div>';}).join(''):'<div class="dash-empty">Aucun client enregistré</div>'; }
 // ⚠️⚠️ « LE CARNET EST VIDE » — MESURÉ DANS L'ÉTUDE DE PARCOURS :
 // une vente comptant coûte 4 gestes, la première vente à crédit en coûtait
 // ONZE. Au septième, l'app le conduisait à une liste de ZÉRO client avec un
@@ -32928,7 +32935,7 @@ function nouveauClientPourVente(){
   var inp=document.getElementById('cli-cred');if(inp)inp.placeholder=fr?'0 — la dette viendra de cette vente':'0 — debt comes from this sale';
   setTimeout(function(){try{var n=document.getElementById('cli-nm');n.focus();}catch(e){}},250);
 }
-function updateClientVenteUI(){var el=document.getElementById('client-vente-info');var btn=document.getElementById('loyalty-btn');if(!el)return;if(!clientVente){el.innerHTML=lang==='fr'?'Client fidèle (optionnel)':'Loyal customer (optional)';if(btn)btn.classList.remove('has-cli');return;}majNiveauClient(clientVente);el.innerHTML='<strong>'+clientVente.nm+'</strong> · '+clientVente.niveau+' · '+(clientVente.points||0)+' pts'+(remisePoints>0?' · -'+fmt(remisePoints):'');if(btn)btn.classList.add('has-cli');if(Object.keys(panier).length)updatePUI(parseInt(Object.keys(panier)[0].split('-')[0],10)||0);}
+function updateClientVenteUI(){var el=document.getElementById('client-vente-info');var btn=document.getElementById('loyalty-btn');if(!el)return;if(!clientVente){el.innerHTML=lang==='fr'?'Client (optionnel)':'Customer (optional)';if(btn)btn.classList.remove('has-cli');return;}majNiveauClient(clientVente);el.innerHTML='<strong>'+escH(clientVente.nm)+'</strong><span class="fid-seul"> · '+escH(clientVente.niveau)+' · '+(clientVente.points||0)+' pts</span>'+(remisePoints>0?' · -'+fmt(remisePoints):'');if(btn)btn.classList.add('has-cli');if(Object.keys(panier).length)updatePUI(parseInt(Object.keys(panier)[0].split('-')[0],10)||0);}
 function utiliserPointsClient(){
   var cl=cliCours||clientVente;if(!cl){showToast('⚠️ Sélectionne un client');return;}clientVente=cl;majNiveauClient(clientVente);
   var brut=calcTotalBrut();if(!brut){closeSheet('ov-cli-det');updateClientVenteUI();showToast('👤 Client associé. Ajoute des articles pour utiliser ses points.');return;}
@@ -33003,7 +33010,7 @@ saveCli=function(){
   }
   showToast(t('clientAjoute'));
 };
-ouvrirDetCli=function(id){cliCours=DB.clients.find(function(c){return c.id===id;});if(!cliCours)return;majNiveauClient(cliCours);var pg=clientProgressData(cliCours);document.getElementById('cli-det-nm').textContent=cliCours.nm;document.getElementById('cli-d-dette').textContent=fmt(cliCours.credit);document.getElementById('cli-d-date').textContent=cliCours.date?new Date(cliCours.date).toLocaleDateString('fr-FR'):'N/A';document.getElementById('cli-d-tel').textContent=cliCours.tel||'N/A';var info=document.getElementById('lbl-info-cred');if(info)info.textContent='Info crédit & fidélité';var hist=document.getElementById('cli-hist');hist.innerHTML='<div class="lv-badge" style="margin:0 0 8px 0">'+pg.lvl+' · '+pg.cur+'</div><div class="lv-bar"><div class="lv-fill" style="width:'+pg.pct+'%"></div></div><div class="lv-meta"><span>'+pg.cur+'</span><span>'+pg.next+'</span></div><div style="height:10px"></div>'+histClientHTML(cliCours);document.getElementById('cli-pmt').value='';document.getElementById('reste-card').style.display='none';selModeRemb('especes');document.getElementById('ov-cli-det').classList.add('show');};
+ouvrirDetCli=function(id){cliCours=DB.clients.find(function(c){return c.id===id;});if(!cliCours)return;majNiveauClient(cliCours);var pg=clientProgressData(cliCours);document.getElementById('cli-det-nm').textContent=cliCours.nm;document.getElementById('cli-d-dette').textContent=fmt(cliCours.credit);document.getElementById('cli-d-date').textContent=cliCours.date?new Date(cliCours.date).toLocaleDateString('fr-FR'):'N/A';document.getElementById('cli-d-tel').textContent=cliCours.tel||'N/A';var info=document.getElementById('lbl-info-cred');if(info)info.textContent=(DB&&DB.cfg&&DB.cfg.fidelite)?'Info crédit & fidélité':'Info crédit';var hist=document.getElementById('cli-hist');hist.innerHTML='<div class="lv-badge" style="margin:0 0 8px 0">'+pg.lvl+' · '+pg.cur+'</div><div class="lv-bar"><div class="lv-fill" style="width:'+pg.pct+'%"></div></div><div class="lv-meta"><span>'+pg.cur+'</span><span>'+pg.next+'</span></div><div style="height:10px"></div>'+histClientHTML(cliCours);document.getElementById('cli-pmt').value='';document.getElementById('reste-card').style.display='none';selModeRemb('especes');document.getElementById('ov-cli-det').classList.add('show');};
 // ⚠️ Le remboursement note maintenant COMMENT il est payé (le tiroir en
 // dépend), QUAND (l'heure, pour la clôture) et QUI l'a reçu. Et il ne
 // dépasse jamais la dette : 1 500 F tendus pour 1 000 F dus, c'est 500 F
