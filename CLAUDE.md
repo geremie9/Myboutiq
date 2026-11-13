@@ -88,6 +88,15 @@ The project skill `publier-version` (`.claude/skills/publier-version/`) walks th
 3. Write the commit message in French. Title: `22.NN — <what changes for the shopkeeper>`. Then the story (the owner's words, the bug as measured), bullet points, a "Trouvé en route, corrigé" section, and `Banc : tNNN (n)`.
 4. Run `git fetch origin main && git merge origin/main`, then push the same commit to `main` and to the working branch. Vercel project `myboutiq-paqs` deploys `main` to myboutiq.online in about a minute. The other Vercel project, `myboutiq`, fails on every deploy; it is a harmless duplicate.
 
+## Product principle (owner, 13/11/2026)
+
+MyBoutiQ serves shopkeepers who often cannot read, are not at ease with software, and have an unstable network. Ease of adoption comes first.
+
+- The user must spend as little effort as possible, including to **discover** a feature: put it where the gesture already happens (on the tile, in the sheet he just opened), not in Réglages or behind a long press.
+- Prefer pictures, numbers, colours and voice to words. A price is read before a name.
+- One screen, one question. Hide what is rarely used; never remove what testers still need.
+- Usage figures in the production database mix testers, curious visitors and real shopkeepers: "nobody uses it" is not proof.
+
 ## Conventions
 
 - **Never put text from elsewhere into `innerHTML` raw.** That means other shops, the server, or a seller's data arriving through sync.
