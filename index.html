@@ -7289,7 +7289,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.47'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.48'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -26930,8 +26930,15 @@ function depCount(p){var s=(p.dep0||0);(DB.ventes||[]).forEach(function(v){if(v.
 //  exactement quels articles il faut compléter.
 // ══════════════════════════════════════════════════════════════════
 // Ce que vaut UN article, et si l'app a dû deviner.
+// Le prix de vente d'UNE unité de stock : celui de l'article, ou, pour une
+// famille à stock partagé, celui de sa sorte « à l'unité ».
+function _pxUnitePourValeur(p){
+  var px=Number(p.px)||0;
+  if(px<=0&&p.vr&&p.vr.length){var b=p.vr.find(function(x){return Number(x.px)>0&&getQBase(x)===1;});if(b)px=Number(b.px);}
+  return px;
+}
 function _valeurArticle(p){
-  var val=0,inconnu=false;
+  var val=0,inconnu=false,aber=false;
   if(!p)return {val:0,inconnu:false,stk:0};
   var ts=Math.max(0,getStk(p));
   if(ts<=0)return {val:0,inconnu:false,stk:0};
@@ -26946,7 +26953,8 @@ function _valeurArticle(p){
       // S'en servir pour les autres, ce serait inventer un chiffre — et
       // le bénéfice, lui, ne le fait pas non plus (calcBenBrut).
       var pa=Number(v.pa)||0;
-      if(pa>0)val+=s*pa;else inconnu=true;
+      if(prixAchatAberrant(pa,Number(v.px)||0)){inconnu=true;aber=true;}
+      else if(pa>0)val+=s*pa;else inconnu=true;
     });
   }else{
     var pa=Number(p.pa)||0;
@@ -26956,18 +26964,29 @@ function _valeurArticle(p){
       var b=p.vr.find(function(x){return Number(x.pa)>0&&getQBase(x)===1;});
       if(b)pa=Number(b.pa);
     }
-    if(pa>0)val+=ts*pa;else inconnu=true;
+    // ⚠️⚠️ 23.48 — « ELLE VAUT 25 MILLIONS, IL Y A CERTAINEMENT UN BIAIS. »
+    // Sa boutique de 31 articles affichait 25 559 002 F de marchandise.
+    // Lu dans ses données : « Huile d'arachide », vendue 800 F, prix d'achat
+    // 50 000 F, 493 en stock → 24 650 000 F à elle seule. 50 000 F, c'est le
+    // prix du BIDON, tapé comme prix d'une unité. Les rapports savaient déjà
+    // écarter ce cas du bénéfice (`prixAchatAberrant` : acheté au moins trois
+    // fois le prix de vente) ; la valeur du stock, elle, multipliait sans
+    // regarder. Un prix d'achat impossible n'est plus compté : l'article est
+    // signalé « à corriger », comme celui qui n'a pas de prix d'achat.
+    if(prixAchatAberrant(pa,_pxUnitePourValeur(p))){inconnu=true;aber=true;}
+    else if(pa>0)val+=ts*pa;else inconnu=true;
   }
-  return {val:val,inconnu:inconnu,stk:ts};
+  return {val:val,inconnu:inconnu,aber:aber,stk:ts};
 }
 function _valeurStock(){
-  var val=0,sansPa=0;
+  var val=0,sansPa=0,aber=0;
   (DB.articles||[]).forEach(function(p){
     var r=_valeurArticle(p);
     val+=r.val;
     if(r.inconnu)sansPa++;
+    if(r.aber)aber++;
   });
-  return {val:val,sansPa:sansPa};
+  return {val:val,sansPa:sansPa,aber:aber};
 }
 // ── « QU'EST-CE QUE JE RACHÈTE ? » ────────────────────────────────
 // Trois raisons de racheter, et une seule de ne pas le proposer.
@@ -27350,7 +27369,7 @@ function ouvrirValeur(){
       +'<button type="button" class="'+(_non?'on':'')+'" onclick="reglerVenteSansStock(\'non\')">'+(fr?'Interdite':'Blocked')+'</button></div>';
   }
   if(v.sansPa>0)h+='<div class="vb-trou" onclick="closeSheet(\'ov-valeur\');filtreStock(\'sanspa\')">'+ico('alerte',16)+'<span>'
-    +v.sansPa+' '+(fr?('article'+(v.sansPa>1?'s':'')+' sans prix d\'achat '+(v.sansPa>1?'ne sont':'n\'est')+' pas compté'+(v.sansPa>1?'s':'')+' — touche pour compléter')
+    +v.sansPa+' '+(fr?('article'+(v.sansPa>1?'s':'')+(v.aber?' au prix d\'achat manquant ou impossible ':' sans prix d\'achat ')+(v.sansPa>1?'ne sont':'n\'est')+' pas compté'+(v.sansPa>1?'s':'')+' — touche pour '+(v.aber?'corriger':'compléter'))
                     :('item'+(v.sansPa>1?'s':'')+' without cost price not counted — tap to fix'))+'</span></div>';
   if(v.vente>0)h+='<div class="vb-si">'+(fr?'Si tu vends tout ton stock au prix normal : ':'If you sell all your stock at the normal price: ')
     +'<b>'+fmt(v.vente)+'</b>'+(v.vente>v.achat&&v.achat>0?(' — '+(fr?'bénéfice possible ':'possible profit ')+'<b>'+fmt(v.vente-v.achat)+'</b>'):'')+'</div>';
@@ -27624,7 +27643,7 @@ function majValeurStock(q30){
         +'<i>'+(fr?'Ce que vaut ma boutique ›':'What my shop is worth ›')+'</i></button>'
         +'<button type="button" class="vb-inv" onclick="ouvrirInventaire()">'+ico('recu',18)+'<span>'+(fr?'Faire l\'inventaire':'Count my stock')+'</span></button></div>'
         +(r.sansPa>0?('<span class="stkv-trou" onclick="filtreStock(\'sanspa\')">'
-            +r.sansPa+' '+(fr?('article'+(r.sansPa>1?'s':'')+' sans prix d\'achat — pas compté'+(r.sansPa>1?'s':''))
+            +r.sansPa+' '+(fr?('article'+(r.sansPa>1?'s':'')+(r.aber?' au prix d\'achat à corriger':' sans prix d\'achat')+' — pas compté'+(r.sansPa>1?'s':''))
                              :('item'+(r.sansPa>1?'s':'')+' without cost price — not counted'))+' ›</span>'):'');
     }
   }
@@ -28456,7 +28475,14 @@ function renderRpt(){
         ['<i class="pdot" style="background:#0072CE"></i>','Moov Money',pb.moov],
         ['<i class="pdot" style="background:#B45309"></i>',lang==='fr'?'Crédit accordé (à récupérer)':'Credit given (to collect)',pb.credit],
         ['<i class="pdot" style="background:#7C6F8E"></i>',lang==='fr'?'Remises accordées':'Discounts given',pb.remises]
-      ].filter(function(r){return r[2]>0;});
+      ];
+      // ⚠️ 23.48 — audit du 14/11 : un client rembourse 200 F par MTN, et la
+      // ligne « MTN MoMo » ne montrait que les VENTES. Sa dette baissait bien,
+      // mais le rapport ne disait pas ce qu'il avait reçu sur son téléphone.
+      // Les remboursements en espèces, eux, sont déjà dans « à compter ».
+      try{if(_rptPer==='jour'){var _rm=totalRembMobileJour();
+        if(_rm>0)rows.push(['<i class="pdot" style="background:#6D28D9"></i>',lang==='fr'?'Dettes remboursées par mobile money':'Debts repaid by mobile money',_rm]);}}catch(e){}
+      rows=rows.filter(function(r){return r[2]>0;});
       // La consigne est dans le tiroir mais ne t'appartient pas : on la montre
       // à part, jamais mélangée au chiffre d'affaires.
       var cons=pb.consTiroir||0;
@@ -31096,7 +31122,13 @@ function calcTotalBrut(){return Object.entries(panier).reduce(function(s,e){var 
 // serait un mensonge. « Un bénéfice inconnu vaut mieux qu'un bénéfice
 // faux » — la règle est déjà celle de `getSaleBenef`, on ne l'ouvre pas.
 function calcBenBrut(){return Object.entries(panier).reduce(function(s,e){var l=_ligneDe(e[0],e[1]);return s+(l?l.m.benConnu:0);},0);}
-calcTotal=function(){return Math.max(0,calcTotalBrut()-remisePoints-(remiseVente||0)-_negoTotal());};
+// ⚠️ 23.48 — LES CENTIMES CACHÉS. Audit du 14/11 : 0,35 kg à 700 F donnait
+// 244,99999999999997 — c'est ce nombre-là qui était gardé dans la vente.
+// L'affichage arrondissait partout, donc rien ne se voyait ; mais le premier
+// calcul qui couperait au lieu d'arrondir aurait montré 244. Le total d'une
+// vente est arrondi au centième AVANT d'être gardé (245, pas 244,99…).
+function _arrondiMonnaie(x){return Math.round((Number(x)||0)*100)/100;}
+calcTotal=function(){return Math.max(0,_arrondiMonnaie(calcTotalBrut()-remisePoints-(remiseVente||0)-_negoTotal()));};
 // ═══════════════════════════════════════════════════════════════════
 // LA CONSIGNE — de l'argent qui passe par la caisse SANS t'appartenir
 // La bouteille de bière, le casier, la bouteille de gaz sont consignés :
@@ -34126,15 +34158,36 @@ function _succDetail(pm,total,clientNm){
   z.textContent=noms[mode]||'';
   return 0;
 }
+var _rendreApresAnnul=null;
 confirmerAnnulVente=function(){
   if(ventAnnulEnCours===null)return;
+  _rendreApresAnnul=null;
   var v=DB.ventes.find(function(x){return x.id===ventAnnulEnCours;});
   if(!v||v.annulee){fermerConfAnnul();return;}
   // Stock et "vendu" sont recalculés automatiquement à partir des ventes non annulées (voir recomputeStock).
   if(v.clientId){var cl=DB.clients.find(function(c){return c.id===v.clientId;});if(cl){cl.points=Math.max(0,(cl.points||0)-((v.pointsGagnes)||0))+(v.pointsUtilises||0);majNiveauClient(cl);if(!cl.hist)cl.hist=[];cl.hist.push({date:new Date().toLocaleDateString('fr-FR'),type:'points_use',pts:-(v.pointsUtilises||0),amt:0});
-    if(v.paiement&&v.paiement.mode==='credit'&&(v.paiement.du||0)>0){cl.credit=Math.max(0,(cl.credit||0)-v.paiement.du);cl.hist.push({date:new Date().toLocaleDateString('fr-FR'),ts:new Date().toISOString(),type:'payment',amt:v.paiement.du,annul:true});}
+    if(v.paiement&&v.paiement.mode==='credit'&&(v.paiement.du||0)>0){
+      // ⚠️ 23.48 — audit du 14/11 : Awa prend 1 300 F à crédit, rembourse
+      // 500, et la vente est annulée. Sa dette revenait à 0, mais ses 500 F
+      // restaient comptés dans la caisse attendue, sans être notés nulle
+      // part comme à lui rendre : le soir, le tiroir était court de 500 F
+      // sans explication. Ce qu'elle avait déjà remboursé sur CETTE dette
+      // est maintenant sorti du tiroir (une ligne négative, en espèces) et
+      // l'app dit combien lui rendre. La ligne ne porte pas de client :
+      // elle ne doit pas être relue comme un remboursement par la synchro.
+      var _trop=_arrondiMonnaie(Math.max(0,v.paiement.du-(Number(cl.credit)||0)));
+      if(_trop>0){
+        if(!Array.isArray(DB.encaissements))DB.encaissements=[];
+        DB.encaissements.push({id:genVenteId(),ts:new Date().toISOString(),date:new Date().toLocaleDateString('fr-FR'),clientId:null,nm:cl.nm,amt:-_trop,mode:'especes',vendeur:_nomOperateur(),rendu:true,vente:v.id});
+        _rendreApresAnnul={nm:cl.nm,amt:_trop};
+      }
+      cl.credit=Math.max(0,(cl.credit||0)-v.paiement.du);cl.hist.push({date:new Date().toLocaleDateString('fr-FR'),ts:new Date().toISOString(),type:'payment',amt:v.paiement.du,annul:true});}
   }}
-  v.annulee=true;save();renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();recalcTotaux();updateObjBar();updateNotifBadge();if(document.getElementById('ov-history').classList.contains('show'))filtrerHistory();fermerConfAnnul();showToast('↩️ '+(lang==='fr'?'Vente annulée, stock restitué':'Sale cancelled, stock restored'));
+  v.annulee=true;save();renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();recalcTotaux();updateObjBar();updateNotifBadge();if(document.getElementById('ov-history').classList.contains('show'))filtrerHistory();fermerConfAnnul();
+  if(_rendreApresAnnul){
+    var _ra=_rendreApresAnnul,_tot=_arrondiMonnaie(_ra.amt+(Number(v.paiement&&v.paiement.avance)||0));_rendreApresAnnul=null;
+    showToast('↩️ '+(lang==='fr'?('Vente annulée. Rends '+fmt(_tot)+' à '+_ra.nm+' : c\'est ce qu\'il avait déjà payé.'):('Sale cancelled. Give '+fmt(_tot)+' back to '+_ra.nm+': already paid.')));
+  }else showToast('↩️ '+(lang==='fr'?'Vente annulée, stock restitué':'Sale cancelled, stock restored'));
 };
 // ⚠️  a été SUPPRIMÉE le 10 septembre (21.72). Ses trois
 // cartes vivent dans Rapports (_rptHeuresHtml, _rptSemaineHtml,
