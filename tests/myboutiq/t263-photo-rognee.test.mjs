@@ -37,8 +37,10 @@ t((await lire(1)).garde === coca.vb, 'le cadrage est gardé sur l\'article : mes
 await p.evaluate(() => renderProd(DB.articles));
 t(/inset\(/.test(await p.evaluate(() => document.querySelector('#pc-1 .pmedia img').getAttribute('style') || '')), 'redessinée, la tuile porte déjà son cadrage');
 // Il change la photo : l'ancien cadrage ne s'applique pas à la nouvelle.
-await p.evaluate(img => { const a = DB.articles.find(x => x.id === 3); a.vb = '30 30 30 30|faux'; a.img = img; renderProd(DB.articles); }, autre);
-const tout = await p.evaluate(() => document.querySelector('#pc-3 .pmedia img').getAttribute('style') || '');
+// ⚠️ Lu DANS le même geste que le dessin : la mesure d'une photo locale peut
+// finir entre deux allers-retours du banc (vu une fois sur deux passes, machine
+// chargée) — le test lisait alors le NOUVEAU cadrage et croyait voir l'ancien.
+const tout = await p.evaluate(img => { const a = DB.articles.find(x => x.id === 3); a.vb = '30 30 30 30|faux'; a.img = img; renderProd(DB.articles); return document.querySelector('#pc-3 .pmedia img').getAttribute('style') || ''; }, autre);
 await p.waitForTimeout(1200);
 const apres = await lire(3);
 t(!/inset/.test(tout) && /^2\d 3\d 2\d 3\d\|/.test(apres.vb) && /inset\(/.test(apres.css), `photo changée : l'ancien cadrage est ignoré, le nouveau est mesuré (${apres.vb.split('|')[0]})`);
