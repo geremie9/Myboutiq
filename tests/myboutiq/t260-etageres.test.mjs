@@ -9,21 +9,21 @@ const b = await chromium.launch();
 const db = nouvelleBoutique(); db.cfg.facon = 'detail';
 const { ctx, p, errs } = await ouvrirCaisse(b, port, db, { tactile: true });
 await p.setViewportSize({ width: 360, height: 740 }); await p.waitForTimeout(400);
-// 23.44 — sa capture avec de vraies photos : « gaspillage d'espace, vraiment
-// manque de stratégie ». La planche de 9 px et l'étiquette sur sa ligne sont
-// parties : la photo prend toute la tuile, le prix se colle dessus, la
-// planche n'est plus qu'un liseré de bois sous la tuile.
+// 23.44 — sa capture avec de vraies photos : « gaspillage d'espace ». La photo
+// a pris toute la tuile. 23.45 — « que la superposition soit un élément
+// marketing, comme si tu es dans ta boutique » : le produit est posé sur la
+// planche, devant le mur du rayon, et le prix est sur l'étiquette du bord.
 const m = await p.evaluate(() => {
-  const c = document.getElementById('pc-2'), cs = getComputedStyle(c), px = c.querySelector('.ppr-ov'), pr = px.getBoundingClientRect(), nm = c.querySelector('.pnm-ov').getBoundingClientRect(), med = c.querySelector('.pmedia').getBoundingClientRect(), r = c.getBoundingClientRect();
-  const e = document.querySelector('#pgrid .pcard.etg');
-  return { fond: cs.backgroundColor, bois: cs.borderBottomWidth + ' ' + cs.borderBottomColor, photoH: Math.round(med.height), photoL: Math.round(med.width), tuileL: Math.round(r.width), tuileH: Math.round(r.height),
-    prixSur: pr.top >= med.top && pr.bottom <= med.bottom + 1 && pr.left >= med.left, prixFond: getComputedStyle(px).backgroundColor, prixCoul: getComputedStyle(px).color, prixT: parseFloat(getComputedStyle(px).fontSize), nomT: parseFloat(getComputedStyle(c.querySelector('.pnm-ov')).fontSize),
-    nomSous: nm.top >= med.bottom - 1, etg: e ? getComputedStyle(e).borderBottomColor === cs.borderBottomColor && getComputedStyle(e).borderBottomWidth === '4px' : false };
+  const c = document.getElementById('pc-2'), cs = getComputedStyle(c), ov = c.querySelector('.pcard-overlay'), os = getComputedStyle(ov), px = c.querySelector('.ppr-ov'), pr = px.getBoundingClientRect(), nmE = c.querySelector('.pnm-ov'), nm = nmE.getBoundingClientRect(), med = c.querySelector('.pmedia'), mr = med.getBoundingClientRect(), r = c.getBoundingClientRect(), or = ov.getBoundingClientRect();
+  const v = document.getElementById('pc-1').getBoundingClientRect(), e = document.querySelector('#pgrid .pcard.etg');
+  return { mur: /gradient/.test(getComputedStyle(med).backgroundImage), planche: os.backgroundColor, tranche: os.borderTopWidth, continu: Math.abs(v.right - r.left) < 1, photoH: Math.round(mr.height), photoL: Math.round(mr.width), tuileL: Math.round(r.width), tuileH: Math.round(r.height),
+    prixSurEtiq: pr.top >= or.top && pr.bottom <= or.bottom && pr.top >= mr.bottom - 1, prixFond: getComputedStyle(px).backgroundColor, prixCoul: getComputedStyle(px).color, prixT: parseFloat(getComputedStyle(px).fontSize), nomT: parseFloat(getComputedStyle(nmE).fontSize),
+    nomSous: nm.top >= pr.bottom - 1 && nm.bottom <= or.bottom, etg: e ? /gradient/.test(getComputedStyle(e.querySelector('.pmedia') || e).backgroundImage) && getComputedStyle(e).backgroundColor === 'rgba(0, 0, 0, 0)' : false };
 });
-t(m.fond === 'rgb(255, 255, 255)' && /^4px rgb\(185, 138, 78\)$/.test(m.bois), `la tuile est blanche, posée sur un liseré de bois (${m.bois})`);
-t(m.photoH >= 96 && m.photoL === m.tuileL, `la photo prend toute la tuile : ${m.photoL} × ${m.photoH} px sur une tuile de ${m.tuileL} × ${m.tuileH}`);
-t(m.prixSur && m.prixFond === 'rgb(30, 27, 46)' && m.prixCoul === 'rgb(255, 255, 255)' && m.prixT > m.nomT, `le prix est collé sur la photo, blanc sur noir, plus gros que le nom (${m.prixT} px / ${m.nomT} px)`);
-t(m.nomSous && m.tuileH <= 120, `le nom est dessous, sur une ligne : la tuile fait ${m.tuileH} px, sans ligne d'étiquette`);
+t(m.mur && m.planche === 'rgb(168, 120, 60)' && m.tranche === '3px' && m.continu, `l'article est devant le mur du rayon, sur une planche de bois qui court d'un article à l'autre (tranche ${m.tranche})`);
+t(m.photoH >= 76 && m.photoL === m.tuileL, `la photo prend toute la largeur : ${m.photoL} × ${m.photoH} px sur une tuile de ${m.tuileL} × ${m.tuileH}`);
+t(m.prixSurEtiq && m.prixFond === 'rgb(255, 255, 255)' && m.prixCoul === 'rgb(30, 27, 46)' && m.prixT > m.nomT, `le prix est sur l'étiquette du bord de planche, noir sur blanc, plus gros que le nom (${m.prixT} px / ${m.nomT} px)`);
+t(m.nomSous && m.tuileH <= 124, `le nom est sur la même étiquette, dessous : la tuile fait ${m.tuileH} px — pas plus haute qu'avant`);
 t(!m.etg, 'les cartes « Tu vends aussi » ne sont pas sur ses étagères');
 // Toucher vend toujours, et l'article choisi se voit.
 await p.locator('#pc-2').tap(); await p.waitForTimeout(250);
