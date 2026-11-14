@@ -7306,7 +7306,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.49'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.50'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -7446,6 +7446,21 @@ function _reancrerFiches(){
     _grosArt=_memeArt(_grosArt);
     _grosVar=_memeVar(_grosArt,_grosVar);
     if(negEnCours){negEnCours.p=_memeArt(negEnCours.p);negEnCours.v=_memeVar(negEnCours.p,negEnCours.v);}
+    // ⚠️⚠️ 23.50 — « PENDANT LA MODIFICATION… AU FINAL ÇA SE MODIFIE MÊME
+    // PAS. » Mesuré au banc : la fiche « Comment tu le vends » (23.36) gardait
+    // l'article tel qu'il était à l'ouverture. Des données arrivent d'un autre
+    // téléphone pendant qu'elle est ouverte, `DB` est refait, et
+    // « Enregistrer » écrivait le prix et le carton dans l'ANCIEN article,
+    // qui n'est plus dans la boutique. Rien d'enregistré, sans un mot.
+    if(_cond&&_cond.p){
+      var _cp=_memeArt(_cond.p);
+      if(_cp&&_cp!==_cond.p){
+        var _cv=_cond.v?_memeVar(_cp,_cond.v):null;
+        if(_cond.cible===_cond.p)_cond.cible=_cp;else if(_cond.v&&_cond.cible===_cond.v)_cond.cible=_cv||_cond.cible;
+        _cond.p=_cp;_cond.v=_cv;
+      }
+    }
+    _qteArt=_memeArt(_qteArt);
     // Un client aussi : encaisser un remboursement dans un client fantôme,
     // c'est de l'argent reçu qui n'apparaît nulle part.
     if(cliCours&&DB&&Array.isArray(DB.clients))
@@ -15901,8 +15916,8 @@ function showCtxVar(e,p,v){
   // d'une quantité, qui est une vente et reste donc accessible.
   if(venteVerrouillee&&venteVerrouillee()){
     saisirQteVariante(p,v);
-    showToast('🔒 '+(lang==='fr'?'Modifications bloquées — touche le cadenas en haut pour modifier'
-                                :'Editing is locked — tap the padlock above'));
+    var _x=(e&&e.clientX)||120,_y=(e&&e.clientY)||300;
+    _debloquerIci(function(){document.querySelectorAll('.ov.show').forEach(function(o){o.classList.remove('show');});showCtxVar({clientX:_x,clientY:_y},p,v);});
     return;
   }
   _vCtxP=p;_vCtxV=v;
@@ -19484,8 +19499,7 @@ function vendreGros(e,pid){
   if(n>1&&verrou){_ajouterLot(p,n);return;}
   // À partir d'ici il faudrait ÉCRIRE sur l'article — donc modifier.
   if(verrou){
-    showToast('🔒 '+(fr?'Modifications bloquées — touche le cadenas en haut pour régler le '+_motContenant(p)
-                       :'Editing is locked — tap the padlock above'));
+    _debloquerIci(function(){vendreGros(null,pid);});
     return;
   }
   if(!(n>1)){direTailleGros(e,pid);return;}
@@ -19820,7 +19834,7 @@ function corrigerConditionnement(pid,vid){
   // ⚠️ Corriger un conditionnement ÉCRIT sur l'article : c'est une
   // modification, donc le verrou s'applique — et il le dit.
   if(venteVerrouillee&&venteVerrouillee()){
-    showToast('🔒 '+(lang==='fr'?'Modifications bloquées — touche le cadenas en haut':'Editing is locked — tap the padlock above'));
+    _debloquerIci(function(){corrigerConditionnement(pid,vid);});
     return;
   }
   // ⭐ 23.36 — la feuille de tous les étages. Venu de la fiche, le prix à
@@ -21716,9 +21730,15 @@ function _photoPourArticle(p,src,o){
   if(!p||!src)return Promise.resolve(false);
   // 23.38 — `o.cible` : une variante. Elle refusait encore le hors-ligne.
   var _art=p,_nm=p.nm+(o.cible?(' — '+(o.cible.nm||'')):'');
+  var _idA=p.id,_idV=o.cible?o.cible.id:null;
   if(o.cible)p=o.cible;
   return Promise.all([_phCarre(src,600,0.85),_phCarre(src,240,0.72)]).then(function(r){
     return _phDataUrl(r[1]).then(function(vign){
+      // ⚠️ 23.50 — la photo se prépare pendant une fraction de seconde. Si des
+      // données sont arrivées entre-temps, l'article d'avant n'est plus dans
+      // la boutique : la photo partait dans le vide. On le retrouve par son id.
+      var _a2=(DB.articles||[]).find(function(x){return x.id===_idA;});
+      if(_a2){_art=_a2;p=(_idV!=null)?(((_a2.vr||[]).find(function(x){return x.id===_idV;}))||p):_a2;if(_idV!=null)o.cible=p;}
       var k='ph'+Date.now()+'_'+Math.floor(Math.random()*1e5);
       _phOublierDe(p);
       p.img=vign;p._imgAttente=_phMoi()+k;delete p._imgCat;
@@ -21742,6 +21762,25 @@ function _photoPourArticle(p,src,o){
 }
 // « Recadrer » à un toucher, quelques secondes, puis il disparaît.
 var _snackT=null;
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.50 — « IL FAUT QU'ON RENTRE EN ARRIÈRE ACTIVER LA MODIFICATION AVANT
+//  D'ALLER MODIFIER LÀ-BAS : IL FALLAIT UN ACCÈS RAPIDE À LA MODIFICATION LÀ
+//  OÙ C'EST NÉCESSAIRE. » L'app disait « touche le cadenas en haut » : il
+//  fallait fermer, remonter, débloquer, revenir, recommencer le geste. Le
+//  déblocage est maintenant proposé à l'endroit du geste, et le geste reprend.
+// ══════════════════════════════════════════════════════════════════
+function _debloquerIci(apres){
+  var fr=(lang==='fr'),s=document.getElementById('snack-ph');
+  if(!s){s=document.createElement('div');s.id='snack-ph';s.className='snack-ph';document.body.appendChild(s);}
+  s.innerHTML='<span>🔒 '+(fr?'Modifications bloquées':'Editing is locked')+'</span><button type="button" id="snack-ph-b">'+(fr?'Débloquer':'Unlock')+'</button>';
+  s.classList.add('show');
+  document.getElementById('snack-ph-b').onclick=function(){
+    s.classList.remove('show');
+    try{if(venteVerrouillee())toggleVerrouVente();}catch(e){}
+    if(!venteVerrouillee()&&apres){try{apres();}catch(e){}}
+  };
+  clearTimeout(_snackT);_snackT=setTimeout(function(){s.classList.remove('show');},7000);
+}
 function _snackRecadrer(p,src,cible){
   var fr=(lang==='fr'),s=document.getElementById('snack-ph');
   if(!s){s=document.createElement('div');s.id='snack-ph';s.className='snack-ph';document.body.appendChild(s);}
