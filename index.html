@@ -973,6 +973,18 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .vinline .vgrid:not(.v-liste) .vtile .vt-ov{display:flex;flex-direction:column;align-items:stretch;background:#A8783C;border-top:3px solid #D9AE74;padding:3px 4px 4px;color:#fff;font-size:9px;text-align:center;box-shadow:0 6px 7px -3px rgba(60,35,5,.42)}
 .vinline .vgrid:not(.v-liste) .vtile .vt-px{order:-1;display:block;position:static;max-width:none;background:#fff;color:#1E1B2E;border-radius:5px 5px 0 0;text-align:center;font-size:15px;line-height:17px;padding:2px 2px 0}
 .vinline .vgrid:not(.v-liste) .vtile .vt-nm{display:block;color:#3D3A4A;background:#fff;border-radius:0 0 5px 5px;text-align:center;height:13px;line-height:12px;font-size:9.5px;padding:0 3px 1px}
+/* ⚠️⚠️ 23.49 — SA CAPTURE : dans « Riz (kg) » ouvert, l'étiquette était posée
+   SUR la photo, la photo coupée dessous, et « sac » par-dessus le prix. Une
+   sorte qui a SA photo porte la classe `has-photo`, dont les vieilles règles
+   (image en fond de toute la tuile, tuile haute de 1,18 fois sa largeur,
+   texte blanc) n'avaient jamais été neutralisées ici : mes essais n'avaient
+   que des sortes sans photo propre. Même étagère pour toutes les sortes. */
+.vinline .vgrid:not(.v-liste) .vtile.has-photo{aspect-ratio:auto;padding:0;justify-content:flex-start;align-items:stretch;background:linear-gradient(180deg,#EFE6D6 0%,#F8F2E7 55%,#E9DDC8 100%) no-repeat 0 0/100% 78px}
+.vinline .vgrid:not(.v-liste) .vtile.has-photo img{position:static;inset:auto;width:100%;height:78px;object-fit:contain;object-position:center bottom;border-radius:0;padding:5px 7px 0;box-sizing:border-box;mix-blend-mode:multiply}
+.vinline .vgrid:not(.v-liste) .vtile.has-photo .vt-ov{position:static;padding:3px 4px 4px;text-align:center;align-items:stretch;background:#A8783C}
+.vinline .vgrid:not(.v-liste) .vtile.has-photo .vt-nm,.vinline .vgrid:not(.v-liste) .vtile.has-photo .vt-px,.vinline .vgrid:not(.v-liste) .vtile.has-photo .vt-stk{color:#3D3A4A;text-shadow:none}
+.vinline .vgrid:not(.v-liste) .vtile.has-photo .vt-px{color:#1E1B2E}
+.vinline .vgrid:not(.v-liste) .vtile.has-photo .vt-stk{color:#fff}
 .snack-ph{white-space:nowrap;position:fixed;left:50%;bottom:92px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:400;display:flex;align-items:center;gap:14px;background:#1E1B2E;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;font-size:13px;font-weight:700;font-family:'Outfit',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:all .25s}
 .snack-ph.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .snack-ph button{background:none;border:none;color:var(--O);font-weight:900;font-size:13.5px;font-family:'Outfit',sans-serif;cursor:pointer;padding:4px 2px}
@@ -1649,7 +1661,12 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .bsht{background:var(--C);border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:0 0 26px;animation:sup .3s cubic-bezier(.34,1.56,.64,1)}
 @keyframes sup{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .shndl{width:34px;height:4px;background:var(--BD);border-radius:2px;margin:11px auto 0}
-.shhdr{padding:14px 19px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--BD)}
+.shhdr{padding:14px 19px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--BD);
+  /* 23.49 — sa capture de « Son prix » : le titre coupé en haut, la croix à
+     moitié sortie. La feuille défile quand le clavier s'ouvre, et son
+     en-tête partait avec. Il reste collé en haut : le titre et la croix
+     pour fermer sont toujours là. */
+  position:sticky;top:0;z-index:6;background:var(--C);border-radius:24px 24px 0 0}
 .shtit{font-size:18px;font-weight:800;color:var(--T)}
 /* 44 px, pas 40 : c'est le minimum sous un pouce, et il ferme des écrans où
    l'on est en train d'encaisser. La couleur était var(--M) — un gris pâle sur
@@ -7289,7 +7306,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.48'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.49'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -21197,6 +21214,21 @@ function _nomAlerte(a){
 // calcule une fois par rendu : sans ça, `_alertesStock()` repasserait sur
 // toute la boutique pour CHAQUE article de la liste.
 var _alrtIdx=null,_alrtIdxN=-1,_alrtStamp=0;
+// ⚠️ 23.49 — « quand on parle de stock bas ou d'épuisé, je veux que ça FILTRE ».
+// Sa capture : « Stock bas » montrait la famille Huile entière — 537 unités
+// en vert, avec ses cinq sortes dont une à 493. Elle y était à bon droit (une
+// sorte basse), mais la ligne montrait tout. Sous ces deux filtres, une
+// famille ne montre plus que ses sortes concernées, et leur quantité.
+function _sorteDansFiltre(p,v){
+  if(_stkFiltre!=='bas'&&_stkFiltre!=='out')return true;
+  if(!(Number(v.px)>0||Number(v.pa)>0))return false;
+  var q=Number(v.stk)||0,seuil=Number(p.al)||0;
+  return _stkFiltre==='out'?(q<=0):(q>0&&seuil>0&&q<=seuil);
+}
+function _qteSousFiltre(p,defaut){
+  if((_stkFiltre!=='bas'&&_stkFiltre!=='out')||!(p.vr&&p.vr.length)||utiliseStockBase(p))return defaut;
+  return p.vr.filter(function(v){return _sorteDansFiltre(p,v);}).reduce(function(s,v){return s+Math.max(0,Number(v.stk)||0);},0);
+}
 function _alerteDe(p){
   var n=((DB&&DB.articles)||[]).length;
   if(!_alrtIdx||_alrtIdxN!==n||_alrtIdx._t!==_alrtStamp){
@@ -27680,7 +27712,7 @@ ti.onclick=function(){toggleCatStock(cat);};
 c.appendChild(ti);
 if(replie)return;
 var card=document.createElement('div');card.className='scd';items.forEach(function(p){var ts=getStk(p),_tsv=_stkVendable(p),_dette=Math.max(0,_tsv-ts),dc=(role==='patron')?depCount(p):0,pct=Math.min(100,_tsv<=0?0:_tsv/Math.max(_tsv+10,20)*100),cls=_tsv<=0?'out':_tsv<=p.al?'low':'ok';var d=document.createElement('div');d.className='sit';d.onclick=function(){if(role==='patron'){selArtStk(p);document.getElementById('ov-stk').classList.add('show');}};d.innerHTML=(p.img?'<img class="siemo-img" src="'+srcSure(p.img)+'" onerror="var s=document.createElement(\'span\');s.className=\'siemo\';s.innerHTML='+jsStr(dessinArt(p,22,'width:100%;height:100%;border-radius:inherit'))+';this.replaceWith(s)">':'<div class="siemo-wrap">'+(DB.cfg&&DB.cfg.noEmoji?'<span class="siemo simono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</span>':(function(){var _m=mediaArtInner(p,22);return '<span class="siemo simono" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</span>';})())+((role==='patron'||hasPerm('produits'))?'<button class="siphoto" onclick="ajouterPhotoArticle(event,'+p.id+')" title="'+(lang==='fr'?'Ajouter une photo':'Add a photo')+'">'+ico('appareil',14)+'</button>':'')+'</div>')+'<div class="siinf"><div class="sinm">'+p.nm+(p.vr.length?' <span style="font-size:9px;color:var(--B);font-weight:700">('+p.vr.length+')</span>':'')+'</div><div class="sidet">'+prixCarte(p)+' · '+(lang==='fr'?'Vendu 30 j':'Sold 30 d')+' : '+fmtQ(_q30[p.id]||0)+(( !p.vr.length&&p.px>0&&!(p.pa>0))?(' · <span style="color:var(--O);font-weight:800">'+(lang==='fr'?'prix d\'achat à mettre':'cost missing')+'</span>'):'')
-+(p._sugg?(' · <span style="color:var(--B);font-weight:800">'+(lang==='fr'?'💡 prix indicatif — vérifie':'💡 suggested price — check')+'</span>'):'')+'</div>'+(p.vr.length&&!utiliseStockBase(p)?'<div class="svlist">'+p.vr.map(function(v){var vs=v.stk||0;return '<span class="svchip" style="color:'+(vs<=0?'var(--R)':vs<=2?'var(--O)':'var(--G)')+'">'+(v.nm||'?')+' : '+fmtQ(Math.max(0,vs))+(vs<=0?' ⛔':'')+'</span>';}).join('')+'</div>':'')+'<div class="sbb"><div class="sbf" style="width:'+pct+'%;background:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'"></div></div></div><div class="sistock"><div class="siqty '+cls+'">'+fmtQ(_tsv)+'</div><div class="siu">'+uniteArt(p)+'</div>'+(_dette>0?'<div style="font-size:9px;color:var(--R);font-weight:800;margin-top:2px">−'+fmtQ(_dette)+' '+(lang==='fr'?'à rattraper':'to catch up')+'</div>':'')+(dc>0?'<div style="font-size:9px;color:var(--PU);font-weight:800;margin-top:2px">🔁 '+dc+' '+(lang==='fr'?'dépannage':'stopgap')+'</div>':'')+(role==='patron'?'<div style="font-size:9px;color:var(--B);font-weight:700;margin-top:2px">+ '+(lang==='fr'?'Entrée':'Entry')+'</div>':'')+'</div>';if(_stkFiltre==='cmd'){var _sg='';try{_sg=_suggestionCommande(p,_q30);}catch(e){}
++(p._sugg?(' · <span style="color:var(--B);font-weight:800">'+(lang==='fr'?'💡 prix indicatif — vérifie':'💡 suggested price — check')+'</span>'):'')+'</div>'+(p.vr.length&&!utiliseStockBase(p)?'<div class="svlist">'+p.vr.filter(function(v){return _sorteDansFiltre(p,v);}).map(function(v){var vs=v.stk||0;return '<span class="svchip" style="color:'+(vs<=0?'var(--R)':vs<=2?'var(--O)':'var(--G)')+'">'+(v.nm||'?')+' : '+fmtQ(Math.max(0,vs))+(vs<=0?' ⛔':'')+'</span>';}).join('')+'</div>':'')+'<div class="sbb"><div class="sbf" style="width:'+pct+'%;background:'+(ts<=0?'var(--R)':ts<=p.al?'var(--O)':'var(--G)')+'"></div></div></div><div class="sistock"><div class="siqty '+cls+'"'+((_stkFiltre==='bas'||_stkFiltre==='out')&&p.vr.length&&!utiliseStockBase(p)?(' style="color:'+(_stkFiltre==='out'?'var(--R)':'var(--O)')+'"'):'')+'>'+fmtQ(_qteSousFiltre(p,_tsv))+'</div><div class="siu">'+uniteArt(p)+'</div>'+(_dette>0?'<div style="font-size:9px;color:var(--R);font-weight:800;margin-top:2px">−'+fmtQ(_dette)+' '+(lang==='fr'?'à rattraper':'to catch up')+'</div>':'')+(dc>0?'<div style="font-size:9px;color:var(--PU);font-weight:800;margin-top:2px">🔁 '+dc+' '+(lang==='fr'?'dépannage':'stopgap')+'</div>':'')+(role==='patron'?'<div style="font-size:9px;color:var(--B);font-weight:700;margin-top:2px">+ '+(lang==='fr'?'Entrée':'Entry')+'</div>':'')+'</div>';if(_stkFiltre==='cmd'){var _sg='';try{_sg=_suggestionCommande(p,_q30);}catch(e){}
 if(_sg){var _if=d.querySelector('.siinf');if(_if){var _dc=document.createElement('div');_dc.className='sicmd';_dc.textContent=_sg;_if.appendChild(_dc);}}}
 card.appendChild(d);});c.appendChild(card);});}
 // ═══ Navigation du stock : recherche + filtres rapides + catégories repliables ═══
