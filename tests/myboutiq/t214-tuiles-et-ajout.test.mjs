@@ -70,7 +70,9 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
   t(g.plein === 0 && huile.photo, `la photo se range dans la vignette, plus aucune carte à photo pleine page (${g.plein})`);
   // 23.42 — décision du patron (choix A, 13/11) : la photo prend la tuile et le
   // nom se pose dessus, en blanc sur un voile. La 23.01 le voulait en noir dessous.
-  t(huile.nomCouleur === 'rgb(255, 255, 255)', `le nom se pose sur la photo, en blanc sur un voile (${huile.nomCouleur})`);
+  // 23.44 — sa capture avec de vraies photos (« gaspillage d'espace ») : c'est
+  // le PRIX qui se colle sur la photo ; le nom revient dessous, en sombre.
+  t(huile.nomCouleur === 'rgb(61, 58, 74)', `le nom est sous la photo, en sombre sur blanc (${huile.nomCouleur})`);
   t(huile.nomY === sucre.nomY, `photo ou dessin, le nom tombe à la même hauteur (${huile.nomY} / ${sucre.nomY} px)`);
   t(!sucre.chip && !huile.chip, `un sac ou un carton SANS prix ne s'affiche plus sous la tuile (sucre « ${sucre.chip} », huile « ${huile.chip} »)`);
   t(/13\s?000/.test(savon.chip) && /carton de 24/.test(savon.chip), `le carton qui a un prix se montre, avec son montant : « ${savon.chip} »`);

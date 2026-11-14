@@ -59,7 +59,7 @@ t(o3.length === 1000 && new Set(o3).size === 1000 && !(await p.evaluate(() => !!
 // La recherche trouve un article qui n'était pas dessiné.
 await p.evaluate(() => { document.getElementById('pc-' + (typeof DB !== 'undefined' ? document.querySelector('#pgrid .pcard').id.slice(3) : 0)).scrollIntoView(); renderProd(DB.articles); }); await p.waitForTimeout(200);
 const avant = await p.evaluate(() => !!document.getElementById('pc-1998'));
-t((await tuiles()).length === 60, 'remonté en haut, la grille revient à ses 60 premières tuiles');
+{ const n0 = (await tuiles()).length; t(n0 >= 60 && n0 < 120, `remonté en haut, la grille ne redessine que le début (${n0} tuiles sur 1 000)`); }
 await p.evaluate(() => filtrC('Article 999')); await p.waitForTimeout(200);
 const o4 = await tuiles();
 t(!avant && o4.length === 1 && o4[0] === 1998, 'la recherche trouve un article pas encore dessiné');

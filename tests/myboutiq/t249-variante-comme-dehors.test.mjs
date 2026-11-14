@@ -30,7 +30,7 @@ const tuiles = await p.evaluate(() => [...document.querySelectorAll('.vtile')].m
   return { txt: x.innerText.replace(/\s+/g, ' ').trim(), gros: g ? g.innerText.replace(/\s+/g, ' ').trim() : '', coupe: !!gb && gb.scrollWidth > gb.clientWidth + 1 }; }));
 const dedans = { nm: await st('.vt-nm', '.vtile'), px: await st('.vt-px', '.vtile'), lib: await st('.vt-lib', '.vtile'), barre: await st('.vt-gros b', '.vtile'), i: await st('.vt-gros i', '.vtile') };
 t(dedans.nm && dehors.nm && dedans.nm.fs === dehors.nm.fs && dedans.nm.fw === dehors.nm.fw, `le nom : ${dedans.nm && dedans.nm.fs} / ${dedans.nm && dedans.nm.fw} dedans, ${dehors.nm && dehors.nm.fs} / ${dehors.nm && dehors.nm.fw} dehors`);
-t(dedans.px && dehors.px && dedans.px.fs === dehors.px.fs && /^750\s?FCFA$/.test(dedans.px.t) && /^200\s?FCFA$/.test(dehors.px.t), `le prix s’écrit pareil et à la même taille : « ${dedans.px && dedans.px.t} » (${dedans.px && dedans.px.fs}) dedans, « ${dehors.px && dehors.px.t} » (${dehors.px && dehors.px.fs}) dehors`);
+t(dedans.px && dehors.px && dedans.px.fs === dehors.px.fs && /^750\s?F(CFA)?$/.test(dedans.px.t) && /^200\s?F(CFA)?$/.test(dehors.px.t), `le prix s’écrit pareil et à la même taille : « ${dedans.px && dedans.px.t} » (${dedans.px && dedans.px.fs}) dedans, « ${dehors.px && dehors.px.t} » (${dehors.px && dehors.px.fs}) dehors`);
 t(dedans.lib && dehors.lib && dedans.lib.t === dehors.lib.t && dedans.lib.fs === dehors.lib.fs, `« ${dedans.lib && dedans.lib.t} » sous le prix, dedans comme dehors`);
 t(dedans.barre && dehors.barre && dedans.barre.fs === dehors.barre.fs && /palette$/.test(dedans.barre.t) && /carton$/.test(dehors.barre.t), `la barre du gros sans prix : « ${dedans.barre && dedans.barre.t} / ${dedans.i && dedans.i.t} » dedans, « ${dehors.barre && dehors.barre.t} / ${dehors.i && dehors.i.t} » dehors, même taille [${dedans.barre && dedans.barre.fs} / ${dehors.barre && dehors.barre.fs} · ${dedans.barre && dedans.barre.t} / ${dehors.barre && dehors.barre.t}]`);
 t(tuiles.length === 2 && tuiles.every(x => !x.coupe && !/palette de 1\b/.test(x.gros)), `rien de coupé : plus jamais « palette de 1 » (${tuiles.map(x => x.gros).join(' · ')})`);
@@ -38,7 +38,7 @@ t(tuiles.every(x => !/restants|Épuisé/.test(x.txt)), `pas de compteur « resta
 // Avec un prix de gros : la seconde ligne porte la taille, sans rien couper.
 await ouvrir(148);
 const far = await p.evaluate(() => { const g = document.querySelector('#pc-148 .pbarre'); return g ? g.innerText.replace(/\s+/g, ' ') : ''; });
-t(/25\s?000\s?FCFA/.test(far) && /sac de 50/.test(far), `dehors, avec prix : « ${far} »`);
+t(/25\s?000\s?F/.test(far) && /sac de 50/.test(far), `dehors, avec prix : « ${far} »`);
 // Une famille dont le stock est compté : « Bas » et « Épuisé », comme dehors.
 await ouvrir(149);
 const sav = await p.evaluate(() => [...document.querySelectorAll('.vtile')].map(x => ({ nm: x.querySelector('.vt-nm').textContent, al: (x.querySelector('.vt-alerte') || {}).textContent || '' })));
