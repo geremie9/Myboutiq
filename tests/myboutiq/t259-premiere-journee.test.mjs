@@ -22,8 +22,10 @@ const ecran = p => p.evaluate(() => ({ scr: (document.querySelector('.scr.on') |
   const { ctx, p, errs } = await ouvrir({ fn: a => { try { if (!localStorage.getItem('myboutiq_v6')) { localStorage.setItem('myboutiq_v6', a.db); localStorage.setItem('mb_porte_libre', JSON.stringify({ c: 'MARI0001', t: Date.now() - 2 * 3600e3 })); } } catch (e) {} }, arg: { db: JSON.stringify(db) } });
   const e = await ecran(p);
   t(e.scr === 's-caisse' && e.role === 'patron', `le jour de la création, le retour ouvre la caisse sans code (${e.scr})`);
-  t(e.co && /Choisis 4 chiffres/.test(e.note) && !e.pinCase, 'une seule question : ses 4 chiffres, sans retaper le PIN');
-  await p.evaluate(() => { document.getElementById('co-new').value = '7391'; document.getElementById('co-new2').value = '7391'; return validerCodeOuverture(); }); await p.waitForTimeout(500);
+  // 23.47 — la question se pose sur un pavé (4 ronds), plus dans une fiche.
+  const c4 = await p.evaluate(() => { const o = document.getElementById('ov-co4'); return { ouverte: o.classList.contains('show'), titre: (o.querySelector('.c4-tit') || {}).textContent || '', champs: o.querySelectorAll('input').length }; });
+  t(c4.ouverte && /Choisis 4 chiffres/.test(c4.titre) && c4.champs === 0, 'une seule question : ses 4 chiffres sur un pavé, sans retaper le PIN');
+  for (const k of '73917391') { await p.locator(`#co4 .c4-pave button:text-is("${k}")`).tap(); await p.waitForTimeout(k === '1' ? 400 : 90); } await p.waitForTimeout(700);
   const pose = await p.evaluate(() => codeOuvertureActif());
   t(pose, 'le code à 4 chiffres est posé');
   await p.reload(); await p.waitForTimeout(3200);

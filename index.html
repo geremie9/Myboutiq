@@ -976,6 +976,17 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .snack-ph{white-space:nowrap;position:fixed;left:50%;bottom:92px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:400;display:flex;align-items:center;gap:14px;background:#1E1B2E;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;font-size:13px;font-weight:700;font-family:'Outfit',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:all .25s}
 .snack-ph.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .snack-ph button{background:none;border:none;color:var(--O);font-weight:900;font-size:13.5px;font-family:'Outfit',sans-serif;cursor:pointer;padding:4px 2px}
+.c4{padding:28px 20px calc(16px + env(safe-area-inset-bottom,0px))!important;text-align:center;font-family:'Outfit',sans-serif}
+.c4-tit{font-size:21px;font-weight:900;color:var(--T)}
+.c4-sous{font-size:13px;font-weight:600;color:var(--M);margin:6px 8px 16px;line-height:1.4}
+.c4-pts{display:flex;justify-content:center;gap:16px;margin-bottom:18px}
+.c4-pts i{width:18px;height:18px;border-radius:50%;border:2.5px solid #1E1B2E;box-sizing:border-box}
+.c4-pts i.on{background:#F59E0B;border-color:#F59E0B}
+.c4-pave{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;max-width:300px;margin:0 auto}
+.c4-pave button{border:0;background:#F1EEF7;border-radius:14px;height:56px;font:800 23px 'Outfit',sans-serif;color:#1E1B2E}
+.c4-pave button:active{background:#FFE9BF}
+.c4-bas{display:flex;justify-content:center;gap:18px;margin-top:14px}
+.c4-bas button{border:0;background:none;font:700 13.5px 'Outfit',sans-serif;color:var(--M);padding:10px 6px}
 .stk-ranger{display:flex;align-items:center;gap:10px;background:#1E1B2E;color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:9px;font-size:13.5px;font-weight:800;cursor:pointer}
 .stk-ranger span{flex:1}.stk-ranger b{background:#F59E0B;color:#1E1B2E;border-radius:10px;padding:7px 11px;font-weight:900;white-space:nowrap}
 #ov-rgb .rg{position:fixed;inset:0;background:#F6EFE3;display:flex;flex-direction:column;font-family:'Outfit',sans-serif;color:#1E1B2E}
@@ -6850,6 +6861,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
 </div>
 
 <div class="ov" id="ov-rgb"><div class="rg" id="rg"></div></div>
+<div class="ov" id="ov-co4"><div class="bsht c4" id="co4"></div></div>
 <div class="ov" id="ov-lang" onclick="closeOv(event,'ov-lang')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit">🌍 Langue & Devise</div><button class="bcl" onclick="closeSheet('ov-lang')">✕</button></div>
@@ -7277,7 +7289,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.46'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.47'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -9362,13 +9374,18 @@ function majEntreeRapide(){
     ?((fr?'Entre le PIN équipe pour ouvrir ':'Enter the team PIN to open ')+(e.boutique||formatShopCode(e.code)))
     :(function(){
         var L=_pinAttendu()||6,co=false;try{co=codeOuvertureActif();}catch(x){}
-        var quoi=co?(fr?'ton code d\'ouverture ou ton PIN':'your quick code or your PIN')
+        var quoi=co?(fr?'tes 4 chiffres':'your 4 digits')
                    :(fr?('ton PIN à '+L+' chiffres'):('your '+L+'-digit PIN'));
         return _ici?(fr?'Entre '+quoi+' pour ouvrir « '+_ici+' ».':'Enter '+quoi+' to open “'+_ici+'”.')
                    :(fr?'Entre '+quoi+' pour ouvrir tes boutiques.':'Enter '+quoi+' to open your shops.');
       })();
   try{var _pt=document.getElementById('er-points');
-    if(_pt){_pt.setAttribute('data-n',vend?4:(_pinAttendu()||6));if(window._majPoints)window._majPoints();}}catch(x){}
+    // 23.47 — « je n'aime pas voir les 6 chiffres ». Il avait posé son code
+    // court et la porte lui montrait TOUJOURS six ronds : rien ne disait que
+    // quatre suffisaient. Les ronds suivent le code de CE téléphone (et
+    // s'allongent tout seuls s'il tape son PIN à la place).
+    var _co4=false;try{_co4=!vend&&codeOuvertureActif();}catch(x){}
+    if(_pt){_pt.setAttribute('data-n',(vend||_co4)?4:(_pinAttendu()||6));if(window._majPoints)window._majPoints();}}catch(x){}
   document.getElementById('er-chg').textContent=vend
     ?(fr?'Ce n\'est pas toi ? Changer de vendeur':'Not you? Switch seller')
     :(fr?'Autre numéro ?':'Another number?');
@@ -11173,12 +11190,8 @@ function _proposerCodeApresPorteLibre(){
     if(role!=='patron'||codeOuvertureActif())return;
     if(_coPropLire().non)return;
     if(document.querySelector('.ov.show'))return;
-    _coProposeT=Date.now();
-    ouvrirCodeOuverture(true);
-    var n=document.getElementById('co-note');
-    if(n)n.textContent=(lang==='fr')
-      ?'Choisis 4 chiffres pour ouvrir ta caisse sur ce téléphone, comme son écran de verrouillage. Ton PIN à 6 chiffres reste valable partout.'
-      :'Pick 4 digits to open your till on this phone. Your 6-digit PIN keeps working everywhere.';
+    if(_coPropLire().non2)return;
+    ouvrirCode4();
   }catch(e){}
 }
 var _CLE_COPROP='mb_co_prop',_coProposeT=0;
@@ -11192,15 +11205,18 @@ function _proposerCodeCourt(){
       if(codeOuvertureActif())return;
       if(String(DB.cfg.pin||'').length<6)return;
       var o=_coPropLire();
-      if(o.non||(o.n||0)>=3)return;
-      if(o.t&&(Date.now()-o.t)<3*864e5)return;
+      // 23.47 — plus de « trois fois, à trois jours d'écart » : c'était la
+      // fiche qu'il refusait, pas l'idée. Le pavé est proposé à chaque entrée
+      // au PIN, au plus une fois par jour, jusqu'à ce qu'il le pose ou dise
+      // « ne plus me proposer » (l'ancien refus, lui, visait la fiche).
+      if(o.non2)return;
+      if(o.t&&(Date.now()-o.t)<20*36e5)return;
       if(document.querySelector('.ov.show'))return;
       var sc=document.querySelector('.scr.on');if(!sc||sc.id!=='s-caisse')return;
       o.n=(o.n||0)+1;o.t=Date.now();_coPropEcrire(o);
-      _coProposeT=Date.now();
-      ouvrirCodeOuverture(true);
+      ouvrirCode4();
     }catch(e){}
-  },2200);
+  },1200);
 }
 function codeCourtPlusTard(jamais){
   if(jamais){var o=_coPropLire();o.non=true;_coPropEcrire(o);}
@@ -11261,31 +11277,113 @@ async function validerCodeOuverture(){
     return _coErr(fr?'Ce n\'est pas ton PIN.':'That is not your PIN.');
   if(!/^\d{4}$/.test(a))return _coErr(fr?'Quatre chiffres, pas plus.':'Exactly four digits.');
   if(a!==b)return _coErr(fr?'Les deux ne sont pas pareils.':'The two do not match.');
-  // 2. ⚠️⚠️ LE CODE COURT NE DOIT PAS TRAHIR LE LONG. Si son PIN est
-  //    « 123456 » et qu'il choisit « 1234 », celui qui le regarde taper le
-  //    code court à la caisse apprend QUATRE des six chiffres du mot de
-  //    passe de son compte. On refuse tout morceau du PIN.
-  if(String(DB.cfg.pin||'').indexOf(a)>=0)
-    return _coErr(fr?'Ce sont des chiffres de ton PIN — quelqu\'un qui te regarde taper apprendrait ton PIN. Prends-en d\'autres.'
-                    :'Those digits are part of your PIN. Pick different ones.');
-  // 3. Les quatre codes que tout le monde essaie en premier.
-  if(/^(\d)\1{3}$/.test(a)||['1234','4321','2580','0852','1379','9731'].indexOf(a)>=0)
-    return _coErr(fr?'Celui-là est le premier qu\'on essaie. Prends-en un autre.'
-                    :'That one is the first anybody tries. Pick another.');
-  var sel=_selNeuf(),h;
-  try{h=await _hachCode(a,sel);}catch(e){return _coErr(fr?'Impossible d\'enregistrer.':'Could not save.');}
-  // ⚠️ Le code n'est JAMAIS gardé en clair — ni ici, ni ailleurs. Et il ne
-  // part pas au serveur : il ne vit que dans ce téléphone.
-  try{localStorage.setItem(_CLE_CODEOUV,JSON.stringify({sel:sel,h:h,code:String(DB.cfg.code||''),q:Date.now()}));}
-  catch(e){return _coErr(fr?'Le téléphone n\'a pas pu l\'enregistrer.':'The phone could not save it.');}
-  // La trace : le patron doit pouvoir voir, plus tard, qu'un code court a
-  // été posé sur cet appareil-là — et quand.
-  try{journalAjouter('unite',fr?'Code d\'ouverture (4 chiffres)':'Opening code (4 digits)','',fr?'posé sur cet appareil':'set on this device');}catch(e){}
+  var _rf=_coRefus(a);if(_rf)return _coErr(_rf);
+  if(!(await _coPoser(a)))return _coErr(fr?'Le téléphone n\'a pas pu l\'enregistrer.':'The phone could not save it.');
   _coProposeT=0;
   closeSheet('ov-codeouv');
   showToast('⚡ '+(fr?'C\'est posé. Quatre chiffres suffisent maintenant sur ce téléphone.'
                     :'Done. Four digits are enough on this phone now.'));
 }
+// Pourquoi ce code-là est refusé — ou '' s'il est bon.
+function _coRefus(a){
+  var fr=(lang==='fr');
+  // 2. ⚠️⚠️ LE CODE COURT NE DOIT PAS TRAHIR LE LONG. Si son PIN est
+  //    « 123456 » et qu'il choisit « 1234 », celui qui le regarde taper le
+  //    code court à la caisse apprend QUATRE des six chiffres du mot de
+  //    passe de son compte. On refuse tout morceau du PIN.
+  if(String(DB.cfg.pin||'').indexOf(a)>=0)
+    return fr?'Ce sont des chiffres de ton PIN — quelqu\'un qui te regarde taper apprendrait ton PIN. Prends-en d\'autres.'
+                    :'Those digits are part of your PIN. Pick different ones.';
+  // 3. Les quatre codes que tout le monde essaie en premier.
+  if(/^(\d)\1{3}$/.test(a)||['1234','4321','2580','0852','1379','9731'].indexOf(a)>=0)
+    return fr?'Celui-là est le premier qu\'on essaie. Prends-en un autre.'
+                    :'That one is the first anybody tries. Pick another.';
+  return '';
+}
+async function _coPoser(a){
+  var fr=(lang==='fr');
+  var sel=_selNeuf(),h;
+  try{h=await _hachCode(a,sel);}catch(e){return false;}
+  // ⚠️ Le code n'est JAMAIS gardé en clair — ni ici, ni ailleurs. Et il ne
+  // part pas au serveur : il ne vit que dans ce téléphone.
+  try{localStorage.setItem(_CLE_CODEOUV,JSON.stringify({sel:sel,h:h,code:String(DB.cfg.code||''),q:Date.now()}));}
+  catch(e){return false;}
+  // La trace : le patron doit pouvoir voir, plus tard, qu'un code court a
+  // été posé sur cet appareil-là — et quand.
+  try{journalAjouter('unite',fr?'Code d\'ouverture (4 chiffres)':'Opening code (4 digits)','',fr?'posé sur cet appareil':'set on this device');}catch(e){}
+  return true;
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.47 — LES 4 CHIFFRES SE CHOISISSENT SUR UN PAVÉ, PAS DANS UNE FICHE.
+//  « Je n'aime pas voir les 6 chiffres… il faut au moins 4 seulement. »
+//  Le code court existait depuis longtemps, et il ne l'avait pas : il était
+//  proposé par une fiche de trois champs, à remplir au clavier d'Android,
+//  avec « Répète-le » — et trois fois seulement, à trois jours d'écart.
+//  Maintenant, juste après son PIN : un pavé, quatre ronds, « encore une
+//  fois », et c'est posé. Le PIN à 6 chiffres reste le mot de passe du
+//  compte (4 chiffres seraient 10 000 essais possibles depuis n'importe
+//  où) : il ne sert plus que sur un téléphone neuf.
+// ══════════════════════════════════════════════════════════════════
+var _c4=null;
+function ouvrirCode4(){
+  if(role!=='patron'||codeOuvertureActif())return;
+  _c4={pas:1,a:'',t:''};
+  _coProposeT=Date.now();
+  _c4Rendre();
+  document.getElementById('ov-co4').classList.add('show');
+}
+function _c4Rendre(){
+  var z=document.getElementById('co4'),fr=(lang==='fr');if(!z||!_c4)return;
+  var pts='';for(var i=0;i<4;i++)pts+='<i'+(i<_c4.t.length?' class="on"':'')+'></i>';
+  z.innerHTML='<div class="c4-tit">'+(_c4.pas===1?(fr?'Choisis 4 chiffres':'Pick 4 digits'):(fr?'Encore une fois':'Once more'))+'</div>'
+    +'<div class="c4-sous">'+(_c4.pas===1?(fr?'Pour ouvrir ta caisse sur ce téléphone. Tes 6 chiffres ne serviront plus que sur un autre téléphone.'
+                                              :'To open your till on this phone. Your 6 digits will only be needed on another phone.')
+                                         :(fr?'Les mêmes 4 chiffres, pour être sûr.':'The same 4 digits, to be sure.'))+'</div>'
+    +'<div class="c4-pts" id="c4-pts">'+pts+'</div>'
+    +'<div class="c4-pave">'+['1','2','3','4','5','6','7','8','9','','0','<'].map(function(k){
+        return k===''?'<span></span>':('<button type="button" onclick="c4Touche(\''+k+'\')"'+(k==='<'?(' aria-label="'+(fr?'Effacer':'Delete')+'"'):'')+'>'+(k==='<'?'⌫':k)+'</button>');}).join('')+'</div>'
+    +'<div class="c4-bas"><button type="button" id="c4-tard" onclick="c4Fermer(false)">'+(fr?'Plus tard':'Later')+'</button>'
+    +'<button type="button" id="c4-jamais" onclick="c4Fermer(true)">'+(fr?'Ne plus me proposer':'Don\'t ask again')+'</button></div>';
+}
+function c4Fermer(jamais){
+  var o=_coPropLire();if(jamais)o.non2=true;o.t=Date.now();_coPropEcrire(o);
+  _c4=null;_coProposeT=0;closeSheet('ov-co4');
+  if(jamais)showToast(lang==='fr'?'D\'accord. Il reste dans Réglages → « Ouvrir avec 4 chiffres ».':'OK. It stays in Settings.');
+}
+var _c4Occupe=false;
+async function c4Touche(k){
+  if(!_c4||_c4Occupe)return;
+  var fr=(lang==='fr');
+  if(k==='<'){_c4.t=_c4.t.slice(0,-1);_c4Rendre();return;}
+  if(_c4.t.length>=4)return;
+  _c4.t+=k;_c4Rendre();
+  if(_c4.t.length<4)return;
+  var v=_c4.t;
+  if(_c4.pas===1){
+    var rf=_coRefus(v);
+    if(rf){_c4.t='';_c4Rendre();showToast('⚠️ '+rf);return;}
+    _c4.a=v;_c4.pas=2;_c4.t='';
+    setTimeout(function(){if(_c4)_c4Rendre();},160);     // il voit son 4e rond se remplir
+    return;
+  }
+  if(v!==_c4.a){
+    _c4.pas=1;_c4.a='';_c4.t='';_c4Rendre();
+    showToast('⚠️ '+(fr?'Pas les mêmes chiffres. On recommence.':'Not the same digits. Start again.'));
+    return;
+  }
+  // Il a prouvé son PIN à l'instant : passé deux minutes, on ne pose rien.
+  if(!(_coProposeT>0&&(Date.now()-_coProposeT)<120000)){
+    c4Fermer(false);
+    showToast('🔐 '+(fr?'Trop de temps a passé. Réglages → « Ouvrir avec 4 chiffres ».':'Too much time has passed. Settings → "Open with 4 digits".'));
+    return;
+  }
+  _c4Occupe=true;var ok=false;
+  try{ok=await _coPoser(v);}finally{_c4Occupe=false;}
+  _c4=null;_coProposeT=0;closeSheet('ov-co4');
+  showToast(ok?('⚡ '+(fr?'C\'est posé. Demain, 4 chiffres suffisent sur ce téléphone.':'Done. From now on, 4 digits are enough on this phone.'))
+              :('⚠️ '+(fr?'Le téléphone n\'a pas pu l\'enregistrer.':'The phone could not save it.')));
+}
+
 function retirerCodeOuverture(){
   var fr=(lang==='fr');
   try{localStorage.removeItem(_CLE_CODEOUV);}catch(e){}
