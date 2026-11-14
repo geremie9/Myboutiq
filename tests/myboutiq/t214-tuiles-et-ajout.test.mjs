@@ -74,16 +74,22 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
   // le PRIX qui se colle sur la photo ; le nom revient dessous, en sombre.
   t(huile.nomCouleur === 'rgb(61, 58, 74)', `le nom est sous la photo, en sombre sur blanc (${huile.nomCouleur})`);
   t(huile.nomY === sucre.nomY, `photo ou dessin, le nom tombe à la même hauteur (${huile.nomY} / ${sucre.nomY} px)`);
-  t(!sucre.chip && !huile.chip, `un sac ou un carton SANS prix ne s'affiche plus sous la tuile (sucre « ${sucre.chip} », huile « ${huile.chip} »)`);
+  // ⚠️ 23.51 — DEUX DÉCISIONS DU PATRON, DANS CET ORDRE. 23.01 (« la tuile
+  // calme ») : au détail, un contenant sans prix ne prenait pas de place.
+  // 14/11 : « si je vends surtout en détail, ça ne veut pas dire que je ne
+  // vends pas en gros ; au détail le gros disparaît ». Il a laissé trancher :
+  // un contenant CONNU sans prix dit « prix ? » au patron. Rien sur les
+  // articles dont on ne connaît pas le contenant : la tuile reste calme.
+  t(/prix \?/.test(sucre.chip) && /prix \?/.test(huile.chip), `un sac ou un carton connu SANS prix le dit au patron (sucre « ${sucre.chip} », huile « ${huile.chip} »)`);
   t(/13\s?000/.test(savon.chip) && /carton de 24/.test(savon.chip), `le carton qui a un prix se montre, avec son montant : « ${savon.chip} »`);
-  t(g.puces === 2, `deux puces dans toute la grille — les deux contenants qui ont un prix (${g.puces})`);
+  t(g.puces === 4, `quatre puces dans toute la grille : deux contenants avec leur prix, deux qui attendent le leur — aucun sur les autres articles (${g.puces})`);
   t(/casier de 12/.test(biere.chip) && !biere.coupe, `« casier de 12 » tient en entier sur 360 px (« ${biere.chip} »)`);
   // Une touche sur la tuile : une pièce. Une touche sur la puce : un carton.
   await p.locator('#pc-6').click(); await p.waitForTimeout(250);
   await p.locator('#pc-6 .pbas .pbarre').click(); await p.waitForTimeout(300);
   const c = await panier6(p);
   t(c.q === 25 && c.total === 13600, `tuile = 1 pièce, barre du bas = 1 carton : 25 pièces, 600 + 13 000 = ${c.total}`);
-  t(await p.evaluate(() => document.getElementById('caisse-sansgros').style.display === 'none'), 'au détail, aucun bandeau de gros : ce n\'est pas son métier');
+  t(await p.evaluate(() => { majBandeauSansGros(); const z = document.getElementById('caisse-sansgros'); return z.style.display !== 'none' && /sans prix de gros/.test(z.textContent); }), 'au détail aussi, le bandeau propose de régler les contenants connus sans prix (23.51)');
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }
@@ -138,7 +144,7 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
   const { ctx, p, errs } = await caisse(boutique('detail'));
   // 23.23 — « + Ajouter » sur la caisse, c'est le bouton rond (la ligne
   // « TOUS LES ARTICLES · + Ajouter » a rendu sa place aux articles).
-  await p.locator('#fab-add').click(); await p.waitForTimeout(1200);
+  await p.locator('#s-caisse .nadd').click(); await p.waitForTimeout(300); await p.locator('#ajr-art').click(); await p.waitForTimeout(1200);
   const a = await p.evaluate(() => ({ cat: !!document.querySelector('#ov-choixart.show'), porte: !!document.querySelector('#ov-porte.show'),
     tit: document.getElementById('cha-tit').textContent, lien: (document.getElementById('cha-autres') || {}).textContent || '' }));
   t(a.cat && !a.porte, '« + Ajouter » ouvre directement le catalogue — plus d\'écran de choix avant');
@@ -156,7 +162,7 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
   t(o.doublon === 0 && o.supEnBas, 'le support est en DERNIER, comme voulu — plus d\'id en double qui le faisait monter en tête');
   await p.evaluate(() => document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')));
   await p.evaluate(() => majFabAjout());
-  await p.locator('#fab-add').click(); await p.waitForTimeout(900);
+  await p.locator('#s-caisse .nadd').click(); await p.waitForTimeout(300); await p.locator('#ajr-art').click(); await p.waitForTimeout(900);
   t(await p.evaluate(() => !!document.querySelector('#ov-choixart.show')), 'le bouton rond « + » ouvre le même catalogue');
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();

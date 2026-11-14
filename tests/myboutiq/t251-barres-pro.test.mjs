@@ -29,7 +29,8 @@ const tete = p => p.evaluate(() => {
   const h = await tete(p);
   t(h.nom === 'Ets Marie' && h.logo === 'M' && h.qui === 'Patron' && h.taille >= 15 && !h.coupe,
     `le nom de la boutique en grand (${h.taille} px), son initiale « ${h.logo} », « ${h.qui} » dessous`);
-  t(h.mots.join(',') === 'Dépense,Bloqué,Alertes,Réglages', `une icône et son mot : ${h.mots.join(' · ')} — plus de « Sortir » d'un toucher`);
+  // 23.52 — la dépense a rejoint le bouton « Ajouter » du centre de la barre du bas.
+  t(h.mots.join(',') === 'Bloqué,Alertes,Réglages', `une icône et son mot : ${h.mots.join(' · ')} — plus de « Sortir » d'un toucher`);
   t(h.haut <= 72, `toujours une seule rangée (${h.haut} px)`);
   await p.locator('#btn-verrou').tap(); await p.waitForTimeout(250);
   const v = await p.evaluate(() => { const x = document.getElementById('btn-verrou'); return { mot: x.querySelector('.hl').textContent, on: x.classList.contains('on'), svg: !!x.querySelector('svg') }; });
@@ -40,15 +41,16 @@ const tete = p => p.evaluate(() => {
   });
   t(nav.pilule !== 'rgba(0, 0, 0, 0)' && nav.barre === 'none', `l'onglet actif posé dans une pilule (${nav.pilule}), plus de trait au-dessus`);
   t(nav.cli, 'une dette à échéance marque l\'onglet Clients');
-  // « + Article » ne cache plus la dernière tuile
+  // 23.52 — « + Article » flottant a laissé sa place au bouton « Ajouter » du centre.
+  // La dernière tuile reste lisible au-dessus de la barre.
   await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); window.scrollTo(0, document.body.scrollHeight); });
   await p.waitForTimeout(300);
   const f = await p.evaluate(() => {
-    const fab = document.getElementById('fab-add'), r = fab.getBoundingClientRect();
+    const ad = document.querySelector('#s-caisse .bnav .nadd'), r = ad.getBoundingClientRect(), barre = document.querySelector('#s-caisse .bnav').getBoundingClientRect();
     const tuiles = [...document.querySelectorAll('#pgrid .pcard:not(.etg)')], der = tuiles[tuiles.length - 1].getBoundingClientRect();
-    return { mot: fab.textContent.replace(/\s+/g, ''), libre: der.bottom <= r.top || der.right <= r.left };
+    return { mot: ad.textContent.replace(/\s+/g, ''), fab: getComputedStyle(document.getElementById('fab-add')).display, libre: der.bottom <= barre.top || der.right <= r.left };
   });
-  t(f.mot === '+Article' && f.libre, `« + Article », et la dernière tuile se lit en entier au bout de la liste`);
+  t(f.mot === 'Ajouter' && f.fab === 'none' && f.libre, `« Ajouter » au centre de la barre, plus de bouton flottant, et la dernière tuile se lit en entier au bout de la liste`);
   // Les autres écrans : même style, et toujours pas de sortie d'un toucher
   const autres = await p.evaluate(() => ['s-stock', 's-rapports', 's-clients'].map(id => {
     const sc = document.getElementById(id);
@@ -98,7 +100,7 @@ const tete = p => p.evaluate(() => {
   t(h.logo === 'AG' && !h.coupe && h.taille >= 13 && h.haut <= 72, `un nom long se lit en entier, sur deux lignes en ${h.taille} px plutôt qu'une en 10 px ; initiales « ${h.logo} », en-tête ${h.haut} px`);
   await p.evaluate(() => { setLang('en'); try { majBoutonVerrou(); majEnteteCaisse(); } catch (e) {} });
   const en = await tete(p);
-  t(en.mots.includes('Expense') && en.mots.includes('Settings') && en.qui === 'Owner', `en anglais : ${en.mots.join(' · ')} · ${en.qui}`);
+  t(!en.mots.includes('Expense') && en.mots.includes('Settings') && en.qui === 'Owner', `en anglais : ${en.mots.join(' · ')} · ${en.qui}`);
   t(errs.length === 0, 'aucune erreur JS (nom long, anglais)' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }

@@ -999,6 +999,30 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .c4-pave button:active{background:#FFE9BF}
 .c4-bas{display:flex;justify-content:center;gap:18px;margin-top:14px}
 .c4-bas button{border:0;background:none;font:700 13.5px 'Outfit',sans-serif;color:var(--M);padding:10px 6px}
+.bnav{align-items:flex-end}
+/* ⭐⭐ 23.52 — LA BARRE DU BAS (maquette Figma du 14/11). Quatre lieux, chacun
+   SA couleur — on reconnaît l'endroit avant de lire le mot — et au centre un
+   geste : « Ajouter » (un article, un arrivage, une dépense, un client). */
+.ni[onclick*="'caisse'"]{--nc:#D97706;--nf:#FDF1DC}
+.ni[onclick*="'stock'"]{--nc:#8A5A22;--nf:#F3E8D8}
+.ni[onclick*="'rapports'"]{--nc:#12813F;--nf:#E3F5EA}
+.ni[onclick*="'clients'"]{--nc:#B42318;--nf:#FDE8E4}
+.bnav .ni .ne{width:50px;height:32px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--nf,#F1EEF7)!important;color:var(--nc,#5C586B)!important}
+.bnav .ni.on .ne{background:var(--nc,#5C586B)!important;color:#fff!important}
+.bnav .ni .nl{color:#5C586B}
+.bnav .ni.on .nl{color:#1E1B2E;font-weight:800}
+.nadd{flex:none;width:68px;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:0 0 8px;font:800 11px 'Outfit',sans-serif;color:#5C586B;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.nadd i{width:54px;height:54px;border-radius:50%;background:#1E1B2E;display:flex;align-items:center;justify-content:center;margin-top:-20px;box-shadow:0 6px 14px rgba(0,0,0,.28)}
+.nadd i svg{width:28px;height:28px;stroke:#F59E0B;stroke-width:2.6;fill:none;stroke-linecap:round}
+.nadd:active i{transform:scale(.92)}
+/* Le « + Article » flottant faisait doublon avec le bouton du centre. */
+#fab-add.nav-ok{display:none!important}
+/* La dépense rejoint « Ajouter » : en haut, Modifier, Alertes, Réglages. */
+#s-caisse .mhdr #btn-dep.nav-ok{display:none!important}
+.ajr{padding:6px 16px calc(18px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ajr button{border:0;border-radius:16px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font:800 15px 'Outfit',sans-serif;color:#1E1B2E;background:var(--af);cursor:pointer}
+.ajr button i{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--ac);color:#fff}
+.ajr button small{font-size:11.5px;font-weight:700;color:#5C586B;margin-top:-4px}
 .stk-ranger{display:flex;align-items:center;gap:10px;background:#1E1B2E;color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:9px;font-size:13.5px;font-weight:800;cursor:pointer}
 .stk-ranger span{flex:1}.stk-ranger b{background:#F59E0B;color:#1E1B2E;border-radius:10px;padding:7px 11px;font-weight:900;white-space:nowrap}
 #ov-rgb .rg{position:fixed;inset:0;background:#F6EFE3;display:flex;flex-direction:column;font-family:'Outfit',sans-serif;color:#1E1B2E}
@@ -6878,6 +6902,9 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
 </div>
 
 <div class="ov" id="ov-rgb"><div class="rg" id="rg"></div></div>
+<div class="ov" id="ov-ajr" onclick="closeOv(event,'ov-ajr')"><div class="bsht"><div class="shndl"></div>
+  <div class="shhdr"><div class="shtit" id="ajr-tit">Ajouter</div><button class="bcl" onclick="closeSheet('ov-ajr')" aria-label="Fermer">✕</button></div>
+  <div class="ajr" id="ajr"></div></div></div>
 <div class="ov" id="ov-co4"><div class="bsht c4" id="co4"></div></div>
 <div class="ov" id="ov-lang" onclick="closeOv(event,'ov-lang')">
   <div class="bsht"><div class="shndl"></div>
@@ -7306,7 +7333,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.50'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.51'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -11006,9 +11033,9 @@ function appliquerLang(){
   if(nuno)nuno.textContent=lang==='fr'?'Crée ta boutique en quelques étapes simples.':'Create your store in a few simple steps.';
   if(bsi)bsi.textContent=(lang==='fr'?"Commencer l'inscription":'Start registration');
   // Nav
-  ['caisse','stock','rapports','clients'].forEach(function(k){
-    [1,2,3,4].forEach(function(i){var el=document.getElementById('n-'+k+(i>1?i:''));if(el)el.textContent=t(k);});
-  });
+  // ⭐ 23.52 — les quatre lieux disent ce qu'on y FAIT : vendre, le stock,
+  // sa journée, ses dettes (la maquette du 14/11, « Go pour les 4 »).
+  try{_navAjout();}catch(e){}
   // Stats
   document.getElementById('sl-ventes').textContent=t('ventes');
   document.getElementById('sl-ben').textContent=t('benefice');
@@ -11479,6 +11506,7 @@ function swTab(btn,fid){document.querySelectorAll('.ltab').forEach(function(t){t
 // lancement ; partout ailleurs — un droit modifié en cours de route, un
 // vendeur qui prend la caisse — elle repeint comme avant.
 function applyRolePerms(sansRedessiner){
+  try{_navAjout();}catch(e){}
   // ⚠️ « 💰 Autre » suit le droit d'ENCAISSER, pas celui de créer des
   // articles : c'est une vente, pas une modification du catalogue.
   var _bl=document.getElementById('btn-libre');
@@ -13550,9 +13578,27 @@ function _grSansCarton(p,v){
   var g=null;try{g=_grosDe(p,v||null);}catch(e){}
   return !!(g&&g.n>1&&!(g.px>0));
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.51 — « SI JE VENDS SURTOUT EN DÉTAIL, ÇA NE VEUT PAS DIRE QUE JE NE
+//  VENDS PAS EN GROS. QUAND ON VEND EN DÉTAIL, LE GROS DISPARAÎT. »
+//  Mesuré le 14/11, mêmes articles, boutique « détail » contre « gros » :
+//  un carton qui a son prix se vendait déjà dans les deux (puce, famille,
+//  panneau). Ce qui disparaissait au détail, c'était le chemin pour DONNER
+//  ce prix : le riz connu « en sac de 50 » sans prix de sac ne montrait
+//  rien, ni sur la tuile, ni dans un bandeau. Le gros suit maintenant
+//  l'ARTICLE, plus le choix fait au premier jour : un contenant connu
+//  sans prix dit « sac · prix ? » au patron, détail ou gros.
+//  ⚠️ Les petits cubes « gros » sur TOUS les articles restent réservés aux
+//  boutiques « en gros » : c'est sa demande de la 21.x (« tout produit est
+//  vendable en gros »), mais au détail il avait dit l'inverse en 21.10
+//  (« je vois partout vente en carton »). Au détail, rien sur les articles
+//  dont on ne connaît pas le contenant : le chemin est dans l'appui long,
+//  « Comment tu le vends ».
+// ══════════════════════════════════════════════════════════════════
+function _grosConnuVisible(){return !!(role==='patron'||hasPerm('produits'));}
 function majBandeauSansGros(){
   var z=document.getElementById('caisse-sansgros');if(!z||!DB)return;
-  if(!_venteEnGros()||!(role==='patron'||hasPerm('produits'))){z.style.display='none';return;}
+  if(!_grosConnuVisible()){z.style.display='none';return;}
   var n=_articlesSansPrixGros().length,fr=(lang==='fr');
   if(!n){z.style.display='none';z.textContent='';return;}
   z.style.display='block';
@@ -14496,7 +14542,7 @@ function renderGrille(dans){
   var fm=document.getElementById('gr-f-manque'),ft=document.getElementById('gr-f-tout'),fg=document.getElementById('gr-f-gros');
   if(fm)fm.className='cbtn'+(_grFiltre==='manque'?' on':'');
   if(ft)ft.className='cbtn'+(_grFiltre==='tout'?' on':'');
-  if(fg){fg.className='cbtn'+(_grFiltre==='gros'?' on':'');fg.style.display=(_venteEnGros()||_grFiltre==='gros')?'':'none';}
+  if(fg){fg.className='cbtn'+(_grFiltre==='gros'?' on':'');fg.style.display=(_venteEnGros()||_grFiltre==='gros'||_articlesSansPrixGros().length)?'':'none';}
   if(t&&_grFiltre==='gros'){
     var _ng=_articlesSansPrixGros().length;
     t.innerHTML=_ng?('<b>'+_ng+'</b> '+(fr?(_ng>1?'cartons sans prix':'carton sans prix'):('box'+(_ng>1?'es':'')+' without a price'))
@@ -18379,7 +18425,7 @@ function _barreGros(p){
   if(et.length===1&&g0&&g0.n===et[0].n){
     var e=et[0];
     if(e.px>0)return bt('','vendreGros(event,'+p.id+')',_montantCarte(e.px),_iconeCont(e.mot)+' '+escH(e.mot+(fr?' de ':' of ')+_avecUnite(p,e.n)));
-    if(gros)return bt('vide','vendreGros(event,'+p.id+')',_iconeCont(e.mot)+' '+escH(e.mot),fr?'prix ?':'price?');
+    if(gros||_grosConnuVisible())return bt('vide','vendreGros(event,'+p.id+')',_iconeCont(e.mot)+' '+escH(e.mot),fr?'prix ?':'price?');
     return '';
   }
   // Plusieurs étages (« carton ▾ »), un ancien lot en variante, ou le
@@ -21769,6 +21815,54 @@ var _snackT=null;
 //  fallait fermer, remonter, débloquer, revenir, recommencer le geste. Le
 //  déblocage est maintenant proposé à l'endroit du geste, et le geste reprend.
 // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.52 — LE BOUTON DU CENTRE : « AJOUTER ». Les quatre choses qu'on
+//  ajoute dans une journée, au même endroit, à un pouce de distance :
+//  un article, un arrivage, une dépense, un client. Chacune suit les droits
+//  de celui qui tient le téléphone ; s'il n'en a aucun, le bouton n'est pas là.
+// ══════════════════════════════════════════════════════════════════
+function _ajrChoix(){
+  var fr=(lang==='fr'),pat=(role==='patron'),out=[];
+  if(pat||hasPerm('produits'))out.push({k:'art',c:'#D97706',f:'#FDF1DC',t:fr?'Un article':'An item',s:fr?'nouveau dans la boutique':'new in the shop',ic:'plus',fn:function(){ouvrirAjouter();}});
+  if(pat||hasPerm('stock'))out.push({k:'arr',c:'#8A5A22',f:'#F3E8D8',t:fr?'Un arrivage':'A delivery',s:fr?'marchandise reçue':'goods received',ic:'entree',fn:function(){ouvrirStk(null);}});
+  if(pat||hasPerm('depenses'))out.push({k:'dep',c:'#B45309',f:'#FEF3C7',t:fr?'Une dépense':'An expense',s:fr?'taxi, loyer, courant…':'taxi, rent, power…',ic:'sortie',fn:function(){ouvrirDep();}});
+  out.push({k:'cli',c:'#B42318',f:'#FDE8E4',t:fr?'Un client':'A customer',s:fr?'pour le crédit':'for credit',ic:'clients',fn:function(){navTo('clients',document.querySelector('#s-caisse .ni-cli')||null);ouvrirAddCli();}});
+  return out;
+}
+function ouvrirAjoutRapide(){
+  var fr=(lang==='fr'),z=document.getElementById('ajr');if(!z)return;
+  var l=_ajrChoix();
+  document.getElementById('ajr-tit').textContent=fr?'Ajouter':'Add';
+  z.innerHTML='';
+  l.forEach(function(x){
+    var b=document.createElement('button');b.type='button';b.id='ajr-'+x.k;
+    b.style.setProperty('--ac',x.c);b.style.setProperty('--af',x.f);
+    b.innerHTML='<i>'+ico(x.ic,24)+'</i><span>'+escH(x.t)+'</span><small>'+escH(x.s)+'</small>';
+    b.onclick=function(){closeSheet('ov-ajr');setTimeout(x.fn,60);};
+    z.appendChild(b);
+  });
+  document.getElementById('ov-ajr').classList.add('show');
+}
+function _navAjout(){
+  var fr=(lang==='fr');
+  var _nav=fr?{caisse:'Vendre',stock:'Stock',rapports:'Ma journée',clients:'Dettes'}
+             :{caisse:'Sell',stock:'Stock',rapports:'My day',clients:'Debts'};
+  ['caisse','stock','rapports','clients'].forEach(function(k){
+    [1,2,3,4].forEach(function(i){var el=document.getElementById('n-'+k+(i>1?i:''));if(el)el.textContent=_nav[k];});
+  });
+  document.querySelectorAll('.bnav').forEach(function(n){
+    var b=n.querySelector('.nadd');
+    if(!b){
+      b=document.createElement('button');b.type='button';b.className='nadd';
+      b.onclick=ouvrirAjoutRapide;
+      var st=n.querySelector('.ni-stock');
+      if(st&&st.nextSibling)n.insertBefore(b,st.nextSibling);else n.appendChild(b);
+    }
+    b.setAttribute('aria-label',fr?'Ajouter':'Add');
+    b.innerHTML='<i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></i><span>'+(fr?'Ajouter':'Add')+'</span>';
+  });
+  ['fab-add','btn-dep'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.add('nav-ok');});
+}
 function _debloquerIci(apres){
   var fr=(lang==='fr'),s=document.getElementById('snack-ph');
   if(!s){s=document.createElement('div');s.id='snack-ph';s.className='snack-ph';document.body.appendChild(s);}

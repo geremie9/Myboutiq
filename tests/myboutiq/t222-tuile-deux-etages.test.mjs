@@ -87,7 +87,8 @@ for (const facon of ['detail', 'gros']) {
 
   // ── 4) LE CARTON SANS PRIX ──
   const la = await lire(p, 23);
-  if (facon === 'detail') t(!la.barre, `au détail, un carton sans prix ne prend pas de place (« ${la.barre} »)`);
+  // 23.51 — au détail aussi, un carton CONNU sans prix le dit (voir t214).
+  if (facon === 'detail') t(/prix \?/.test(la.barre || ''), `au détail, un carton connu sans prix le dit au patron (« ${la.barre} »)`);
   else t(la.barreVide && /prix \?/i.test(la.barre) && /^500/.test(la.prix), `en gros, la barre du carton sans prix le dit (« ${la.barre} »), la pièce reste en haut`);
   t(errs.length === 0, `${F} : aucune erreur JS` + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();

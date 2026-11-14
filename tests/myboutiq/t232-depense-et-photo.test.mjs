@@ -12,9 +12,11 @@ const b = await chromium.launch();
 {
   const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique());
   // ── LA DÉPENSE : un bouton, un montant, une catégorie ─────────────────
-  const btn = await p.evaluate(() => { const x = document.getElementById('btn-dep'); return !!x && getComputedStyle(x).display !== 'none' && x.getBoundingClientRect().width > 0; });
-  t(btn, 'le patron a le bouton « Dépenses » en haut de la caisse');
-  if (btn) await p.locator('#btn-dep').click(); else await p.evaluate(() => ouvrirDep());
+  // 23.52 — la dépense est dans « Ajouter », au centre de la barre du bas.
+  await p.locator('#s-caisse .nadd').click(); await p.waitForTimeout(300);
+  const btn = await p.evaluate(() => { const x = document.getElementById('ajr-dep'); return !!x && x.getBoundingClientRect().width > 0 ? x.textContent : ''; });
+  t(/Une dépense/.test(btn), `le patron a « Une dépense » dans le bouton Ajouter (« ${btn} »)`);
+  if (btn) await p.locator('#ajr-dep').click(); else await p.evaluate(() => ouvrirDep());
   await p.waitForTimeout(300);
   const ordre = await p.evaluate(() => { const a = document.getElementById('dep-amt'), l = document.getElementById('dep-lst-cont'), n = document.getElementById('dep-nm');
     return { montantDabord: !!(a.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING), listeApres: !!(a.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING) }; });

@@ -108,7 +108,7 @@ const tape = async (p, sel, txt) => { await p.locator(sel).fill(''); await p.loc
   const db = nouvelleBoutique(); db.cfg.facon = 'gros';
   const { ctx, p, errs } = await ouvrirCaisse(b, port, db, { tactile: true });
   await p.setViewportSize({ width: 360, height: 740 }); await p.waitForTimeout(300);
-  await p.locator('#fab-add').tap(); await p.waitForTimeout(900);
+  await p.locator('#s-caisse .nadd').tap(); await p.waitForTimeout(300); await p.locator('#ajr-art').tap(); await p.waitForTimeout(900);
   await p.locator('#cha-src').fill('allumette'); await p.locator('#cha-src').dispatchEvent('input'); await p.waitForTimeout(400);
   await p.locator('#cha-grid > div[onclick]').first().tap(); await p.waitForTimeout(400);
   await p.getByText(/Continuer avec 1 article/).tap(); await p.waitForTimeout(700);
