@@ -948,7 +948,7 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 #s-caisse #pgrid{column-gap:0;row-gap:9px;padding:0 8px}
 #s-caisse #pgrid .pcard:not(.etg){background:none;border-bottom:none;border-radius:0;box-shadow:none;overflow:visible}
 #s-caisse #pgrid .pcard:not(.etg) .pmedia,#s-caisse #pgrid .pcard:not(.etg) .pmedia.pphoto,#s-caisse #pgrid .pcard:not(.etg) .pmedia.pcat{height:78px;background:linear-gradient(180deg,#EFE6D6 0%,#F8F2E7 55%,#E9DDC8 100%)!important}
-#s-caisse #pgrid .pcard:not(.etg) .pmedia.pphoto img,#s-caisse #pgrid .pcard:not(.etg) .pmedia.pcat img{background:none;mix-blend-mode:multiply;padding:5px 7px 0;object-position:center bottom}
+#s-caisse #pgrid .pcard:not(.etg) .pmedia.pphoto img,#s-caisse #pgrid .pcard:not(.etg) .pmedia.pcat img{background:none;mix-blend-mode:multiply;padding:3px 3px 0;object-position:center bottom}
 #s-caisse #pgrid .pcard:not(.etg) .pmedia.pphoto>span{display:none}
 #s-caisse #pgrid .pcard:not(.etg) .pmedia::after{content:"";position:absolute;left:18%;right:18%;bottom:-5px;height:11px;border-radius:50%;background:radial-gradient(closest-side,rgba(60,35,5,.42),rgba(60,35,5,0));pointer-events:none}
 #s-caisse #pgrid .pcard:not(.etg) .pcard-overlay{display:flex;flex-direction:column;position:relative;z-index:1;background:#A8783C;border-top:3px solid #D9AE74;padding:3px 4px 4px;box-shadow:0 6px 7px -3px rgba(60,35,5,.42)}
@@ -13737,7 +13737,7 @@ function renderProd(lst){
         // rangée garde UNE seule allure, photo ou dessin. L'émoji est posé
         // dessous et prend la place si la photo ne vient pas (hors ligne,
         // lien mort) — la leçon du catalogue en 22.99.
-        ?(function(){var _m=mediaArtInner(p,40);return '<div class="pmedia pphoto" style="background:'+_m.bg+';color:'+_m.fg+'"><span>'+_m.svg+'</span><img src="'+srcSure(p.img)+'" loading="lazy" alt="" onerror="this.remove()"></div>';})()
+        ?(function(){var _m=mediaArtInner(p,40);return '<div class="pmedia pphoto" style="background:'+_m.bg+';color:'+_m.fg+'"><span>'+_m.svg+'</span><img src="'+srcSure(p.img)+'" loading="lazy" alt=""'+_vbAttr(p)+' onerror="this.remove()"></div>';})()
         :(DB.cfg&&DB.cfg.noEmoji
           ?'<div class="pmedia pmono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</div>'
           :(function(){var _m=mediaArtInner(p,40);return '<div class="pmedia" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</div>';})()
@@ -13856,6 +13856,7 @@ function _suiteCaisse(auMoins){
   _rendusCaisse=fin;
   try{_marquerGrosTuiles();}catch(e){}
   if(_rendusCaisse<_listeCaisse.length){
+    _cadrerPhotos();
     // Sans IntersectionObserver (très vieux WebView) : tout, comme avant.
     if(!window.IntersectionObserver){_LOT_CAISSE=1e9;_suiteCaisse();return;}
     var s=document.createElement('div');s.id='pgrid-suite';s.style.cssText='grid-column:1/-1;height:1px';
@@ -13868,6 +13869,92 @@ function _suiteCaisse(auMoins){
     return;
   }
   if(_etagereApres){_etagereApres=false;g.insertAdjacentHTML('beforeend',_etagereHtml(false));}
+  _cadrerPhotos();
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.45 — LE VIDE AUTOUR DU PRODUIT. « Quand je parle d'économie
+//  d'espace, je veux que les images soient visibles le plus possible :
+//  c'est l'espace inutile autour de la photo qui m'inquiète. »
+//  La tuile n'y est pour rien : ce sont les PHOTOS qui portent de grandes
+//  marges blanches (une bouteille au milieu d'un carré). On mesure ces
+//  marges une fois par photo, et on ne montre que le produit
+//  (`object-view-box`). La photo n'est ni modifiée ni renvoyée : seul le
+//  cadrage est gardé sur l'article (`p.vb`), donc partagé avec les autres
+//  téléphones. Un vieux WebView qui ne connaît pas `object-view-box`
+//  montre la photo entière, comme avant.
+//  Une photo sans fond uni (prise sur le comptoir) n'est pas rognée.
+// ══════════════════════════════════════════════════════════════════
+function _vbCle(img){img=String(img||'');return img.length+'.'+img.slice(-8).replace(/[^A-Za-z0-9]/g,'');}
+function _vbDe(p){
+  try{
+    var m=/^(\d{1,2}) (\d{1,2}) (\d{1,2}) (\d{1,2})\|(.+)$/.exec(String(p.vb||''));
+    if(!m||m[5]!==_vbCle(p.img))return null;
+    return [Number(m[1]),Number(m[2]),Number(m[3]),Number(m[4])];
+  }catch(e){return null;}
+}
+function _vbCss(v){return (v&&(v[0]||v[1]||v[2]||v[3]))?('inset('+v[0]+'% '+v[1]+'% '+v[2]+'% '+v[3]+'%)'):'';}
+function _vbAttr(p){var c=_vbCss(_vbDe(p));return c?(' style="object-view-box:'+c+'"'):'';}
+// Les marges d'une image : [haut, droite, bas, gauche] en %, ou null si le
+// fond n'est pas uni. Lu sur une réduction de 80 px : c'est un cadrage,
+// pas une mesure.
+function _vbMesurer(im){
+  var N=80,cv=document.createElement('canvas');cv.width=N;cv.height=N;
+  var x=cv.getContext('2d');x.drawImage(im,0,0,N,N);
+  var d=x.getImageData(0,0,N,N).data;
+  var px=function(i,j){var k=(j*N+i)*4;return [d[k],d[k+1],d[k+2],d[k+3]];};
+  var f=px(1,1),tol=24;
+  var fond=function(c){return c[3]<16||(f[3]>=16&&Math.abs(c[0]-f[0])<=tol&&Math.abs(c[1]-f[1])<=tol&&Math.abs(c[2]-f[2])<=tol);};
+  // Les quatre coins doivent être du même fond, et ce fond clair (ou vide).
+  if(!(fond(px(N-2,1))&&fond(px(1,N-2))&&fond(px(N-2,N-2))))return null;
+  if(f[3]>=16&&(f[0]+f[1]+f[2])<540)return null;
+  var vide=function(ligne,k){var n=0;for(var a=0;a<N;a++){if(fond(ligne?px(a,k):px(k,a)))n++;}return n>=N*0.97;};
+  var h=0,b=0,g=0,dr=0;
+  while(h<N-1&&vide(true,h))h++;
+  while(b<N-1-h&&vide(true,N-1-b))b++;
+  while(g<N-1&&vide(false,g))g++;
+  while(dr<N-1-g&&vide(false,N-1-dr))dr++;
+  if(h+b>=N-4||g+dr>=N-4)return null;                    // image vide
+  var pc=function(n){return Math.max(0,Math.min(45,Math.floor(n/N*100)-2));};
+  var v=[pc(h),pc(dr),pc(b),pc(g)];
+  return (v[0]+v[2]>=6||v[1]+v[3]>=6)?v:[0,0,0,0];       // moins de 6 % : rien à gagner
+}
+var _vbFile=[],_vbEnCours=false,_vbSauver=null;
+function _cadrerPhotos(){
+  try{
+    if(!(window.CSS&&CSS.supports&&CSS.supports('object-view-box','inset(1%)')))return;
+    (_listeCaisse||[]).slice(0,_rendusCaisse).forEach(function(p){
+      if(!p||!p.img||_vbDe(p)||_vbFile.indexOf(p)>=0)return;
+      _vbFile.push(p);
+    });
+    _vbSuivante();
+  }catch(e){}
+}
+function _vbSuivante(){
+  if(_vbEnCours)return;
+  var p=_vbFile.shift();if(!p)return;
+  _vbEnCours=true;
+  var fini=function(v){
+    _vbEnCours=false;
+    try{
+      if(v&&src===String(p.img||'')){
+        p.vb=v.join(' ')+'|'+_vbCle(p.img);
+        var el=document.querySelector('#pc-'+p.id+' .pmedia img');
+        if(el)el.style.objectViewBox=_vbCss(v)||'';
+        // Un seul enregistrement pour toute une rangée de photos.
+        clearTimeout(_vbSauver);_vbSauver=setTimeout(function(){try{if(!estDemo())save();}catch(e){}},1500);
+      }
+    }catch(e){}
+    setTimeout(_vbSuivante,30);
+  };
+  var src=String(p.img||''),im=new Image();
+  // ⚠️ Une photo du serveur gardée par le service worker est « opaque » :
+  // on ne peut pas en lire les points. On la redemande avec CORS, sous une
+  // autre adresse pour ne pas retomber sur la copie opaque.
+  var distant=/^https?:/i.test(src);
+  if(distant)im.crossOrigin='anonymous';
+  im.onload=function(){var v=null;try{v=_vbMesurer(im)||[0,0,0,0];}catch(e){v=null;}fini(v);};
+  im.onerror=function(){fini(null);};
+  try{im.src=distant?(srcSure(src)+(src.indexOf('?')<0?'?':'&')+'cadre=1'):srcSure(src);}catch(e){fini(null);}
 }
 // Rangée "Ventes rapides" : les 5-6 articles les plus vendus, en 1 tap
 // Masquée pour de bon, mais jamais perdue : elle revient depuis Réglages.
