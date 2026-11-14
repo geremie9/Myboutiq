@@ -1023,6 +1023,15 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .ajr button{border:0;border-radius:16px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font:800 15px 'Outfit',sans-serif;color:#1E1B2E;background:var(--af);cursor:pointer}
 .ajr button i{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--ac);color:#fff}
 .ajr button small{font-size:11.5px;font-weight:700;color:#5C586B;margin-top:-4px}
+.stk-dette{display:flex;align-items:center;gap:9px;width:100%;margin:8px 0 2px;padding:11px 13px;border:0;border-radius:13px;background:#FDE8E4;color:#7A1F14;font:700 13.5px 'Outfit',sans-serif;text-align:left;cursor:pointer}
+.stk-dette span{flex:1}.stk-dette b{font-weight:900}.stk-dette i{font-style:normal;font-weight:900;color:#B42318;white-space:nowrap}
+.fd-ligne{border:1.5px solid var(--BD);border-radius:14px;padding:11px 12px;margin-bottom:9px}
+.fd-tete{display:flex;align-items:center;gap:10px}.fd-tete b{flex:1;font-size:15px;font-weight:800;color:var(--T)}
+.fd-du{font-size:17px;font-weight:900;color:#B42318;white-space:nowrap}
+.fd-payer{border:0;border-radius:11px;background:#1E1B2E;color:#F6C768;font:800 13px 'Outfit',sans-serif;padding:9px 13px;cursor:pointer}
+.fd-form{margin-top:10px;display:none}.fd-form.on{display:block}
+.fd-modes{display:flex;gap:8px;margin:8px 0}
+.fd-hist{font-size:11px;font-weight:600;color:var(--M);margin-top:6px;line-height:1.5}
 .stk-ranger{display:flex;align-items:center;gap:10px;background:#1E1B2E;color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:9px;font-size:13.5px;font-weight:800;cursor:pointer}
 .stk-ranger span{flex:1}.stk-ranger b{background:#F59E0B;color:#1E1B2E;border-radius:10px;padding:7px 11px;font-weight:900;white-space:nowrap}
 #ov-rgb .rg{position:fixed;inset:0;background:#F6EFE3;display:flex;flex-direction:column;font-family:'Outfit',sans-serif;color:#1E1B2E}
@@ -4811,6 +4820,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       <div class="sttit">🧾 Facturation</div>
       <div class="stcd">
         <div class="stit2" data-exp="1" onclick="editNumFiscal()"><div class="stico" style="background:#EDE7F6">🧾</div><div class="stii"><div class="stitl" id="st-fiscal">N° d'identifiant boutique</div><div class="stisub" id="st-fiscal-s">Apparaît sur la facture</div></div><span class="starr">›</span></div>
+        <div class="stit2" data-exp="1" onclick="basculerTVA()"><div class="stico" style="background:#E3F2FD">%</div><div class="stii"><div class="stitl" id="st-tva">Je facture la TVA</div><div class="stisub" id="st-tva-s">Le reçu montre la TVA comprise</div></div><div class="tog" id="tog-tva"><div class="tok"></div></div></div>
         <div class="stit2" data-exp="1" onclick="choisirFormatRecu()"><div class="stico" style="background:#E3F2FD">📄</div><div class="stii"><div class="stitl" id="st-fmt">Format du reçu</div><div class="stisub" id="st-fmt-s">Ticket, A5 ou A6</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="choisirImprimanteThermique()"><div class="stico" style="background:#FFF8E1">🖨️</div><div class="stii"><div class="stitl">Imprimante thermique</div><div class="stisub">58mm / 80mm (mode Ticket)</div></div><span class="starr">›</span></div>
       </div>
@@ -5837,6 +5847,19 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
           </div>
           <input class="pi" type="number" id="inp-spa" inputmode="numeric" oninput="majApercuStk()" placeholder="—">
           <div id="stk-pa-info" style="font-size:11px;font-weight:700;color:var(--M);margin-top:5px"></div>
+        </div>
+        <!-- ⭐ 23.52 — « Et si j'achète à un fournisseur à crédit ? » -->
+        <div id="stk-credit" style="margin-bottom:10px">
+          <div style="display:flex;gap:8px">
+            <div class="abtn on" id="stk-paye" onclick="stkCredit(false)" style="flex:1;padding:9px"><span class="albl" id="stk-paye-l">Payé</span></div>
+            <div class="abtn" id="stk-acredit" onclick="stkCredit(true)" style="flex:1;padding:9px"><span class="albl" id="stk-acredit-l">À crédit</span></div>
+          </div>
+          <div id="stk-credit-det" style="display:none;margin-top:8px">
+            <input class="pi sm" type="text" id="inp-cfourn" list="dl-fourn" maxlength="40" autocomplete="off" placeholder="Chez qui ?" style="margin-bottom:7px">
+            <datalist id="dl-fourn"></datalist>
+            <input class="pi" type="number" id="inp-cdu" inputmode="numeric" placeholder="Combien tu lui dois ?" oninput="this.dataset.touche='1'">
+            <div id="stk-credit-aide" style="font-size:11px;font-weight:700;color:var(--M);margin-top:5px"></div>
+          </div>
         </div>
         <div id="stk-apercu" style="display:none;border-radius:9px;padding:8px 10px;font-size:12px;font-weight:800;margin-bottom:9px"></div>
         <!-- ⚠️ 23.35 — « LE MOUVEMENT DE STOCK, PRIX D'ACHAT, PRIX DE VENTE…
@@ -6902,6 +6925,9 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
 </div>
 
 <div class="ov" id="ov-rgb"><div class="rg" id="rg"></div></div>
+<div class="ov" id="ov-fd" onclick="closeOv(event,'ov-fd')"><div class="bsht"><div class="shndl"></div>
+  <div class="shhdr"><div class="shtit" id="fd-tit">Je dois</div><button class="bcl" onclick="closeSheet('ov-fd')" aria-label="Fermer">✕</button></div>
+  <div style="padding:10px 16px 20px" id="fd-cont"></div></div></div>
 <div class="ov" id="ov-ajr" onclick="closeOv(event,'ov-ajr')"><div class="bsht"><div class="shndl"></div>
   <div class="shhdr"><div class="shtit" id="ajr-tit">Ajouter</div><button class="bcl" onclick="closeSheet('ov-ajr')" aria-label="Fermer">✕</button></div>
   <div class="ajr" id="ajr"></div></div></div>
@@ -7333,7 +7359,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.51'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.52'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -9184,7 +9210,7 @@ function navTo(tab,btn){
   if(tab==='clients')renderClients();
   if(tab==='stock')renderStock(DB.articles);
 }
-function goSt(){if(role!=='patron'){showToast('⛔ Réservé au patron');return;}screenHist.push('s-settings');construireOngletsParams();majModeParametres();try{_majLignesPhotos();}catch(e){}goScreen('s-settings');}
+function goSt(){if(role!=='patron'){showToast('⛔ Réservé au patron');return;}screenHist.push('s-settings');construireOngletsParams();majModeParametres();try{_majLignesPhotos();}catch(e){}try{majLigneTVA();}catch(e){}goScreen('s-settings');}
 // ═══════════════════════════════════════════════════════════════════
 // SE SOUVENIR DE QUI ENTRE — sans affaiblir la porte
 // Le patron voulait ne taper qu'UNE chose. La bonne réponse n'est pas de
@@ -21180,7 +21206,9 @@ function afficherRecu(){
       if(aDemander){var c=document.getElementById('rni-nm');if(c)c.value='';}
     }
   }catch(e){}
-  document.getElementById('recu-cont').innerHTML='<div class="recu-cd" id="recu-print"><div class="recu-h"><div class="recu-sh">🏪 '+r.boutique+'</div>'+(DB.cfg.numFiscal?'<div class="recu-dt">'+(lang==='fr'?'ID':'ID')+': '+DB.cfg.numFiscal+'</div>':'')+'<div class="recu-dt">'+r.date+' '+r.h+'</div></div>'+r.lignes.map(function(l){return '<div class="recu-rw"><span>'+l.nm+'</span><span>'+fmt(l.px)+'</span></div>';}).join('')+((r.remise||0)>0?'<div class="recu-rw"><span>🏷️ '+(lang==='fr'?'Remise':'Discount')+'</span><span>-'+fmt(r.remise)+'</span></div>':'')+'<div class="recu-tt"><span>TOTAL</span><span>'+fmt(r.total)+'</span></div>'+(r.client?'<div class="recu-rw" style="font-size:11px;opacity:.75"><span>'+(lang==='fr'?'Client':'Customer')+'</span><span>'+r.client+'</span></div>':'')+(r.paiement?'<div class="recu-rw" style="font-size:11px;opacity:.75"><span>'+(lang==='fr'?'Paiement':'Payment')+'</span><span>'+pmntLabel(r.paiement)+'</span></div>':'')+'<div class="recu-tk">'+t('merci')+'</div></div>';
+  document.getElementById('recu-cont').innerHTML='<div class="recu-cd" id="recu-print"><div class="recu-h"><div class="recu-sh">🏪 '+r.boutique+'</div>'+(DB.cfg.numFiscal?'<div class="recu-dt">'+(lang==='fr'?'ID':'ID')+': '+DB.cfg.numFiscal+'</div>':'')+'<div class="recu-dt">'+r.date+' '+r.h+'</div></div>'+r.lignes.map(function(l){return '<div class="recu-rw"><span>'+l.nm+'</span><span>'+fmt(l.px)+'</span></div>';}).join('')+((r.remise||0)>0?'<div class="recu-rw"><span>🏷️ '+(lang==='fr'?'Remise':'Discount')+'</span><span>-'+fmt(r.remise)+'</span></div>':'')+'<div class="recu-tt"><span>TOTAL</span><span>'+fmt(r.total)+'</span></div>'+(function(){var t=tauxTVA();if(!t)return '';var x=tvaDe(r.total);
+    return '<div class="recu-rw" style="font-size:11px"><span>'+(lang==='fr'?'dont HT':'excl. VAT')+'</span><span>'+fmt(x.ht)+'</span></div>'
+      +'<div class="recu-rw" style="font-size:11px"><span>'+(lang==='fr'?'dont TVA ':'VAT ')+_fmtTaux(t)+'</span><span>'+fmt(x.tva)+'</span></div>';})()+(r.client?'<div class="recu-rw" style="font-size:11px;opacity:.75"><span>'+(lang==='fr'?'Client':'Customer')+'</span><span>'+r.client+'</span></div>':'')+(r.paiement?'<div class="recu-rw" style="font-size:11px;opacity:.75"><span>'+(lang==='fr'?'Paiement':'Payment')+'</span><span>'+pmntLabel(r.paiement)+'</span></div>':'')+'<div class="recu-tk">'+t('merci')+'</div></div>';
   document.getElementById('ov-recu').classList.add('show');
 }
 function imprimerRecu(){
@@ -21210,7 +21238,7 @@ function imprimerRecu(){
   w.onafterprint=function(){w.close();};
   setTimeout(function(){if(w&&!w.closed)w.print();},400);
 }
-function partagerRecu(){if(!dernierRecu)return;var r=dernierRecu;var msg='🏪 *'+r.boutique+'*\n📅 '+r.date+' '+r.h+'\n\n';r.lignes.forEach(function(l){msg+='• '+l.nm+': '+fmt(l.px)+'\n';});msg+='\n💰 *TOTAL: '+fmt(r.total)+'*\n\n'+t('merci');window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');}
+function partagerRecu(){if(!dernierRecu)return;var r=dernierRecu;var msg='🏪 *'+r.boutique+'*\n📅 '+r.date+' '+r.h+'\n\n';r.lignes.forEach(function(l){msg+='• '+l.nm+': '+fmt(l.px)+'\n';});msg+='\n💰 *TOTAL: '+fmt(r.total)+'*\n';if(tauxTVA()){var _x=tvaDe(r.total);msg+=(lang==='fr'?'dont TVA ':'VAT ')+_fmtTaux(tauxTVA())+' : '+fmt(_x.tva)+'\n';}msg+='\n'+t('merci');window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');}
 
 function updateStats(){document.getElementById('sv').textContent=fmt(totalV);document.getElementById('sb').textContent=fmt(totalB);document.getElementById('st').textContent=nbT;}
 function updateObjBar(){var ob=document.getElementById('obj-bar');if(DB.objectif>0){ob.style.display='block';var pct=Math.min(100,Math.round(totalV/DB.objectif*100));document.getElementById('obj-fill').style.width=pct+'%';document.getElementById('obj-val').textContent=fmt(totalV)+' / '+fmt(DB.objectif)+' ('+pct+'%)';}else ob.style.display='none';}
@@ -21821,11 +21849,54 @@ var _snackT=null;
 //  un article, un arrivage, une dépense, un client. Chacune suit les droits
 //  de celui qui tient le téléphone ; s'il n'en a aucun, le bouton n'est pas là.
 // ══════════════════════════════════════════════════════════════════
+var _fdOuvert=null,_fdCaisse=true;
+function ouvrirDettesFourn(){
+  if(!(role==='patron'||hasPerm('depenses')||hasPerm('stock'))){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  _fdOuvert=null;_fdCaisse=true;
+  _fdRendre();
+  document.getElementById('ov-fd').classList.add('show');
+}
+function _fdRendre(){
+  var z=document.getElementById('fd-cont'),fr=(lang==='fr');if(!z)return;
+  document.getElementById('fd-tit').textContent=fr?'Ce que je dois aux fournisseurs':'What I owe suppliers';
+  var so=_fdSoldes();
+  if(!so.length){z.innerHTML='<div style="text-align:center;padding:22px;font-size:14px;font-weight:800;color:var(--G)">✅ '+(fr?'Tu ne dois rien à personne.':'You owe nothing.')+'</div>';return;}
+  z.innerHTML=so.map(function(x,i){
+    var hist=_fdListe().filter(function(e){return e&&_fdCle(e.fourn)===x.cle;}).slice(-3).reverse().map(function(e){
+      return (e.type==='achat'?'＋ ':'− ')+escH(fmt(e.amt))+' · '+escH(e.date||'')+(e.type==='achat'&&e.art?(' · '+escH(e.art)):'')+(e.type==='paye'?(' · '+(fr?(e.caisse?'payé de la caisse':'payé hors caisse'):(e.caisse?'paid from till':'paid outside till'))):'');}).join('<br>');
+    var ouvert=(_fdOuvert===x.cle);
+    return '<div class="fd-ligne"><div class="fd-tete"><b>'+escH(x.nom)+'</b><span class="fd-du">'+fmt(x.du)+'</span>'
+      +'<button type="button" class="fd-payer" id="fd-payer-'+i+'" onclick="fdOuvrir('+i+')">'+(fr?'Payer':'Pay')+'</button></div>'
+      +'<div class="fd-hist">'+hist+'</div>'
+      +'<div class="fd-form'+(ouvert?' on':'')+'" id="fd-form-'+i+'">'
+        +'<input class="pi" type="number" inputmode="numeric" id="fd-amt-'+i+'" value="'+(ouvert?Math.round(x.du):'')+'" placeholder="'+(fr?'Combien tu paies ?':'How much?')+'">'
+        +'<div class="fd-modes"><div class="abtn'+(_fdCaisse?' on':'')+'" id="fd-c-'+i+'" onclick="fdMode(true)" style="flex:1;padding:9px"><span class="albl">'+(fr?'De la caisse':'From the till')+'</span></div>'
+        +'<div class="abtn'+(!_fdCaisse?' on':'')+'" id="fd-h-'+i+'" onclick="fdMode(false)" style="flex:1;padding:9px"><span class="albl">'+(fr?'Hors caisse':'Not from till')+'</span></div></div>'
+        +'<button type="button" class="bnxt" id="fd-ok-'+i+'" onclick="fdPayer('+i+')">'+(fr?'Enregistrer le paiement':'Save payment')+'</button></div></div>';
+  }).join('');
+}
+function fdOuvrir(i){var so=_fdSoldes();if(!so[i])return;_fdOuvert=so[i].cle;_fdCaisse=true;_fdRendre();try{document.getElementById('fd-amt-'+i).focus();}catch(e){}}
+function fdMode(c){_fdCaisse=!!c;var so=_fdSoldes(),i=so.findIndex(function(x){return x.cle===_fdOuvert;});if(i<0)return;
+  document.getElementById('fd-c-'+i).classList.toggle('on',_fdCaisse);document.getElementById('fd-h-'+i).classList.toggle('on',!_fdCaisse);}
+function fdPayer(i){
+  var so=_fdSoldes(),x=so[i],fr=(lang==='fr');if(!x)return;
+  var v=parseFloat(String((document.getElementById('fd-amt-'+i)||{}).value||'').replace(',','.'))||0;
+  if(!(v>0)){showToast('💰 '+(fr?'Combien tu paies ?':'How much?'));return;}
+  // On ne paie pas plus que ce qu'on doit : l'excédent n'est pas une dette.
+  var paye=Math.min(v,x.du);
+  _fdNoter('paye',x.nom,paye,{caisse:!!_fdCaisse});
+  journalAjouter('depense',(fr?'Paiement fournisseur — ':'Supplier payment — ')+x.nom,fmt(x.du),fmt(_arrondiMonnaie(x.du-paye)));
+  save();
+  _fdOuvert=null;_fdRendre();
+  try{majValeurStock();}catch(e){}try{recalcTotaux();}catch(e){}try{renderRpt();}catch(e){}
+  showToast('✅ '+(fr?('Payé '+fmt(paye)+' à '+x.nom+(_fdCaisse?' (sorti de la caisse)':'')+(paye<v?(' — tu ne lui devais que '+fmt(x.du)):'')):('Paid '+fmt(paye)+' to '+x.nom)));
+}
 function _ajrChoix(){
   var fr=(lang==='fr'),pat=(role==='patron'),out=[];
   if(pat||hasPerm('produits'))out.push({k:'art',c:'#D97706',f:'#FDF1DC',t:fr?'Un article':'An item',s:fr?'nouveau dans la boutique':'new in the shop',ic:'plus',fn:function(){ouvrirAjouter();}});
   if(pat||hasPerm('stock'))out.push({k:'arr',c:'#8A5A22',f:'#F3E8D8',t:fr?'Un arrivage':'A delivery',s:fr?'marchandise reçue':'goods received',ic:'entree',fn:function(){ouvrirStk(null);}});
   if(pat||hasPerm('depenses'))out.push({k:'dep',c:'#B45309',f:'#FEF3C7',t:fr?'Une dépense':'An expense',s:fr?'taxi, loyer, courant…':'taxi, rent, power…',ic:'sortie',fn:function(){ouvrirDep();}});
+  try{if((pat||hasPerm('depenses'))&&_fdSoldes().length)out.push({k:'fd',c:'#7A1F14',f:'#FDE8E4',t:fr?'Payer un fournisseur':'Pay a supplier',s:fr?('tu dois '+fmt(totalDetteFourn())):('you owe '+fmt(totalDetteFourn())),ic:'portefeuille',fn:function(){ouvrirDettesFourn();}});}catch(e){}
   out.push({k:'cli',c:'#B42318',f:'#FDE8E4',t:fr?'Un client':'A customer',s:fr?'pour le crédit':'for credit',ic:'clients',fn:function(){navTo('clients',document.querySelector('#s-caisse .ni-cli')||null);ouvrirAddCli();}});
   return out;
 }
@@ -27809,7 +27880,11 @@ function majValeurStock(q30){
         +'<button type="button" class="vb-inv" onclick="ouvrirInventaire()">'+ico('recu',18)+'<span>'+(fr?'Faire l\'inventaire':'Count my stock')+'</span></button></div>'
         +(r.sansPa>0?('<span class="stkv-trou" onclick="filtreStock(\'sanspa\')">'
             +r.sansPa+' '+(fr?('article'+(r.sansPa>1?'s':'')+(r.aber?' au prix d\'achat à corriger':' sans prix d\'achat')+' — pas compté'+(r.sansPa>1?'s':''))
-                             :('item'+(r.sansPa>1?'s':'')+' without cost price — not counted'))+' ›</span>'):'');
+                             :('item'+(r.sansPa>1?'s':'')+' without cost price — not counted'))+' ›</span>'):'')
+        +(function(){var so=_fdSoldes();if(!so.length)return '';var tot=so.reduce(function(s,x){return s+x.du;},0);
+            return '<button type="button" class="stk-dette" id="stk-dette" onclick="ouvrirDettesFourn()">'+ico('portefeuille',18)+'<span>'
+              +(fr?('Tu dois <b>'+fmt(tot)+'</b> à '+so.length+' fournisseur'+(so.length>1?'s':'')):('You owe <b>'+fmt(tot)+'</b> to '+so.length+' supplier'+(so.length>1?'s':'')))
+              +'</span><i>'+(fr?'Payer ›':'Pay ›')+'</i></button>';})();
     }
   }
   var bt=document.getElementById('sf-cmd');
@@ -28129,6 +28204,7 @@ function selArtStk(p,depuisListe){
   document.getElementById('stk-form').style.display='block';
   document.getElementById('inp-sqte').value='';
   document.getElementById('inp-fourn').value='';
+  try{_stkCreditRaz();}catch(e){}
   _majBoutonStk();
   // Le curseur attend dans la quantité : c'est la première réponse.
   setTimeout(function(){
@@ -28364,7 +28440,89 @@ function stkMotif(m){
   ['casse','perime','vol','cadeau','retour'].forEach(function(k){var b=document.getElementById('mtf-'+k);if(b)b.style.background='';});
   majApercuStk();
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.52 — LE CRÉDIT FOURNISSEUR. « Et si j'achète à un fournisseur à
+//  crédit, comment je vais gérer cette situation, et quand il va être
+//  remboursé, où et comment je vais faire ? »
+//  Rien n'existait : un fournisseur n'avait qu'un nom et un bouton WhatsApp.
+//  · À l'arrivée de la marchandise : « Payé » ou « À crédit », et chez qui.
+//    La marchandise entre en stock dans les deux cas ; à crédit, la dette
+//    est notée (`DB.fournDettes`, type « achat »).
+//  · « Tu dois … » dans le Stock ; « Payer » : combien, de la caisse ou non.
+//    Payé de la caisse, l'argent sort du tiroir du jour (caisseAttendue).
+//  · Le bénéfice ne bouge pas : il se calcule à la vente, avec le prix
+//    d'achat. Payer sa dette n'est pas une dépense de plus — ce serait
+//    compter la marchandise deux fois.
+//  · Les écritures ne sont jamais archivées : une dette ne s'efface pas
+//    parce qu'elle est vieille.
+// ══════════════════════════════════════════════════════════════════
+var _stkCredit=false;
+function _fdListe(){if(!DB)return [];if(!Array.isArray(DB.fournDettes))DB.fournDettes=[];return DB.fournDettes;}
+function _fdCle(n){return String(n||'').trim().toLowerCase().replace(/\s+/g,' ');}
+function _fdNoter(type,nom,amt,extra){
+  var e={id:genVenteId(),ts:new Date().toISOString(),date:new Date().toLocaleDateString('fr-FR'),type:type,
+         fourn:String(nom||'').trim().slice(0,40),amt:_arrondiMonnaie(amt),vendeur:_nomOperateur()};
+  extra=extra||{};Object.keys(extra).forEach(function(k){e[k]=extra[k];});
+  _fdListe().push(e);return e;
+}
+// Ce que la boutique doit à chacun : achats à crédit − paiements.
+function _fdSoldes(){
+  var m={};
+  _fdListe().forEach(function(e){
+    if(!e||!e.fourn)return;var k=_fdCle(e.fourn);if(!k)return;
+    var x=m[k]||(m[k]={nom:e.fourn,du:0,dernier:''});
+    x.nom=e.fourn;
+    var a=Number(e.amt)||0;
+    if(e.type==='achat')x.du+=a;else if(e.type==='paye')x.du-=a;
+    if(String(e.ts||'')>x.dernier)x.dernier=String(e.ts||'');
+  });
+  return Object.keys(m).map(function(k){var x=m[k];x.du=_arrondiMonnaie(x.du);x.cle=k;return x;})
+    .filter(function(x){return x.du>0.004;}).sort(function(a,b){return b.du-a.du;});
+}
+function totalDetteFourn(){return _fdSoldes().reduce(function(s,x){return s+x.du;},0);}
+// Ce qui est sorti du tiroir aujourd'hui pour payer un fournisseur.
+function totalFournCaisseJour(){
+  return _fdListe().filter(function(e){return e&&e.type==='paye'&&e.caisse&&_ouvertDuJour(e);})
+    .reduce(function(s,e){return s+(Number(e.amt)||0);},0);
+}
+function _stkCreditRaz(){
+  _stkCredit=false;
+  var fr=(lang==='fr');
+  ['inp-cfourn','inp-cdu'].forEach(function(id){var e=document.getElementById(id);if(e){e.value='';delete e.dataset.touche;}});
+  var l=document.getElementById('stk-paye-l');if(l)l.textContent=fr?'Payé':'Paid';
+  var c=document.getElementById('stk-acredit-l');if(c)c.textContent=fr?'À crédit':'On credit';
+  var f=document.getElementById('inp-cfourn');if(f)f.placeholder=fr?'Chez qui ? (le fournisseur)':'From whom? (supplier)';
+  var d=document.getElementById('inp-cdu');if(d)d.placeholder=fr?'Combien tu lui dois ?':'How much do you owe?';
+  var dl=document.getElementById('dl-fourn');
+  if(dl){
+    var vus={},noms=[];
+    (DB.fournisseurs||[]).concat(_fdListe()).forEach(function(x){var n=String((x&&(x.nm||x.fourn))||'').trim();var k=_fdCle(n);if(n&&!vus[k]){vus[k]=1;noms.push(n);}});
+    dl.innerHTML=noms.slice(0,40).map(function(n){return '<option value="'+escH(n)+'">';}).join('');
+  }
+  stkCredit(false);
+}
+function stkCredit(on){
+  _stkCredit=!!on;
+  var p=document.getElementById('stk-paye'),c=document.getElementById('stk-acredit'),d=document.getElementById('stk-credit-det');
+  if(p)p.classList.toggle('on',!_stkCredit);if(c)c.classList.toggle('on',_stkCredit);
+  if(d)d.style.display=_stkCredit?'block':'none';
+  if(_stkCredit){
+    _stkCreditMontant();
+    var f=document.getElementById('inp-cfourn');if(f&&!f.value)setTimeout(function(){try{f.focus();}catch(e){}},60);
+  }
+}
+// Le montant dû se propose tout seul : quantité × prix d'achat. Il le change
+// s'il a payé une partie.
+function _stkCreditMontant(){
+  if(!_stkCredit)return;
+  var d=document.getElementById('inp-cdu'),a=document.getElementById('stk-credit-aide'),fr=(lang==='fr');
+  var q=Math.round((parseFloat(String((document.getElementById('inp-sqte')||{}).value||'').replace(',','.'))||0)*100)/100;
+  var tot=Math.round(q*(stkPaUnit()||0));
+  if(d&&!d.dataset.touche)d.value=tot>0?String(tot):'';
+  if(a)a.textContent=fr?'La marchandise entre en stock maintenant. La dette est notée chez ce fournisseur.':'Goods enter stock now. The debt is noted for this supplier.';
+}
 function majApercuStk(){
+  try{_stkCreditMontant();}catch(e){}
   var box=document.getElementById('stk-apercu');if(!box||!artStkCours)return;
   var q=Math.round((parseFloat(String((document.getElementById('inp-sqte')||{}).value||'').replace(',','.'))||0)*100)/100;
   try{majCompteurCont();}catch(e){}
@@ -28443,6 +28601,16 @@ function saveStk(){
     showToast('📤 '+(fr?'Sortie enregistrée':'Removal saved')+' : −'+fmtQ(sortie)+' '+uniteArt(a)+' ('+motif+')');
     updateNotifBadge();return;
   }
+  // 23.52 — à crédit : chez qui, et combien. Vérifié AVANT toute écriture.
+  var _cr=null;
+  if(_stkCredit){
+    _cr={nom:String((document.getElementById('inp-cfourn')||{}).value||'').trim(),
+         du:parseFloat(String((document.getElementById('inp-cdu')||{}).value||'').replace(',','.'))||0};
+    if(!(_cr.du>0))_cr.du=Math.round(q*(stkPaUnit()||0));
+    if(!_cr.nom){showToast('🚚 '+(fr?'Chez qui tu l\'as pris à crédit ? Écris son nom':'From whom? Type the supplier'));try{document.getElementById('inp-cfourn').focus();}catch(e){}return;}
+    if(!(_cr.du>0)){showToast('💰 '+(fr?'Combien tu lui dois ?':'How much do you owe?'));try{document.getElementById('inp-cdu').focus();}catch(e){}return;}
+  }
+  var _fournNom=_cr?_cr.nom:String((document.getElementById('inp-fourn')||{}).value||'').trim().slice(0,40);
   // Entrée de marchandise : c'est le moment où le patron CONNAÎT son prix
   // d'achat. On le mémorise ici, sinon le bénéfice reste inconnu pour toujours.
   // Consigne de l'emballage : elle appartient au produit, pas à la vente.
@@ -28505,6 +28673,14 @@ function saveStk(){
     paMsg=' · '+(fr?'achat':'cost')+' '+fmt(paU)+'/'+uniteArt(a);
   }
   ajouterAppro(a.id,vid,q);
+  // ⚠️ 23.52 — le champ « Fournisseur » (Plus de choix) n'était JAMAIS gardé :
+  // ce qu'il y tapait disparaissait. Il est maintenant sur l'arrivée.
+  if(_fournNom){try{var _ap=DB.appros[DB.appros.length-1];if(_ap&&_ap.pid===a.id)_ap.fourn=_fournNom;}catch(e){}}
+  if(_cr){
+    _fdNoter('achat',_cr.nom,_cr.du,{art:a.nm+(parVariante?(' — '+(artStkVarCours.nm||'')):''),q:q});
+    journalAjouter('stock',a.nm+(fr?' (à crédit)':' (on credit)'),'',_cr.nom+' · '+fmt(_cr.du));
+    paMsg+=' · '+(fr?'tu dois ':'you owe ')+fmt(_cr.du)+(fr?' à ':' to ')+_cr.nom;
+  }
   save();_apresMouvementStock();
   showToast(t('stockAjoute')+paMsg);updateNotifBadge();
 }
@@ -28591,6 +28767,7 @@ function renderRpt(){
   c.innerHTML=
     '<div class="rcd"><div class="rctit">'+(lang==='fr'?('Le détail '+_motP):('Details '+_motP))+'</div>'+
     '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Chiffre d\'affaires':'Revenue')+'</span><span class="rval a">'+fmt(_V)+'</span></div>'+
+    (tauxTVA()?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?('dont TVA '+_fmtTaux(tauxTVA())+' (à déclarer)'):('incl. VAT '+_fmtTaux(tauxTVA())))+'</span><span class="rval" style="color:var(--M)">'+fmt(tvaDe(_V).tva)+'</span></div>'):'')+
     '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Coût des ventes':'Cost of sales')+'</span><span class="rval r">-'+fmt(ta)+'</span></div>'+
     '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Bénéfice brut':'Gross profit')+'</span><span class="rval '+(_B<0?'r':'g')+'">'+fmt(_B)+'</span></div>'+
     // Un bénéfice négatif vient presque toujours d'un prix d'achat qui est en
@@ -29469,6 +29646,38 @@ function definirMaxVendeurs(v){
   showToast(n>0?('✅ '+(fr?'Maximum '+n+' vendeur'+(n>1?'s':''):'Max '+n))
                :('✅ '+(fr?'Aucune limite de vendeurs':'No seller limit')));
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.52 — LA TVA. « Certaines grandes boutiques qui tendent à être des
+//  petits supermarchés : il y a des réglementations, la TVA à 19,25 % au
+//  Cameroun, comment on va gérer ça ? »
+//  Éteinte par défaut : la plupart des boutiques ne la facturent pas. Allumée :
+//  · les prix ne changent pas : ce sont ceux que le client paie (TVA comprise) ;
+//  · le reçu montre « dont HT » et « dont TVA » sous le total ;
+//  · le rapport montre la TVA comprise dans les ventes, pour la déclaration.
+//  Le taux suit le pays (19,25 % au Cameroun, 18 % ailleurs dans la zone).
+//  ⚠️ Le bénéfice affiché reste TVA comprise : la TVA déductible sur les achats
+//  dépend du régime de la boutique, et l'app ne l'invente pas.
+// ══════════════════════════════════════════════════════════════════
+function tauxTVA(){var t=Number(DB&&DB.cfg&&DB.cfg.tva)||0;return (t>0&&t<50)?t:0;}
+function _tauxTVAPays(){var cc=String((DB&&DB.cfg&&DB.cfg.pays&&DB.cfg.pays.cc)||'237');return cc==='237'?19.25:18;}
+function tvaDe(ttc){var t=tauxTVA();if(!t)return {ht:ttc,tva:0};var ht=Math.round(ttc/(1+t/100));return {ht:ht,tva:Math.round(ttc-ht)};}
+function _fmtTaux(t){return String(t).replace('.',',')+' %';}
+function majLigneTVA(){
+  var fr=(lang==='fr'),t=tauxTVA(),g=document.getElementById('tog-tva'),sub=document.getElementById('st-tva-s'),tit=document.getElementById('st-tva');
+  if(g)g.className='tog'+(t?' on':'');
+  if(tit)tit.textContent=fr?'Je facture la TVA':'I charge VAT';
+  if(sub)sub.textContent=t?((fr?'TVA ':'VAT ')+_fmtTaux(t)+(fr?' comprise dans tes prix · sur le reçu':' included in your prices · on the receipt'))
+                          :(fr?'Pour les boutiques soumises à la TVA':'For shops that charge VAT');
+}
+function basculerTVA(){
+  if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  var fr=(lang==='fr'),av=tauxTVA();
+  DB.cfg.tva=av?0:_tauxTVAPays();
+  journalAjouter('unite',fr?'TVA':'VAT',av?_fmtTaux(av):(fr?'non':'no'),DB.cfg.tva?_fmtTaux(DB.cfg.tva):(fr?'non':'no'));
+  save();majLigneTVA();try{renderRpt();}catch(e){}
+  showToast(DB.cfg.tva?('✅ '+(fr?('TVA '+_fmtTaux(DB.cfg.tva)+' : tes prix restent les mêmes, le reçu montre la TVA comprise'):('VAT '+_fmtTaux(DB.cfg.tva)+' on receipts')))
+                      :('🗑️ '+(fr?'TVA retirée du reçu':'VAT removed from receipts')));
+}
 function editNumFiscal(){
   var msg=lang==='fr'?"N° d'identifiant fiscal / réglementaire de la boutique (apparaîtra sur les factures) :":'Store tax/registration ID (will appear on invoices):';
   var v=prompt(msg,DB.cfg.numFiscal||'');
@@ -29974,7 +30183,7 @@ function paiementBreakdown(liste){
 // Le patron sortait 5 000 F pour le transport, comptait sa caisse le soir, et
 // l'app lui annonçait un DÉFICIT de 5 000 F — de quoi soupçonner son vendeur
 // pour une dépense qu'il avait lui-même faite.
-function caisseAttendue(){return DB.fondsDepart+totalEspecesJour()+totalRembEspecesJour()-totalDepCaisseJour();}
+function caisseAttendue(){return DB.fondsDepart+totalEspecesJour()+totalRembEspecesJour()-totalDepCaisseJour()-totalFournCaisseJour();}
 // ══════════════════════════════════════════════════════════════════
 //  💵 LES REMBOURSEMENTS DE CRÉDIT
 //
@@ -30087,14 +30296,15 @@ function selModeRemb(m){
 // trouve 5 500 F de moins — et soupçonne son vendeur. Le rapport donne
 // maintenant le montant de la clôture, et dit d'où il vient.
 function _rptDetailCaisse(esp){
-  var fr=(lang==='fr'),f=Number(DB.fondsDepart)||0,d=totalDepCaisseJour(),r=totalRembEspecesJour();
-  if(!f&&!d&&!r)return '';
+  var fr=(lang==='fr'),f=Number(DB.fondsDepart)||0,d=totalDepCaisseJour(),r=totalRembEspecesJour(),fo=totalFournCaisseJour();
+  if(!f&&!d&&!r&&!fo)return '';
   return '<div style="font-size:9.5px;font-weight:600;color:var(--M)">'
     +(f?(fr?'fonds de départ ':'opening cash ')+fmt(f)+' + ':'')+(fr?'espèces ':'cash ')+fmt(esp)
     +(r?' + '+(fr?'remboursements de crédit ':'credit repayments ')+fmt(r):'')
-    +(d?' − '+(fr?'dépenses payées de la caisse ':'expenses paid from the till ')+fmt(d):'')+'</div>';
+    +(d?' − '+(fr?'dépenses payées de la caisse ':'expenses paid from the till ')+fmt(d):'')
+    +(fo?' − '+(fr?'fournisseurs payés de la caisse ':'suppliers paid from the till ')+fmt(fo):'')+'</div>';
 }
-function ouvrirClot(){var att=caisseAttendue(),_dc=totalDepCaisseJour(),_dh=totalDepJour()-_dc;document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div>'+((totalRembEspecesJour()>0)?('<div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Remboursements de crédit (espèces)':'Credit repayments (cash)')+'</span><span class="rval g">'+fmt(totalRembEspecesJour())+'</span></div>'):'')+((totalRembMobileJour()>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'remboursements mobile money (hors caisse)':'mobile money repayments (not in drawer)')+'</span><span class="rval" style="color:var(--M)">'+fmt(totalRembMobileJour())+'</span></div>'):'')+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+((_dc>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Dépenses payées de la caisse':'Expenses paid from till')+'</span><span class="rval r">-'+fmt(_dc)+'</span></div>'):'')+((_dh>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'dépenses hors caisse (le tiroir n\'y touche pas)':'expenses not from till')+'</span><span class="rval" style="color:var(--M)">-'+fmt(_dh)+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+(totalDepJour()>0?(lang==='fr'?' NET (dépenses déduites)':' NET'):'')+'</span><span class="rval '+((totalB-totalDepJour())<0?'r':'g')+'">'+fmt(totalB-totalDepJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';document.getElementById('ov-clot').classList.add('show');}
+function ouvrirClot(){var att=caisseAttendue(),_dc=totalDepCaisseJour(),_dh=totalDepJour()-_dc;document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div>'+((totalRembEspecesJour()>0)?('<div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Remboursements de crédit (espèces)':'Credit repayments (cash)')+'</span><span class="rval g">'+fmt(totalRembEspecesJour())+'</span></div>'):'')+((totalRembMobileJour()>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'remboursements mobile money (hors caisse)':'mobile money repayments (not in drawer)')+'</span><span class="rval" style="color:var(--M)">'+fmt(totalRembMobileJour())+'</span></div>'):'')+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+((_dc>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Dépenses payées de la caisse':'Expenses paid from till')+'</span><span class="rval r">-'+fmt(_dc)+'</span></div>'):'')+((_dh>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'dépenses hors caisse (le tiroir n\'y touche pas)':'expenses not from till')+'</span><span class="rval" style="color:var(--M)">-'+fmt(_dh)+'</span></div>'):'')+((totalFournCaisseJour()>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Fournisseurs payés de la caisse':'Suppliers paid from till')+'</span><span class="rval r">-'+fmt(totalFournCaisseJour())+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+(totalDepJour()>0?(lang==='fr'?' NET (dépenses déduites)':' NET'):'')+'</span><span class="rval '+((totalB-totalDepJour())<0?'r':'g')+'">'+fmt(totalB-totalDepJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';document.getElementById('ov-clot').classList.add('show');}
 function calcEcart(){var compt=parseFloat(document.getElementById('inp-compt').value)||0,att=caisseAttendue(),ec=compt-att,el=document.getElementById('ecart-cd');el.style.display='flex';el.className='bcard '+(Math.abs(ec)<100?'bon':'bad');document.getElementById('ecart-lbl').textContent=ec===0?'✅ '+(lang==='fr'?'Équilibrée':'Balanced'):ec>0?'📈 '+(lang==='fr'?'Excédent':'Surplus'):'⚠️ '+(lang==='fr'?'Déficit':'Deficit');document.getElementById('ecart-amt').textContent=(ec>=0?'+':'')+fmt(ec);}
 function validerClot(){
   closeSheet('ov-clot');
@@ -30106,6 +30316,7 @@ function validerClot(){
   // clôturées, exactement comme les ventes.
   depensesDuJour().forEach(function(d){d.cloturee=true;});
   remboursementsDuJour().forEach(function(e){e.cloturee=true;});
+  _fdListe().forEach(function(e){if(e&&e.type==='paye'&&_ouvertDuJour(e))e.cloturee=true;});
   save();recalcTotaux();updateObjBar();
 }
 // Ouvert (pas clôturé) et daté d'aujourd'hui : l'heure ISO quand elle
@@ -32080,6 +32291,14 @@ function mergeDB(base,other){
   });
   base.encaissements=Object.keys(encById).map(function(k){return encById[k];}).filter(function(e){var t=_epochEvt(e);return t==null||t>=archUp;});
   _reconcilierEncaissements(base);
+  // ⭐ 23.52 — LES DETTES FOURNISSEURS : union par identifiant, comme les
+  // encaissements. Jamais archivées : une dette ne vieillit pas.
+  var fdById={};
+  (base.fournDettes||[]).concat(other.fournDettes||[]).forEach(function(e){
+    if(!e||e.id==null)return;var ex=fdById[e.id];
+    if(!ex)fdById[e.id]=e;else if(e.cloturee&&!ex.cloturee)ex.cloturee=true;
+  });
+  base.fournDettes=Object.keys(fdById).map(function(k){return fdById[k];});
   // ⭐ 23.22 — LES COMPTEURS DE L'ÉCOUTE (des nombres, ni son ni mot). Un
   // compteur par téléphone, qui ne fait que monter : pour chaque téléphone,
   // la copie la plus avancée gagne. Sans cette règle, la copie du serveur
@@ -32286,6 +32505,11 @@ function migrateDBData(d){
   })();
   recomputeStock(d);
   if(!Array.isArray(d.encaissements))d.encaissements=[];
+  // 23.52 — dettes fournisseurs : le nom vient d'un autre téléphone, il est
+  // neutralisé comme les autres noms (et toujours affiché avec escH).
+  if(!Array.isArray(d.fournDettes))d.fournDettes=[];
+  d.fournDettes=d.fournDettes.filter(function(e){return e&&e.id!=null&&(e.type==='achat'||e.type==='paye');});
+  d.fournDettes.forEach(function(e){e.fourn=String(e.fourn||'').replace(/</g,'‹').replace(/>/g,'›').replace(/"/g,'″').slice(0,40);e.amt=Number(e.amt)||0;});
   try{_marquerAnnulationsCredit(d);_reconcilierEncaissements(d);}catch(e){}
   return d;
 }
