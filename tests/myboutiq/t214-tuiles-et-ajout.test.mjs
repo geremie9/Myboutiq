@@ -72,7 +72,13 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
   // nom se pose dessus, en blanc sur un voile. La 23.01 le voulait en noir dessous.
   // 23.44 — sa capture avec de vraies photos (« gaspillage d'espace ») : c'est
   // le PRIX qui se colle sur la photo ; le nom revient dessous, en sombre.
-  t(huile.nomCouleur === 'rgb(61, 58, 74)', `le nom est sous la photo, en sombre sur blanc (${huile.nomCouleur})`);
+  // 23.68 — sa demande du 15/11 (« la couleur dans l'ensemble pour différencier
+  // les articles ») : la bande du nom porte la couleur du rayon — l'huile,
+  // de l'alimentation, sur l'ambre de MyBoutiQ, en brun très foncé. Ce que
+  // ce contrôle garde : le nom dessous, en SOMBRE (le contraste exact sur
+  // chaque couleur de rayon est mesuré par t287).
+  const _rgb = (huile.nomCouleur.match(/\d+/g) || [255, 255, 255]).map(Number);
+  t(_rgb[0] + _rgb[1] + _rgb[2] < 200, `le nom est sous la photo, en sombre (${huile.nomCouleur})`);
   t(huile.nomY === sucre.nomY, `photo ou dessin, le nom tombe à la même hauteur (${huile.nomY} / ${sucre.nomY} px)`);
   // ⚠️ 23.51 — DEUX DÉCISIONS DU PATRON, DANS CET ORDRE. 23.01 (« la tuile
   // calme ») : au détail, un contenant sans prix ne prenait pas de place.

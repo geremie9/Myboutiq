@@ -1533,6 +1533,13 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 .tscr::-webkit-scrollbar{display:none}
 .tpil{display:flex;align-items:center;gap:4px;background:var(--C);border:2px solid var(--BD);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;font-family:'Outfit',sans-serif;cursor:pointer;white-space:nowrap;color:var(--T);transition:all .2s;box-shadow:0 2px 6px rgba(0,0,0,.04)}
 .tpil.on{background:var(--P);border-color:var(--P);color:var(--A)}
+/* 23.68 — l'onglet d'un rayon porte la couleur de ses tuiles : bordée au
+   repos, pleine quand il est choisi. « Tout » reste aux couleurs de la marque. */
+.tpil.tpil-ray{border-color:var(--ray)}
+.tpil.tpil-ray.on{background:var(--ray);border-color:var(--ray);color:var(--ray-tx)}
+.tpil.tpil-ray.on .tpil-ic{color:var(--ray-tx)!important}
+#s-caisse #pgrid .pcard:not(.etg)[data-ray] .pnm-ov{background:var(--ray);color:var(--ray-tx);font-weight:800}
+.vinline .vgrid:not(.v-liste) .vtile[data-ray] .vt-nm{background:var(--ray);color:var(--ray-tx);font-weight:800}
 .shdr{display:flex;align-items:center;justify-content:space-between;padding:10px 15px 6px}
 /* 23.23 — la caisse rend l'écran à la vente (voir #stk-rangement) */
 #s-caisse .stats-bar,#s-caisse .shdr{display:none}
@@ -7588,7 +7595,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.67'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.68'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -8884,6 +8891,18 @@ var _ICOART={
   shirt:'<path d="M9 3.5L4 6.5l2 3.6 2-1V20.5h8V9.1l2 1 2-3.6-5-3a3 3 0 0 1-6 0z"/>'
 };
 var _RAYON={amber:{bg:'#FBEEDA',fg:'#B4790F'},blue:{bg:'#E6F1FB',fg:'#185FA5'},red:{bg:'#FCEBEB',fg:'#A32D2D'},teal:{bg:'#E1F5EE',fg:'#0F6E56'},purple:{bg:'#EFEDFD',fg:'#534AB7'},indigo:{bg:'#E8EAF6',fg:'#3949AB'},green:{bg:'#EAF3DE',fg:'#3B6D11'},gray:{bg:'#EFEFF1',fg:'#5F5E5A'}};
+// ⭐ 23.68 — « LA COULEUR DANS L'ENSEMBLE, POUR DIFFÉRENCIER FACILEMENT LES
+// ARTICLES : DES COULEURS EN LIAISON AVEC MYBOUTIQ, QUI PERMETTENT DE
+// NAVIGUER. » La vignette pâle (`_RAYON`) ne se voyait que sur un article
+// SANS photo ; avec une photo, toutes les tuiles avaient la même étiquette
+// blanche. Chaque rayon a maintenant sa couleur FRANCHE, portée par la
+// bande du nom de chaque tuile ET par l'onglet du rayon : il touche
+// « Boissons » (bleu), il voit des tuiles bleues. L'ambre est celui de
+// MyBoutiQ, le violet aussi. Texte mesuré ≥ 5,7 de contraste sur chacune.
+var _RAYON_FORT={amber:{bg:'#F0A93E',tx:'#2B1B00'},blue:{bg:'#1F63C6',tx:'#fff'},red:{bg:'#B73226',tx:'#fff'},teal:{bg:'#0B7259',tx:'#fff'},purple:{bg:'#6E5A82',tx:'#fff'},indigo:{bg:'#3949AB',tx:'#fff'},green:{bg:'#3A7212',tx:'#fff'},gray:{bg:'#5F5E5A',tx:'#fff'}};
+function _poserCouleurRayon(el,cat){
+  try{var f=_RAYON_FORT[_rayonFamille(cat)]||_RAYON_FORT.amber;el.style.setProperty('--ray',f.bg);el.style.setProperty('--ray-tx',f.tx);el.setAttribute('data-ray',_rayonFamille(cat));}catch(e){}
+}
 function _rayonFamille(cat){var c=txtNorm(cat||'');if(/autre|other/.test(c))return 'gray';if(/boisson|drink/.test(c))return 'blue';if(/alcool|alcohol|biere/.test(c))return 'red';if(/menage|household/.test(c))return 'teal';if(/hygiene/.test(c))return 'purple';if(/electro/.test(c))return 'indigo';if(/medic|pharma/.test(c))return 'green';return 'amber';}
 function iconArticle(p){
   var s=txtNorm((p&&p.nm)||''),ico='bag';
@@ -13024,8 +13043,12 @@ function initTabs(){
     // 23.54 — chaque rayon porte son dessin, dans sa couleur : on le
     // reconnaît avant de le lire (le mot reste à côté).
     btn.innerHTML=_icoOnglet(cat)+'<span>'+escH(cat==='Tout'?(lang==='fr'?'Tout':'All'):cat)+'</span>';
+    if(cat!=='Tout'){btn.classList.add('tpil-ray');_poserCouleurRayon(btn,cat);}   // 23.68
     btn.onclick=function(){
       document.querySelectorAll('.tpil').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');
+      // 23.68 — l'onglet choisi reste sous ses yeux (il restait derrière le fondu du bord).
+      try{var _sc=btn.parentNode;while(_sc&&_sc!==document.body&&!(_sc.scrollWidth>_sc.clientWidth+2))_sc=_sc.parentNode;
+        if(_sc&&_sc!==document.body){var _bx=btn.getBoundingClientRect(),_cx=_sc.getBoundingClientRect();_sc.scrollLeft+=(_bx.left+_bx.width/2)-(_cx.left+_cx.width/2);}}catch(e){}
       document.getElementById('sec-lbl').textContent=(cat==='Tout'?t('tousArticles'):cat);
       renderProd(cat==='Tout'?DB.articles:DB.articles.filter(function(p){return p.cat===cat;}));
     };
@@ -14352,6 +14375,7 @@ function renderProd(lst){
     // la vignette comme le dessin (voir « LA TUILE CALME » dans le CSS).
     d.className='pcard'+(inc?' incomplete':'')+(pq>0?' sel':'')+(hasV?' hasv':'')+(isNeg?' neg':'')+(isOut&&p.rt?' out-ok':'')+(isOut&&!isNeg?' fini':'');
     d.id='pc-'+p.id;
+    _poserCouleurRayon(d,p.cat);     // 23.68 — la couleur de son rayon
     var ignoreNextTap=false;
     d.onclick=function(){
       if(ignoreNextTap){ignoreNextTap=false;return;}
@@ -18278,6 +18302,7 @@ function renderVarLst(p){
     var _imT=_imgVar(p,v),_carteV=_estCarteCatalogue(_imT);
     var _gvT=null;   // 23.07 — la pièce en haut, le carton sur sa puce (voir `_barreGros`)
     d.className='vtile'+(i.q>0?' hq':'')+(i.out?' out':'')+((v.img&&!_carteV)?' has-photo':'')+(_gvT?' vgr':'');
+    _poserCouleurRayon(d,p.cat);     // 23.68 — même couleur que sa famille dehors
     // ⚠️⚠️ SA CAPTURE DES HUILES : trois contenances, chacune avec un « 1 »
     // rouge et un « − », et AUCUN « + » nulle part. La tuile entière EST le
     // « + » — mais rien ne le dit, et quand on vient d'en retirer une, le
