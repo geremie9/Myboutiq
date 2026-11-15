@@ -6494,7 +6494,8 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       </div>
       <div id="rel-corps"></div>
       <div id="rel-actions" style="display:none;gap:8px;margin-top:18px">
-        <button class="bt" style="flex:1" onclick="imprimerReleve()">🖨️ Imprimer / PDF</button>
+        <!-- 23.58 — « Imprimer » ne fait rien dans l'app Android (TWA) : le PDF est fabriqué ici. -->
+        <button class="bt" style="flex:1" onclick="enregistrerRelevePDF()" id="rel-pdf">📄 PDF</button>
         <button class="shct" style="flex:1;min-height:44px" onclick="partagerReleve()">📤 Envoyer</button>
       </div>
     </div>
@@ -7481,7 +7482,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.57'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.58'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -12317,8 +12318,10 @@ function _terminerLoginPatron(remoteDB,tel,email){
 }
 // ── Écran de choix : on montre des faits, jamais un chiffre deviné ──
 var _cbListe=[],_cbTel='',_cbEmail='';
-function ouvrirChoixBoutique(liste,tel,email){
-  _cbListe=liste;_cbTel=tel;_cbEmail=email;
+var _cbChanger=false;
+function ouvrirChoixBoutique(liste,tel,email,depuisChanger){
+  _cbListe=liste;_cbTel=tel;_cbEmail=email;_cbChanger=!!depuisChanger;
+  try{_cbEtat('');}catch(e){}
   var fr=lang==='fr';
   document.getElementById('cb-tit').textContent=fr?'Quelle boutique ?':'Which shop?';
   document.getElementById('cb-sous').textContent=fr
@@ -12371,7 +12374,10 @@ async function _ouvrirBoutiqueDuCompte(b,tel,email){
     _terminerLoginPatron(null,tel,email);
     return true;
   }
-  var d=b.data||await loadOwnerBoutiqueFromSupa(b.code);
+  if(!b.data)showToast('⏳ '+(fr?'J\'ouvre « '+(b.nom||formatShopCode(b.code))+' »…':'Opening…'));
+  // ⚠️ 23.58 — une fin à l'attente : sur un réseau qui traîne, la ligne
+  // restait sur ⏳ sans rien dire.
+  var d=b.data||await _avecDelai(_assurerSessionPatron().then(function(){return loadOwnerBoutiqueFromSupa(b.code);}),35000);
   if(!d||!d.cfg){
     showToast('📡 '+(fr?'Ta boutique n\'est pas arrivée — vérifie ta connexion, puis retouche-la'
                        :'Your shop did not arrive — check your connection, then tap it again'));
@@ -12402,8 +12408,27 @@ function _ligneOccupee(id,i,on){
 async function choisirBoutiqueEntree(i){
   var b=_cbListe[i];if(!b||_ouvertureEnCours)return;
   var nom=(b.data&&b.data.cfg&&b.data.cfg.nom)||b.nom||'';
+  var fr=lang==='fr';
   _ouvertureEnCours=true;_ligneOccupee('cb-lst',i,true);
   try{
+    // ⚠️ 23.58 — une AUTRE boutique est ouverte ici : on l'envoie d'abord,
+    // TOUJOURS. Si l'envoi ne passe pas, on reste — ouvrir l'autre effacerait
+    // celle-ci du téléphone, et ses ventes pas encore parties avec. (Mesuré
+    // au banc : se fier au drapeau « en attente » ne suffit pas — une vente
+    // faite juste avant n'est pas encore partie, et le drapeau ne le sait pas.)
+    // Seulement quand il CHANGE de boutique : à l'entrée d'un autre compte,
+    // la session n'est plus celle de la boutique d'ici.
+    if(_cbChanger&&DB&&DB.cfg&&!DB.cfg.demo&&normalizeShopCode(DB.cfg.code)!==normalizeShopCode(b.code)){
+      _cbEtat(fr?'J\'envoie d\'abord les ventes de « '+(DB.cfg.nom||'')+' »…':'Sending this shop\'s sales first…');
+      var env=await _avecDelai(syncToSupa(),20000);
+      if(env!==true){
+        _cbEtat(fr?('Les ventes de « '+(DB.cfg.nom||'')+' » ne sont pas encore parties. Attends un meilleur réseau, puis retouche « '+nom+' ».')
+                  :'This shop\'s sales have not been sent yet. Wait for a better network, then try again.');
+        return;
+      }
+      _cbEtat('');
+    }
+    if(!(navigator.onLine))_cbEtat(fr?'Pas de réseau pour ouvrir « '+nom+' ».':'No network to open this shop.');
     if(!(await _ouvrirBoutiqueDuCompte(b,_cbTel,_cbEmail)))return;
     try{memoriserEntree({role:'patron',tel:_cbTel,code:b.code,
       ccNum:(document.getElementById('p-cc-num')||{}).textContent||'',
@@ -12414,14 +12439,99 @@ async function choisirBoutiqueEntree(i){
 }
 // Changer de boutique sans se déconnecter : il a déjà prouvé qu'il est le
 // patron en entrant son PIN, on ne le lui redemande pas pour SES boutiques.
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ 23.58 — « ON N'ARRIVE PAS À CHANGER DE BOUTIQUE, MÊME QUAND IL Y A
+//  LE RÉSEAU. SOUVENT ÇA PERTURBE. » Rejoué au banc contre le faux serveur :
+//   · la SESSION du serveur se perd au bout de quelques jours (le PIN, lui,
+//     reste sur le téléphone). La liste revenait alors vide, et l'app
+//     disait « Tu n'as qu'une seule boutique » — faux, à quelqu'un qui en a
+//     sept ; rien ne lui disait quoi faire ;
+//   · aucune attente n'avait de fin : « Recherche… », puis plus rien sur un
+//     réseau qui traîne ;
+//   · la liste n'apparaissait qu'APRÈS l'envoi complet de la boutique en
+//     cours (330 Ko pour « G » : sept secondes à 50 Ko/s, sans un geste
+//     à l'écran) ;
+//   · et si cet envoi échouait, on changeait quand même : la boutique en
+//     cours, effacée du téléphone, perdait ses ventes pas encore parties.
+//  Maintenant : la liste s'ouvre TOUT DE SUITE avec les boutiques gardées
+//  sur le téléphone ; la session se refait en silence avec le PIN d'ici ;
+//  chaque attente a une fin et un message vrai ; et on ne quitte jamais
+//  une boutique dont les ventes ne sont pas parties.
+// ══════════════════════════════════════════════════════════════════
+function _avecDelai(pr,ms){
+  return new Promise(function(ok){
+    var fini=false,t=setTimeout(function(){if(!fini){fini=true;ok(undefined);}},ms);
+    Promise.resolve(pr).then(function(v){if(!fini){fini=true;clearTimeout(t);ok(v);}},function(){if(!fini){fini=true;clearTimeout(t);ok(undefined);}});
+  });
+}
+// La session serveur perdue (au bout de quelques jours) : on la refait avec
+// le PIN que ce téléphone connaît déjà — celui qui ouvre la caisse. Un seul
+// essai : un PIN changé sur un autre téléphone ne doit pas tourner en boucle.
+async function _assurerSessionPatron(){
+  try{
+    if(await getAuthUser())return true;
+    var c=(DB&&DB.cfg)||{},pin=c.pin?String(c.pin):'';
+    var mail=c.ownerEmail||(c.tel?authEmailFromPhone(c.tel):'');
+    if(!supa||!pin||!mail)return false;
+    var r=await supa.auth.signInWithPassword({email:mail,password:pin});
+    return !(r&&r.error)&&!!(await getAuthUser());
+  }catch(e){return false;}
+}
+function _boutiquesGardees(){
+  try{return ((lireEntree()||{}).boutiques||[]).filter(function(b){return b&&b.code;});}catch(e){return [];}
+}
+var _chgEnCours=false;
 async function changerDeBoutique(){
   if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
-  if(!supa||!navigator.onLine){showToast('📴 '+(lang==='fr'?'Connecte-toi à internet pour voir tes boutiques':'Go online to list your shops'));return;}
-  showToast('🔄 '+(lang==='fr'?'Recherche de tes boutiques…':'Looking up your shops…'));
-  var mes=await listerBoutiquesDuCompte();
-  if(mes.length<2){showToast('🏬 '+(lang==='fr'?'Tu n\'as qu\'une seule boutique':'You only have one shop'));return;}
-  await syncToSupa().catch(function(){});   // ne rien perdre de la boutique en cours
-  ouvrirChoixBoutique(mes,(DB&&DB.cfg&&DB.cfg.tel)||'',(DB&&DB.cfg&&DB.cfg.ownerEmail)||'');
+  var fr=lang==='fr',tel=(DB&&DB.cfg&&DB.cfg.tel)||'',mail=(DB&&DB.cfg&&DB.cfg.ownerEmail)||'';
+  var gardees=_boutiquesGardees(),ouverte=false;
+  // 1. Tout de suite : les boutiques que ce téléphone connaît.
+  if(gardees.length>=2){ouvrirChoixBoutique(gardees,tel,mail,true);ouverte=true;_cbEtat(fr?'Je vérifie tes boutiques…':'Checking your shops…');}
+  if(!supa||!navigator.onLine){
+    if(ouverte)_cbEtat(fr?'Pas de réseau : touche une boutique quand il revient.':'No network: tap a shop when it is back.');
+    else showToast('📴 '+(fr?'Connecte-toi à internet pour voir tes boutiques':'Go online to list your shops'));
+    return;
+  }
+  if(_chgEnCours)return;
+  _chgEnCours=true;
+  try{
+    if(!ouverte)showToast('🔄 '+(fr?'Recherche de tes boutiques…':'Looking up your shops…'));
+    // 2. La session : refaite en silence si elle s'est perdue.
+    var s=await _avecDelai(_assurerSessionPatron(),9000);
+    if(s===undefined){
+      var m0=fr?'Le réseau est trop lent pour voir tes boutiques. Réessaie dans un moment.':'The network is too slow. Try again shortly.';
+      if(ouverte)_cbEtat(m0);else showToast('🐢 '+m0);
+      return;
+    }
+    if(!s){
+      var m=fr?'Ton compte doit se reconnecter : ferme, puis entre avec ton numéro et ton code.':'Your account must sign in again: close, then enter with your number and code.';
+      if(ouverte)_cbEtat(m);else showToast('🔑 '+m);
+      return;
+    }
+    // 3. La liste du serveur, avec une fin.
+    var mes=await _avecDelai(listerBoutiquesDuCompte(),12000);
+    if(mes===undefined){
+      var m2=fr?'Le réseau est trop lent pour voir tes boutiques. Réessaie dans un moment.':'The network is too slow. Try again shortly.';
+      if(ouverte)_cbEtat(m2);else showToast('🐢 '+m2);
+      return;
+    }
+    if(mes.length<2){
+      if(mes.length===1){try{closeSheet('ov-choixb');}catch(e){}showToast('🏬 '+(fr?'Tu n\'as qu\'une seule boutique':'You only have one shop'));}
+      else{var m3=fr?'Je n\'ai pas pu lire tes boutiques. Réessaie dans un moment.':'Could not read your shops. Try again shortly.';if(ouverte)_cbEtat(m3);else showToast('📡 '+m3);}
+      return;
+    }
+    // La liste fraîche remplace celle du téléphone — sauf s'il a déjà touché une boutique.
+    if(!_ouvertureEnCours)ouvrirChoixBoutique(mes,tel,mail,true);
+    // 4. Ce qui reste de la boutique en cours part derrière, sans le faire attendre.
+    syncToSupa().catch(function(){});
+  }finally{_chgEnCours=false;}
+}
+// Une ligne d'état sous le titre de la feuille « Quelle boutique ? ».
+function _cbEtat(t){
+  try{var e=document.getElementById('cb-etat');
+    if(!e){var s=document.getElementById('cb-sous');if(!s)return;e=document.createElement('div');e.id='cb-etat';
+      e.style.cssText='font-size:12px;font-weight:700;color:#8A5A22;margin:6px 0 2px;min-height:0';s.parentNode.insertBefore(e,s.nextSibling);}
+    e.textContent=t||'';e.style.display=t?'':'none';}catch(x){}
 }
 // Toutes les boutiques de ce compte. Les droits serveur (sel_owner) ne
 // laissent voir que les siennes.
@@ -37493,12 +37603,12 @@ function renderReleve(){
   h+='<div class="rel-tete">'
     +'<div class="rel-marque">MyBoutiQ</div>'
     +'<div class="rel-titre">'+(fr?'Relevé d’activité':'Activity statement')+'</div>'
-    +'<div class="rel-sous">'+d.nom+(d.ville?(' · '+d.ville):'')+' · '+(fr?'code ':'code ')+d.code+'</div>'
+    +'<div class="rel-sous">'+escH(d.nom)+(d.ville?(' · '+escH(d.ville)):'')+' · '+(fr?'code ':'code ')+d.code+'</div>'
     +'<div class="rel-sous">'+(fr?'Du ':'From ')+_dateLongue(d.debut)+(fr?' au ':' to ')+_dateLongue(d.fin)+'</div>'
     +'<div class="rel-num">'+(fr?'N° ':'No. ')+d.numero+'</div>'
     +'</div>';
   if(nbBout>1)h+='<div class="rel-note">ℹ️ '+(fr
-      ?('Ce relevé ne concerne que <b>'+d.nom+'</b>. Tu as '+nbBout+' boutiques : change de boutique pour faire le relevé d’une autre.')
+      ?('Ce relevé ne concerne que <b>'+escH(d.nom)+'</b>. Tu as '+nbBout+' boutiques : change de boutique pour faire le relevé d’une autre.')
       :('This statement covers <b>'+d.nom+'</b> only.'))+'</div>';
   h+='<div class="rel-phare">'
     +'<div class="rel-gros">'+d.jours+' <small>'+(fr?('jour'+(d.jours>1?'s':'')+' sur '+d.calend):('of '+d.calend))+'</small></div>'
@@ -37528,7 +37638,7 @@ function renderReleve(){
   if(d.top.length){
     h+='<div class="rel-sect">'+(fr?'Ce qui fait le chiffre':'Top items')+'</div>';
     h+='<div class="rel-tbl"><table><thead><tr><th>'+(fr?'Article':'Item')+'</th><th>'+(fr?'Quantité':'Qty')+'</th><th>'+(fr?'Ventes':'Sales')+'</th></tr></thead><tbody>';
-    d.top.forEach(function(t){h+='<tr><td>'+t.nm+'</td><td>'+fmtQ(t.q)+'</td><td>'+fmt(t.ca)+'</td></tr>';});
+    d.top.forEach(function(t){h+='<tr><td>'+escH(t.nm)+'</td><td>'+fmtQ(t.q)+'</td><td>'+fmt(t.ca)+'</td></tr>';});
     h+='</tbody></table></div>';
   }
   h+='<div class="rel-reserve"><b>'+(fr?'Ce que ce relevé ne prouve pas':'What this does not prove')+'</b>'
@@ -37553,6 +37663,141 @@ function imprimerReleve(){
       setTimeout(function(){document.body.classList.remove('impr-releve');},600);
     },120);
   }catch(e){document.body.classList.remove('impr-releve');}
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ 23.58 — « LE RELEVÉ D'ACTIVITÉ : IL FAUT UN ENREGISTREMENT EN PDF. »
+//  « Imprimer / PDF » passait par l'impression du navigateur. Dans l'app
+//  Android (TWA), il n'y a PAS d'impression : le bouton ne faisait rien.
+//  Le PDF est maintenant FABRIQUÉ dans le téléphone (aucune bibliothèque,
+//  rien à télécharger : les polices standard du PDF suffisent), puis
+//  partagé (WhatsApp, Drive…) ou enregistré dans les téléchargements.
+// ══════════════════════════════════════════════════════════════════
+var _PDF_L=[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+// Le texte en WinAnsi (les accents du français, « », ’, —) ; le reste en « ? ».
+function _pdfOctets(t){
+  var sp={0x2019:0x92,0x2018:0x91,0x201C:0x93,0x201D:0x94,0x2014:0x97,0x2013:0x96,0x2026:0x85,0x20AC:0x80,0x0153:0x9C,0x0152:0x8C,0x202F:0xA0,0x2009:0x20,0x2022:0x95};
+  var o=[];t=String(t==null?'':t);
+  for(var i=0;i<t.length;i++){var c=t.charCodeAt(i);
+    if(c>=0xD800&&c<0xDC00){i++;continue;}                 // émoji : rien
+    if(sp[c])c=sp[c];else if(c>255)c=63;
+    o.push(c);}
+  return o;
+}
+function _pdfLarg(t,taille,gras){
+  var o=_pdfOctets(t),w=0;
+  for(var i=0;i<o.length;i++){var c=o[i];w+=(c>=32&&c<=126)?_PDF_L[c-32]:(c===0xA0?278:556);}
+  return w*taille/1000*(gras?1.06:1);
+}
+function _pdfChaine(t){
+  return '('+_pdfOctets(t).map(function(c){
+    if(c===40||c===41||c===92)return '\\'+String.fromCharCode(c);
+    if(c<32||c>126)return '\\'+('00'+c.toString(8)).slice(-3);
+    return String.fromCharCode(c);}).join('')+')';
+}
+// Une page A4 qui s'écrit de haut en bas ; nouvelle page quand elle est pleine.
+function _PdfDoc(){this.pages=[];this.y=0;this.nouvelle();}
+_PdfDoc.prototype.nouvelle=function(){this.c=[];this.pages.push(this.c);this.y=800;};
+_PdfDoc.prototype.place=function(h){if(this.y-h<52)this.nouvelle();};
+_PdfDoc.prototype.texte=function(x,y,t,taille,gras,coul){
+  this.c.push('BT '+(coul||'0.12 0.11 0.18')+' rg /'+(gras?'F2':'F1')+' '+taille+' Tf '+x.toFixed(1)+' '+y.toFixed(1)+' Td '+_pdfChaine(t)+' Tj ET');};
+_PdfDoc.prototype.droite=function(xd,y,t,taille,gras,coul){this.texte(xd-_pdfLarg(t,taille,gras),y,t,taille,gras,coul);};
+_PdfDoc.prototype.rect=function(x,y,w,h,coul){this.c.push(coul+' rg '+x+' '+y+' '+w+' '+h+' re f');};
+_PdfDoc.prototype.trait=function(x1,y1,x2,y2){this.c.push('0.85 0.84 0.88 RG 0.6 w '+x1+' '+y1+' m '+x2+' '+y2+' l S');};
+// Un paragraphe coupé à la largeur donnée.
+_PdfDoc.prototype.para=function(x,t,taille,larg,gras,coul){
+  var mots=String(t).split(/\s+/),l='',self=this;
+  var sortir=function(){self.place(taille+4);self.texte(x,self.y,l,taille,gras,coul);self.y-=taille+4;l='';};
+  mots.forEach(function(m){var e=l?l+' '+m:m;if(_pdfLarg(e,taille,gras)>larg&&l){sortir();l=m;}else l=e;});
+  if(l)sortir();
+};
+_PdfDoc.prototype.octets=function(){
+  var objs=[],n=this.pages.length;
+  // 1 catalogue, 2 pages, 3 F1, 4 F2, puis (page, contenu) par page
+  var kids=[];for(var i=0;i<n;i++)kids.push((5+i*2)+' 0 R');
+  objs.push('<< /Type /Catalog /Pages 2 0 R >>');
+  objs.push('<< /Type /Pages /Kids ['+kids.join(' ')+'] /Count '+n+' >>');
+  objs.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  objs.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  for(var k=0;k<n;k++){
+    var flux=this.pages[k].join('\n')+'\n';
+    objs.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents '+(6+k*2)+' 0 R >>');
+    objs.push('<< /Length '+flux.length+' >>\nstream\n'+flux+'endstream');
+  }
+  var out='%PDF-1.4\n%âãÏÓ\n',pos=[];
+  objs.forEach(function(o,i){pos.push(out.length);out+=(i+1)+' 0 obj\n'+o+'\nendobj\n';});
+  var x=out.length;
+  out+='xref\n0 '+(objs.length+1)+'\n0000000000 65535 f \n'+pos.map(function(p){return ('0000000000'+p).slice(-10)+' 00000 n \n';}).join('');
+  out+='trailer\n<< /Size '+(objs.length+1)+' /Root 1 0 R >>\nstartxref\n'+x+'\n%%EOF';
+  var u=new Uint8Array(out.length);for(var j=0;j<out.length;j++)u[j]=out.charCodeAt(j)&255;
+  return u;
+};
+// Le relevé, mis en page comme à l'écran.
+function _pdfReleve(d){
+  var fr=(lang!=='en'),D=new _PdfDoc(),L=48,R=547,G='0.36 0.29 0.43',A='0.94 0.66 0.24',M='0.42 0.41 0.47';
+  var mt=function(n){return fmt(n).replace(/ | /g,' ');};
+  D.texte(L,D.y,'MyBoutiQ',11,true,A);D.droite(R,D.y,(fr?'N° ':'No. ')+d.numero,9,false,M);D.y-=24;
+  D.texte(L,D.y,fr?'Relevé d’activité':'Activity statement',20,true);D.y-=18;
+  D.texte(L,D.y,d.nom+(d.ville?(' · '+d.ville):'')+' · '+(fr?'code ':'code ')+d.code,10.5,false,M);D.y-=14;
+  D.texte(L,D.y,(fr?'Du ':'From ')+_dateLongue(d.debut)+(fr?' au ':' to ')+_dateLongue(d.fin),10.5,false,M);D.y-=22;
+  D.rect(L,D.y-40,R-L,56,'0.95 0.95 0.95');
+  D.texte(L+12,D.y-8,String(d.jours),22,true);
+  D.texte(L+16+_pdfLarg(String(d.jours),22,true),D.y-8,fr?('jour'+(d.jours>1?'s':'')+' sur '+d.calend):('of '+d.calend),10,false,M);
+  D.texte(L+12,D.y-26,fr?('Ventes enregistrées '+d.jours+' journées différentes sur '+d.calend+', soit '+d.regularite+' % des jours.'):(d.regularite+'% of days with recorded sales.'),9.5,false);
+  D.y-=58;
+  var lig=function(a,b){D.place(18);D.texte(L,D.y,a,10.5,false);D.droite(R,D.y,b,10.5,true);D.y-=6;D.trait(L,D.y,R,D.y);D.y-=12;};
+  var sect=function(t){D.place(34);D.y-=6;D.texte(L,D.y,t.toUpperCase(),9,true,G);D.y-=16;};
+  lig(fr?'Transactions':'Transactions',fmtQ(d.transactions));
+  lig(fr?'Encaissé sur la période':'Collected',mt(d.encaisse));
+  lig(fr?'Panier moyen':'Average basket',mt(d.panier));
+  lig(fr?'Réglé en Mobile Money':'Paid by Mobile Money',d.pctMobile+' %');
+  var tab=function(tetes,lignes){
+    var xs=[L,L+220,L+300,R];
+    D.place(18);tetes.forEach(function(t,i){if(i===0)D.texte(xs[0],D.y,t,9,true,M);else D.droite(i===3?R:xs[i]+50,D.y,t,9,true,M);});D.y-=6;D.trait(L,D.y,R,D.y);D.y-=12;
+    lignes.forEach(function(l){D.place(16);l.forEach(function(t,i){if(i===0)D.texte(xs[0],D.y,t,10,false);else D.droite(i===l.length-1?R:xs[i]+50,D.y,t,10,i===l.length-1);});D.y-=15;});
+  };
+  sect(fr?'Mois par mois':'Month by month');
+  tab([fr?'Mois':'Month',fr?'Jours':'Days',fr?'Trans.':'Tx',fr?'Encaissé':'Collected'],d.mois.map(function(m){return [_moisLisible(m.mois),String(m.jours),String(m.tr),mt(m.enc)];}));
+  sect(fr?'Marge commerciale':'Trading margin');
+  lig(fr?'Lignes de vente exploitables':'Usable sale lines',d.ligSaines+' / '+d.ligTot);
+  lig(fr?'Ventes sur ces lignes':'Sales on those lines',mt(d.caSain));
+  lig(fr?'Marge dégagée':'Margin',mt(d.marge));
+  lig(fr?'Taux de marge':'Margin rate',String(d.tauxMarge).replace('.',',')+' %');
+  if(d.ligEcartees>0)D.para(L,d.ligEcartees+' '+(fr?('lignes écartées du calcul de marge : '+d.ligSansCout+' sans prix d’achat, '+d.ligImpossibles+' avec un prix d’achat supérieur au prix de vente.'):'lines excluded from the margin.'),9,R-L,false,M);
+  if(d.top.length){
+    sect(fr?'Ce qui fait le chiffre':'Top items');
+    tab([fr?'Article':'Item','',fr?'Quantité':'Qty',fr?'Ventes':'Sales'],d.top.map(function(t){return [t.nm,'',fmtQ(t.q),mt(t.ca)];}));
+  }
+  sect(fr?'Ce que ce relevé ne prouve pas':'What this does not prove');
+  [fr?'Les ventes sont saisies par le commerçant. MyBoutiQ atteste qu’elles ont été enregistrées aux dates indiquées, pas qu’elles ont eu lieu.':'Sales are entered by the shopkeeper.',
+   fr?'Les montants ne sont rapprochés d’aucun compte bancaire. Seule la part Mobile Money peut être recoupée auprès de l’opérateur.':'Amounts are not reconciled with a bank account.',
+   fr?'Il ne dit rien des charges du commerçant, ni de ses engagements ailleurs.':'It says nothing about costs or other commitments.']
+    .forEach(function(t){D.para(L+10,'• '+t,9.5,R-L-10,false);});
+  D.y-=8;
+  D.para(L,(fr?'Édité le ':'Issued ')+_dateLongue(d.editeLe)+' · '+(fr?'N° ':'No. ')+d.numero+' · myboutiq.online',8.5,R-L,false,M);
+  D.para(L,fr?'Le numéro est calculé sur les chiffres eux-mêmes : deux relevés qui ne disent pas la même chose ne portent pas le même numéro.':'The number is computed from the figures themselves.',8,R-L,false,M);
+  return D.octets();
+}
+function _nomPdfReleve(d){
+  return 'releve-'+String(d.nom||'boutique').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase().slice(0,30)+'-'+new Date().toISOString().slice(0,10)+'.pdf';
+}
+async function enregistrerRelevePDF(){
+  var fr=(lang!=='en'),d=_relDonnees;if(!d||!d.ok)return;
+  var u;try{u=_pdfReleve(d);}catch(e){showToast('⚠️ '+(fr?'Le PDF n’a pas pu se faire':'PDF failed'));return;}
+  var nom=_nomPdfReleve(d),blob=new Blob([u],{type:'application/pdf'});
+  // D'abord le partage (WhatsApp, Drive, e-mail…) : c'est ce qu'il veut en faire.
+  try{
+    var fic=new File([blob],nom,{type:'application/pdf'});
+    if(navigator.canShare&&navigator.canShare({files:[fic]})){
+      await navigator.share({files:[fic],title:fr?'Relevé d’activité':'Activity statement'});return;
+    }
+  }catch(e){if(e&&e.name==='AbortError')return;}
+  // Sinon, dans les téléchargements.
+  try{
+    var url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=nom;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},60000);
+    showToast('📄 '+(fr?'PDF enregistré dans tes téléchargements':'PDF saved to downloads'));
+  }catch(e){showToast('⚠️ '+(fr?'Le PDF n’a pas pu s’enregistrer':'Could not save the PDF'));}
 }
 function partagerReleve(){
   var fr=(lang!=='en'),d=_relDonnees;
