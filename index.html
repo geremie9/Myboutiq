@@ -1139,6 +1139,23 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .etg-vide .etg-px{color:var(--O);font-size:15px}
 .etg-gain{font-style:normal;font-size:10px;font-weight:700;color:var(--M);text-decoration:line-through}
 .etg-reste{margin-top:12px;background:#F6EFE3;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;color:var(--T)}
+.stc{margin:0 0 4px}
+.stc-t{font-size:14.5px;font-weight:900;color:var(--T);margin-bottom:6px}
+.stc-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.stc-b{display:flex;flex-direction:row;align-items:center;gap:5px;border:2px solid #E6DFD2;background:#fff;border-radius:12px;padding:6px 6px;font:800 12.5px 'Outfit',sans-serif;color:var(--T);cursor:pointer;min-height:44px;justify-content:center}
+.stc-b.stc-1{border-color:#F0A93E;background:#FFF6DF}
+.stc-b.on{border-color:var(--B);background:#F1EEF7}
+.stc-ic{display:flex;color:#8A5A22}
+.stc-ic svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.stc-n{margin-top:10px;background:#F6EFE3;border-radius:12px;padding:10px 11px}
+.stc-q{font-size:14px;font-weight:800;margin-bottom:7px}
+.stc-ch{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px}
+.stc-l{display:flex;gap:8px}
+.stc-l .pi{flex:1;min-width:0;margin:0}
+.stc-l .bnxt{flex:none;width:80px;margin:0;padding:10px 6px}
+.apn-ach{display:flex;gap:6px;flex-wrap:wrap}
+.apn-ach button{border:1.5px solid var(--BD);background:var(--C);border-radius:11px;padding:8px 11px;font:800 13px 'Outfit',sans-serif;color:var(--T)}
+.apn-ach button.on{border-color:#F0A93E;background:#FFF6DF}
 .ag-rien{grid-column:1/-1;text-align:center;font-size:12.5px;font-weight:700;color:var(--M);padding:10px 4px}
 .snack-ph{white-space:nowrap;position:fixed;left:50%;bottom:92px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:400;display:flex;align-items:center;gap:14px;background:#1E1B2E;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;font-size:13px;font-weight:700;font-family:'Outfit',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:all .25s}
 .snack-ph.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
@@ -5961,6 +5978,8 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
                de cette taille attend l'inventaire pour se voir. Donc le champ
                DIT ce qu'il compte : « Combien de cartons ? », le total en
                unités écrit dessous en direct, et « En unités » à une tape. -->
+          <!-- 23.64 — « tout s'achète en gros » : la question vient AVANT la quantité. -->
+          <div id="stk-comment" class="stc" style="display:none"></div>
           <div id="stk-qmode-row" style="display:none;gap:8px;margin-bottom:7px">
             <div class="abtn on" id="sq-c" onclick="stkQMode('c')" style="flex:1;padding:8px"><span class="albl" id="sq-c-l">Par carton</span></div>
             <div class="abtn" id="sq-u" onclick="stkQMode('u')" style="flex:1;padding:8px"><span class="albl" id="sq-u-l">En unités</span></div>
@@ -7538,7 +7557,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.63'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.64'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -22821,7 +22840,11 @@ function _apnApercu(){
     +'<div class="apn-ligne"><input class="pi" id="apn-nm" maxlength="60" autocomplete="off" placeholder="'+(fr?'ex : Savon Azur':'e.g. Azur soap')+'" value="'+escH(_apn.nm)+'" oninput="_apn.nm=this.value;_apnBouton()">'
     +'<button type="button" id="apn-mic" class="apn-mic" onclick="dicterDans(\'apn-nm\',\'apn-mic\')" aria-label="'+(fr?'Dire le nom':'Say the name')+'"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>'
     +'<div class="apn-deux"><div><label class="apn-l" for="apn-px">'+(fr?'Tu le vends':'You sell it')+'</label><input class="pi apn-px" id="apn-px" type="number" inputmode="numeric" min="0" placeholder="0" value="'+escH(_apn.px)+'" oninput="_apn.px=this.value;_apnBouton()"></div>'
-    +'<div><label class="apn-l" for="apn-q">'+(fr?'Tu en as':'You have')+'</label><input class="pi" id="apn-q" type="number" inputmode="decimal" min="0" placeholder="—" value="'+escH(_apn.q)+'" oninput="_apn.q=this.value"></div></div>'
+    +'<div><label class="apn-l" for="apn-q" id="apn-q-l">'+(fr?'Tu en as':'You have')+(_apn.mot?(' ('+escH(_apn.mot)+'s)'):'')+'</label><input class="pi" id="apn-q" type="number" inputmode="decimal" min="0" placeholder="—" value="'+escH(_apn.q)+'" oninput="_apn.q=this.value"></div></div>'
+    // 23.64 — « tout s'achète en gros » : comment il l'achète, dès la création.
+    +'<label class="apn-l">'+(fr?'Tu l\'achètes comment ?':'How do you buy it?')+'</label><div class="apn-ach">'
+    +['','carton','sac','bidon','casier'].map(function(m){return '<button type="button" class="'+((_apn.mot||'')===m?'on':'')+'" onclick="apnAchat('+jsStr(m)+')">'+escH(m?(fr?'Par '+m:'By '+m):(fr?'À la pièce':'Each'))+'</button>';}).join('')+'</div>'
+    +(_apn.mot?('<div class="apn-dans"><label class="apn-l" for="apn-n">'+(fr?('Combien dans 1 '+escH(_apn.mot)+' ?'):('How many in 1 '+escH(_apn.mot)+'?'))+'</label><input class="pi" id="apn-n" type="number" inputmode="numeric" min="2" placeholder="ex : 24" value="'+escH(_apn.dans||'')+'" oninput="_apn.dans=this.value"></div>'):'')
     +'<button type="button" class="bnxt apn-ok" id="apn-ok" onclick="apnAjouter()"></button>';
   z.innerHTML=h;
   var pr=document.getElementById('apn-prod');
@@ -22835,6 +22858,14 @@ function _apnBouton(){
   var px=Math.round(Number(String(_apn.px||'').replace(',','.'))||0);
   b.textContent=px>0?((fr?'Ajouter · ':'Add · ')+fmt(px)):(fr?'Ajouter sans prix':'Add without price');
   b.classList.toggle('apn-sanspx',!(px>0));
+}
+function apnAchat(m){
+  if(!_apn)return;
+  try{_apn.nm=document.getElementById('apn-nm').value;_apn.px=document.getElementById('apn-px').value;_apn.q=document.getElementById('apn-q').value;}catch(e){}
+  _apn.mot=m||'';if(!m)_apn.dans='';
+  var y=(document.querySelector('#ov-apn .bsht')||{}).scrollTop||0;
+  _apnApercu();
+  try{document.querySelector('#ov-apn .bsht').scrollTop=y;if(m)document.getElementById('apn-n').focus();}catch(e){}
 }
 function apnReprendre(){var i=document.getElementById('inp-apn');if(i){i.value='';i.click();}}
 // Le carré, du doigt : on le déplace ; « − » et « + » le rapetissent ou
@@ -22877,8 +22908,13 @@ function apnAjouter(){
   var art={id:_prochainIdArticle(),nm:nm,e:emojiDepuisNomProduit(nm),cat:categorieDepuisNomProduit(nm),
     px:px>0?px:0,pa:0,stk:0,stk0:0,al:5,vd:0,vr:[],rt:true};
   try{appliquerConditionnementCatalogue([art],true);}catch(e){}
+  // 23.64 — il l'achète par bidon de 20 : retenu, et « Tu en as 3 » veut
+  // dire 3 bidons, comme il compte.
+  var dans=Math.round(Number(String(_apn.dans||'').replace(',','.'))||0);
+  if(_apn.mot&&!(dans>1)){showToast('📦 '+(fr?'Combien dans 1 '+_apn.mot+' ?':'How many inside?'));try{document.getElementById('apn-n').focus();}catch(e){}return;}
+  if(_apn.mot&&dans>1){art.umSac=dans;art.umCont=_apn.mot;}
   DB.articles.push(art);
-  if(q>0)try{definirStock(art,null,q);}catch(e){}
+  if(q>0)try{definirStock(art,null,(_apn.mot&&dans>1)?q*dans:q);}catch(e){}
   try{journalAjouter('article',nm,'',fr?'créé en photo':'created from a photo');}catch(e){}
   save();
   try{if(typeof initTabs==='function')initTabs();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();}catch(e){}
@@ -29104,11 +29140,20 @@ function selArtStk(p,depuisListe){
     }else{
       chips.innerHTML=[6,12,24,48].map(function(n){return '<button class="shct" onclick="setSQ('+n+')">'+n+'</button>';}).join('');
     }
+    // ⭐ 23.64 — « PEU IMPORTE OÙ TU ES DANS MYBOUTIQ, METS-TOI EN TÊTE QUE
+    // TOUT S'ACHÈTE MAJORITAIREMENT EN GROS. » Sa capture : l'huile, « Quantité
+    // reçue » en unités, les puces 6 · 12 · 24 · 48, et le gros caché derrière
+    // un petit lien souligné. Le contenant inconnu, la PREMIÈRE question est
+    // maintenant « Tu l'as acheté comment ? », en gros dessins ; une fois dit,
+    // c'est retenu, et il compte en cartons pour toujours.
+    var _stcVis=false;
+    try{_stcVis=_stkCommentRendre(p,sc);}catch(e){}
+    if(_stcVis)chips.innerHTML='';
     // Taille du carton inconnue : on lui propose de la dire, une fois.
     var lienC=document.getElementById('stk-dire-cart');
     if(lienC){
       var fr2=(lang==='fr');
-      lienC.style.display=(sc>0||estMesure(p))?'none':'block';
+      lienC.style.display=(sc>0||estMesure(p)||_stcVis)?'none':'block';
       lienC.textContent=fr2?('📦 J\'ai acheté par '+mot+' — combien dedans ?')
                            :('📦 I bought by the '+mot+' — how many inside?');
     }
@@ -29290,6 +29335,63 @@ function stkDireCarton(){
   var l=document.getElementById('stk-dire-cart');if(l)l.style.display='none';
   var c=document.getElementById('inp-scart');if(c)try{c.focus();}catch(e){}
 }
+// ── 23.64 « Tu l'as acheté comment ? » ──
+var _STC_MOTS=['carton','sac','bidon','casier','paquet'],_STC_TAILLES={carton:[6,12,24,48],sac:[10,25,50],bidon:[5,10,20,25],casier:[12,20,24],paquet:[6,10,12,20]};
+var _stcMot='';
+function _stcCible(){return artStkVarCours||artStkCours;}
+function _stkCommentRendre(p,sc){
+  var z=document.getElementById('stk-comment');if(!z)return false;
+  var c=_stcCible();
+  var montrer=!!p&&!(sc>0)&&!estMesure(p)&&!(c&&c.achatPiece)&&!(p&&p.achatPiece);
+  z.style.display=montrer?'block':'none';
+  // La question remplace « Quantité reçue » le temps d'y répondre : la feuille
+  // doit tenir dans un écran de 360 × 740 sans défiler (t252).
+  var _lq=document.getElementById('lbl-qte-recu');if(_lq)_lq.style.display=montrer?'none':'';
+  if(!montrer){z.innerHTML='';return false;}
+  var fr=(lang==='fr'),probable=txtNorm(_motContenant(p,artStkVarCours||null)||'carton');
+  var mots=_STC_MOTS.slice();var k=mots.indexOf(probable);if(k>0){mots.splice(k,1);mots.unshift(probable);}else if(k<0&&probable){mots.unshift(probable);mots=mots.slice(0,5);}
+  _stcMot='';
+  z.innerHTML='<div class="stc-t">'+(fr?'Tu l\'as acheté comment ?':'How did you buy it?')+'</div>'
+    +'<div class="stc-g">'+mots.map(function(m,i){
+      return '<button type="button" class="stc-b'+(i===0?' stc-1':'')+'" onclick="stcChoisir('+jsStr(m)+')"><span class="stc-ic">'+_iconeCont(m)+'</span><b>'+escH(fr?('Par '+m):('By '+m))+'</b></button>';}).join('')
+    +'<button type="button" class="stc-b stc-piece" onclick="stcPiece()"><span class="stc-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="11" rx="2"/><path d="M9 7V5.5h6V7"/></svg></span><b>'+(fr?'À la pièce':'Each')+'</b></button></div>'
+    +'<div id="stc-n" class="stc-n" style="display:none"></div>';
+  return true;
+}
+function stcChoisir(mot){
+  var fr=(lang==='fr'),p=artStkCours;if(!p)return;_stcMot=mot;
+  document.querySelectorAll('#stk-comment .stc-b').forEach(function(b){b.classList.toggle('on',b.textContent.indexOf(mot)>=0);});
+  var u=(p.umNom?_uniteMot(p):uniteArt(p)),z=document.getElementById('stc-n');if(!z)return;
+  z.style.display='block';
+  z.innerHTML='<div class="stc-q">'+(fr?('Combien de '+escH(u)+' dans 1 '+escH(mot)+' ?'):('How many '+escH(u)+' in 1 '+escH(mot)+'?'))+'</div>'
+    +'<div class="stc-ch">'+(_STC_TAILLES[txtNorm(mot)]||[6,12,24]).map(function(n){return '<button type="button" class="shct" onclick="stcPoser('+n+')">'+n+'</button>';}).join('')+'</div>'
+    +'<div class="stc-l"><input class="pi" type="number" inputmode="numeric" id="stc-inp" placeholder="'+(fr?'autre':'other')+'"><button type="button" class="bnxt" onclick="stcPoser()">OK</button></div>';
+}
+function stcPoser(n){
+  var fr=(lang==='fr'),p=artStkCours,c=_stcCible();if(!p||!c||!_stcMot)return;
+  if(n==null)n=Math.round((parseFloat(String((document.getElementById('stc-inp')||{}).value||'').replace(',','.'))||0)*100)/100;
+  if(!(n>1)){showToast('📦 '+(fr?'Combien dedans ?':'How many inside?'));return;}
+  c.umSac=n;c.umCont=_stcMot;delete c.achatPiece;
+  try{journalAjouter('conditionnement',p.nm+(artStkVarCours?(' — '+(artStkVarCours.nm||'')):''),'',(fr?'acheté par ':'bought by ')+_stcMot+' de '+fmtQ(n));}catch(e){}
+  save();
+  var _lq0=document.getElementById('lbl-qte-recu');if(_lq0)_lq0.style.display='';var z=document.getElementById('stk-comment');if(z){z.style.display='none';z.innerHTML='';}
+  var chips=document.getElementById('stk-shcts');
+  if(chips)chips.innerHTML=[1,2,5,10].map(function(k){return '<button class="shct" onclick="setSQ('+(k*n)+')">'+k+' '+_stcMot+(k>1?'s':'')+' = '+fmtQ(k*n)+'</button>';}).join('');
+  try{stkSens('in');}catch(e){}
+  // Il achète au bidon : il paie au bidon. Le prix connu à l'unité devient
+  // celui du bidon (900 × 20), qu'il corrige s'il a payé autre chose.
+  try{var _pu=Number(c.pa||p.pa)||0;stkPaMode('c');var _i=document.getElementById('inp-spa');if(_i&&_pu>0)_i.value=Math.round(_pu*n);}catch(e){}
+  try{majApercuStk();}catch(e){}
+  showToast('📦 1 '+_stcMot+' = '+fmtQ(n)+(fr?' — je m\'en souviendrai':' — remembered'));
+  setTimeout(function(){try{var q=document.getElementById('inp-scont');if(q&&q.offsetParent)q.focus();}catch(e){}},150);
+}
+function stcPiece(){
+  var c=_stcCible();if(!c)return;c.achatPiece=true;save();
+  var _lq0=document.getElementById('lbl-qte-recu');if(_lq0)_lq0.style.display='';var z=document.getElementById('stk-comment');if(z){z.style.display='none';z.innerHTML='';}
+  var chips=document.getElementById('stk-shcts');
+  if(chips)chips.innerHTML=[6,12,24,48].map(function(n){return '<button class="shct" onclick="setSQ('+n+')">'+n+'</button>';}).join('');
+  setTimeout(function(){try{document.getElementById('inp-sqte').focus();}catch(e){}},100);
+}
 function stkPoserCarton(){
   var fr=(lang==='fr');
   var n=Math.round((parseFloat(String((document.getElementById('inp-scart')||{}).value||'').replace(',','.'))||0)*100)/100;
@@ -29337,6 +29439,8 @@ function stkSens(s){
   var _scq=0;try{_scq=_stkTailleCont();}catch(e){}
   try{stkQMode((s==='in'&&_scq>0)?'c':'u',true);}catch(e){}
   majLibelleQte();
+  // 23.64 — « Tu l'as acheté comment ? » n'a de sens que pour une ENTRÉE.
+  var _stc=document.getElementById('stk-comment');if(_stc&&_stc.innerHTML)_stc.style.display=s==='in'?'block':'none';
   var mr=document.getElementById('stk-motif-row');if(mr)mr.style.display=s==='out'?'block':'none';
   var frw=document.getElementById('stk-fourn-row');if(frw)frw.style.display=s==='in'?'block':'none';
   // Le prix d'achat n'a de sens que quand on REÇOIT de la marchandise.
