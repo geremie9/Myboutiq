@@ -30,7 +30,7 @@ const boutique = n => {
 const lire = (p, id) => p.evaluate(id => {
   const c = document.getElementById('pc-' + id), med = c.querySelector('.pmedia'), img = med.querySelector('img'), px = c.querySelector('.ppr-ov'), q = s => c.querySelector(s), r = c.getBoundingClientRect();
   const vu = e => !!e && getComputedStyle(e).display !== 'none';
-  return { l: Math.round(r.width), h: Math.round(r.height), fit: img ? getComputedStyle(img).objectFit : '', imgL: img ? Math.round(img.getBoundingClientRect().width) : 0, imgH: img ? Math.round(img.getBoundingClientRect().height) : 0, fondu: img ? getComputedStyle(img).mixBlendMode : '', mur: /gradient/.test(getComputedStyle(med).backgroundImage),
+  return { l: Math.round(r.width), h: Math.round(r.height), fit: img ? getComputedStyle(img).objectFit : '', imgL: img ? Math.round(img.getBoundingClientRect().width) : 0, imgH: img ? Math.round(img.getBoundingClientRect().height) : 0, fondu: img ? getComputedStyle(img).mixBlendMode : '', det: !!img && img.classList.contains('dt') && /drop-shadow/.test(getComputedStyle(img).filter), mur: /gradient/.test(getComputedStyle(med).backgroundImage),
     prix: px.textContent.trim(), prixFond: getComputedStyle(px).backgroundColor, coupe: px.scrollWidth > px.clientWidth + 1, nom: c.querySelector('.pnm-ov').textContent.trim(),
     sinc: vu(q('.sinc')), sout: vu(q('.sout')), slow: vu(q('.slow')), fini: c.classList.contains('fini'), gris: getComputedStyle(med).filter, soutL: q('.sout') ? Math.round(q('.sout').getBoundingClientRect().width) : 0 };
 }, id);
@@ -41,7 +41,9 @@ await p.setViewportSize({ width: 360, height: 740 }); await p.waitForTimeout(500
 const coca = await lire(p, 1), azur = await lire(p, 2), shot = await lire(p, 3), cube = await lire(p, 4), img5 = await lire(p, 5);
 // 23.45 — le blanc de la photo se fond dans le mur du rayon (`multiply`) : le
 // produit paraît posé sur la planche, sans case blanche ni bandes.
-t(coca.fit === 'contain' && coca.imgL === coca.l && coca.imgH >= 76 && coca.fondu === 'multiply' && coca.mur, `une photo étroite est entière, sur toute la largeur (${coca.imgL} × ${coca.imgH}), fondue dans le mur du rayon — plus de bandes`);
+// 23.56 — mieux : la photo est DÉTOURÉE sur le téléphone (fond retiré, ombre
+// au pied). `multiply` reste le temps du calcul, ou si le calcul échoue.
+t(coca.fit === 'contain' && coca.imgL === coca.l && coca.imgH >= 76 && (coca.fondu === 'multiply' || coca.det) && coca.mur, `une photo étroite est entière, sur toute la largeur (${coca.imgL} × ${coca.imgH}), fondue dans le mur du rayon — plus de bandes`);
 t(/^800\s?F$/.test(coca.prix) && !coca.coupe, `le prix se lit en entier, la devise en petit : « ${coca.prix} »`);
 t(/Prix \?/.test(shot.prix) && shot.prixFond === 'rgb(245, 158, 11)' && !shot.sinc && !shot.sout && !shot.fini, 'sans prix : « Prix ? » en orange, et RIEN d\'autre — ni « À compléter » ni « Épuisé » par-dessus');
 t(shot.nom === '' && img5.nom === '' && coca.nom === 'Coca-Cola 1 L', `un nom de fichier n'est pas un nom : la tuile se tait (« ${shot.nom} », « ${img5.nom} »)`);

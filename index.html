@@ -1007,7 +1007,7 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
   mask:linear-gradient(#000,#000) 0 0/100% 5px no-repeat,radial-gradient(circle 11px at 50% 4px,#000 96%,transparent 100%) 0 0/22px 15px repeat-x}
 #s-caisse .ssec{padding-top:21px}
 #s-caisse #pgrid{padding:8px 8px 10px;margin:0 6px;border-radius:6px 6px 0 0;
-  background:linear-gradient(90deg,#8C5E2C 0 6px,#E9DDC8 6px calc(100% - 6px),#8C5E2C calc(100% - 6px));
+  background:linear-gradient(90deg,#8C5E2C 0 6px,#E9DDC8 6px calc(100% - 6px),#8C5E2C calc(100% - 6px)) 0 0/100% var(--meuble-h,100%) no-repeat;
   box-shadow:inset 0 3px 0 #6E4720}
 #s-caisse #pgrid .pcard:not(.etg) .pmedia,#s-caisse #pgrid .pcard:not(.etg) .pmedia.pphoto,#s-caisse #pgrid .pcard:not(.etg) .pmedia.pcat{box-shadow:inset 0 10px 9px -8px rgba(70,40,8,.38)}
 #s-caisse #pgrid .pcard:not(.etg) .pcard-overlay{background-color:#A8783C;background-image:repeating-linear-gradient(180deg,rgba(60,30,0,.10) 0 1px,transparent 1px 4px),linear-gradient(90deg,rgba(255,255,255,.07),rgba(0,0,0,.07) 45%,rgba(255,255,255,.05) 75%,rgba(0,0,0,.06))}
@@ -1028,6 +1028,20 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
   background:#fff;background:color-mix(in srgb,currentColor 14%,#fff);border-top:4px solid currentColor;
   box-shadow:inset -7px 0 8px rgba(0,0,0,.08),inset 5px 0 6px rgba(255,255,255,.7),0 1px 1px rgba(60,35,5,.18)}
 #agstk.ag-fixe{min-height:38vh;align-content:start}
+/* ⭐ 23.56 — LA PHOTO SUR L'ÉTAGÈRE (voir `_dtCalculer`).
+   · détourée (`img.dt`) : le produit seul, posé sur la planche avec son
+     ombre ; plus de `multiply`, plus de cadrage (il est déjà recadré) ;
+   · fond pas uni (`.dtc`) : la photo encadrée de blanc, comme une
+     affichette posée contre le mur, au lieu d'un pavé brut ;
+   · `dt-att` : on sait que la photo détourée existe, on la reprend dans le
+     téléphone — l'originale ne s'affiche pas une seconde avant elle. */
+#s-caisse #pgrid .pcard:not(.etg) .pmedia.pphoto img.dt{mix-blend-mode:normal;padding:5px 7px 1px;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 3px 2px rgba(60,35,5,.38))}
+#s-caisse #pgrid .pcard:not(.etg) .pmedia.pphoto img.dt-att{opacity:0}
+#s-caisse #pgrid .pcard:not(.etg) .pmedia.pphoto.dtc img{mix-blend-mode:normal;position:absolute;left:12%;right:12%;bottom:auto;top:7px;width:76%;height:calc(100% - 13px);padding:0;object-fit:cover;object-position:center;border:3px solid #fff;border-radius:7px;box-sizing:border-box;box-shadow:0 3px 5px -1px rgba(60,35,5,.4)}
+#s-caisse #pgrid .pcard:not(.etg) .pmedia.pphoto.dtc::after{display:none}
+#s-caisse #pgrid .pcard:not(.etg) .pcard-overlay .pnm-ov.pnm-vide{display:none}
+#s-caisse #pgrid .pcard:not(.etg) .pcard-overlay .pnm-vide+.ppr-ov{border-radius:5px;padding-top:0;padding-bottom:0;line-height:34px;height:34px}
+#s-caisse #pgrid.serre .pcard:not(.etg) .pcard-overlay .pnm-vide+.ppr-ov{line-height:30px;height:30px}
 .ag-rien{grid-column:1/-1;text-align:center;font-size:12.5px;font-weight:700;color:var(--M);padding:10px 4px}
 .snack-ph{white-space:nowrap;position:fixed;left:50%;bottom:92px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:400;display:flex;align-items:center;gap:14px;background:#1E1B2E;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;font-size:13px;font-weight:700;font-family:'Outfit',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:all .25s}
 .snack-ph.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
@@ -7415,7 +7429,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.55'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.56'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -14055,7 +14069,12 @@ function renderProd(lst){
         // rangée garde UNE seule allure, photo ou dessin. L'émoji est posé
         // dessous et prend la place si la photo ne vient pas (hors ligne,
         // lien mort) — la leçon du catalogue en 22.99.
-        ?(function(){var _m=mediaArtInner(p,40);return '<div class="pmedia pphoto" style="background:'+_m.bg+';color:'+_m.fg+'"><span>'+_m.svg+'</span><img src="'+srcSure(p.img)+'" loading="lazy" alt=""'+_vbAttr(p)+' onerror="this.remove()"></div>';})()
+        ?(function(){var _m=mediaArtInner(p,40),_dt=_dtPour(p);
+          // 23.56 — la photo détourée si on l'a ; sinon l'originale, cachée le
+          // temps de la retrouver quand on sait qu'elle existe (`dt-att`).
+          var _im=_dt.u?('<img class="dt" src="'+_dt.u+'" alt="" onerror="this.remove()">')
+            :('<img'+(_dt.m==='d'?' class="dt-att"':'')+' src="'+srcSure(p.img)+'" loading="lazy" alt=""'+(_dt.m==='c'?'':_vbAttr(p))+' onerror="this.remove()">');
+          return '<div class="pmedia pphoto'+(_dt.m==='c'?' dtc':'')+'" style="background:'+_m.bg+';color:'+_m.fg+'"><span>'+_m.svg+'</span>'+_im+'</div>';})()
         :(DB.cfg&&DB.cfg.noEmoji
           ?'<div class="pmedia pmono" style="background:hsl('+couleurMono(p.nm)+',55%,93%);color:hsl('+couleurMono(p.nm)+',42%,36%)">'+initialeArticle(p.nm)+'</div>'
           :(function(){var _m=mediaArtInner(p,40);return '<div class="pmedia" style="background:'+_m.bg+';color:'+_m.fg+'">'+_m.svg+'</div>';})()
@@ -14078,7 +14097,9 @@ function renderProd(lst){
         // kilo », « le litre », eux, disent toujours quelque chose.
         var _bas=_barreGros(p),_lib=hasV?'':_libPiece(p);
         if(_lib&&!_bas&&_lib===(lang==='fr'?'la pièce':'each'))_lib='';
-        return '<div class="pcard-overlay"><div class="pnm-ov">'+(_nomDeFichier(p)?'&nbsp;':p.nm)+'</div>'
+        // 23.56 — un nom de fichier ne s'affiche pas : l'étiquette ne garde plus
+        // une bande blanche vide sous « Prix ? » (sa capture), le prix la prend.
+        return '<div class="pcard-overlay"><div class="pnm-ov'+(_nomDeFichier(p)?' pnm-vide">&nbsp;':('">'+escH(p.nm)))+'</div>'
           +(_vide?('<div class="ppr-ov ppr-vide"'+(hasV?'':(' onclick="prixPieceVide(event,'+p.id+')"'))+'>'+(lang==='fr'?'Prix ?':'Price?')+'</div>'):('<div class="ppr-ov">'+_deviseCourte(prixTxt).replace(/^(dès |from )/,'<span class="pdes">$1</span>')+'</div>'))
           +(_lib?('<div class="ppr-lib">'+escH(_lib)+'</div>'):'')
           +(_coin?'':_bv)+'</div>'+(_coin?_bv:'')
@@ -14237,7 +14258,16 @@ function _vbMesurer(im){
   return (v[0]+v[2]>=6||v[1]+v[3]>=6)?v:[0,0,0,0];       // moins de 6 % : rien à gagner
 }
 var _vbFile=[],_vbEnCours=false,_vbSauver=null;
+// ⚠️ 23.56 — le meuble de la 23.54 courait jusque derrière « Tu vends
+// aussi… ? » (les suggestions, en bas de la grille) : elles avaient l'air
+// rangées sur l'étagère. Le mur et les montants s'arrêtent à la dernière
+// rangée d'articles.
+function _meuble(){
+  try{var g=document.getElementById('pgrid');if(!g)return;var e=g.querySelector('.etg-sep');
+    g.style.setProperty('--meuble-h',e?Math.max(0,Math.round(e.getBoundingClientRect().top-g.getBoundingClientRect().top))+'px':'100%');}catch(x){}
+}
 function _cadrerPhotos(){
+  try{_meuble();_dtLancer();}catch(e){}
   try{
     if(!(window.CSS&&CSS.supports&&CSS.supports('object-view-box','inset(1%)')))return;
     (_listeCaisse||[]).slice(0,_rendusCaisse).forEach(function(p){
@@ -14273,6 +14303,170 @@ function _vbSuivante(){
   im.onload=function(){var v=null;try{v=_vbMesurer(im)||[0,0,0,0];}catch(e){v=null;}fini(v);};
   im.onerror=function(){fini(null);};
   try{im.src=distant?(srcSure(src)+(src.indexOf('?')<0?'?':'&')+'cadre=1'):srcSure(src);}catch(e){fini(null);}
+}
+// ═════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.56 — LES PHOTOS DÉTOURÉES. Sa capture du 15/11 : « pour les sans
+//  photo, c'est visiblement bien, mais avec photo… ». Sur l'étagère, une
+//  photo restait un RECTANGLE : le savon Azur photographié sur une table
+//  posait un pavé marron sur le mur ; une capture d'écran gardait ses
+//  traits gris sur les bords ; « 40 Gram » flottait dans un coin ; et les
+//  produits étaient deux fois plus gros que les paquets d'à côté.
+//  `multiply` ne fait disparaître qu'un fond BLANC.
+//  Maintenant, une fois par photo, sur le téléphone :
+//   · fond uni (blanc, gris, crème…) : on enlève le fond en partant des
+//     bords, on retire les traits fins et les petites taches détachées
+//     (texte, saletés), on adoucit le contour. Le produit est posé sur la
+//     planche, avec son ombre ;
+//   · fond qui n'est pas uni (photo prise sur le comptoir) : on ne devine
+//     pas — la photo est encadrée de blanc, comme une affichette posée
+//     sur l'étagère. Plus de pavé brut.
+//  La photo n'est ni modifiée ni renvoyée. Le résultat est gardé dans le
+//  téléphone (cache `myboutiq-detoure-v1`) : le calcul ne se refait pas.
+// ═════════════════════════════════════════════════════════════════
+var _DT_V='1',_DT_N=320,_dtURL={},_dtMode=null,_dtFile=[],_dtEnCours=false;
+function _dtModes(){
+  if(_dtMode)return _dtMode;
+  try{_dtMode=JSON.parse(localStorage.getItem('myboutiq_dt')||'{}')||{};}catch(e){_dtMode={};}
+  return _dtMode;
+}
+function _dtNoter(cle,m){
+  var o=_dtModes();o[cle]=m;
+  try{var k=Object.keys(o);if(k.length>600)k.slice(0,k.length-600).forEach(function(x){delete o[x];});
+    localStorage.setItem('myboutiq_dt',JSON.stringify(o));}catch(e){}
+}
+// Ce que la tuile doit montrer pour cette photo : {u: adresse du détourage
+// si on l'a déjà, m: 'd' (détourée) | 'c' (encadrée) | ''}.
+function _dtPour(p){
+  try{var c=_vbCle(p.img),m=_dtModes()[c+'.'+_DT_V]||'';return {u:_dtURL[c]||'',m:m};}catch(e){return {u:'',m:''};}
+}
+// Le calcul. im : une image chargée et lisible. Rend {mode:'c'} ou
+// {mode:'d', cv: canvas du produit seul, recadré}.
+function _dtCalculer(im){
+  var W0=im.naturalWidth||im.width,H0=im.naturalHeight||im.height;if(!W0||!H0)return null;
+  var s=Math.min(1,_DT_N/Math.max(W0,H0)),W=Math.max(8,Math.round(W0*s)),H=Math.max(8,Math.round(H0*s));
+  var cv=document.createElement('canvas');cv.width=W;cv.height=H;var x=cv.getContext('2d');
+  x.drawImage(im,0,0,W,H);
+  var img=x.getImageData(0,0,W,H),d=img.data,n=W*H,i,j,k;
+  // 1. La couleur du fond : la médiane des bords (bande de 3 points).
+  var R=[],G=[],B=[],bord=[];
+  for(j=0;j<H;j++)for(i=0;i<W;i++){if(i<3||j<3||i>=W-3||j>=H-3){k=(j*W+i)*4;if(d[k+3]<16)continue;R.push(d[k]);G.push(d[k+1]);B.push(d[k+2]);bord.push(k);}}
+  if(bord.length<W)return {mode:'d0'};                     // déjà transparente
+  var med=function(a){a=a.slice().sort(function(u,v){return u-v;});return a[a.length>>1];};
+  var fr=med(R),fg=med(G),fb=med(B);
+  var dist=function(k){return Math.max(Math.abs(d[k]-fr),Math.abs(d[k+1]-fg),Math.abs(d[k+2]-fb));};
+  // Seul un fond CLAIR et uni se retire (photo de catalogue, mur blanc,
+  // capture d'écran). Un fond sombre ou coloré, c'est une table, un pagne,
+  // un comptoir : le produit a souvent la même couleur — on encadre plutôt
+  // que de lui manger un morceau.
+  var T=34;
+  if((fr+fg+fb)<600)return {mode:'c'};
+  var pareils=0;bord.forEach(function(k){if(dist(k)<=T)pareils++;});
+  if(pareils<bord.length*0.80)return {mode:'c'};
+  // 2. Le fond, rempli depuis les bords.
+  var fond=new Uint8Array(n),pile=[];
+  for(j=0;j<H;j++)for(i=0;i<W;i++){if(i===0||j===0||i===W-1||j===H-1){var q=j*W+i;if(dist(q*4)<=T||d[q*4+3]<16){fond[q]=1;pile.push(q);}}}
+  while(pile.length){var q2=pile.pop(),qi=q2%W,qj=(q2-qi)/W;
+    var vois=[qi>0?q2-1:-1,qi<W-1?q2+1:-1,qj>0?q2-W:-1,qj<H-1?q2+W:-1];
+    for(var v=0;v<4;v++){var r=vois[v];if(r<0||fond[r])continue;if(d[r*4+3]<16||dist(r*4)<=T){fond[r]=1;pile.push(r);}}}
+  // 2b. Une étiquette blanche qui touche le bord du produit partait avec
+  //     le fond (mesuré : l'étiquette de la Vimto, celles des Top). Dans
+  //     chaque colonne, un trou de fond pris entre deux morceaux du
+  //     produit, et pas plus haut qu'un tiers de lui, est rendu au produit.
+  for(i=0;i<W;i++){var h0=-1,h1=-1;
+    for(j=0;j<H;j++)if(!fond[j*W+i]){if(h0<0)h0=j;h1=j;}
+    if(h0<0||h1-h0<6)continue;
+    var run=-1;
+    for(j=h0;j<=h1;j++){var qq=j*W+i;
+      if(fond[qq]){if(run<0)run=j;}
+      else if(run>=0){if(j-run<=(h1-h0)*0.34)for(var rr=run;rr<j;rr++)fond[rr*W+i]=0;run=-1;}}}
+  // 3. Les traits fins (bords de capture d'écran) : on ouvre le masque
+  //    (érosion puis dilatation d'un point).
+  var pr=new Uint8Array(n),ou=new Uint8Array(n);
+  for(j=1;j<H-1;j++)for(i=1;i<W-1;i++){k=j*W+i;if(!fond[k]&&!fond[k-1]&&!fond[k+1]&&!fond[k-W]&&!fond[k+W])pr[k]=1;}
+  for(j=1;j<H-1;j++)for(i=1;i<W-1;i++){k=j*W+i;if(pr[k]||pr[k-1]||pr[k+1]||pr[k-W]||pr[k+W])ou[k]=1;}
+  // 4. Les morceaux : on garde ceux qui comptent (≥ 4 % du plus gros).
+  var lab=new Int32Array(n),tailles=[0],nl=0;
+  for(k=0;k<n;k++){if(!ou[k]||lab[k])continue;nl++;var t=0;pile=[k];lab[k]=nl;
+    while(pile.length){var c=pile.pop();t++;var ci=c%W;
+      var vv=[ci>0?c-1:-1,ci<W-1?c+1:-1,c-W,c+W];
+      for(var z=0;z<4;z++){var y=vv[z];if(y<0||y>=n||!ou[y]||lab[y])continue;lab[y]=nl;pile.push(y);}}
+    tailles.push(t);}
+  var gros=0;for(k=1;k<=nl;k++)if(tailles[k]>gros)gros=tailles[k];
+  if(!gros)return {mode:'c'};
+  var garde=new Uint8Array(nl+1),aire=0;for(k=1;k<=nl;k++)if(tailles[k]>=gros*0.04){garde[k]=1;aire+=tailles[k];}
+  if(aire<n*0.03||aire>n*0.96)return {mode:'c'};          // rien, ou tout : on ne devine pas
+  // 5. Le produit seul : opaque dedans, bord adouci selon sa distance au fond.
+  var x0=W,y0=H,x1=-1,y1=-1;
+  for(j=0;j<H;j++)for(i=0;i<W;i++){k=j*W+i;var p4=k*4;
+    if(lab[k]&&garde[lab[k]]){
+      var bordure=(i>0&&!(lab[k-1]&&garde[lab[k-1]]))||(i<W-1&&!(lab[k+1]&&garde[lab[k+1]]))||(j>0&&!(lab[k-W]&&garde[lab[k-W]]))||(j<H-1&&!(lab[k+W]&&garde[lab[k+W]]));
+      if(bordure){var a=Math.min(1,Math.max(0.25,(dist(p4)-T*0.5)/(T*1.5)));d[p4+3]=Math.round(d[p4+3]*a);}
+      if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j;
+    }else d[p4+3]=0;}
+  x.putImageData(img,0,0);
+  var m=2;x0=Math.max(0,x0-m);y0=Math.max(0,y0-m);x1=Math.min(W-1,x1+m);y1=Math.min(H-1,y1+m);
+  var out=document.createElement('canvas');out.width=x1-x0+1;out.height=y1-y0+1;
+  out.getContext('2d').drawImage(cv,x0,y0,out.width,out.height,0,0,out.width,out.height);
+  return {mode:'d',cv:out};
+}
+
+var _DT_CACHE='myboutiq-detoure-v1';
+function _dtCleCache(c){return location.origin+'/__detoure/'+encodeURIComponent(c)+'.'+_DT_V;}
+function _dtLancer(){
+  (_listeCaisse||[]).slice(0,_rendusCaisse).forEach(function(p){
+    if(!p||!p.img)return;var c=_vbCle(p.img);
+    if(_dtURL[c]||_dtModes()[c+'.'+_DT_V]==='c'||_dtFile.indexOf(p)>=0)return;
+    _dtFile.push(p);
+  });
+  _dtSuivante();
+}
+// Poser le résultat sur toutes les tuiles qui montrent cette photo.
+function _dtPoser(src,mode){
+  var c=_vbCle(src);
+  (DB.articles||[]).forEach(function(p){
+    if(String(p.img||'')!==src)return;
+    var med=document.querySelector('#pc-'+p.id+' .pmedia.pphoto');if(!med)return;
+    var el=med.querySelector('img');
+    if(mode==='c'){med.classList.add('dtc');if(el){el.classList.remove('dt-att');el.style.objectViewBox='';}}
+    else if(mode==='d'&&_dtURL[c]&&el){el.src=_dtURL[c];el.classList.remove('dt-att');el.classList.add('dt');el.style.objectViewBox='';el.removeAttribute('loading');}
+    else if(el)el.classList.remove('dt-att');
+  });
+}
+function _dtSuivante(){
+  if(_dtEnCours)return;
+  var p=_dtFile.shift();if(!p)return;
+  _dtEnCours=true;
+  var src=String(p.img||''),c=_vbCle(src);
+  var fini=function(mode){
+    _dtEnCours=false;
+    try{if(mode)_dtNoter(c+'.'+_DT_V,mode==='d0'?'':mode);_dtPoser(src,mode);}catch(e){}
+    setTimeout(_dtSuivante,40);
+  };
+  var calculer=function(){
+    var im=new Image(),distant=/^https?:/i.test(src);
+    if(distant)im.crossOrigin='anonymous';
+    im.onload=function(){
+      var r=null;try{r=_dtCalculer(im);}catch(e){r=null;}
+      if(!r){fini(null);return;}
+      if(r.mode!=='d'){fini(r.mode);return;}
+      try{r.cv.toBlob(function(b){
+        if(!b){fini(null);return;}
+        _dtURL[c]=URL.createObjectURL(b);
+        try{if(window.caches)caches.open(_DT_CACHE).then(function(k){return k.put(_dtCleCache(c),new Response(b,{headers:{'Content-Type':'image/png'}}));}).catch(function(){});}catch(e){}
+        fini('d');
+      },'image/png');}catch(e){fini(null);}
+    };
+    im.onerror=function(){fini(null);};
+    try{im.src=distant?(srcSure(src)+(src.indexOf('?')<0?'?':'&')+'cadre=1'):srcSure(src);}catch(e){fini(null);}
+  };
+  // Déjà détourée un autre jour : on la reprend dans le téléphone.
+  try{
+    if(!window.caches){calculer();return;}
+    caches.open(_DT_CACHE).then(function(k){return k.match(_dtCleCache(c));}).then(function(rep){
+      if(!rep){calculer();return;}
+      return rep.blob().then(function(b){_dtURL[c]=URL.createObjectURL(b);fini('d');});
+    }).catch(function(){calculer();});
+  }catch(e){calculer();}
 }
 // Rangée "Ventes rapides" : les 5-6 articles les plus vendus, en 1 tap
 // Masquée pour de bon, mais jamais perdue : elle revient depuis Réglages.

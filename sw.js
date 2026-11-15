@@ -1,9 +1,12 @@
-const CACHE_NAME='myboutiq-v355';
+const CACHE_NAME='myboutiq-v356';
 const IMG_CACHE='myboutiq-images-v1';
 // ⚠️ Les polices vivaient hors du cache : chaque ouverture repartait les
 // chercher chez Google, et hors ligne la boutique s'affichait dans une police
 // de secours qu'il ne reconnaît pas. Gardées une fois, servies pour toujours.
 const FONT_CACHE='myboutiq-polices-v1';
+// 23.56 — les photos détourées par la caisse : gardées d'une version à
+// l'autre, sinon chaque mise à jour referait tous les calculs.
+const DT_CACHE='myboutiq-detoure-v1';
 // photos-catalogue.json fait partie de la coquille : la boutique doit pouvoir
 // décider hors ligne quelle photo poser, sans redemander au serveur.
 const APP_SHELL=['./index.html','./manifest.json','./icon-192.png','./icon-512.png','./badge-96.png','./photos-catalogue.json','./catalogue-600.json'];
@@ -56,7 +59,7 @@ self.addEventListener('notificationclick',function(e){
 });
 self.addEventListener('activate',function(e){
   e.waitUntil(caches.keys().then(function(keys){
-    return Promise.all(keys.filter(function(k){return k!==CACHE_NAME&&k!==IMG_CACHE&&k!==FONT_CACHE;}).map(function(k){return caches.delete(k);}));
+    return Promise.all(keys.filter(function(k){return k!==CACHE_NAME&&k!==IMG_CACHE&&k!==FONT_CACHE&&k!==DT_CACHE;}).map(function(k){return caches.delete(k);}));
   }));
   self.clients.claim();
 });

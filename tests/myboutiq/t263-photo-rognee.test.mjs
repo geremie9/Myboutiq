@@ -21,11 +21,14 @@ db.articles = [A(1, 'Coca', await marges('#3a1a12')), A(2, 'Comptoir', await com
 const autre = await marges('#16A34A'); await pg.close();
 const { ctx, p, errs } = await ouvrirCaisse(b, port, db, { tactile: true });
 await p.setViewportSize({ width: 360, height: 740 }); await p.waitForTimeout(1500);
-const lire = id => p.evaluate(id => { const a = DB.articles.find(x => x.id === id), im = document.querySelector('#pc-' + id + ' .pmedia img'); return { vb: a.vb || '', css: im ? getComputedStyle(im).objectViewBox : '', garde: (JSON.parse(localStorage.getItem('myboutiq_v6')).articles.find(x => x.id === id).vb || '') }; }, id);
+const lire = id => p.evaluate(id => { const a = DB.articles.find(x => x.id === id), im = document.querySelector('#pc-' + id + ' .pmedia img'); return { vb: a.vb || '', css: im ? getComputedStyle(im).objectViewBox : '', dt: !!im && im.classList.contains('dt'), garde: (JSON.parse(localStorage.getItem('myboutiq_v6')).articles.find(x => x.id === id).vb || '') }; }, id);
 const coca = await lire(1), cpt = await lire(2), sav = await lire(3);
 const v = coca.vb.split('|')[0].split(' ').map(Number);
 t(v.length === 4 && v[0] >= 24 && v[0] <= 30 && v[2] >= 24 && v[2] <= 30 && v[1] >= 34 && v[1] <= 40 && v[3] >= 34 && v[3] <= 40, `les marges blanches sont mesurées : haut ${v[0]} %, droite ${v[1]} %, bas ${v[2]} %, gauche ${v[3]} % (le produit occupait 20 % × 40 % de la photo)`);
-t(/inset\(/.test(coca.css), `la tuile ne montre que le produit (${coca.css})`);
+// 23.56 — la photo détourée est déjà recadrée sur le produit : elle n'a
+// plus besoin de `object-view-box`. Le cadrage reste mesuré et gardé (pour
+// un téléphone qui ne sait pas détourer).
+t(/inset\(/.test(coca.css) || coca.dt, `la tuile ne montre que le produit (${coca.dt ? 'détourée' : coca.css})`);
 // Ce que ça change à l'œil : le produit, qui faisait 40 % de la hauteur de la photo, la remplit.
 const gain = Math.round(100 / (100 - v[0] - v[2]) * 10) / 10;
 t(gain >= 2, `le produit est ${gain} fois plus grand dans la tuile`);
@@ -35,7 +38,7 @@ await p.waitForTimeout(1800);
 t((await lire(1)).garde === coca.vb, 'le cadrage est gardé sur l\'article : mesuré une fois, partagé avec les autres téléphones');
 // Redessinée, la tuile porte le cadrage tout de suite (pas de saut).
 await p.evaluate(() => renderProd(DB.articles));
-t(/inset\(/.test(await p.evaluate(() => document.querySelector('#pc-1 .pmedia img').getAttribute('style') || '')), 'redessinée, la tuile porte déjà son cadrage');
+t(await p.evaluate(() => { const im = document.querySelector('#pc-1 .pmedia img'); return /inset\(/.test(im.getAttribute('style') || '') || im.classList.contains('dt'); }), 'redessinée, la tuile porte déjà son cadrage (ou sa photo détourée)');
 // Il change la photo : l'ancien cadrage ne s'applique pas à la nouvelle.
 // ⚠️ Lu DANS le même geste que le dessin : la mesure d'une photo locale peut
 // finir entre deux allers-retours du banc (vu une fois sur deux passes, machine
@@ -43,7 +46,7 @@ t(/inset\(/.test(await p.evaluate(() => document.querySelector('#pc-1 .pmedia im
 const tout = await p.evaluate(img => { const a = DB.articles.find(x => x.id === 3); a.vb = '30 30 30 30|faux'; a.img = img; renderProd(DB.articles); return document.querySelector('#pc-3 .pmedia img').getAttribute('style') || ''; }, autre);
 await p.waitForTimeout(1200);
 const apres = await lire(3);
-t(!/inset/.test(tout) && /^2\d 3\d 2\d 3\d\|/.test(apres.vb) && /inset\(/.test(apres.css), `photo changée : l'ancien cadrage est ignoré, le nouveau est mesuré (${apres.vb.split('|')[0]})`);
+t(!/inset/.test(tout) && /^2\d 3\d 2\d 3\d\|/.test(apres.vb) && (/inset\(/.test(apres.css) || apres.dt), `photo changée : l'ancien cadrage est ignoré, le nouveau est mesuré (${apres.vb.split('|')[0]})`);
 // Un cadrage venu d'ailleurs ne peut rien injecter dans la page.
 const inj = await p.evaluate(() => { const a = DB.articles.find(x => x.id === 1); a.vb = '1 1 1 1);background:url(x)|' + _vbCle(a.img); return _vbAttr(a); });
 t(inj === '', 'un cadrage mal formé venu d\'un autre téléphone est ignoré');
