@@ -2407,6 +2407,14 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
 .faq-btn{background:var(--BG);border:1.5px solid var(--BD);border-radius:11px;padding:10px;font-size:11px;font-weight:700;color:var(--T);cursor:pointer;font-family:'Outfit',sans-serif;text-align:left;line-height:1.4}
 .faq-btn:active{background:var(--BD)}
+.faq-go{display:block;margin-top:9px;border:0;border-radius:10px;background:#F0A93E;color:#221F2B;font:800 13px 'Outfit',sans-serif;padding:9px 14px;cursor:pointer}
+.faq-go.faq-wa{background:#25D366;color:#fff}
+#faq-grid{max-height:132px;overflow-y:auto}
+/* ⚠️ La dernière réponse passait SOUS la barre des questions : le style
+   écrit sur la balise disait `padding-bottom:80px;padding:14px 0`, le second
+   effaçait le premier — 14 px pour une barre de plus de 200. La place du
+   bas suit maintenant la vraie hauteur de la barre (--assist-bas). */
+#s-assist #assist-msgs{padding-bottom:calc(var(--assist-bas,240px) + 14px)!important}
 
 /* ── ABONNEMENT ── */
 .plan-cd{background:var(--C);border-radius:15px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:10px;border:2.5px solid transparent}
@@ -4900,7 +4908,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
     <div class="stsc" id="sec-assist">
       <div class="sttit" id="lbl-assist">🤖 Assistance</div>
       <div class="stcd">
-        <div class="stit2" onclick="goScreen('s-assist')"><div class="stico" style="background:#E3F2FD">🤖</div><div class="stii"><div class="stitl" id="st-assist">Aide & Support</div><div class="stisub" id="st-assist-s">FAQ, chat, vocal</div></div><span class="starr">›</span></div>
+        <div class="stit2" onclick="goScreen('s-assist');initAssistance()"><div class="stico" style="background:#E3F2FD">🤖</div><div class="stii"><div class="stitl" id="st-assist">Aide & Support</div><div class="stisub" id="st-assist-s">FAQ, chat, vocal</div></div><span class="starr">›</span></div>
       </div>
     </div>
     <!-- Déconnexion -->
@@ -4985,7 +4993,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
 <div id="s-assist" class="scr">
   <div class="assist-hdr">
     <button class="hbtn hback" onclick="goBack()" style="flex-shrink:0" aria-label="Retour"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg><span class="hbl" id="lbl-ret3">Retour</span></button>
-    <div><div style="color:#fff;font-size:17px;font-weight:800" id="h-assist">🤖 Assistance MyBoutiQ</div><div style="color:rgba(255,255,255,.4);font-size:11px;font-weight:600" id="h-assist-s">Je suis là pour vous aider</div></div>
+    <div><div style="color:#fff;font-size:17px;font-weight:800" id="h-assist">🤖 Assistance MyBoutiQ</div><div style="color:rgba(255,255,255,.4);font-size:11px;font-weight:600" id="h-assist-s">Touche ta question, ou écris-la</div></div>
   </div>
   <div class="assist-contact">
     <div class="ac-lbl" id="ac-lbl">Besoin d'un humain ? Contacte l'assistance</div>
@@ -4999,7 +5007,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   <div class="assist-bottom-bar" style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;background:var(--C);border-top:1px solid var(--BD);padding:10px 15px;z-index:55">
     <div class="faq-grid" id="faq-grid"></div>
     <div class="assist-inp-row" style="padding:0">
-      <input class="assist-inp" id="assist-inp" placeholder="Poser une question..." onkeydown="if(event.key==='Enter')envoyerMsg()">
+      <input class="assist-inp" id="assist-inp" placeholder="Écris ta question…" onkeydown="if(event.key==='Enter')envoyerMsg()">
       <button class="btn-assist-mic" onclick="voiceAssist()">🎤</button>
       <button class="btn-assist-send" onclick="envoyerMsg()">➤</button>
     </div>
@@ -7407,7 +7415,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.54'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.55'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -11197,8 +11205,8 @@ function appliquerLang(){
   document.getElementById('btn-ann-neg').textContent=t('annuler');
   // Assistance
   document.getElementById('h-assist').textContent=lang==='fr'?'🤖 Assistance MyBoutiQ':'🤖 MyBoutiQ Support';
-  document.getElementById('h-assist-s').textContent=lang==='fr'?'Je suis là pour vous aider':'Here to help you';
-  document.getElementById('assist-inp').placeholder=lang==='fr'?'Poser une question...':'Ask a question...';
+  document.getElementById('h-assist-s').textContent=lang==='fr'?'Touche ta question, ou écris-la':'Tap your question, or type it';
+  document.getElementById('assist-inp').placeholder=lang==='fr'?'Écris ta question…':'Type your question…';
   // Abonnement
   document.getElementById('h-abo').textContent=lang==='fr'?'Abonnement':'Subscription';
   document.getElementById('lbl-duree').textContent=lang==='fr'?'📅 Durée':'📅 Duration';
@@ -29874,9 +29882,13 @@ function inviterVendeur(i){
 }
 var SUPPORT_TEL='237689335389';
 var SUPPORT_MAIL='geremiekodji9@gmail.com';
+// 23.55 — la version et le rôle partent avec le message : c'est la
+// première chose que le support demandait (« tu as quelle version ? »).
 function _supportTexte(){
-  var c=(DB&&DB.cfg&&DB.cfg.code)||'';
-  return lang==='fr'?'Bonjour, j\'ai besoin d\'aide avec MyBoutiQ (boutique '+c+').':'Hello, I need help with MyBoutiQ (store '+c+').';
+  var c=(DB&&DB.cfg&&DB.cfg.code)||'',fr=lang==='fr',v='';
+  try{v=' · v'+APP_BUILD;}catch(e){}
+  var r=(role==='patron')?(fr?'patron':'owner'):((fr?'vendeur ':'seller ')+(typeof nomVendeur!=='undefined'&&nomVendeur?nomVendeur:''));
+  return fr?('Bonjour, j\'ai besoin d\'aide avec MyBoutiQ (boutique '+c+v+' · '+String(r).trim()+').'):('Hello, I need help with MyBoutiQ (store '+c+v+' · '+String(r).trim()+').');
 }
 // ══════════════════════════════════════════════════════════════════
 //  ⭐⭐ « TU N'ARRIVES PAS À CRÉER EXACTEMENT TA CAISSE, TES ARTICLES ?
@@ -30652,47 +30664,152 @@ function procederPaiementAbo(){
 // ASSISTANCE
 // ═══════════════════════════════════════════
 var assistMsgs=[];
-var FAQ_FR=[
-  {q:'Comment ajouter un article ?',r:'Va dans ⚙️ Paramètres → Ajouter un article. Choisis un emoji, une catégorie, le prix d\'achat et de vente. L\'app calcule le bénéfice automatiquement !'},
-  {q:'Comment voir mes bénéfices ?',r:'Va dans 📊 Rapports. Tu verras ton CA, ton bénéfice brut, tes dépenses et ton bénéfice NET en temps réel.'},
-  {q:'Mon vendeur ne peut pas se connecter',r:'Donne-lui le code boutique visible dans ⚙️ Paramètres en haut. Il entre ce code + son prénom + un PIN à 4 chiffres.'},
-  {q:'Comment gérer les crédits clients ?',r:'Va dans 👥 Clients → Ajouter un client. Entre le montant dû et la date de remboursement. L\'app t\'alertera automatiquement.'},
-  {q:'Changer la langue ou la devise',r:'Va dans ⚙️ Paramètres → Langue & Devise. Tu peux changer à tout moment.'},
-  {q:'Comment clôturer la journée ?',r:'Va dans ⚙️ Paramètres → Clôture journée. Entre les espèces en caisse, l\'app calcule l\'écart automatiquement.'},
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ 23.55 — « FAIS UN DIAGNOSTIC DU CONTACT ET SUPPORT : ÇA REFLÈTE
+//  LES ANCIENNES VERSIONS. » Mesuré au banc, l'écran « Aide & Support »
+//  répondait encore avec l'app d'avant la 22 :
+//   · « Va dans ⚙️ Paramètres → Ajouter un article. Choisis un emoji » :
+//     il n'y a plus d'écran Paramètres (c'est Réglages), on ajoute par le
+//     « + » du bas, et l'article se montre par sa photo ;
+//   · « 📊 Rapports », « 👥 Clients » : les onglets s'appellent « Ma
+//     journée » et « Dettes » depuis la 23.51 ;
+//   · « le vendeur entre le code boutique + un PIN à 4 chiffres » : il
+//     reçoit un lien WhatsApp depuis « Mon équipe » ;
+//   · une dette ne se crée pas en « ajoutant un client » : on vend à crédit.
+//  Et la recherche comparait le PREMIER MOT de la question : « comment
+//  annuler une vente » contient « comment », comme « Comment ajouter un
+//  article ? » — il recevait la recette pour ajouter un article. Toute
+//  question en « comment… » tombait là.
+//  Maintenant : des réponses vraies, en « tu », chacune avec le bouton qui
+//  ouvre l'endroit (« Montre-moi ») ; la recherche compte les mots-clés,
+//  sans accents ; le vendeur ne voit que ce qui le concerne ; et le
+//  message au support part avec la version et le rôle — la première
+//  chose que le support demandait.
+// ══════════════════════════════════════════════════════════════════
+var _FAQ=[
+  {id:'art',k:['ajout','article','produit','nouveau','creer','photo'],pat:1,
+   fr:['Ajouter un article','Touche le « + » en bas, puis « Un article ». Prends sa photo et mets son prix. Pour en mettre beaucoup d\'un coup : Stock → « Ranger ma boutique », un article à la fois.'],
+   en:['Add an item','Tap the « + » at the bottom, then « An item ». Take its photo and set its price. To add many at once: Stock → « Set up my shop », one item at a time.'],
+   go:function(){ouvrirAjoutRapide();}},
+  {id:'arr',k:['arrivage','stock','livraison','recu','marchandise','entree','approvision'],pat:1,
+   fr:['Ajouter du stock (arrivage)','Touche le « + » en bas, puis « Un arrivage ». Cherche l\'article, dis combien tu en as reçu et à quel prix. Acheté sans payer tout de suite ? Choisis « À crédit » : l\'app retient ce que tu dois au fournisseur.'],
+   en:['Add stock (delivery)','Tap the « + » at the bottom, then « A delivery ». Find the item, say how many you received and at what price. Bought on credit? Choose « On credit »: the app remembers what you owe the supplier.'],
+   go:function(){ouvrirStk(null);}},
+  {id:'gain',k:['benefice','gagne','gain','rapport','chiffre','journee','argent','vendu'],pat:0,
+   fr:['Voir ce que j\'ai gagné','Touche « Ma journée » en bas : ce que tu as vendu, ce que tu as gagné, l\'argent qui doit être dans la caisse.'],
+   en:['See what I earned','Tap « My day » at the bottom: what you sold, what you earned, the cash that should be in the till.'],
+   go:function(){_allerOnglet('rapports');}},
+  {id:'cre',k:['credit','dette','doit','rembours','client','paye pas','ardoise'],pat:0,
+   fr:['Vendre à crédit, et le remboursement','À l\'encaissement, choisis « Crédit » et le client. Quand il rembourse : « Dettes » en bas → le client → « Montant payé maintenant » → « Payé comment ? » → Enregistrer.'],
+   en:['Sell on credit, and repayment','At checkout, choose « Credit » and the customer. When they repay: « Debts » at the bottom → the customer → « Amount paid now » → « Paid how? » → Save.'],
+   go:function(){_allerOnglet('clients');}},
+  {id:'ann',k:['annul','tromp','erreur','supprim','retir','efface','rendre'],pat:0,
+   fr:['Annuler une vente','Ouvre la liste des ventes du jour (en haut de « Ma journée », ou « Mes ventes » pour un vendeur), touche la vente, puis « Annuler la vente ». Le stock revient tout seul.'],
+   en:['Cancel a sale','Open today\'s sales (top of « My day », or « My sales » for a seller), tap the sale, then « Cancel sale ». The stock comes back on its own.'],
+   go:function(){if(role==='patron'&&typeof ouvrirHistory==='function'){_allerOnglet('rapports');ouvrirHistory();}else ouvrirMesVentes();}},
+  {id:'clo',k:['clotur','fermer','soir','compter','caisse','ecart','billet'],pat:1,
+   fr:['Fermer la journée','Le soir, dans « Ma journée », touche la lune en haut (« Clôture du soir »). Compte tes billets : l\'app te dit s\'il manque ou s\'il y a trop.'],
+   en:['Close the day','In the evening, in « My day », tap the moon at the top (« Evening close »). Count your notes: the app tells you if anything is missing or extra.'],
+   go:function(){ouvrirClot();}},
+  {id:'ven',k:['vendeur','employe','equipe','connect','invit','seller'],pat:1,
+   fr:['Ajouter un vendeur','Réglages → « Mon équipe » → « + Inviter un vendeur ». Il reçoit un lien sur WhatsApp : il le touche, et il arrive dans ta boutique.'],
+   en:['Add a seller','Settings → « My team » → « + Invite a seller ». They receive a WhatsApp link: they tap it and land in your shop.'],
+   go:function(){inviterVendeur();}},
+  {id:'dep',k:['depense','sortie','achat','transport','loyer'],pat:0,
+   fr:['Noter une dépense','Touche le « + » en bas, puis « Une dépense ». Si l\'argent sort de la caisse, la clôture du soir en tient compte.'],
+   en:['Record an expense','Tap the « + » at the bottom, then « An expense ». If the money leaves the till, the evening close counts it.'],
+   go:function(){ouvrirDep();}},
+  {id:'fou',k:['fournisseur','grossiste','payer','supplier'],pat:1,
+   fr:['Payer un fournisseur','Touche le « + » en bas, puis « Payer un fournisseur ». L\'app te montre ce que tu lui dois encore.'],
+   en:['Pay a supplier','Tap the « + » at the bottom, then « Pay a supplier ». The app shows what you still owe them.'],
+   go:function(){ouvrirDettesFourn();}},
+  {id:'pin',k:['pin','code','oubli','mot de passe','porte','bloque','entrer'],pat:0,
+   fr:['Code oublié','Sur la porte d\'entrée, touche « PIN oublié ? ». Si ça ne suffit pas, écris-nous sur WhatsApp avec le code de ta boutique : on te le remet à zéro. Ne donne jamais ton code à personne, même à nous.'],
+   en:['Forgot my code','On the entry screen, tap « Forgot PIN? ». If that is not enough, write to us on WhatsApp with your shop code: we reset it. Never give your code to anyone, not even us.']},
+  {id:'res',k:['reseau','internet','connexion','hors ligne','offline','synchro','data'],pat:0,
+   fr:['Sans réseau','Tout marche sans réseau : chaque vente est gardée dans le téléphone et part dès que le réseau revient.'],
+   en:['No network','Everything works offline: every sale is kept on the phone and goes out as soon as the network is back.']},
+  {id:'arr2',k:['revenir','arriere','sauvegarde','perdu','disparu','restaurer'],pat:1,
+   fr:['Revenir en arrière','Réglages → « Revenir en arrière » : l\'app garde des copies de ta boutique. Choisis celle d\'avant le problème.'],
+   en:['Go back','Settings → « Go back »: the app keeps copies of your shop. Choose the one from before the problem.'],
+   go:function(){ouvrirSauvegardes();}},
+  {id:'lan',k:['langue','anglais','english','francais','devise','pays','monnaie'],pat:1,
+   fr:['Changer la langue ou le pays','Réglages → « Langue & Pays ».'],
+   en:['Change language or country','Settings → « Language & Country ».'],
+   go:function(){ouvrirLangDev();}}
 ];
-var FAQ_EN=[
-  {q:'How to add an item?',r:'Go to ⚙️ Settings → Add an item. Choose an emoji, category, purchase and selling price. The app calculates profit automatically!'},
-  {q:'How to see my profits?',r:'Go to 📊 Reports. You\'ll see revenue, gross profit, expenses and NET profit in real time.'},
-  {q:'My seller can\'t login',r:'Give them the store code visible in ⚙️ Settings at the top. They enter this code + their name + a 4-digit PIN.'},
-  {q:'How to manage customer credit?',r:'Go to 👥 Customers → Add customer. Enter the amount owed and due date. The app will alert you automatically.'},
-  {q:'Change language or currency',r:'Go to ⚙️ Settings → Language & Currency. You can change at any time.'},
-  {q:'How to close the day?',r:'Go to ⚙️ Settings → End of day. Enter cash in register, the app calculates the difference automatically.'},
-];
+function _allerOnglet(k){
+  try{var n=document.querySelector('.ni[onclick*="\''+k+'\'"]');navTo(k,n);}catch(e){}
+}
+function _faqVisibles(){
+  var pat=(role==='patron');
+  // chaque question suit le droit qui ouvre l'endroit : un vendeur sans
+  // « dépenses » ne lit pas « Noter une dépense » pour se voir refuser.
+  var droit={arr:'stock',dep:'depenses',cre:'clients',gain:'rapports'};
+  return _FAQ.filter(function(f){if(f.pat&&!pat)return false;if(!pat&&droit[f.id]&&!hasPerm(droit[f.id]))return false;return true;});
+}
+// La question tapée (ou dite) : on compte les mots-clés trouvés, sans
+// accents. Le premier mot (« comment ») ne compte plus pour rien.
+function _faqTrouver(q){
+  var s=' '+txtNorm(q)+' ',best=null,bs=0;
+  _faqVisibles().forEach(function(f){
+    var n=0;f.k.forEach(function(k){if(s.indexOf(k)>=0)n++;});
+    if(txtNorm(f.fr[0]).indexOf(txtNorm(q))>=0||txtNorm(f.en[0]).indexOf(txtNorm(q))>=0)n+=2;
+    if(n>bs){bs=n;best=f;}
+  });
+  return best;
+}
+function _assistBas(){
+  try{var b=document.querySelector('#s-assist .assist-bottom-bar'),c=document.getElementById('assist-msgs');
+    if(b&&c&&b.offsetHeight)c.style.setProperty('--assist-bas',b.offsetHeight+'px');}catch(e){}
+}
 function initAssistance(){
   var fg=document.getElementById('faq-grid');if(!fg)return;fg.innerHTML='';
-  var faqs=lang==='fr'?FAQ_FR:FAQ_EN;
-  faqs.slice(0,4).forEach(function(f){var b=document.createElement('button');b.className='faq-btn';b.textContent=f.q;b.onclick=function(){repondreAssist(f.q,f.r);};fg.appendChild(b);});
-  if(!assistMsgs.length){afficherMsgAssist('robot',lang==='fr'?'👋 Bonjour ! Je suis l\'assistant MyBoutiQ. Comment puis-je vous aider ?':'👋 Hello! I\'m the MyBoutiQ assistant. How can I help you?');}
+  var fr=lang==='fr';
+  _faqVisibles().forEach(function(f){var b=document.createElement('button');b.className='faq-btn';b.textContent=(fr?f.fr:f.en)[0];b.onclick=function(){repondreFaq(f);};fg.appendChild(b);});
+  var hs=document.getElementById('h-assist-s');if(hs)hs.textContent=fr?'Touche ta question, ou écris-la':'Tap your question, or type it';
+  var al=document.getElementById('ac-lbl');if(al)al.textContent=fr?'Besoin d\'une personne ? On te répond':'Need a person? We answer';
+  if(!assistMsgs.length){afficherMsgAssist('robot',fr?'Bonjour ! Touche ta question en bas, ou écris-la. Je te montre où c\'est.':'Hello! Tap your question below, or type it. I\'ll show you where it is.');}
+  _assistBas();
 }
-function afficherMsgAssist(type,msg){
+function afficherMsgAssist(type,msg,f){
   var c=document.getElementById('assist-msgs');if(!c)return;
   var d=document.createElement('div');d.className='assist-msg '+(type==='user'?'user':'');
-  if(type==='robot')d.innerHTML='<span class="assist-emo">🤖</span><div class="assist-bbl">'+msg+'</div>';
-  else d.innerHTML='<div class="assist-bbl">'+msg+'</div><span class="assist-emo">👤</span>';
-  c.appendChild(d);c.scrollTop=c.scrollHeight;
-  assistMsgs.push({type,msg});
+  // ⚠️ ce qu'il tape (ou ce que le micro a entendu) s'écrit comme du texte
+  var t=escH(msg);
+  if(type==='robot')d.innerHTML='<span class="assist-emo">🤖</span><div class="assist-bbl">'+t+'</div>';
+  else d.innerHTML='<div class="assist-bbl">'+t+'</div><span class="assist-emo">👤</span>';
+  if(type==='robot'&&f&&f.go){
+    var b=document.createElement('button');b.className='faq-go';b.textContent=lang==='fr'?'Montre-moi':'Show me';
+    b.onclick=function(){try{f.go();}catch(e){}};d.querySelector('.assist-bbl').appendChild(b);
+  }
+  if(type==='robot'&&f===null){
+    var w=document.createElement('button');w.className='faq-go faq-wa';w.textContent=lang==='fr'?'Écrire au support sur WhatsApp':'Write to support on WhatsApp';
+    w.onclick=function(){contacterSupport();};d.querySelector('.assist-bbl').appendChild(w);
+  }
+  c.appendChild(d);_assistBas();c.scrollTop=c.scrollHeight;
+  // c'est la page qui défile (la barre du bas est fixe) : on descend tout en
+  // bas — SEULEMENT si l'écran d'aide est ouvert. ⚠️ Mesuré au banc : le
+  // « Bonjour » s'écrit au démarrage de l'app, et descendait la CAISSE tout
+  // en bas (t243, t261 rouges) : la caisse s'ouvrait sur le bas de l'étagère.
+  try{var sa=document.getElementById('s-assist');
+    if(sa&&sa.classList.contains('on')){var se=document.scrollingElement||document.documentElement;se.scrollTop=se.scrollHeight;}}catch(e){}
+  assistMsgs.push({type:type,msg:msg});
 }
+function repondreFaq(f){
+  var fr=lang==='fr',x=fr?f.fr:f.en;
+  afficherMsgAssist('user',x[0]);setTimeout(function(){afficherMsgAssist('robot',x[1],f);},350);
+}
+// gardée pour les anciens appels
 function repondreAssist(q,r){afficherMsgAssist('user',q);setTimeout(function(){afficherMsgAssist('robot',r);},400);}
 function envoyerMsg(){
   var inp=document.getElementById('assist-inp');var msg=inp.value.trim();if(!msg)return;
   afficherMsgAssist('user',msg);inp.value='';
-  // Chercher dans FAQ
-  var faqs=lang==='fr'?FAQ_FR:FAQ_EN;
-  var found=faqs.find(function(f){return f.q.toLowerCase().includes(msg.toLowerCase())||msg.toLowerCase().includes(f.q.toLowerCase().split(' ')[0]);});
+  var f=_faqTrouver(msg),fr=lang==='fr';
   setTimeout(function(){
-    if(found)afficherMsgAssist('robot',found.r);
-    else afficherMsgAssist('robot',lang==='fr'?'Je n\'ai pas de réponse spécifique à ça. Pour une aide plus personnalisée, contactez le support MyBoutiQ via WhatsApp.':'I don\'t have a specific answer for that. For personalized help, contact MyBoutiQ support via WhatsApp.');
-  },500);
+    if(f)afficherMsgAssist('robot',(fr?f.fr:f.en)[1],f);
+    else afficherMsgAssist('robot',fr?'Je n\'ai pas compris. Écris-nous : une personne te répond sur WhatsApp.':'I did not understand. Write to us: a person answers on WhatsApp.',null);
+  },450);
 }
 function voiceAssist(){if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}var SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();r.lang=lang==='fr'?'fr-FR':'en-US';r.onresult=function(e){document.getElementById('assist-inp').value=e.results[0][0].transcript;envoyerMsg();};r.start();showToast(t('microParle'));}
 
