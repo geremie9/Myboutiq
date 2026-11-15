@@ -23,7 +23,9 @@ const m = await p.evaluate(() => {
 t(m.mur && m.planche === 'rgb(168, 120, 60)' && m.tranche === '3px' && m.continu, `l'article est devant le mur du rayon, sur une planche de bois qui court d'un article à l'autre (tranche ${m.tranche})`);
 t(m.photoH >= 76 && m.photoL === m.tuileL, `la photo prend toute la largeur : ${m.photoL} × ${m.photoH} px sur une tuile de ${m.tuileL} × ${m.tuileH}`);
 t(m.prixSurEtiq && m.prixFond === 'rgb(255, 255, 255)' && m.prixCoul === 'rgb(30, 27, 46)' && m.prixT > m.nomT, `le prix est sur l'étiquette du bord de planche, noir sur blanc, plus gros que le nom (${m.prixT} px / ${m.nomT} px)`);
-t(m.nomSous && m.tuileH <= 124, `le nom est sur la même étiquette, dessous : la tuile fait ${m.tuileH} px — pas plus haute qu'avant`);
+// 23.57 — « agrandis légèrement les articles, et le bois épais » (le patron,
+// 15/11) : la tuile passe de 122 à 142 px. La limite suit, sans plus.
+t(m.nomSous && m.tuileH <= 144, `le nom est sur la même étiquette, dessous : la tuile fait ${m.tuileH} px`);
 t(!m.etg, 'les cartes « Tu vends aussi » ne sont pas sur ses étagères');
 // Toucher vend toujours, et l'article choisi se voit.
 await p.locator('#pc-2').tap(); await p.waitForTimeout(250);

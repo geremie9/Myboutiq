@@ -71,7 +71,7 @@ const e = await p.evaluate(() => {
 t(e.det, 'la photo détourée est posée sur la planche, avec son ombre, sans `multiply`');
 t(e.cadre, 'la photo prise sur la table est encadrée de blanc, comme une affichette');
 t(e.vide === 'none' && Math.abs(e.l61 - e.l60) <= 1, `« Prix ? » d'un article au nom de fichier : plus de bande blanche vide, même hauteur que l'étiquette d'à côté (${e.l61} / ${e.l60} px)`);
-t(e.h <= 124, `la tuile garde sa hauteur (${e.h} px)`);
+t(e.h <= 144, `la tuile garde sa hauteur (${e.h} px)`);
 t(e.sepTop > 0 && e.meuble === e.sepTop + 'px', `le meuble s'arrête avant « Tu vends aussi… ? » (${e.meuble}, suggestions à ${e.sepTop} px)`);
 
 // 3. Le lendemain : la photo détourée vient du téléphone, sans refaire le calcul.

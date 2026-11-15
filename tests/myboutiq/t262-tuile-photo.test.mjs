@@ -51,7 +51,9 @@ t((await p.evaluate(() => DB.articles.find(a => a.id === 3).nm)) === 'Screenshot
 t(azur.fini && azur.sout && /grayscale/.test(azur.gris) && azur.soutL <= 22 && /^450/.test(azur.prix), `article fini : la photo grisée et un rond rouge de ${azur.soutL} px, le prix reste lisible`);
 t(cube.slow && !cube.fini && !cube.sout, 'stock bas : un seul rond orange');
 const cols3 = await p.evaluate(() => getComputedStyle(document.getElementById('pgrid')).gridTemplateColumns.split(' ').length);
-t(cols3 === 3 && coca.h <= 124, `6 articles : 3 par rangée, tuile de ${coca.l} × ${coca.h} px`);
+// 23.57 — « agrandis légèrement les articles, et le bois épais » (le patron,
+// 15/11) : la tuile passe de 122 à 142 px. La limite suit, sans plus.
+t(cols3 === 3 && coca.h <= 144, `6 articles : 3 par rangée, tuile de ${coca.l} × ${coca.h} px`);
 // Toucher vend, et le « Prix ? » demande le prix.
 await p.locator('#pc-1').tap(); await p.waitForTimeout(250);
 t(await p.evaluate(() => panier['1-0'] === 1), 'toucher la tuile vend toujours');

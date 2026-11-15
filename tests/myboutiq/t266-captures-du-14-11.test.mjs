@@ -31,7 +31,9 @@ const f = await p.evaluate(() => [...document.querySelectorAll('.vtile')].map(v 
 t(f.length === 2 && f.every(x => x.photo), 'deux sortes, chacune avec SA photo');
 t(f.every(x => x.imgHaut <= 1 && x.imgH >= 70 && x.prixSous && x.nomSous), `la photo est en haut, entière ; le prix puis le nom dessous, sur l'étiquette (photo ${f[0].imgH} px)`);
 t(f.every(x => x.grosLibre && x.grosSurPhoto), 'la pastille du sac est sur la photo, plus sur le prix');
-t(f.every(x => x.prixCoul === 'rgb(30, 27, 46)' && x.h <= 130), `le prix se lit (sombre sur blanc), et la tuile n'est pas étirée (${f[0].h} px)`);
+// 23.57 — « agrandis légèrement les articles, et le bois épais » (le patron,
+// 15/11) : la tuile passe de 122 à 142 px. La limite suit, sans plus.
+t(f.every(x => x.prixCoul === 'rgb(30, 27, 46)' && x.h <= 146), `le prix se lit (sombre sur blanc), et la tuile n'est pas étirée (${f[0].h} px)`);
 const dehors = await p.evaluate(() => Math.round(document.getElementById('pc-2').getBoundingClientRect().height));
 t(Math.abs(f[0].h - dehors) <= 6, `dedans comme dehors : ${f[0].h} px dedans, ${dehors} px dehors`);
 await p.locator('.vtile').nth(1).tap(); await p.waitForTimeout(300);

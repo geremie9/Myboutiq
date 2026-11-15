@@ -58,7 +58,9 @@ const mesurer = p => p.evaluate(() => {
   await p.setViewportSize({ width: 360, height: 760 }); await p.evaluate(() => renderProd(DB.articles)); await p.waitForTimeout(400);
   const m = await mesurer(p);
   t(m.t56.lib === '' && m.t55.lib === '', `au détail, plus de « la pièce » sous chaque prix : une tuile seule vend forcément la pièce`);
-  t(m.t56.h <= 125, `une tuile simple : ${m.t56.h} px (la 23.23 : 150)`);
+// 23.57 — « agrandis légèrement les articles, et le bois épais » (le patron,
+// 15/11) : la tuile passe de 122 à 142 px. La limite suit, sans plus.
+  t(m.t56.h <= 144, `une tuile simple : ${m.t56.h} px (la 23.23 : 150, la 23.56 : 122)`);
   t(m.entieres >= 9, `${m.entieres} tuiles entières à l'écran (la 23.23 : 6)`);
   // Une touche sur la tuile vend toujours une pièce.
   await p.locator('#pc-56').tap(); await p.waitForTimeout(300);
