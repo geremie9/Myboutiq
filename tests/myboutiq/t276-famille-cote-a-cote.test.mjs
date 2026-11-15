@@ -17,7 +17,7 @@ db.articles = db.articles.slice(0, 2);
 const V = (id, nm, img) => ({ id, nm, px: 500, pa: 400, stk: 10, stk0: 10, img });
 // La photo de la famille est celle de sa première sorte (ce que fait la création).
 db.articles.push({ id: 30, nm: 'Jus', e: '📦', cat: 'Boissons', px: 0, pa: 0, stk0: 0, al: 0, vd: 0, img: rouge, vr: [V(1, 'Fraise', rouge), V(2, 'Myrtille', bleu), V(3, 'Menthe', vert), V(4, 'Ananas', jaune)] });
-// Une famille dont le patron a mis SA photo.
+// Une famille qui avait déjà sa propre photo (posée avant la 23.57).
 db.articles.push({ id: 31, nm: 'Savon', e: '📦', cat: 'Hygiène', px: 0, pa: 0, stk0: 0, al: 0, vd: 0, img: perso, vr: [V(1, 'Azur', rouge), V(2, 'Omo', bleu)] });
 // Une famille dont une seule sorte a une photo.
 db.articles.push({ id: 32, nm: 'Sucre', e: '📦', cat: 'Alimentation', px: 0, pa: 0, stk0: 0, al: 0, vd: 0, vr: [V(1, 'Morceaux', vert), V(2, 'Poudre', null)] });
@@ -30,12 +30,14 @@ const f = await p.evaluate(() => {
   return {
     jus: m(30).classList.contains('pfam'), n: imgs(30).length, dt: imgs(30).filter(i => i.classList.contains('dt')).length,
     gauche: imgs(30)[0] ? Math.round(imgs(30)[0].getBoundingClientRect().left) : 0, droite: imgs(30)[2] ? Math.round(imgs(30)[2].getBoundingClientRect().left) : 0,
-    savon: !m(31).classList.contains('pfam') && imgs(31).length === 1, sucre: !m(32).classList.contains('pfam'),
+    savon: m(31).classList.contains('pfam') && imgs(31).length === 2, sucre: !m(32).classList.contains('pfam'),
   };
 });
 t(f.jus && f.n === 3 && f.droite > f.gauche + 20, `« Jus » : ses sortes côte à côte sur la planche, trois au plus (${f.n} sur 4)`);
 t(f.dt === 3, `chacune détourée, posée avec son ombre (${f.dt} sur 3)`);
-t(f.savon, 'une famille où le patron a mis SA photo la garde');
+// 23.60 — « la photo de variantes déjà posée laisse la place à ce qu'on vient de faire » :
+// la photo de famille posée avant cède la place aux sortes côte à côte.
+t(f.savon, 'une famille qui avait déjà SA photo montre maintenant ses sortes côte à côte');
 t(f.sucre, 'une seule sorte en photo : la tuile ne fait pas semblant d\'en montrer plusieurs');
 
 const g = await p.evaluate(() => {

@@ -52,7 +52,9 @@ const tape = async (p, sel, txt) => { await p.locator(sel).fill(''); await p.loc
   const tot1 = await p.evaluate(() => calcTotal());
   await p.evaluate(() => { choisirEtageGros(null, 8); etgVendre(500, 'carton'); }); await p.waitForTimeout(250);
   const tot2 = await p.evaluate(() => calcTotal());
-  t(et.join(',') === '1 carton,1 paquet' && tot1 === 220 && tot2 === 10720, `à la caisse : ${et.join(' / ')} → un paquet ${tot1}, puis un carton : ${tot2}`);
+  // 23.60 — la feuille de la caisse se lit maintenant du plus petit au plus
+  // grand (la pièce, le paquet, le carton), en gros boutons côte à côte.
+  t(et.join(',') === '1 paquet,1 carton' && tot1 === 220 && tot2 === 10720, `à la caisse : ${et.join(' / ')} → un paquet ${tot1}, puis un carton : ${tot2}`);
   await p.evaluate(() => { try { viderPanier(); } catch (e) {} });
 
   // L'arrivage compte en cartons, au prix du carton.

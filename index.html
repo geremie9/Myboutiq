@@ -1118,6 +1118,21 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .apn-rec img{display:block}
 .apn-car{position:absolute;border:3px solid #F0A93E;box-shadow:0 0 0 9999px rgba(20,16,30,.55);border-radius:4px;touch-action:none;cursor:move;box-sizing:border-box}
 .cha-ph{margin-top:8px;border:0;background:#F0A93E;color:#221F2B;border-radius:12px;padding:10px 14px;font:800 14px 'Outfit',sans-serif;width:100%}
+.etg3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.etg3.etg2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.etg3.etg4{grid-template-columns:repeat(2,minmax(0,1fr))}
+.etg-b{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;border:2px solid #E6DFD2;background:#fff;border-radius:16px;padding:10px 4px 9px;font-family:'Outfit',sans-serif;color:var(--T);cursor:pointer;min-height:138px}
+.etg-b:active{background:#FFF6DF;border-color:#F0A93E}
+.etg-b[disabled]{opacity:.45}
+.etg-ic{height:58px;display:flex;align-items:flex-end;justify-content:center;color:#8A5A22}
+.etg-ic svg{width:var(--z,30px);height:var(--z,30px);stroke:currentColor;fill:none;stroke-width:1.7}
+.etg-piece .etg-ic svg{width:26px;height:26px}
+.etg-t{font-size:14px;font-weight:800;line-height:1.1}
+.etg-s{font-size:11.5px;font-weight:700;color:var(--M);line-height:1.1}
+.etg-px{font-size:20px;font-weight:900;margin-top:3px}
+.etg-vide .etg-px{color:var(--O);font-size:15px}
+.etg-gain{font-style:normal;font-size:10px;font-weight:700;color:var(--M);text-decoration:line-through}
+.etg-reste{margin-top:12px;background:#F6EFE3;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;color:var(--T)}
 .ag-rien{grid-column:1/-1;text-align:center;font-size:12.5px;font-weight:700;color:var(--M);padding:10px 4px}
 .snack-ph{white-space:nowrap;position:fixed;left:50%;bottom:92px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:400;display:flex;align-items:center;gap:14px;background:#1E1B2E;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;font-size:13px;font-weight:700;font-family:'Outfit',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:all .25s}
 .snack-ph.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
@@ -7517,7 +7532,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.59'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.60'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -14545,15 +14560,17 @@ function _dtPourSrc(src){
 // PRODUITS. COMMENT TRANCHER ? » Une seule photo ne dit pas Azur, Palmida
 // ET Omo. Tranché : la tuile de la famille pose ses sortes CÔTE À CÔTE sur
 // la planche, comme elles le sont dans un vrai rayon — trois au plus, puis
-// « +2 ». Une photo que le patron a mise lui-même sur la famille (pas
-// héritée d'une sorte, voir `p.img=v.img` à la création) reste la sienne.
+// « +2 ». (23.57 : une photo que le patron avait mise lui-même sur la
+// famille restait la sienne.)
+// 23.60 — le patron : « la photo de variantes qui est déjà posée laisse la
+// place à ce qu'on vient de faire ». Dès que deux sortes ont leur photo,
+// elles passent devant, même si une photo de famille était déjà posée.
 function _famPhotos(p){
   try{
     if(!p||!p.vr||p.vr.length<2)return null;
     var vus={},l=[];
     p.vr.forEach(function(v){var u=v&&v.img;if(!u||vus[u]||_estCarteCatalogue(u)||!srcSure(u))return;vus[u]=1;l.push(u);});
     if(l.length<2)return null;
-    if(p.img&&!vus[p.img])return null;                  // sa photo à lui
     return l;
   }catch(e){return null;}
 }
@@ -18481,20 +18498,42 @@ function choisirEtageGros(e,pid,vid){
     if(etages.length===1)etgVendreDirect(p,v,etages[0]);
     return;
   }
-  document.getElementById('etg-tit').textContent='📦 '+(fr?'Vendre en gros':'Sell in bulk');
+  // ⭐⭐ 23.60 — « EN GROS, IL Y A SOUVENT DES ARTICLES QUI VIENNENT EN
+  // CARTON OU EN SAC, ET CES CARTONS CONTIENNENT DES BOÎTES OU DES PAQUETS,
+  // QUI CONTIENNENT DES PIÈCES. » L'app savait les trois étages depuis la
+  // 23.36 ; à la caisse, ils se cachaient derrière une petite pastille
+  // « carton ▾ », puis une liste de lignes où la pièce n'était même pas.
+  // Maintenant : trois gros boutons côte à côte, du plus petit au plus
+  // grand — le dessin (plus grand pour plus gros), « 1 paquet », ce qu'il
+  // contient, et le PRIX en gros. Un toucher vend, la feuille se ferme.
+  // Dessous : ce qu'il lui reste, dit en cartons, paquets et pièces.
+  var pu=Number(v?v.px:p.px)||0,unite=(p.umNom?_uniteMot(p):uniteArt(p)),tri=etages.slice().sort(function(a,b){return a.n-b.n;});
+  document.getElementById('etg-tit').textContent=fr?'Combien il prend ?':'How much?';
   document.getElementById('etg-art').textContent=p.nm+(v?(' — '+(v.nm||'')):'')
-    +' · '+(fr?'tu vends à':'you sell at')+' '+fmt(Number(v?v.px:p.px)||0)+' '+_libPiece(p);
-  document.getElementById('etg-lst').innerHTML=etages.map(function(x){
-    // ⚠️ LE MOT EN TOUTES LETTRES, LE CONTENU, ET LE PRIX. C'est exactement
-    // ce que la tuile ne pouvait pas dire dans 119 pixels.
-    return '<div class="stit2" style="cursor:pointer" onclick="etgVendre('+x.n+',\''+String(x.mot).replace(/'/g,"\\'")+'\')">'
-      +'<div class="stico" style="background:#FFF8E1;font-size:20px">'+_emojiCont(x.mot)+'</div>'
-      +'<div class="stii"><div class="stitl">1 '+x.mot+'</div>'
-      +'<div class="stisub">'+fmtQ(x.n)+' '+(p.umNom?_uniteMot(p):uniteArt(p))
-      +(x.px>0?('  ·  '+(fr?'au détail ça ferait ':'retail would be ')+fmt((Number(v?v.px:p.px)||0)*x.n)):'')+'</div></div>'
-      +'<span style="font-size:15px;font-weight:900;color:'+(x.px>0?'var(--B)':'var(--O)')+'">'
-      +(x.px>0?fmt(x.px):(fr?'prix ?':'price?'))+'</span></div>';
-  }).join('');
+    +' · '+(fr?'tu vends à':'you sell at')+' '+fmt(pu)+' '+_libPiece(p);
+  var tailles=[30,40,50,56],h='<div class="etg3 etg'+(tri.length+1)+'">';
+  h+='<button type="button" class="etg-b etg-piece" onclick="etgPiece()"'+(pu>0?'':' disabled')+'>'
+    +'<span class="etg-ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect x="7" y="7" width="10" height="11" rx="2"/><path d="M9 7V5.5h6V7"/></svg></span>'
+    +'<span class="etg-t">1 '+escH(String(unite).replace(/s$/,''))+'</span><span class="etg-s">&nbsp;</span>'
+    +'<b class="etg-px">'+(pu>0?_sansDevise(pu):(fr?'prix ?':'price?'))+'</b><i class="etg-gain" style="text-decoration:none">&nbsp;</i></button>';
+  tri.forEach(function(x,i){
+    var z=tailles[Math.min(i+1,tailles.length-1)];
+    h+='<button type="button" class="etg-b'+(x.px>0?'':' etg-vide')+'" onclick="etgVendre('+x.n+','+jsStr(String(x.mot))+')">'
+      +'<span class="etg-ic" style="--z:'+z+'px">'+_iconeCont(x.mot)+'</span>'
+      +'<span class="etg-t stitl">1 '+escH(x.mot)+'</span>'
+      +'<span class="etg-s stisub">'+fmtQ(x.n)+' '+escH(unite)+'</span>'
+      +'<b class="etg-px">'+(x.px>0?_sansDevise(x.px):(fr?'prix ?':'price?'))+'</b>'
+      +(x.px>0&&pu>0&&pu*x.n>x.px?'<i class="etg-gain">'+(fr?'au détail ':'retail ')+_sansDevise(pu*x.n)+'</i>':'')+'</button>';
+  });
+  h+='</div>';
+  // Ce qu'il lui reste, dit comme il le compte : du plus gros au plus petit.
+  try{
+    var reste=Math.max(0,Math.floor(Number(v?stockVarDispo(p,v):getStk(p))||0)),parts=[];
+    tri.slice().reverse().forEach(function(x){var k=Math.floor(reste/x.n);if(k>0){parts.push(fmtQ(k)+' '+escH(x.mot)+(k>1&&!/s$/.test(x.mot)?'s':''));reste-=k*x.n;}});
+    if(reste>0||!parts.length)parts.push(fmtQ(reste)+' '+escH(unite));
+    h+='<div class="etg-reste">'+(fr?'Il te reste ':'You have ')+'<b>'+parts.join(' · ')+'</b></div>';
+  }catch(e){}
+  document.getElementById('etg-lst').innerHTML=h;
   document.getElementById('ov-etage').classList.add('show');
 }
 // Vendre un étage précis : le lot en variante passe par son chemin d'avant,
@@ -18504,6 +18543,13 @@ function etgVendreDirect(p,v,x){
   if(x.lot!=null&&v){var _l=(p.vr||[]).find(function(z){return String(z.id)===String(x.lot);});
     if(_l){chgVQ(_l.id,p.id,1,!!p.rt);return;}}
   if(v)_ajouterLotVariante(p,v,x.n,x.mot);else _ajouterLot(p,x.n,x.mot);
+}
+// La pièce, depuis la même feuille : exactement le toucher de la tuile.
+function etgPiece(){
+  var p=_etgArt,v=_etgVar;closeSheet('ov-etage');if(!p)return;
+  if(v){try{chgVQ(v.id,p.id,1,!!p.rt);}catch(e){}return;}
+  var t=document.getElementById('pc-'+p.id);
+  if(t)t.click();else try{addPanier(p,null);}catch(e){}
 }
 function etgVendre(n,mot){
   var p=_etgArt,v=_etgVar;
