@@ -20,6 +20,9 @@ function installer() {
     comptes: {},        // email -> { id, pin }
     boutiques: [],      // { id, code, nom, owner_id, actif, updated_at, data, pin_vendeur_clair, plan, abonne_jusqu }
     pins: {},           // code -> PIN accepté par boutique_lire
+    // 23.61 — le code ÉQUIPE (vendeurs). Comme le vrai `boutique_ecrire2` :
+    // une écriture faite avec lui ne touche ni à l'équipe, ni aux PIN.
+    pinsVendeur: {},    // code -> code équipe
     session: null,      // { user: { id, email } }
     appels: [],         // { quoi, table, cols, octets, t }
     debit: 0,           // octets par seconde (0 = instantané)
@@ -139,7 +142,7 @@ function installer() {
     rpc: async function (nom, a) {
       if (nom === 'boutique_lire') {
         var r = fs.boutiques.filter(function (b) { return b.code === a.p_code; })[0];
-        var ok = r && fs.pins[r.code] && String(fs.pins[r.code]) === String(a.p_pin);
+        var ok = r && ((fs.pins[r.code] && String(fs.pins[r.code]) === String(a.p_pin)) || (fs.pinsVendeur[r.code] && String(fs.pinsVendeur[r.code]) === String(a.p_pin)));
         var d = ok ? copie(r.data) : null, o = taille(d);
         await attendre(o); noter('rpc:boutique_lire', '', a.p_code, o);
         return { data: d, error: null };
@@ -147,9 +150,22 @@ function installer() {
       // L'écriture par PIN, avec le même verrou de version que le vrai.
       if (nom === 'boutique_ecrire2') {
         var w = fs.boutiques.filter(function (b) { return b.code === a.p_code; })[0], rep;
-        if (!w || !fs.pins[w.code] || String(fs.pins[w.code]) !== String(a.p_pin)) rep = { ok: false, motif: 'pin' };
+        var role = !w ? null : (fs.pins[w.code] && String(fs.pins[w.code]) === String(a.p_pin)) ? 'patron'
+          : (fs.pinsVendeur[w.code] && String(fs.pinsVendeur[w.code]) === String(a.p_pin)) ? 'vendeur' : null;
+        if (!role) rep = { ok: false, motif: 'pin' };
         else if (((w.data && w.data.cfg && w.data.cfg._rev) || null) !== (a.p_rev || null)) rep = { ok: false, motif: 'conflit' };
-        else { w.data = copie(a.p_data); w.updated_at = new Date().toISOString(); rep = { ok: true }; }
+        else {
+          var nd = copie(a.p_data);
+          // ⚠️ Ce que fait le vrai serveur (lu le 15/11) : un vendeur n'écrit ni
+          // l'équipe, ni les PIN, ni le nombre de vendeurs permis.
+          if (role !== 'patron') {
+            if (nd.cfg) { delete nd.cfg.pin; delete nd.cfg.pinVendeur; }
+            if (w.data && w.data.equipe) nd.equipe = copie(w.data.equipe);
+            if (w.data && w.data.cfg && 'maxVendeurs' in w.data.cfg) { nd.cfg = nd.cfg || {}; nd.cfg.maxVendeurs = w.data.cfg.maxVendeurs; }
+          }
+          if (nd.cfg) delete nd.cfg._pinRole;
+          w.data = nd; w.updated_at = new Date().toISOString(); rep = { ok: true };
+        }
         await attendre(0); noter('rpc:boutique_ecrire2', '', a.p_code, taille(a.p_data));
         return { data: rep, error: null };
       }

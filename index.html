@@ -7532,7 +7532,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.60'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.61'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -7717,6 +7717,7 @@ function _applyRemoteDB(data,silent){
   // connecter, arriver dans DB.equipe du patron… et rester invisible à l'écran
   // tant que le patron ne quittait pas la page. Idem pour les listes d'articles
   // des fiches Prix/Stock et les fournisseurs.
+  try{_accueillirArrivees();}catch(e){}   // 23.61 — un vendeur qui s'est annoncé
   renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();
   try{renderEquipe();}catch(e){}
   try{renderAgpx();renderAgstk();}catch(e){}
@@ -11964,6 +11965,57 @@ function registerVendeurEquipe(nm){
   return 'ok';
 }
 // ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ 23.61 — « UN VENDEUR SE CONNECTE, LE PATRON NE LE VOIT PAS DANS
+//  SON ÉQUIPE, MÊME AVEC UNE BONNE CONNEXION. »
+//  Lu sur le vrai serveur : `boutique_ecrire2` REMPLACE l'équipe écrite par
+//  un vendeur par celle qu'il a déjà — c'est voulu (un vendeur ne doit pas
+//  pouvoir se donner des droits ni effacer un collègue). Mais c'est ici,
+//  sur le téléphone du VENDEUR, que `registerVendeurEquipe` l'ajoutait à
+//  l'équipe : le serveur l'effaçait aussitôt, et le patron ne le voyait
+//  jamais. En base, dans « G » : Yeng, Kodji, Test, hamadou ont vendu et
+//  ne sont dans aucune équipe. Le banc ne l'avait jamais vu : son faux
+//  serveur acceptait l'écriture du vendeur telle quelle.
+//  Maintenant le vendeur ANNONCE son arrivée dans `DB.arrivees` (que le
+//  serveur garde), et c'est le téléphone du PATRON qui l'accueille dans
+//  l'équipe — avec les droits de départ (vendre, rien d'autre) — puis
+//  l'écrit : l'écriture du patron, elle, n'est jamais filtrée.
+// ══════════════════════════════════════════════════════════════════
+function _annoncerArrivee(nm){
+  try{
+    if(!DB||!nm)return;
+    if(!Array.isArray(DB.arrivees))DB.arrivees=[];
+    var k=txtNorm(nm);
+    if(DB.arrivees.some(function(a){return a&&txtNorm(a.nm||'')===k;}))return;
+    DB.arrivees.push({id:genVenteId(),nm:String(nm).replace(/[<>"]/g,'').slice(0,40),ts:Date.now()});
+  }catch(e){}
+}
+function _accueillirArrivees(){
+  try{
+    if(typeof role==='undefined'||role!=='patron'||!DB||!Array.isArray(DB.arrivees))return 0;
+    if(!DB.equipe)DB.equipe=[];
+    var fr=lang==='fr',neufs=[],plein=[],change=false;
+    var max=Number((DB.cfg&&DB.cfg.maxVendeurs)||0);
+    DB.arrivees.forEach(function(a){
+      if(!a||a.vu||!a.nm)return;
+      a.vu=true;change=true;
+      var k=txtNorm(a.nm);
+      if(DB.equipe.some(function(m){return m&&txtNorm(m.nm||'')===k;}))return;   // déjà là
+      var actifs=DB.equipe.filter(function(v){return v.role==='vendeur'&&v.actif;}).length;
+      var bgs=[['#E3F2FD','#2979FF'],['#FFF8E1','#F5A623'],['#E8F5E9','#00C853'],['#FCE4EC','#E91E63'],['#F3E5F5','#7C4DFF']],c=bgs[DB.equipe.length%bgs.length];
+      var ok=!(max>0&&actifs>=max);
+      DB.equipe.push({id:(DB.equipe.reduce(function(m,v){return Math.max(m,v.id||0);},0)+1),nm:a.nm,role:'vendeur',bg:c[0],tc:c[1],actif:ok,perms:defautPerms()});
+      if(ok)neufs.push(a.nm);else plein.push(a.nm);
+      try{journalAjouter('equipe',a.nm,'',ok?(fr?'arrivé dans l\'équipe':'joined the team'):(fr?'pas de place':'no seat left'));}catch(e){}
+    });
+    if(!change)return 0;
+    save();
+    try{renderEquipe();}catch(e){}
+    if(neufs.length)showToast('👋 '+neufs.join(', ')+(fr?(neufs.length>1?' sont entrés dans ton équipe':' est entré dans ton équipe'):' joined your team'));
+    if(plein.length)showToast('🚫 '+plein.join(', ')+(fr?' voulait entrer : ta boutique a déjà tous ses vendeurs (désactivé)':' wanted in: no seat left'));
+    return neufs.length;
+  }catch(e){return 0;}
+}
+// ══════════════════════════════════════════════════════════════════
 //  ⚠️⚠️ « LE PIN DE 4 CHIFFRES NE MARCHE PAS. »  — ET LA CAUSE EST PLUS
 //         GRAVE QUE LE CODE COURT.
 //
@@ -12761,6 +12813,7 @@ function _finishLoginV(nm,code){
 }
 function _ouvrirCaisseVendeur(nm,code){
   role='vendeur';nomVendeur=nm;
+  _annoncerArrivee(nm);   // 23.61 — le patron l'accueillera (voir _accueillirArrivees)
   document.getElementById('u-nm').textContent=nm;
   document.getElementById('u-role').textContent=t('vendeur');
   document.getElementById('u-role').className='rbdg rb-v';
@@ -12817,6 +12870,7 @@ function _finirLancement(){
   try{f();}catch(e){}
 }
 function lancerApp(){
+  setTimeout(function(){try{_accueillirArrivees();}catch(e){}},1500);   // 23.61
   screenHist=['s-caisse'];
   goScreen('s-caisse');
   setTimeout(function(){try{_parcoursOuverture();}catch(e){}},3000);   // 23.26 — voir _parcoursOuverture
@@ -33241,6 +33295,17 @@ function mergeDB(base,other){
     (other.equipe||[]).forEach(_poser);     // puis ce que l'autre a ajouté
     if(_eq.length)base.equipe=_eq;
   }catch(e){}
+  // 23.61 — les ARRIVÉES de vendeurs : union par identifiant ; « vu » (le
+  // patron l'a accueilli) est collant. Les 60 plus récentes suffisent.
+  try{
+    var _arr={};
+    (base.arrivees||[]).concat(other.arrivees||[]).forEach(function(a){
+      if(!a||!a.id)return;var ex=_arr[a.id];
+      if(!ex)_arr[a.id]={id:a.id,nm:a.nm,ts:a.ts,vu:!!a.vu};else if(a.vu)ex.vu=true;
+    });
+    var _la=Object.keys(_arr).map(function(k){return _arr[k];}).sort(function(x,y){return (Number(x.ts)||0)-(Number(y.ts)||0);});
+    if(_la.length)base.arrivees=_la.slice(-60);
+  }catch(e){}
   // Les DÉPENSES ne fusionnaient pas du tout : la copie du serveur remplaçait
   // la liste entière, donc une dépense notée ici disparaissait au premier
   // rafraîchissement. Union par identifiant, comme les ventes.
@@ -33329,6 +33394,13 @@ function migrateDBData(d){
   if(!d)return d;
   d.cfg=d.cfg||{};
   try{_neutraliserTextes(d);}catch(e){}
+  // 23.61 — les arrivées viennent du téléphone d'un vendeur : on n'en garde
+  // que la forme attendue (identifiant propre, nom court sans balise).
+  if(d.arrivees!=null){
+    try{d.arrivees=(Array.isArray(d.arrivees)?d.arrivees:[]).filter(function(a){return a&&typeof a.id==='string'&&typeof a.nm==='string';})
+      .map(function(a){var o={id:a.id.replace(/[^A-Za-z0-9_.-]/g,'').slice(0,80),nm:a.nm.replace(/[<>"]/g,'').trim().slice(0,40),ts:Number(a.ts)||0};if(a.vu)o.vu=true;return o;})
+      .filter(function(a){return a.id&&a.nm;}).slice(-60);}catch(e){d.arrivees=[];}
+  }
   // ⚠️⚠️ 23.35 — « LES PHOTOS QUE MYBOUTIQ PROPOSE, CE SONT LES EMOJIS. »
   // Les 600 images du catalogue (/APP/catalogue/) sont des emojis dessinés
   // sur une carte, générés le 27/08 — pas des photos. Mesuré en base le
@@ -34635,6 +34707,9 @@ function _signatureDonnees(d){
   if(!d)return '';
   return s(d.ventes,'v')+'|'+s(d.appros,'a')+'|'+s(d.articles,'p')+'|'
         +s(d.equipe,'e')+'|'+s(d.clients,'c')+'|'
+        // 23.61 — une arrivée de vendeur change la boutique : sans elle ici,
+        // le patron prenait les données pour son propre écho et les ignorait.
+        +(d.arrivees||[]).map(function(a){return (a&&a.id)+(a&&a.vu?'v':'');}).sort().join(',')+'|'
         +((d.suppr||[]).slice().sort().join(','));
 }
 async function _rtRefetch(code){
