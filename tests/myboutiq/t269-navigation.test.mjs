@@ -22,7 +22,9 @@ t(await p.evaluate(() => document.getElementById('s-stock').classList.contains('
 // ── « Ajouter » ──
 await p.locator('#s-stock .nadd').tap(); await p.waitForTimeout(400);
 const ch = await p.evaluate(() => [...document.querySelectorAll('#ajr button')].map(x => x.id));
-t(ch.join(',') === 'ajr-art,ajr-arr,ajr-dep,ajr-cli', `le patron peut ajouter : un article, un arrivage, une dépense, un client (${ch.join(', ')})`);
+// 23.59 — « Un article en photo » s'ajoute juste après « Un article » (le patron :
+// « ajouter un nouveau produit, la navigation devient complexe »).
+t(ch.join(',') === 'ajr-art,ajr-aph,ajr-arr,ajr-dep,ajr-cli', `le patron peut ajouter : un article, un article en photo, un arrivage, une dépense, un client (${ch.join(', ')})`);
 await p.locator('#ajr-arr').tap(); await p.waitForTimeout(400);
 t(await p.evaluate(() => document.getElementById('ov-stk').classList.contains('show') && !document.getElementById('ov-ajr').classList.contains('show')), '« Un arrivage » ouvre la feuille d\'entrée de stock');
 await p.evaluate(() => document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')));

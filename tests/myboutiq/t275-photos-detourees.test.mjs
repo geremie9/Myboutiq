@@ -24,6 +24,8 @@ await p.evaluate(() => {
       x.fillStyle = '#5b2a6e'; x.fillRect(170, 40, 60, 60); x.fillRect(150, 95, 100, 270); x.fillStyle = '#fff'; x.fillRect(150, 200, 100, 50); }),
     // savon sur une table de bois : fond pas uni
     table: faire(x => { for (let y = 0; y < 400; y += 4) { x.fillStyle = ['#8a6a44', '#b8936a', '#6e5232', '#d4b48a'][(y / 4) % 4]; x.fillRect(0, y, 400, 4); } x.fillStyle = '#e39a45'; x.fillRect(60, 110, 280, 170); }),
+    // 23.59 — un savon de la COULEUR de la table : là, on ne découpe pas.
+    pareil: faire(x => { for (let y = 0; y < 400; y += 4) { x.fillStyle = ['#8a6a44', '#b8936a', '#6e5232', '#d4b48a'][(y / 4) % 4]; x.fillRect(0, y, 400, 4); } x.fillStyle = '#a2835c'; x.fillRect(60, 110, 280, 170); }),
     // savon sur blanc, « 40 Gram » dans un coin
     texte: faire(x => { x.fillStyle = '#fff'; x.fillRect(0, 0, 400, 400); x.fillStyle = '#9a6227'; x.fillRect(50, 90, 250, 230); x.fillStyle = '#555'; x.font = '900 26px sans-serif'; x.fillText('40', 340, 50); }),
   };
@@ -34,24 +36,27 @@ const calc = await p.evaluate(async () => {
   if (typeof _dtCalculer !== 'function') return {};       // l'ancienne app
   const lire = async u => { const im = new Image(); im.src = u; await im.decode(); return im; };
   const alpha = (cv, fx, fy) => { const x = cv.getContext('2d'); const d = x.getImageData(Math.floor(fx * (cv.width - 1)), Math.floor(fy * (cv.height - 1)), 1, 1).data; return d[3]; };
-  const a = _dtCalculer(await lire(__ph.capture)), b = _dtCalculer(await lire(__ph.table)), c = _dtCalculer(await lire(__ph.texte));
+  const a = _dtCalculer(await lire(__ph.capture)), b = _dtCalculer(await lire(__ph.table)), c = _dtCalculer(await lire(__ph.texte)), e = _dtCalculer(await lire(__ph.pareil));
   return {
     a: a && a.mode, aCoins: a && a.cv ? [alpha(a.cv, 0, 0), alpha(a.cv, 1, 1)] : null,
     aLarg: a && a.cv ? Math.round(a.cv.width / a.cv.height * 100) : 0,       // recadré sur la bouteille (100 × 325 → ~0,3)
     aEtiq: a && a.cv ? alpha(a.cv, 0.5, 0.45) : -1,
-    b: b && b.mode, c: c && c.mode, cRatio: c && c.cv ? Math.round(c.cv.width / c.cv.height * 100) : 0,
+    b: b && b.mode, e: e && e.mode, c: c && c.mode, cRatio: c && c.cv ? Math.round(c.cv.width / c.cv.height * 100) : 0,
   };
 });
 t(calc.a === 'd' && calc.aCoins && calc.aCoins.every(v => v === 0), `fond blanc : détourée, les coins sont transparents (${calc.a}, ${JSON.stringify(calc.aCoins)})`);
 t(calc.aLarg > 20 && calc.aLarg < 45, `les traits gris des bords sont partis : l'image est recadrée sur la bouteille seule (largeur/hauteur ${calc.aLarg} %)`);
 t(calc.aEtiq === 255, `l'étiquette blanche qui touche les bords reste sur la bouteille (opacité ${calc.aEtiq})`);
-t(calc.b === 'c', `photo prise sur une table : on n'y touche pas, elle sera encadrée (${calc.b})`);
+// 23.56 : toute photo sur une table était encadrée. 23.59 (« posés comme dans
+// la vie réelle ») : un produit bien distinct de sa table est détouré aussi ;
+// seul un produit de la couleur de la table reste encadré.
+t(calc.b === 'd' && calc.e === 'c', `photo prise sur une table : détourée si le savon s'en distingue (${calc.b}), encadrée s'il a sa couleur (${calc.e})`);
 t(calc.c === 'd' && calc.cRatio > 100 && calc.cRatio < 116, `« 40 Gram » dans le coin est parti : recadrée sur le savon seul (${calc.cRatio} %, le savon fait 109 %)`);
 
 // 2. Sur l'étagère.
 await p.evaluate(() => {
   DB.articles.push({ id: 60, nm: 'Jus vimto', e: '📦', cat: 'Divers', px: 800, pa: 600, stk0: 10, al: 2, vd: 0, img: __ph.capture });
-  DB.articles.push({ id: 61, nm: 'Screenshot 20260709 113553', e: '📦', cat: 'Divers', px: 0, pa: 0, stk0: 10, al: 2, vd: 0, img: __ph.table });
+  DB.articles.push({ id: 61, nm: 'Screenshot 20260709 113553', e: '📦', cat: 'Divers', px: 0, pa: 0, stk0: 10, al: 2, vd: 0, img: __ph.pareil });
   DB.articles.push({ id: 62, nm: 'Savon Azur', e: '📦', cat: 'Divers', px: 450, pa: 300, stk0: 10, al: 2, vd: 0, img: __ph.texte });
   DB = migrateDBData(DB); renderProd(DB.articles);   // comme après une synchro
 });
@@ -69,7 +74,7 @@ const e = await p.evaluate(() => {
   };
 });
 t(e.det, 'la photo détourée est posée sur la planche, avec son ombre, sans `multiply`');
-t(e.cadre, 'la photo prise sur la table est encadrée de blanc, comme une affichette');
+t(e.cadre, 'la photo d\'un savon couleur de table est encadrée de blanc, comme une affichette');
 t(e.vide === 'none' && Math.abs(e.l61 - e.l60) <= 1, `« Prix ? » d'un article au nom de fichier : plus de bande blanche vide, même hauteur que l'étiquette d'à côté (${e.l61} / ${e.l60} px)`);
 t(e.h <= 144, `la tuile garde sa hauteur (${e.h} px)`);
 t(e.sepTop > 0 && e.meuble === e.sepTop + 'px', `le meuble s'arrête avant « Tu vends aussi… ? » (${e.meuble}, suggestions à ${e.sepTop} px)`);
