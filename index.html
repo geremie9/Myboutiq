@@ -7557,7 +7557,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.64'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.65'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -14190,7 +14190,26 @@ function _marquerGrosTuiles(){
   });}catch(e){}
 }
 var _renderProdBase=renderProd;
-renderProd=function(lst){var r=_renderProdBase(lst);_marquerGrosTuiles();return r;};
+// ⚠️ 23.65 — LA GRILLE SE RECONSTRUIT, LE PANNEAU DES VARIANTES REVIENT.
+// `renderProd` referme le panneau (une référence morte à l'ancienne carte
+// ne vaut rien). Mais il tourne après CHAQUE modification faite depuis le
+// menu d'une variante (`_vApres`), à la fin d'une photo, à l'arrivée des
+// données d'un autre téléphone : il renommait « Orange », touchait
+// « Enregistrer »… et se retrouvait sur la caisse, ses variantes parties.
+// Si la famille était ouverte et que sa carte existe encore, on la rouvre
+// sur la carte neuve — il reprend où il en était.
+renderProd=function(lst){
+  var _rv=null;
+  try{if(typeof _varCarteId!=='undefined'&&_varCarteId!=null&&(_varBox||_varCercle))_rv=_varCarteId;}catch(e){}
+  var r=_renderProdBase(lst);_marquerGrosTuiles();
+  if(_rv!=null){
+    try{
+      var _c=document.getElementById('pc-'+_rv),_p=(DB.articles||[]).find(function(a){return a.id===_rv;});
+      if(_c&&_c.offsetParent&&_p&&_p.vr&&_p.vr.length)ouvrirVarInline(_p,_c);
+    }catch(e){}
+  }
+  return r;
+};
 function renderProd(lst){
   try{majDemarrage();}catch(e){}
   // La grille est reconstruite : le panneau des variantes n'y survivrait pas,
@@ -17655,6 +17674,19 @@ function _varDehors(ev){
   var _pvx=document.getElementById('ov-pave'),_qx=document.getElementById('ctxv-qte');
   if(_pvx&&_pvx.contains(ev.target))return;
   if(_qx&&_qx.contains(ev.target))return;
+  // ⚠️⚠️ 23.65 — « PENDANT LA MODIFICATION, APRÈS AVOIR CLIQUÉ SUR UN
+  // ÉLÉMENT DE VARIANTES, LA VARIANTE SE REFERME SANS QUE TU N'AIES FINI. »
+  // L'exception ci-dessus ne couvrait QUE « Saisir une quantité ». Toutes
+  // les autres entrées du menu d'une variante (prix, renommer, stock,
+  // photo, tout modifier…) sont hors du panneau : le doigt posé dessus
+  // refermait les variantes, PUIS `_avalerClicSuivant` mangeait le clic —
+  // rejoué au banc (t284) : panneau parti, et « Renommer » ne s'ouvrait
+  // même pas. Le menu d'une variante, et toute fiche ouverte PAR-DESSUS
+  // le panneau (renommer, stock, conditionnement, le bandeau « Débloquer »),
+  // font partie de la modification : il revient à ses variantes après.
+  var _cmv=document.getElementById('ctxmv');
+  if(_cmv&&_cmv.classList.contains('show')&&_cmv.contains(ev.target))return;
+  if(ev.target&&ev.target.closest&&ev.target.closest('.ov.show, #snack-ph'))return;
   // Toucher ailleurs referme. UNIQUEMENT si c'est la carte elle-même, on note
   // l'heure pour que son propre clic ne le rouvre pas dans la foulée — sinon
   // toucher un autre article empêcherait de rouvrir celui-ci tout de suite.
