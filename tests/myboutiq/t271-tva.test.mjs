@@ -27,7 +27,7 @@ const r1 = await p.evaluate(() => { afficherRecu(); return [...document.querySel
 t(/dont HT\s*2 683 FCFA/.test(r1) && /dont TVA 19,25 %\s*517 FCFA/.test(r1), `le reçu : total 3 200, dont HT 2 683, dont TVA 517`);
 await p.evaluate(() => document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')));
 await p.evaluate(() => { _rptPer = 'jour'; renderRpt(); });
-const ca = nombre(await ligne(p, "Chiffre d'affaires")), tva = nombre(await ligne(p, 'dont TVA'));
+const ca = nombre(await ligne(p, '^Mes ventes')) /* 23.78 : « Chiffre d'affaires » devient « Mes ventes » */, tva = nombre(await ligne(p, 'dont TVA'));
 t(ca === 6400 && tva === 1033, `le rapport : chiffre d'affaires ${ca}, dont TVA ${tva} à déclarer`);
 // Un autre pays de la zone : 18 %.
 const sn = await p.evaluate(() => { DB.cfg.tva = 0; DB.cfg.pays = { cc: '221', nm: 'Sénégal' }; basculerTVA(); return DB.cfg.tva; });
