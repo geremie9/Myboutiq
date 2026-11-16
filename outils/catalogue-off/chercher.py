@@ -43,7 +43,12 @@ for i, q in enumerate(reqs):
         continue
     print(f'[{i+1}/{len(reqs)}] {q}', file=sys.stderr)
     cm = appel(q, 'en:cameroon'); time.sleep(6.5)
-    monde = appel(q, None, 30); time.sleep(6.5)
+    # Assez de candidats au Cameroun : la recherche monde ne servirait à rien
+    # (et chaque requête en trop coûte un 503 sur deux, mesuré le 16/11).
+    if cm is not None and len(cm) >= 3:
+        monde = []
+    else:
+        monde = appel(q, None, 30); time.sleep(6.5)
     cache[q] = {'cm': cm, 'monde': monde}
     json.dump(cache, open(SORTIE, 'w'), ensure_ascii=False)
 print('fini', len(cache), file=sys.stderr)
