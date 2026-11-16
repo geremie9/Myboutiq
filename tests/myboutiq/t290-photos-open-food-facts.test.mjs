@@ -31,8 +31,9 @@ const tu = await p.evaluate(async () => { appliquerPhotosCatalogue(DB.articles);
 t(tu && tu.src === '/photos-off/tartina.jpg' && tu.w === 600, `la tuile « Tartina » montre sa vraie photo, 600 px, servie par le site (${tu && tu.src}, ${tu && tu.w})`);
 t(tu && tu.sienne.indexOf('data:image/png') === 0, `la photo prise par le commerçant reste la sienne (${tu && tu.sienne})`);
 // Le crédit : Réglages et le fichier de licence.
-const cr = await p.evaluate(async () => ({ t: (document.getElementById('credit-off') || {}).textContent || '', lic: await (await fetch('/photos-off/LICENCE.txt')).text() }));
-t(/Open Food Facts \(CC BY-SA 3\.0\)/.test(cr.t) && /CC BY-SA 3\.0/.test(cr.lic) && /tartina\.jpg — https:\/\/world\.openfoodfacts\.org\/product\//.test(cr.lic), `crédité comme la licence l'exige : « ${cr.t.trim()} », et la liste photo par photo dans LICENCE.txt`);
+// 23.73 — une seule ligne de crédit, en bas de Réglages (#st-credits, t235), avec le lien vers la liste.
+const cr = await p.evaluate(async () => ({ t: (document.getElementById('st-credits') || {}).textContent || '', lien: !!document.querySelector('#st-credits a[href="/photos-off/LICENCE.txt"]'), deux: !!document.getElementById('credit-off'), lic: await (await fetch('/photos-off/LICENCE.txt')).text() }));
+t(/Open Food Facts/.test(cr.t) && /CC BY-SA 3\.0/.test(cr.t) && cr.lien && !cr.deux && /CC BY-SA 3\.0/.test(cr.lic) && /tartina\.jpg — https:\/\/world\.openfoodfacts\.org\/product\//.test(cr.lic), `crédité comme la licence l'exige : « ${cr.t.trim()} », et la liste photo par photo dans LICENCE.txt`);
 // Chaque photo déclarée existe, et aucune n'est en trop.
 const decl = await p.evaluate(() => _PHOTOS_OFF.map(x => x[0] + '.jpg'));
 const fich = fs.readdirSync(new URL('../../photos-off/', import.meta.url)).filter(f => f.endsWith('.jpg'));
