@@ -56,12 +56,16 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEklEQVR
   const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique());
   await vendre(p, { lignes: [[2, 2]] });
   await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); try { fermerSucces(); } catch (e) {} navTo('rapports', null); }); await p.waitForTimeout(500);
-  const r = await p.evaluate(() => { const c = document.getElementById('rpt-cont'), det = c.querySelector('details.rpt-det');
+  // 23.78 — le patron : « l'essentiel est masqué, les écritures petit petit ».
+  // Tout est visible, en grand.
+  const r = await p.evaluate(() => { const c = document.getElementById('rpt-cont');
+    const vu = sel => { const e = c.querySelector(sel); return !!e && !!e.offsetParent && !e.closest('details:not([open])'); };
     return { titres: [...c.querySelectorAll('.rpt-ess > div > span')].map(x => x.textContent.trim()), fs: parseFloat(getComputedStyle(c.querySelector('.rpt-ess span')).fontSize), txt: c.innerText,
-      replie: !!det && !det.open, garde: !!det && /Chiffre d'affaires/.test(det.textContent) && /Espèces en caisse/.test(det.textContent) }; });
-  t(r.titres.join(',') === "J'ai vendu,J'ai gagné,Dans la caisse" && r.fs >= 13, `les trois questions qu'il se pose : ${r.titres.join(' · ')} (${r.fs} px)`);
-  t(!/marge|Bénéfice net|Chiffre d'affaires/i.test(r.txt), 'plus de « marge », de « Bénéfice net » ni de « Chiffre d\'affaires » à l\'écran');
-  t(r.replie && r.garde, 'le détail est toujours là (chiffre d\'affaires, espèces à compter…), replié sous « Le détail »');
+      lbl: parseFloat(getComputedStyle(c.querySelector('.rpt-gagne .rlbl')).fontSize), gros: parseFloat(getComputedStyle(c.querySelector('.rpt-ess > div:first-child b')).fontSize),
+      replie: !c.querySelector('details.rpt-det'), garde: vu('.rpt-gagne') && vu('.rpt-paye') && vu('.rpt-top') && /Espèces en caisse/.test(c.innerText) && /gagné \(après dépenses\)/i.test(c.innerText) }; });
+  t(r.titres.join(',') === "J'ai vendu,J'ai gagné,Dans la caisse" && r.fs >= 15 && r.gros >= 32, `les trois questions qu'il se pose : ${r.titres.join(' · ')} (titres ${r.fs} px, « J'ai vendu » en ${r.gros} px)`);
+  t(!/Bénéfice net|Chiffre d'affaires|Coût des ventes/i.test(r.txt), 'plus de « Bénéfice net », « Chiffre d\'affaires » ni « Coût des ventes »');
+  t(r.replie && r.garde && r.lbl >= 15, `rien de caché : meilleurs articles, comment on m'a payé, comment j'ai gagné, à compter — tout visible, en ${r.lbl} px`);
   // Sans aucun prix d'achat : « ? », jamais un faux zéro.
   await p.evaluate(() => { DB.ventes = []; DB.articles.find(a => a.id === 7).pa = 0; save(); }); await vendre(p, { lignes: [[7, 4]] });
   await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); try { fermerSucces(); } catch (e) {} navTo('rapports', null); }); await p.waitForTimeout(500);

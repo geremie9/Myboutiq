@@ -1312,19 +1312,37 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 #stk-plus{padding-top:6px}
 .stk-photo{display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--BD);
   background:var(--BG);color:var(--B);font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;cursor:pointer}
-.rpt-ess{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.rpt-ess{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:12px}
+/* 23.78 — « J'ai vendu » sur toute la largeur, en très grand ; les deux autres
+   dessous. Puis des cartes lisibles : 15–17 px, pas 11. */
+.rpt-ess>div:first-child{grid-column:1 / -1}
+.rpt-ess>div:first-child b{font-size:34px}
+#rpt-cont .rctit{font-size:15px;font-weight:900;color:var(--T);text-transform:none;letter-spacing:0;margin-bottom:10px}
+#rpt-cont .rlbl{font-size:15px;font-weight:700}
+#rpt-cont .rval{font-size:16.5px;font-weight:900}
+#rpt-cont .rrow{padding:9px 0}
+#rpt-cont .rval.rpt-net{font-size:21px}
+#rpt-cont .rpt-gagne .rrow:has(.rpt-net){background:var(--BG);border-radius:10px;padding:10px 10px;margin:4px -4px}
+.rpt-barre{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--BG);margin:0 0 8px}
+.rpt-barre i{display:block;height:100%}
+#rpt-cont .rpt-top .bchart-lbl{font-size:15px;font-weight:800}
+#rpt-cont .rpt-top .bchart-val{font-size:14px;font-weight:900}
+#rpt-cont .rpt-top .bchart-row{gap:10px;margin-bottom:10px}
+#rpt-cont .rpt-top .bchart-lbl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rpt-cont .rpt-top .bchart-track{flex:0 0 56px}
+#rpt-cont .rval{white-space:nowrap;padding-left:10px}
 .rpt-ess>div{background:var(--C);border-radius:14px;padding:11px 10px;box-shadow:0 2px 8px rgba(0,0,0,.04);display:flex;flex-direction:column;gap:2px;min-width:0}
 /* 23.76 — « Ma journée en jargon de comptable » (test d'usage) : les titres
    étaient en 10,5 px majuscules. Des mots de tous les jours, plus grands. */
-.rpt-ess span{font-size:13px;font-weight:800;color:var(--T);line-height:1.2}
+.rpt-ess span{font-size:15px;font-weight:800;color:var(--T);line-height:1.2;display:flex;align-items:center;gap:6px}
 /* 23.25 — « FCFA 36 … » : à 390 px, le montant de tête était COUPÉ (vu en
    tournant la vidéo). Le chiffre ne se coupe plus jamais ; la devise, en
    petit, passe dessous quand la place manque. */
-.rpt-ess b{font-size:19px;font-weight:900;color:var(--T);display:flex;flex-wrap:wrap;align-items:baseline;column-gap:4px;line-height:1.15}
+.rpt-ess b{font-size:24px;font-weight:900;color:var(--T);display:flex;flex-wrap:wrap;align-items:baseline;column-gap:4px;line-height:1.15}
 .rpt-ess b em{font-style:normal;white-space:nowrap}
-.rpt-ess b small{font-size:10.5px;font-weight:800;color:var(--M)}
+.rpt-ess b small{font-size:13px;font-weight:800;color:var(--M)}
 .rpt-ess b.g{color:#1B7A3A}.rpt-ess b.r{color:var(--R)}
-.rpt-ess i{font-style:normal;font-size:12px;font-weight:700;color:var(--M)}
+.rpt-ess i{font-style:normal;font-size:13.5px;font-weight:700;color:var(--M)}
 .rpt-ess .rpt-inc{cursor:pointer}.rpt-ess .rpt-inc i{color:var(--O);text-decoration:underline}
 .rpt-det>summary{list-style:none;cursor:pointer;position:relative;background:var(--C);border-radius:14px;padding:13px 40px 13px 14px;font-size:14px;font-weight:800;color:var(--T);box-shadow:0 2px 8px rgba(0,0,0,.04);margin-bottom:11px}
 .rpt-det>summary::-webkit-details-marker{display:none}
@@ -7651,7 +7669,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.77'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.78'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -30149,7 +30167,7 @@ function renderRpt(){
   var topChartHtml='<div class="bchart-wrap">'+(top5.map(function(p,i){
     var q=qteJour[p.id]||0;
     var pct=Math.round(q/maxVd*100);
-    return '<div class="bchart-row">'+vignetteArt(p,null,26)+'<span class="bchart-lbl">'+p.nm+'</span><div class="bchart-track"><div class="bchart-fill" style="width:'+pct+'%;background:'+barColors[i%barColors.length]+'"></div></div><span class="bchart-val">'+fmtQ(q)+' '+(lang==='fr'?'vte':'sold')+'</span></div>';
+    return '<div class="bchart-row">'+vignetteArt(p,null,40)+'<span class="bchart-lbl">'+escH(p.nm)+'</span><div class="bchart-track"><div class="bchart-fill" style="width:'+pct+'%;background:'+barColors[i%barColors.length]+'"></div></div><span class="bchart-val">×'+fmtQ(q)+'</span></div>';
   }).join('')||'<div class="empty"><div class="empty-e">'+ico('rapports',40)+'</div><div class="empty-t">'+(_motCloture()||(lang==='fr'?'Aucune vente aujourd\'hui':'No sale today'))+'</div></div>')+'</div>';
 
   if(role==='vendeur'&&!hasPerm('rapports')){
@@ -30208,11 +30226,11 @@ function renderRpt(){
   var benPct=100-coutPct;
   var donGrad='conic-gradient(#E74C3C 0% '+coutPct+'%, #27AE60 '+coutPct+'% 100%)';
   c.innerHTML=
-    '<div class="rcd"><div class="rctit">'+(lang==='fr'?('Le détail '+_motP):('Details '+_motP))+'</div>'+
-    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Chiffre d\'affaires':'Revenue')+'</span><span class="rval a">'+fmt(_V)+'</span></div>'+
+    '<div class="rcd rpt-gagne"><div class="rctit">'+(lang==='fr'?'Comment j\'ai gagné':'How I earned')+'</div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Mes ventes':'My sales')+'</span><span class="rval a">'+fmt(_V)+'</span></div>'+
     (tauxTVA()?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?('dont TVA '+_fmtTaux(tauxTVA())+' (à déclarer)'):('incl. VAT '+_fmtTaux(tauxTVA())))+'</span><span class="rval" style="color:var(--M)">'+fmt(tvaDe(_V).tva)+'</span></div>'):'')+
-    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Coût des ventes':'Cost of sales')+'</span><span class="rval r">-'+fmt(ta)+'</span></div>'+
-    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Bénéfice brut':'Gross profit')+'</span><span class="rval '+(_B<0?'r':'g')+'">'+fmt(_B)+'</span></div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Prix d\'achat de ce que j\'ai vendu':'Cost of what I sold')+'</span><span class="rval r">-'+fmt(ta)+'</span></div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Gagné sur la marchandise':'Earned on goods')+'</span><span class="rval '+(_B<0?'r':'g')+'">'+fmt(_B)+'</span></div>'+
     // Un bénéfice négatif vient presque toujours d'un prix d'achat qui est en
     // réalité celui du gros. On NOMME les coupables au lieu de laisser le
     // patron douter de toute son application.
@@ -30248,9 +30266,9 @@ function renderRpt(){
         +'</div></span><span class="rval" style="color:#B45309">'+(jour>=0?'+':'')+fmt(jour)+'</span></div>';
     })()+
     '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Dépenses':'Expenses')+'</span><span class="rval r">-'+fmt(totalDep)+'</span></div>'+
-    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Bénéfice NET':'NET Profit')+'</span><span class="rval '+(benNet<0?'r':'g')+'" style="font-size:17px;font-weight:900">'+fmt(benNet)+'</span></div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'J\'ai gagné (après dépenses)':'I earned (after expenses)')+'</span><span class="rval rpt-net '+(benNet<0?'r':'g')+'">'+fmt(benNet)+'</span></div>'+
     '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Marge':'Margin')+'</span><span class="rval">'+m+'%</span></div>'+
-    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Transactions':'Transactions')+'</span><span class="rval">'+_N+'</span></div></div>'+
+    '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Nombre de ventes':'Number of sales')+'</span><span class="rval">'+_N+'</span></div></div>'+
     (function(){
       var pb=paiementBreakdown(_vp);
       var rows=[
@@ -30278,14 +30296,20 @@ function renderRpt(){
       // Un jour sans vente mais avec un remboursement ou une dépense de la
       // caisse : le tiroir a bougé, la ligne « à compter » doit rester.
       if(!rows.length&&!(_rptPer==='jour'&&(totalRembEspecesJour()>0||totalDepCaisseJour()>0)))return '';
-      return '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Répartition par moyen de paiement':'Breakdown by payment method')+'</div>'+
+      // 23.78 — une barre de couleurs : la part de chaque paiement se VOIT
+      // avant de se lire (vert espèces, orange Orange Money, jaune MTN…).
+      var _totB=rows.reduce(function(s,r){return s+r[2];},0)||1;
+      var _barre='<div class="rpt-barre">'+rows.map(function(r){var m=String(r[0]).match(/background:([^"]+)"/);return '<i style="width:'+(r[2]/_totB*100).toFixed(1)+'%;background:'+(m?m[1]:'#999')+'"></i>';}).join('')+'</div>';
+      return '<div class="rcd rpt-paye"><div class="rctit">'+(lang==='fr'?'Comment on m\'a payé':'How I was paid')+'</div>'+_barre+
         rows.map(function(r){return '<div class="rrow"><span class="rlbl">'+r[0]+' '+r[1]+'</span><span class="rval">'+fmt(r[2])+'</span></div>';}).join('')+ligneCons+
         ((_rptPer==='jour')?('<div class="rrow" style="border-top:1px solid var(--BD);margin-top:6px;padding-top:9px"><span class="rlbl" style="font-weight:800">'+(lang==='fr'?'Espèces en caisse (à compter)':'Cash in drawer (to count)')+_rptDetailCaisse(pb.especes)+'</span><span class="rval a" style="font-weight:900">'+fmt(caisseAttendue())+'</span></div>'):'')+
         '</div>';
     })()+
     '';
-  var _graph=evoHtml+_rptHeuresHtml(_vp)+_rptSemaineHtml()+    '<div class="rcd"><div class="rctit">'+(lang==='fr'?('Top articles '+_motP):('Top items '+_motP))+'</div>'+topChartHtml+'</div>'+
-    _rptVendeursHtml(_vp);
+  // 23.78 — les meilleurs articles quittent le bloc replié : avec leur photo,
+  // c'est ce qu'il regarde en premier après ses trois chiffres.
+  var _top=top5.length?('<div class="rcd rpt-top"><div class="rctit">'+(lang==='fr'?('Mes meilleurs articles '+_motP):('My best items '+_motP))+'</div>'+topChartHtml+'</div>'):'';
+  var _graph=evoHtml+_rptHeuresHtml(_vp)+_rptSemaineHtml()+_rptVendeursHtml(_vp);
   var _alertes=!al.length?'':
     '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Alertes stock':'Stock alerts')+'</div>'+
     (al.map(function(a){var p=a.p,ts=a.q;return '<div class="tit"><div class="temo">'+dessinArt(p,18,'width:100%;height:100%')+'</div><div class="tinf"><div class="tnm">'+_nomAlerte(a)+'</div><div class="tqt" style="color:'+(ts<=0?'var(--R)':'var(--O)')+'">'+(ts<=0?''+(lang==='fr'?'Épuisé':'Out'):''+fmtQ(ts)+(lang==='fr'?' restant':' left'))+'</div></div><button onclick="ouvrirStk(DB.articles.find(function(x){return x.id==='+p.id+'}))" style="background:var(--B);color:#fff;border:none;border-radius:7px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">+</button></div>';}).join('')||'<div style="text-align:center;padding:11px;color:var(--G);font-weight:700">'+t('stockOk')+'</div>')+
@@ -30330,24 +30354,30 @@ function renderRpt(){
   var _inc=0;try{_inc=_vp.reduce(function(s,v){return s+getSaleCAInconnu(v);},0);}catch(e){}
   var _tousInc=(_V>0&&_inc>=_V-0.5);
   var _gagne=_tousInc
-    ?('<div class="rpt-inc" onclick="ouvrirReparerBenefice()"><span>'+ico('rapports',15)+(_fr?'J\'ai gagné':'I earned')+'</span><b><em>?</em></b><i>'+(_fr?'prix d\'achat ?':'cost price?')+'</i></div>')
-    :('<div'+(_inc>0?' class="rpt-inc" onclick="ouvrirReparerBenefice()"':'')+'><span>'+ico('rapports',15)+(_fr?'J\'ai gagné':'I earned')+'</span><b class="'+(benNet<0?'r':'g')+'">'+_mt(benNet)+'</b>'
+    ?('<div class="rpt-inc" onclick="ouvrirReparerBenefice()"><span>'+ico('rapports',20)+(_fr?'J\'ai gagné':'I earned')+'</span><b><em>?</em></b><i>'+(_fr?'prix d\'achat ?':'cost price?')+'</i></div>')
+    :('<div'+(_inc>0?' class="rpt-inc" onclick="ouvrirReparerBenefice()"':'')+'><span>'+ico('rapports',20)+(_fr?'J\'ai gagné':'I earned')+'</span><b class="'+(benNet<0?'r':'g')+'">'+_mt(benNet)+'</b>'
       +(_inc>0?('<i>'+(_fr?'+ ? (prix d\'achat)':'+ ? (cost price)')+'</i>'):'')+'</div>');
   var _ess='<div class="rpt-ess">'
     // 23.70 — chaque chiffre a son dessin (le panier, la courbe, le billet) :
     // il reconnaît la carte avant de lire son titre.
-    +'<div><span>'+ico('caisse',15)+(_fr?'J\'ai vendu':'I sold')+'</span><b>'+_mt(_V)+'</b><i>'+_N+' '+(_fr?('vente'+(_N>1?'s':'')):('sale'+(_N>1?'s':'')))+'</i></div>'
+    +'<div><span>'+ico('caisse',20)+(_fr?'J\'ai vendu':'I sold')+'</span><b>'+_mt(_V)+'</b><i>'+_N+' '+(_fr?('vente'+(_N>1?'s':'')):('sale'+(_N>1?'s':'')))+'</i></div>'
     +_gagne
     +(_cais!=null
-      ?('<div><span>'+ico('billet',15)+(_fr?'Dans la caisse':'In the drawer')+'</span><b>'+_mt(_cais)+'</b><i>'+(_fr?'à compter':'to count')+'</i></div>')
+      ?('<div><span>'+ico('billet',20)+(_fr?'Dans la caisse':'In the drawer')+'</span><b>'+_mt(_cais)+'</b><i>'+(_fr?'à compter':'to count')+'</i></div>')
       :('<div><span>'+(_fr?'Dépenses':'Expenses')+'</span><b>'+_mt(totalDep)+'</b><i>'+escH(_motP)+'</i></div>'))
     +'</div>';
   var _ouvert=false;try{_ouvert=sessionStorage.getItem('mb_rpt_plus')==='1';}catch(e){}
-  // Le détail (chiffre d'affaires, coût des ventes, marge, paiements…) reste
-  // tout entier, replié sous « Le détail » : une seule question par écran.
-  var _detOuv=false;try{_detOuv=sessionStorage.getItem('mb_rpt_det')==='1';}catch(e){}
-  var _det='<details class="rpt-det"'+(_detOuv?' open':'')+' ontoggle="try{sessionStorage.setItem(\'mb_rpt_det\',this.open?\'1\':\'0\')}catch(e){}"><summary>'+(_fr?'Le détail':'The details')+'</summary>'+c.innerHTML+'</details>';
-  c.innerHTML=_rptBarrePeriodes()+_ess+_det+_alertes+_dernieres
+  // ⚠️ 23.78 — « JE NE SUIS PAS D'ACCORD AVEC MA JOURNÉE : LES ÉCRITURES
+  // PETIT PETIT, ET L'ESSENTIEL EST MASQUÉ. SOIS INTELLIGENT ET PRO. » (le
+  // patron, 16/11). La 23.76 avait replié tout le détail sous « Le détail » :
+  // comment on l'a payé, ce qu'il a gagné après dépenses, ce qui doit être
+  // dans la caisse — caché derrière un toucher. Tout est visible, dans
+  // l'ordre où il se pose les questions, en grand : ses trois chiffres, ce
+  // qui s'est vendu (en photo), comment on l'a payé, comment il a gagné.
+  var _kids=Array.prototype.slice.call(c.children);
+  var _gagne2=_kids.filter(function(k){return k.classList.contains('rpt-gagne');}).map(function(k){return k.outerHTML;}).join('');
+  var _paye2=_kids.filter(function(k){return k.classList.contains('rpt-paye');}).map(function(k){return k.outerHTML;}).join('');
+  c.innerHTML=_rptBarrePeriodes()+_ess+_top+_paye2+_gagne2+_alertes+_dernieres
     +(_graph?('<details class="rpt-plus"'+(_ouvert?' open':'')+' ontoggle="try{sessionStorage.setItem(\'mb_rpt_plus\',this.open?\'1\':\'0\')}catch(e){}">'
       +'<summary>'+(_fr?'Graphiques et classements':'Charts and rankings')+'<i>'+(_fr?'7 jours, heures, semaine, meilleurs articles, vendeurs':'7 days, hours, week, top items, sellers')+'</i></summary>'
       +_graph+'</details>'):'');

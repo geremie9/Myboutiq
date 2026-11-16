@@ -49,7 +49,7 @@ await fermer();
 // ── 2. Le bénéfice ne bouge pas ──
 await vendre(p, { lignes: [[2, 2]] });
 await p.evaluate(() => { _rptPer = 'jour'; renderRpt(); });
-const brut = nombre(await ligne(p, 'Bénéfice brut'));
+const brut = nombre(await ligne(p, 'Gagné sur la marchandise'));
 t(brut === 200, `le bénéfice reste celui de la vente (2 × (600 − 500) = ${brut}) : la dette ne le change pas`);
 
 // ── 3. Le Stock le dit, et il paie ──
