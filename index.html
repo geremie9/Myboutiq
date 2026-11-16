@@ -1506,6 +1506,8 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 /* ── OBJECTIF BAR ── */
 .obj-bar{background:var(--P);padding:0 15px 12px}
 .obj-card{background:rgba(255,255,255,.05);border-radius:12px;padding:9px 12px}
+#etg-snack-b.neutre{background:transparent!important;color:#fff!important;border:1.5px solid rgba(255,255,255,.55)!important;box-shadow:none!important}
+.rpt-ess span svg.ic{vertical-align:-2px;margin-right:4px}
 .sicont{font-size:10.5px;font-weight:800;color:#1B5E20;margin-top:2px;white-space:nowrap}
 .obj-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .obj-lbl{font-size:10px;color:rgba(255,255,255,.45);font-weight:700}
@@ -6371,7 +6373,9 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="ov-cli-t">👤 Nouveau Client</div><button class="bcl" onclick="closeSheet('ov-cli')">✕</button></div>
     <div class="pstps">
-      <div class="pig"><label class="pl" id="lbl-cli-nm">Nom</label><input class="pi sm" type="text" id="cli-nm" style="font-size:15px;font-weight:700"></div>
+      <!-- 23.70 — le nom d'un client se DIT : celui qui ne sait pas l'écrire
+           touche le micro (même geste que pour le nom de sa boutique). -->
+      <div class="pig"><label class="pl" id="lbl-cli-nm">Nom</label><div style="position:relative"><input class="pi sm" type="text" id="cli-nm" style="font-size:15px;font-weight:700;padding-right:52px"><button type="button" id="mic-clinm" onclick="dicterDans('cli-nm','mic-clinm')" title="Dicter" aria-label="Dicter le nom" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:none;border-radius:12px;background:var(--P);color:#fff;font-size:18px;cursor:pointer">🎤</button></div></div>
       <div class="pig"><label class="pl" id="lbl-cli-tel">Téléphone</label><input class="pi sm" type="tel" id="cli-tel"></div>
       <div class="pig"><label class="pl" id="lbl-cli-cred">Montant du crédit</label><input class="pi" type="number" id="cli-cred" inputmode="numeric"></div>
       <div class="pig"><label class="pl" id="lbl-cli-date">Date de remboursement</label><input class="pi sm" type="date" id="cli-date"></div>
@@ -6429,7 +6433,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
     <div class="pstps">
       <div class="fonds-card"><div style="font-size:11px;color:rgba(255,255,255,.45);font-weight:700;margin-bottom:5px" id="lbl-fonds">FONDS DE DÉPART</div><div style="font-size:26px;font-weight:900;color:var(--A)" id="clot-fonds">0</div></div>
       <div class="rcd"><div class="rctit" id="lbl-resume-j">📊 Résumé</div><div id="clot-det"></div></div>
-      <div class="pig"><label class="pl" id="lbl-especes">Espèces comptées</label><input class="pi" type="number" id="inp-compt" oninput="calcEcart()" inputmode="numeric"></div>
+      <div class="pig"><label class="pl" id="lbl-especes">Espèces comptées</label><input class="pi" type="number" id="inp-compt" oninput="calcEcart()" inputmode="numeric" placeholder="💵 Compte tes billets, tape le total" style="font-size:20px;font-weight:800"></div>
       <div class="bcard bon" id="ecart-cd" style="display:none"><div><div class="blbl" id="ecart-lbl">✅ Équilibrée</div></div><div class="bamt" id="ecart-amt">0</div></div>
       <button class="bnxt" onclick="validerClot()" id="btn-val-clot">✅ <span id="lbl-val-clot">Valider</span></button>
     </div>
@@ -7595,7 +7599,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.69'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.70'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -13585,6 +13589,10 @@ function _etgSnackTout(ids){
     :(ids.length+' items in your till, at the usual price');
   var b=document.getElementById('etg-snack-b');
   b.textContent=fr?'Annuler':'Undo';
+  // 23.70 — au test d'usage : le bouton le plus vif de l'écran (orange)
+  // était « Annuler », qui retire les 19 articles qu'il vient de poser.
+  // Celui qui ne lit pas touche ce qui brille. Il reste, mais discret.
+  b.classList.add('neutre');
   b.onclick=function(){
     el.classList.remove('on');clearTimeout(_etgSnackT);
     etagereAnnulerTout(ids);
@@ -13635,6 +13643,7 @@ function _etgSnack(art,pc){
   }
   document.getElementById('etg-snack-t').textContent=art.nm+' · '+Number(art.px).toLocaleString('fr-FR')+' F — '+(fr?'dans ta caisse':'in your till');
   var b=document.getElementById('etg-snack-b');
+  b.classList.remove('neutre');     // 23.70 — « Changer le prix » reste une action pleine
   b.textContent=fr?'Changer le prix':'Change price';
   b.onclick=function(){
     el.classList.remove('on');clearTimeout(_etgSnackT);
@@ -30095,10 +30104,12 @@ function renderRpt(){
   var _mt=function(v){var sy=(DB.cfg&&DB.cfg.s)||'',t=fmt(v),n=sy?t.replace(sy,''):t;n=n.replace(/^\s*-\s*/,'-').trim();
     return '<em>'+escH(n)+'</em>'+(sy?'<small>'+escH(sy)+'</small>':'');};
   var _ess='<div class="rpt-ess">'
-    +'<div><span>'+(_fr?'Ventes':'Sales')+'</span><b>'+_mt(_V)+'</b><i>'+_N+' '+(_fr?('vente'+(_N>1?'s':'')):('sale'+(_N>1?'s':'')))+'</i></div>'
-    +'<div><span>'+(_fr?'Bénéfice net':'Net profit')+'</span><b class="'+(benNet<0?'r':'g')+'">'+_mt(benNet)+'</b><i>'+(_fr?'marge ':'margin ')+m+' %</i></div>'
+    // 23.70 — chaque chiffre a son dessin (le panier, la courbe, le billet) :
+    // il reconnaît la carte avant de lire son titre.
+    +'<div><span>'+ico('caisse',15)+(_fr?'Ventes':'Sales')+'</span><b>'+_mt(_V)+'</b><i>'+_N+' '+(_fr?('vente'+(_N>1?'s':'')):('sale'+(_N>1?'s':'')))+'</i></div>'
+    +'<div><span>'+ico('rapports',15)+(_fr?'Bénéfice net':'Net profit')+'</span><b class="'+(benNet<0?'r':'g')+'">'+_mt(benNet)+'</b><i>'+(_fr?'marge ':'margin ')+m+' %</i></div>'
     +(_cais!=null
-      ?('<div><span>'+(_fr?'Espèces à compter':'Cash to count')+'</span><b>'+_mt(_cais)+'</b><i>'+(_fr?'dans la caisse':'in the drawer')+'</i></div>')
+      ?('<div><span>'+ico('billet',15)+(_fr?'Espèces à compter':'Cash to count')+'</span><b>'+_mt(_cais)+'</b><i>'+(_fr?'dans la caisse':'in the drawer')+'</i></div>')
       :('<div><span>'+(_fr?'Dépenses':'Expenses')+'</span><b>'+_mt(totalDep)+'</b><i>'+escH(_motP)+'</i></div>'))
     +'</div>';
   var _ouvert=false;try{_ouvert=sessionStorage.getItem('mb_rpt_plus')==='1';}catch(e){}
@@ -34439,10 +34450,18 @@ function _guideCible(el){
   document.querySelectorAll('.demo-cible').forEach(function(x){x.classList.remove('demo-cible');});
   if(el)el.classList.add('demo-cible');
 }
+// ⚠️ 23.70 — TEST D'USAGE (« soit sincère sur ce qui bloquera un non
+// lettré »). La bulle qui guide la première vente (« Touche un article
+// pour le vendre », « Maintenant, encaisse ») n'était QUE du texte : pour
+// celui qui ne lit pas, un rectangle muet avec une flèche. Elle se dit
+// maintenant aussi à voix haute (si la voix est permise), une fois par
+// consigne.
+var _guideDit='';
 function _guideDire(t){
   var b=document.getElementById('demo-bulle'),x=document.getElementById('demo-bulle-t');
   if(!b||!x)return;
   x.textContent=t; b.style.display='flex';
+  try{var _s=String(t).replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]\uFE0F?/gu,'').trim();if(_s&&_s!==_guideDit){_guideDit=_s;parler(_s);}}catch(e){}
   _guidePlacer();
   // La tuile désignée peut être en train de glisser vers le centre : on se
   // recale une fois le glissement fini.
