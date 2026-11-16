@@ -48,7 +48,7 @@ const rapports = p => p.evaluate(() => { goScreen('s-rapports'); renderRpt(); re
   const db = nouvelleBoutique(); db.equipe[1].perms = { vente: true, rapports: true };
   const v = await ouvrirCaisse(b, port, db, { vendeur: 'Ibrahim' });
   const txt = await rapports(v.p);
-  t(/Bénéfice NET/i.test(txt), 'le patron lui donne « rapports » : il voit le bénéfice');
+  t(/J'ai gagné/i.test(txt), 'le patron lui donne « rapports » : il voit ce qu\'il a gagné (23.76 : « J\'ai gagné »)');
   await v.ctx.close();
 }
 {
