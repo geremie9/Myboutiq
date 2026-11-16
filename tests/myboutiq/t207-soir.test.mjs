@@ -50,7 +50,7 @@ await depense(p, 'Crédit téléphone', 500, 'tel', false);
     'la répartition montre l\'Orange (3 200) et le crédit à récupérer (1 000)');
   // 23.17 : la ligne n'a plus d'emoji — on la trouve par son nom exact.
   t(nombre(await ligne(p, '^\\s*Dépenses\\s*$')) === -1500, `les dépenses du jour : toutes, de la caisse ou non (${await ligne(p, '^\\s*Dépenses\\s*$')})`);
-  t(nombre(await ligne(p, 'Bénéfice NET')) === -600, `bénéfice NET : 900 − 1 500 = −600 (${await ligne(p, 'Bénéfice NET')})`);
+  t(nombre(await ligne(p, 'gagné \\(après')) === -600, `bénéfice NET : 900 − 1 500 = −600 (${await ligne(p, 'gagné \\(après')})`);
 }
 // ── LA CLÔTURE ────────────────────────────────────────────────────────
 {
@@ -74,7 +74,7 @@ await depense(p, 'Crédit téléphone', 500, 'tel', false);
   t(apres.dep === 2 && apres.depClot === 2, 'les dépenses sont gardées (marquées clôturées), pas effacées');
   t(apres.att === 5000, `le tiroir attendu redevient le fonds de départ (${apres.att})`);
   await p.evaluate(() => { _rptPer = 'mois'; renderRpt(); });
-  const tx = await ligne(p, 'Transactions'), net = await ligne(p, 'Bénéfice NET');
+  const tx = await ligne(p, 'Nombre de ventes'), net = await ligne(p, 'gagné \\(après');
   t(nombre(tx) === 3 && nombre(net) === -600, `« Ce mois » compte encore la journée clôturée (${tx} ventes, NET ${net})`);
 }
 // ── LE REMBOURSEMENT D'AWA ────────────────────────────────────────────

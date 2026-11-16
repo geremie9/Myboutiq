@@ -24,12 +24,16 @@ await p.locator('#s-stock .nadd').tap(); await p.waitForTimeout(400);
 const ch = await p.evaluate(() => [...document.querySelectorAll('#ajr button')].map(x => x.id));
 // 23.59 — « Un article en photo » s'ajoute juste après « Un article » (le patron :
 // « ajouter un nouveau produit, la navigation devient complexe »).
-t(ch.join(',') === 'ajr-art,ajr-aph,ajr-arr,ajr-dep,ajr-cli', `le patron peut ajouter : un article, un article en photo, un arrivage, une dépense, un client (${ch.join(', ')})`);
+// 23.77 — « trop de boutons » : trois lignes. La photo est dans « Un article »
+// (l'appareil du catalogue), le client dans « Dettes ».
+t(ch.join(',') === 'ajr-art,ajr-arr,ajr-dep', `le patron peut ajouter : un article, un arrivage, une dépense (${ch.join(', ')})`);
+const coul = await p.evaluate(() => [...new Set([...document.querySelectorAll('#ajr button i')].map(i => getComputedStyle(i).backgroundColor))]);
+t(coul.length === 1 && coul[0] === 'rgb(34, 31, 43)', `une seule couleur, celle du haut de la caisse (${coul.join(' / ')}) — plus de pastels`);
 await p.locator('#ajr-arr').tap(); await p.waitForTimeout(400);
 t(await p.evaluate(() => document.getElementById('ov-stk').classList.contains('show') && !document.getElementById('ov-ajr').classList.contains('show')), '« Un arrivage » ouvre la feuille d\'entrée de stock');
 await p.evaluate(() => document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')));
-await p.locator('#s-stock .nadd').tap(); await p.waitForTimeout(300); await p.locator('#ajr-cli').tap(); await p.waitForTimeout(400);
-t(await p.evaluate(() => document.getElementById('s-clients').classList.contains('on') && [...document.querySelectorAll('.ov.show')].length > 0), '« Un client » ouvre les dettes et la fiche du nouveau client');
+await p.evaluate(() => { navTo('clients', null); }); await p.waitForTimeout(300);
+t(await p.evaluate(() => !!document.querySelector('#s-clients .cli-ajout')), '« Dettes » garde son « Ajouter un client »');
 await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); navTo('caisse', document.querySelector('#s-clients .bnav .ni')); });
 // ── La barre du haut ──
 const haut = await p.evaluate(() => [...document.querySelectorAll('#s-caisse .mhdr .hbtn')].filter(x => getComputedStyle(x).display !== 'none' && x.getBoundingClientRect().width > 0).map(x => (x.querySelector('.hl') || {}).textContent || x.id));

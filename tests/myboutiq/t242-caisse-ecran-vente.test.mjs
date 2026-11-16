@@ -31,7 +31,7 @@ t(m.part >= 60 && m.entieres >= 6, `les articles ont ${m.part} % de l'écran, ${
 t(!m.stats && !m.benef, 'Ventes / Bénéfice / Trans. ne sont plus sur la caisse : le client ne lit plus le bénéfice du jour');
 // Les chiffres sont toujours à un toucher : Rapports.
 await p.evaluate(() => navTo('rapports', document.querySelectorAll('#s-caisse .bnav .ni')[2])); await p.waitForTimeout(500);
-t(await p.evaluate(() => /Bénéfice net/i.test(document.getElementById('s-rapports').innerText)), 'le bénéfice est dans Rapports, en tête');
+t(await p.evaluate(() => /J'ai gagné/i.test(document.getElementById('s-rapports').innerText)), 'le bénéfice est dans Rapports, en tête');
 await p.evaluate(() => navTo('caisse', document.querySelector('#s-rapports .bnav .ni'))); await p.waitForTimeout(400);
 
 // Une seule ligne pour les catégories et « Montant libre ».

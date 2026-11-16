@@ -1,4 +1,4 @@
-// t292 — 17 VRAIES PHOTOS DE PLUS, D'OPEN FOOD FACTS (23.75).
+// t292 — 17 VRAIES PHOTOS DE PLUS, D'OPEN FOOD FACTS (23.79).
 // Le patron, le 16/11, quand la recherche OFF a été finie : mettre en ligne
 // les nouvelles photos. Seulement celles dont la MARQUE est la bonne (Dano,
 // Cowbell, Nan, Dolait, Ovaltine…) ; une marque prise au hasard attend son tri.

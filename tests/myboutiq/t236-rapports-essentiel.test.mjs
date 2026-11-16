@@ -21,18 +21,20 @@ const tuiles = p => p.evaluate(() => Array.from(document.querySelectorAll('#rpt-
   const ordre = await p.evaluate(() => { const c = document.getElementById('rpt-cont'); const ess = c.querySelector('.rpt-ess'), det = c.querySelector('.rcd');
     return !!ess && !!det && !!(ess.compareDocumentPosition(det) & Node.DOCUMENT_POSITION_FOLLOWING); });
   const T = await tuiles(p);
-  t(ordre && T.map(x => x.t).join(',') === 'Ventes,Bénéfice net,Espèces à compter', `en tête : ${T.map(x => x.t + ' ' + x.v).join(' · ')}`);
+  t(ordre && T.map(x => x.t).join(',') === "J'ai vendu,J'ai gagné,Dans la caisse", `en tête : ${T.map(x => x.t + ' ' + x.v).join(' · ')}`);
   const cais = await p.evaluate(() => caisseAttendue());
   t(nombre(T[0].v) === 4450, `ventes : ${T[0].v} (calculé : 4 450)`);
   t(nombre(T[2].v) === cais && nombre(await ligneRapport(p, 'à compter')) === cais && cais === 3150 - 500, `espèces à compter : ${T[2].v} — la même que la ligne « à compter » et que la clôture (3 150 − 500 de moto)`);
-  t(nombre(T[1].v) === nombre(await ligneRapport(p, 'Bénéfice NET')), `bénéfice net : ${T[1].v}, le même que dans le détail`);
+  t(nombre(T[1].v) === nombre(await ligneRapport(p, 'gagné \\(après')), `bénéfice net : ${T[1].v}, le même que dans le détail`);
   // ── 2) LE RESTE ATTEND QU'ON L'OUVRE ─────────────────────────────────
-  const g = await p.evaluate(() => { const d = document.querySelector('#rpt-cont details.rpt-plus'); return { existe: !!d, ouvert: d && d.open, evo: d && /7 derniers jours/.test(d.innerHTML), top: d && /Top articles/.test(d.innerHTML) }; });
-  t(g.existe && !g.ouvert && g.evo && g.top, `les graphiques et classements sont repliés dans un bloc (${JSON.stringify(g)})`);
+  const g = await p.evaluate(() => { const d = document.querySelector('#rpt-cont details.rpt-plus'); return { existe: !!d, ouvert: d && d.open, evo: d && /7 derniers jours/.test(d.innerHTML), top: !!document.querySelector('#rpt-cont .rpt-top') && !/Top articles|meilleurs articles/i.test(d.innerHTML.replace(/<summary[\s\S]*?<\/summary>/, '')) }; });
+  t(g.existe && !g.ouvert && g.evo && g.top, `les graphiques sont repliés ; les meilleurs articles (en photo) sont dehors, visibles (23.78) (${JSON.stringify(g)})`);
   t(!(await p.evaluate(() => /conic-gradient|Répartition du chiffre/.test(document.getElementById('rpt-cont').innerHTML))), 'le camembert, qui redisait le résumé, est parti');
   t(!(await p.evaluate(() => /Tous les stocks OK|Alertes stock/.test(document.getElementById('rpt-cont').innerText))), 'aucune alerte : aucune carte « Alertes stock »');
   const h = await p.evaluate(() => document.getElementById('s-rapports').scrollHeight);
-  t(h < 1150, `l'écran fait ${h} px (1 830 sur la 23.16)`);
+  // 23.78 — tout est visible (le patron : « l'essentiel est masqué ») : plus
+  // haut qu'en 23.17, mais toujours sous les 1 830 px d'avant le tri.
+  t(h < 1700, `l'écran fait ${h} px (1 830 sur la 23.16)`);
   const emo = await p.evaluate(() => (document.getElementById('rpt-cont').innerText.match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{23F0}-\u{23FF}\u{21A9}]/gu) || []).join(''));
   t(emo === '', `sans emoji (${emo || 'aucun'})`);
   // Il l'ouvre : c'est retenu pendant la session.

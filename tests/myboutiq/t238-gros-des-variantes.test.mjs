@@ -24,7 +24,7 @@ const tu = await p.evaluate(() => Array.from(document.querySelectorAll('.vinline
 t(/carton/.test(tu[0].g) && !/de 24/.test(tu[0].g) && /prix \?/.test(tu[0].g), `sans prix de carton : « ${tu[0].g} », comme dehors`);
 t(/6\s?800/.test(tu[1].g) && /carton de 24/.test(tu[1].g), `avec son prix : « ${tu[1].g} »`);
 t(tu.every(x => !x.coupe), 'rien n\'est coupé, même sur un écran de 360 px');
-const dehors = await p.evaluate(() => { const m = document.querySelector('.pgrid .pcard .pmedia'); return m ? Math.round(m.getBoundingClientRect().height) : 0; });
+const dehors = await p.evaluate(() => { const m = document.querySelector('.pgrid .pcard .pmedia:not(.pphoto)'); /* 23.74 : une tuile sans photo, comme dedans */ return m ? Math.round(m.getBoundingClientRect().height) : 0; });
 // 23.24 — l'image des tuiles passe à 48 px de haut (t243), dedans comme dehors.
 t(tu.every(x => x.img >= 48) && Math.abs(tu[0].img - dehors) <= 4, `la place de la photo : ${tu[0].img} px dedans, ${dehors} px dehors (58 avant la 23.19)`);
 // La barre vend toujours le carton, au prix du carton.

@@ -34,7 +34,7 @@ const etat = p => p.evaluate(() => {
 
 // ── 1. L'annonce se dit : au premier toucher, une fois, puis à la demande ──
 {
-  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique(), { tactile: true });
+  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique({ cfg: Object.assign(nouvelleBoutique().cfg, { voix: true }) }), { tactile: true });   // 23.75 : la voix est allumée exprès (éteinte par défaut, t292)
   await simuler(p);
   // Le navigateur du banc compte déjà un geste ; un téléphone ouvert depuis une
   // notification, non. On le met dans cet état-là.
@@ -87,7 +87,7 @@ const etat = p => p.evaluate(() => {
 
 // ── 2. La voix enregistrée : la nôtre se joue, aucune autre ─────────
 {
-  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique(), { tactile: true });
+  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique({ cfg: Object.assign(nouvelleBoutique().cfg, { voix: true }) }), { tactile: true });   // 23.75 : la voix est allumée exprès (éteinte par défaut, t292)
   await simuler(p);
   await p.locator('#src-c').tap();
   await p.evaluate(u => afficherAnnonce({ id: 'v1', titre: 'Bonjour', message: 'Écoute', niveau: 'info', audio: u }), SEAU + 'vabc123.webm');
@@ -110,7 +110,7 @@ const etat = p => p.evaluate(() => {
 
 // ── 3. « Écrire une annonce » : enregistrer sa voix, l'envoyer d'abord ─
 {
-  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique(), { tactile: true });
+  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique({ cfg: Object.assign(nouvelleBoutique().cfg, { voix: true }) }), { tactile: true });   // 23.75 : la voix est allumée exprès (éteinte par défaut, t292)
   await simuler(p);
   await p.evaluate(() => {
     window.__envois = []; window.__lignes = []; window.__envoiEchoue = false;
@@ -163,7 +163,7 @@ const etat = p => p.evaluate(() => {
 
 // ── 4. La question des notifications : images et voix ──────────────
 {
-  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique(), { tactile: true });
+  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique({ cfg: Object.assign(nouvelleBoutique().cfg, { voix: true }) }), { tactile: true });   // 23.75 : la voix est allumée exprès (éteinte par défaut, t292)
   await simuler(p);
   await p.evaluate(() => {
     window._pushPossible = () => true;

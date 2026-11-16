@@ -158,7 +158,7 @@ const nombre = x => Number(String(x).replace(/[^\d]/g, ''));
   await appuiLong(p, '#pc-6'); await p.waitForTimeout(300);
   const menu = await p.evaluate(() => { const m = document.getElementById('ctxm'); const i = m.querySelector('.ctxi');
     return { vu: m.classList.contains('show'), premier: i ? i.textContent.trim() : '' }; });
-  t(menu.vu && /Saisir une quantité/.test(menu.premier), `modifications ouvertes : le menu, et « Saisir une quantité » en premier (« ${menu.premier} »)`);
+  t(menu.vu && /^Quantité$/.test(menu.premier), `modifications ouvertes : le menu, et « Quantité » en premier (« ${menu.premier} »)`);
   await p.evaluate(() => { try { ctxQte(); } catch (e) {} }); await p.waitForTimeout(300);
   const v = await pave(p);
   t(!!v && /Pièces/.test(v.mode) && v.seg, `au détail, le pavé s'ouvre sur les pièces, le carton à côté (« ${v && v.mode} »)`);
