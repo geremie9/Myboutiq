@@ -8,6 +8,11 @@
 //    un toucher, marqué « indicatif », sans prix d'achat inventé ;
 //  · chaque article dans la bonne catégorie, avec le bon dessin ;
 //  · « Annuler » retire le lot, sauf ce qui a déjà été vendu.
+// 23.71 — le patron, 16/11 : « on doit être focus… pas de prêt-à-porter,
+// mais la boisson et la boutique (alimentation, ménage, maison), chaque
+// commerce avec ses catégories ». Une boutique NEUVE ne se voit plus
+// proposer que ces deux commerces ; une boutique qui avait déjà choisi
+// un autre métier (téléphonie, mode…) garde sa liste (sections 2 et 3).
 import { chromium, serveur, compteur } from './lib.mjs';
 import { nouvelleBoutique, ouvrirCaisse, vendre } from './caisse.mjs';
 const { t, fin } = compteur('t250');
@@ -27,16 +32,16 @@ const fermer = p => p.evaluate(() => { document.querySelectorAll('.ov').forEach(
       coupe: ch.some(x => { const e = x.querySelector('.etg-ray-t'); return e.scrollWidth > e.clientWidth + 1; }),
       bouton: bt ? bt.textContent.trim() : '', vu: !!r && r.bottom <= innerHeight };
   });
-  t(/Tu vends quoi/.test(v.titre) && v.n === 6 && v.on === 'boutique', `« ${v.titre.trim()} » et six métiers en images, l'épicerie choisie d'office (${v.n}, ${v.on})`);
-  t(!v.coupe, 'aucun nom de métier coupé à 360 px');
-  t(/Tout mettre dans ma caisse \(19\)/.test(v.bouton) && v.vu, `« ${v.bouton} », visible sans faire défiler`);
+  t(/Tu vends quoi/.test(v.titre) && v.n === 2 && v.on === 'boutique', `« ${v.titre.trim()} » et deux commerces en images — la boutique et le dépôt de boissons —, la boutique choisie d'office (${v.n}, ${v.on})`);
+  t(!v.coupe, 'aucun nom de commerce coupé à 360 px');
+  t(/Tout mettre dans ma caisse \(22\)/.test(v.bouton) && v.vu, `« ${v.bouton} », visible sans faire défiler`);
 
-  await p.locator('.etg-ray[data-rayon=beaute]').tap(); await p.waitForTimeout(400);
+  await p.locator('.etg-ray[data-rayon=boissons]').tap(); await p.waitForTimeout(400);
   const g = await p.evaluate(() => ({ rayon: DB.cfg.rayon, noms: [...document.querySelectorAll('#pgrid .pcard.etg .pnm-ov')].map(x => x.textContent),
     on: (document.querySelector('.etg-ray.on') || {}).dataset.rayon, bouton: document.getElementById('etg-tout').textContent.trim() }));
-  t(g.rayon === 'beaute' && g.on === 'beaute' && g.noms.includes('Dentifrice') && !g.noms.includes('Riz'),
-    `« Beauté » : la liste change (${g.noms.slice(0, 4).join(', ')}…), plus de riz`);
-  t(/\(13\)/.test(g.bouton), `le bouton compte ce rayon : « ${g.bouton} »`);
+  t(g.rayon === 'boissons' && g.on === 'boissons' && g.noms.includes('Malta') && !g.noms.includes('Riz'),
+    `« Dépôt de boissons » : la liste change (${g.noms.slice(0, 4).join(', ')}…), plus de riz`);
+  t(/\(11\)/.test(g.bouton), `le bouton compte ce commerce : « ${g.bouton} »`);
 
   await p.locator('#etg-tout').tap(); await p.waitForTimeout(800);
   const a = await p.evaluate(() => ({
@@ -45,29 +50,33 @@ const fermer = p => p.evaluate(() => { document.querySelectorAll('.ov').forEach(
     snack: (document.getElementById('etg-snack-t') || {}).textContent || '',
     annuler: (document.getElementById('etg-snack-b') || {}).textContent || '',
     parc: DB.parcours && DB.parcours.n }));
-  t(a.l.length === 13 && a.stocke === 13, `un toucher : 13 articles dans la caisse, et enregistrés (${a.l.length}, ${a.stocke})`);
+  t(a.l.length === 11 && a.stocke === 11, `un toucher : 11 articles dans la caisse, et enregistrés (${a.l.length}, ${a.stocke})`);
   t(a.l.every(x => x.px > 0 && x.pa === 0 && x.s === 1), 'chacun à son prix courant, marqué « indicatif », prix d\'achat jamais inventé');
-  t(a.l.every(x => x.cat === 'Hygiène'), `tous en « Hygiène » — plus de dentifrice en Alimentation (${[...new Set(a.l.map(x => x.cat))].join(',')})`);
-  t(/13 articles dans ta caisse/.test(a.snack) && a.annuler === 'Annuler', `« ${a.snack} » — avec « ${a.annuler} »`);
+  const cats = [...new Set(a.l.map(x => x.cat))].sort().join(',');
+  t(cats === 'Bières,Eaux,Jus,Sucreries,Vins' && a.l.find(x => x.nm === 'Guinness').cat === 'Bières' && a.l.find(x => x.nm === 'Sachet d\'eau').cat === 'Eaux',
+    `le dépôt a SES catégories, pas un seul onglet « Boissons » (${cats})`);
+  t(/11 articles dans ta caisse/.test(a.snack) && a.annuler === 'Annuler', `« ${a.snack} » — avec « ${a.annuler} »`);
   t(a.parc && a.parc.rayon === 1 && a.parc.tout === 1, `compté sans rien de personnel : ${JSON.stringify(a.parc)}`);
 
   // Il vend aussi des boissons : les métiers restent sous « Tu vends aussi… ? »
   await fermer(p);
   const reste = await p.evaluate(() => ({ sep: /Tu vends aussi/.test(document.getElementById('pgrid').textContent), n: document.querySelectorAll('#pgrid .etg-ray').length }));
-  t(reste.sep && reste.n === 6, 'le rayon est vide, les autres métiers restent proposés');
-  await p.evaluate(() => document.querySelector('.etg-ray[data-rayon=boissons]').scrollIntoView({ block: 'center' }));
-  await p.locator('.etg-ray[data-rayon=boissons]').tap(); await p.waitForTimeout(400);
-  await p.evaluate(() => { const c = [...document.querySelectorAll('#pgrid .pcard.etg')].find(x => /Malta/.test(x.textContent)); c.scrollIntoView({ block: 'center' }); });
-  await p.locator('#pgrid .pcard.etg', { hasText: 'Malta' }).tap(); await p.waitForTimeout(500);
-  const m = await p.evaluate(() => { const x = DB.articles.find(y => y.nm === 'Malta'); return x && { px: x.px, cat: x.cat, s: x._sugg || 0 }; });
-  t(m && m.px === 650 && m.cat === 'Boissons' && !m.s, `un seul toucher sur « Malta » : 650, en Boissons, son prix vu sur la tuile (${JSON.stringify(m)})`);
+  t(reste.sep && reste.n === 2, 'le dépôt est rangé, la boutique reste proposée');
+  await p.evaluate(() => document.querySelector('.etg-ray[data-rayon=boutique]').scrollIntoView({ block: 'center' }));
+  await p.locator('.etg-ray[data-rayon=boutique]').tap(); await p.waitForTimeout(400);
+  await p.evaluate(() => { const c = [...document.querySelectorAll('#pgrid .pcard.etg')].find(x => /Insecticide/.test(x.textContent)); c.scrollIntoView({ block: 'center' }); });
+  await p.locator('#pgrid .pcard.etg', { hasText: 'Insecticide' }).tap(); await p.waitForTimeout(500);
+  const m = await p.evaluate(() => { const x = DB.articles.find(y => y.nm === 'Insecticide'); return x && { px: x.px, cat: x.cat, s: x._sugg || 0 }; });
+  t(m && m.px === 1500 && m.cat === 'Ménage' && !m.s, `un seul toucher sur « Insecticide » (boutique) : 1 500, en Ménage, son prix vu sur la tuile (${JSON.stringify(m)})`);
   t(errs.length === 0, 'aucune erreur JS (la question)' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }
 
 // ── 2. « Annuler » retire le lot, pas ce qui est vendu ──
 {
-  const { ctx, p, errs } = await ouvrirCaisse(b, port, neuve(), { tactile: true });
+  // Une boutique qui avait déjà choisi « Téléphonie » (avant la 23.71) : elle garde sa liste.
+  const dbt = neuve(); dbt.cfg.rayon = 'tel';
+  const { ctx, p, errs } = await ouvrirCaisse(b, port, dbt, { tactile: true });
   await p.locator('.etg-ray[data-rayon=tel]').tap(); await p.waitForTimeout(300);
   await p.locator('#etg-tout').tap(); await p.waitForTimeout(500);
   const n1 = await p.evaluate(() => DB.articles.length);
@@ -116,25 +125,25 @@ const fermer = p => p.evaluate(() => { document.querySelectorAll('.ov').forEach(
       .map(n => n + '=' + (_rayonDuNom(n) || '·')),
     cats: (() => { const o = {}; ['Sucrerie', 'Bougie', 'Pile', 'Riz', 'Savon'].forEach(n => { o[n] = _rayonCat(n, 'boutique'); }); return o; })()
   }));
-  t(r.libs[0] === 'Boutique · Alimentation' && r.on === 'boutique' && r.libs.includes('Dépôt de boissons') && r.libs.includes('Cosmétiques') && !r.libs.includes('Épicerie'),
-    `les mots des enseignes d'ici, la boutique polyvalente d'office : ${r.libs.join(' | ')}`);
-  t(['Riz', 'Sardines', 'Sucrerie', 'Bière', 'Savon', 'Biscuits', 'Pile'].every(n => r.noms.includes(n)) && !r.noms.includes('Farine'),
-    `un peu de tout : alimentation, boissons, ménage et piles dans la même liste (${r.noms.length} articles)`);
-  t(r.cats.Sucrerie === 'Boissons' && r.cats.Bougie === 'Ménage' && r.cats.Pile === 'Ménage' && r.cats.Riz === 'Alimentation',
-    `chaque article dans son rayon, pas deviné de travers : ${JSON.stringify(r.cats)}`);
-  t(r.devine.join(',') === 'Alimentation La Grâce=·,Ets Marie=·,Cosmétiques Awa=beaute,DÉPÔT DE BOISSONS NGO=boissons,Call box Chez Paul=tel,Prêt-à-porter Élégance=mode,Friperie du marché=mode,Quincaillerie Fotso=·',
-    `le métier lu sur l'enseigne : ${r.devine.join(' · ')}`);
+  t(r.libs.join(' | ') === 'Boutique · Alimentation, ménage, maison | Dépôt de boissons' && r.on === 'boutique' && !r.libs.includes('Cosmétiques') && !r.libs.some(x => /Prêt-à-porter/.test(x)),
+    `deux commerces seulement, les mots des enseignes d'ici, la boutique d'office : ${r.libs.join(' | ')}`);
+  t(['Riz', 'Sardines', 'Sucrerie', 'Bière', 'Savon', 'Biscuits', 'Pile', 'Eau de javel', 'Ampoule'].every(n => r.noms.includes(n)) && !r.noms.includes('Farine'),
+    `la boutique : alimentation, boissons, ménage et maison dans la même liste (${r.noms.length} articles)`);
+  t(r.cats.Sucrerie === 'Boissons' && r.cats.Bougie === 'Maison' && r.cats.Pile === 'Maison' && r.cats.Savon === 'Ménage' && r.cats.Riz === 'Alimentation',
+    `chaque article dans sa catégorie (Alimentation, Boissons, Ménage, Maison) : ${JSON.stringify(r.cats)}`);
+  t(r.devine.join(',') === 'Alimentation La Grâce=·,Ets Marie=·,Cosmétiques Awa=·,DÉPÔT DE BOISSONS NGO=boissons,Call box Chez Paul=·,Prêt-à-porter Élégance=·,Friperie du marché=·,Quincaillerie Fotso=·',
+    `seul le dépôt se lit encore sur l'enseigne, le reste mène à la boutique : ${r.devine.join(' · ')}`);
   t(errs.length === 0, 'aucune erreur JS (boutique polyvalente)' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }
 {
-  const db = neuve(); db.cfg.nom = 'Cosmétiques Awa';
+  const db = neuve(); db.cfg.nom = 'Dépôt Ngo';
   const { ctx, p, errs } = await ouvrirCaisse(b, port, db, { tactile: true });
   const r = await p.evaluate(() => ({ on: (document.querySelector('.etg-ray.on') || {}).dataset.rayon, premier: (document.querySelector('#pgrid .pcard.etg .pnm-ov') || {}).textContent }));
   await p.locator('.etg-ray[data-rayon=boutique]').tap(); await p.waitForTimeout(300);
   const r2 = await p.evaluate(() => ({ on: (document.querySelector('.etg-ray.on') || {}).dataset.rayon, rayon: DB.cfg.rayon }));
-  t(r.on === 'beaute' && r.premier === 'Savon de toilette', `« Cosmétiques Awa » ouvre sur les cosmétiques, sans rien demander (${r.on}, « ${r.premier} »)`);
-  t(r2.on === 'boutique' && r2.rayon === 'boutique', 'un toucher sur un autre métier passe avant le nom, et se garde');
+  t(r.on === 'boissons' && r.premier === 'Sucrerie', `« Dépôt Ngo » ouvre sur le dépôt de boissons, sans rien demander (${r.on}, « ${r.premier} »)`);
+  t(r2.on === 'boutique' && r2.rayon === 'boutique', 'un toucher sur l\'autre commerce passe avant le nom, et se garde');
   t(errs.length === 0, 'aucune erreur JS (enseigne)' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }

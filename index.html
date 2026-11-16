@@ -7364,7 +7364,9 @@ const SECTEURS=[
   {id:'maquis',e:'🍽️',n:'Maquis/Restaurant',ne:'Restaurant',ok:false},
   {id:'menage',e:'🧹',n:'Ménage/Quincail.',ne:'Hardware',ok:false},
   {id:'pharmacie',e:'💊',n:'Pharmacie',ne:'Pharmacy',ok:false},
-  {id:'mode',e:'👗',n:'Mode/Vêtements',ne:'Fashion',ok:true},   // ouvert à sa demande : deux métiers disponibles
+  // 23.71 — « pas de prêt-à-porter » : refermé (visible, « Bientôt »). La
+  // boutique est le seul choix : l'étape se saute (apresRegion).
+  {id:'mode',e:'👗',n:'Mode/Vêtements',ne:'Fashion',ok:false},
 ];
 
 // ═══════════════════════════════════════════
@@ -7599,7 +7601,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.70'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.71'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -8914,7 +8916,10 @@ var _RAYON_FORT={amber:{bg:'#F0A93E',tx:'#2B1B00'},blue:{bg:'#1F63C6',tx:'#fff'}
 function _poserCouleurRayon(el,cat){
   try{var f=_RAYON_FORT[_rayonFamille(cat)]||_RAYON_FORT.amber;el.style.setProperty('--ray',f.bg);el.style.setProperty('--ray-tx',f.tx);el.setAttribute('data-ray',_rayonFamille(cat));}catch(e){}
 }
-function _rayonFamille(cat){var c=txtNorm(cat||'');if(/autre|other/.test(c))return 'gray';if(/boisson|drink/.test(c))return 'blue';if(/alcool|alcohol|biere/.test(c))return 'red';if(/menage|household/.test(c))return 'teal';if(/hygiene/.test(c))return 'purple';if(/electro/.test(c))return 'indigo';if(/medic|pharma/.test(c))return 'green';return 'amber';}
+// 23.71 — les catégories du dépôt (Eaux, Jus, Vins) et de la boutique
+// (Maison) ont chacune leur couleur : dans un même commerce, deux
+// catégories ne se confondent pas.
+function _rayonFamille(cat){var c=txtNorm(cat||'');if(/autre|other/.test(c))return 'gray';if(/^eaux?\b|water/.test(c))return 'indigo';if(/^jus\b|juice/.test(c))return 'green';if(/^vins?\b|spiritueux|liqueur|wine/.test(c))return 'purple';if(/maison|home/.test(c))return 'purple';if(/boisson|drink|sucrerie|soda/.test(c))return 'blue';if(/alcool|alcohol|biere/.test(c))return 'red';if(/menage|household/.test(c))return 'teal';if(/hygiene/.test(c))return 'purple';if(/electro/.test(c))return 'indigo';if(/medic|pharma/.test(c))return 'green';return 'amber';}
 function iconArticle(p){
   var s=txtNorm((p&&p.nm)||''),ico='bag';
   // ⚠️ 23.32 — « rice » et « oil » sans bornes de mot : « dentifRICE »
@@ -13246,7 +13251,10 @@ var _ETAGERE={
   // les biscuits et les piles entrent.
   boutique:[['Riz','🍚'],['Huile','🫗'],['Sucre','🍬'],['Lait','🥛'],['Pain','🍞'],['Sardines','🐟'],['Spaghetti','🍝'],
     ['Cube','🧊'],['Sucrerie','🥤'],['Bière','🍺'],['Eau minérale','💧'],['Jus','🧃'],['Savon','🧼'],['Lessive','🧺'],
-    ['Biscuits','🍪'],['Bonbons','🍬'],['Bougie','🕯️'],['Allumettes','🔥'],['Pile','🔋']],
+    ['Biscuits','🍪'],['Bonbons','🍬'],['Bougie','🕯️'],['Allumettes','🔥'],['Pile','🔋'],
+    // 23.71 — « boutique (alimentation, ménage, maison) » : ses trois rayons
+    // sont dans la liste, chacun avec ce qu'il vend le plus.
+    ['Eau de javel','🧴'],['Insecticide','🦟'],['Ampoule','💡']],
   mode:[['Robe','👗'],['Pantalon','👖'],['Chemise','👔'],['T-shirt','👕'],['Short','🩳'],['Veste','🧥'],['Pagne','🧵'],
     ['Chaussures','👟'],['Sandales','👡'],['Sac','👜'],['Casquette','🧢'],['Foulard','🧣'],['Chaussettes','🧦'],['Bijoux','💍'],['Lunettes','🕶️']],
   // 23.32 — quatre métiers de plus (voir _RAYONS). Leurs listes ne sont pas
@@ -13282,9 +13290,17 @@ var _ETAGERE={
 // 23.33 — les mots des enseignes d'ici, pas ceux de France : « Épicerie »
 // ne se dit pas au Cameroun, « Alimentation » et « Boutique » s'écrivent
 // sur les façades ; « Dépôt », « Cosmétiques », « Friperie » aussi.
+// ⭐⭐ 23.71 — « ON DOIT ÊTRE FOCUS, ON NE DOIT PAS TOUT FAIRE EN MÊME
+// TEMPS. PAS DE PRÊT-À-PORTER, MAIS LA BOISSON ET LA BOUTIQUE
+// (ALIMENTATION, MÉNAGE, MAISON) : NOTRE OUTIL LE PEUT. CHAQUE COMMERCE
+// AVEC SES CATÉGORIES. » (le patron, 16/11)
+// Deux commerces sont PROPOSÉS (`offert`) : la boutique et le dépôt de
+// boissons. Les autres restent définis — une boutique qui les a déjà
+// choisis garde sa liste et sa tuile — mais aucune nouvelle boutique ne
+// les voit plus. Rien n'est retiré à ceux qui s'en servent.
 var _RAYONS=[
-  {id:'boutique',fr:'Boutique · Alimentation',en:'Shop · Groceries',rep:'Riz'},
-  {id:'boissons',fr:'Dépôt de boissons',en:'Drinks depot',rep:'Bière'},
+  {id:'boutique',fr:'Boutique · Alimentation, ménage, maison',en:'Shop · Food, household',rep:'Riz',offert:true},
+  {id:'boissons',fr:'Dépôt de boissons',en:'Drinks depot',rep:'Bière',offert:true},
   {id:'beaute',fr:'Cosmétiques',en:'Cosmetics',rep:'Savon de toilette'},
   {id:'tel',fr:'Téléphonie, accessoires',en:'Phones, accessories',rep:'Chargeur'},
   {id:'menage',fr:'Ménage, maison',en:'Household',rep:'Eau de javel'},
@@ -13300,10 +13316,18 @@ var _RAYON_CAT={boissons:'Boissons',beaute:'Hygiène',tel:'Électronique',menage
 // 23.33 — la boutique polyvalente mélange les rayons : chacun de ses
 // articles a sa catégorie écrite ici. Déduite du nom, « Sucrerie » partait
 // en Alimentation (« sucre »), « Bougie » et « Allumettes » aussi.
+// 23.71 — la boutique : Alimentation, Boissons, Ménage, Maison.
 var _ETAGERE_CAT={'Sucrerie':'Boissons','Bière':'Boissons','Eau minérale':'Boissons','Jus':'Boissons',
-  'Savon':'Ménage','Lessive':'Ménage','Bougie':'Ménage','Allumettes':'Ménage','Pile':'Ménage'};
+  'Savon':'Ménage','Lessive':'Ménage','Eau de javel':'Ménage','Insecticide':'Ménage',
+  'Bougie':'Maison','Allumettes':'Maison','Pile':'Maison','Ampoule':'Maison'};
+// 23.71 — le dépôt de boissons a SES catégories, pas un seul onglet
+// « Boissons » : il cherche ses bières, ses sucreries, ses eaux.
+var _CAT_DEPOT={'Bière':'Bières','Guinness':'Bières','Sucrerie':'Sucreries','Canette':'Sucreries','Énergisant':'Sucreries',
+  'Malta':'Sucreries','Eau minérale':'Eaux','Sachet d\'eau':'Eaux','Jus':'Jus','Yaourt':'Jus','Vin':'Vins'};
 function _rayonCat(nm,ray){
-  return _RAYON_CAT[ray||_rayonCourant()]||_ETAGERE_CAT[nm]||categorieDepuisNomProduit(nm);
+  var r=ray||_rayonCourant();
+  if(r==='boissons')return _CAT_DEPOT[nm]||'Boissons';
+  return _RAYON_CAT[r]||_ETAGERE_CAT[nm]||categorieDepuisNomProduit(nm);
 }
 // ⭐ 23.33 — LE MÉTIER SE LIT SUR L'ENSEIGNE. « Cosmétiques Awa », « Dépôt
 // Ngo », « Friperie du marché » : le nom tapé à l'inscription dit déjà ce
@@ -13314,11 +13338,9 @@ function _rayonCat(nm,ray){
 function _rayonDuNom(nom){
   var n=txtNorm(nom||'');
   if(!n)return '';
-  if(/cosmeti|beaute|meche|parfum|coiffure/.test(n))return 'beaute';
-  if(/telephon|call ?box|cellulaire|\bgsm\b|accessoire|electroni/.test(n))return 'tel';
-  if(/pret.a.porter|friperie|\bfripe|couture|vetement|chaussure|\bpagne|textile|\bmode\b/.test(n))return 'mode';
+  // 23.71 — seul le dépôt de boissons se devine encore : les autres métiers
+  // ne sont plus proposés, l'enseigne mène à la boutique (voir _RAYONS).
   if(/boisson|\bdepot\b|brasserie|casier/.test(n))return 'boissons';
-  if(/\bmenage\b|plastique/.test(n))return 'menage';
   return '';
 }
 function _rayonCourant(){
@@ -13419,13 +13441,14 @@ function _etagereMontrer(tout){
     if(DB.arch&&Array.isArray(DB.arch.resume)&&DB.arch.resume.length)return false;
     // 23.32 — tant qu'un des métiers a encore quelque chose à proposer : il
     // a tout mis de l'épicerie, il vend aussi des boissons.
-    return !(DB.articles||[]).length||_RAYONS.some(function(r){return _etagereListe(r.id).length>0;});
+    return !(DB.articles||[]).length||_RAYONS.some(function(r){return (r.offert||r.id===_rayonCourant())&&_etagereListe(r.id).length>0;});
   }catch(e){return false;}
 }
 // Les métiers, en images : le même dessin que l'article qui les représente.
 function _rayonsHtml(){
   var fr=(lang==='fr'),cur=_rayonCourant(),h='<div class="etg-rayons" role="radiogroup" aria-label="'+(fr?'Ce que tu vends':'What you sell')+'">';
   _RAYONS.forEach(function(r){
+    if(!r.offert&&r.id!==cur)return;     // 23.71 — deux commerces proposés (voir _RAYONS)
     var m={bg:'var(--BG)',fg:'var(--T)',svg:''};
     try{m=mediaArtInner({nm:r.rep,cat:_rayonCat(r.rep,r.id)},26);}catch(e){}
     var on=(r.id===cur);
