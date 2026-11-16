@@ -24,7 +24,7 @@ const v = await vendre(p, { lignes: [[5, 1]] });
 t(v.v.total === 3200, 'la vente encaisse le même montant');
 const r1 = await p.evaluate(() => { afficherRecu(); return [...document.querySelectorAll('#recu-cont .recu-rw')].map(x => x.textContent.replace(/\s+/g, ' ').replace(/[  ]/g, ' ')).join(' | '); });
 // 3 200 / 1,1925 = 2 683 HT, 517 de TVA.
-t(/dont HT\s*FCFA 2 683/.test(r1) && /dont TVA 19,25 %\s*FCFA 517/.test(r1), `le reçu : total 3 200, dont HT 2 683, dont TVA 517`);
+t(/dont HT\s*2 683 FCFA/.test(r1) && /dont TVA 19,25 %\s*517 FCFA/.test(r1), `le reçu : total 3 200, dont HT 2 683, dont TVA 517`);
 await p.evaluate(() => document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')));
 await p.evaluate(() => { _rptPer = 'jour'; renderRpt(); });
 const ca = nombre(await ligne(p, "Chiffre d'affaires")), tva = nombre(await ligne(p, 'dont TVA'));

@@ -53,7 +53,7 @@ await p.evaluate(() => { procederPmt(); selPmntVente('especes'); document.getEle
 await p.evaluate(() => encaisser()); await p.waitForTimeout(600);
 const v = await p.evaluate(() => { const x = DB.ventes[DB.ventes.length - 1]; return { total: x.total, ben: x.ben, lignes: x.lignes.map(l => l.nm + ' ×' + l.qte + ' @' + l.px + ' q' + (l.qBase || 1)).join(' ; ') }; });
 t(v.total === 1600, `vente enregistrée : ${v.total} F — ${v.lignes}`);
-t(/— quart ×2 @200 q0.25/.test(v.lignes) && /— pour .*500 ×1 @500 q0.71/.test(v.lignes), 'le reçu nomme chaque mesure, sans « de 0,25 »');
+t(/— quart ×2 @200 q0.25/.test(v.lignes) && /— pour [^;]*500[^;]*×1 @500 q0.71/.test(v.lignes), 'le reçu nomme chaque mesure, sans « de 0,25 »');
 const s1 = await stock(p, 9);
 t(Math.abs((s0 - s1) - 2.21) < 0.001, `le stock baisse en kilos : ${s0} → ${s1} (2,21 kg)`);
 // bénéfice : 1600 − 2,21 × 600 = 274

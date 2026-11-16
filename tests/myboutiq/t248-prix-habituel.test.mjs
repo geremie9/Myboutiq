@@ -93,7 +93,7 @@ const fermer = p => p.evaluate(() => { document.querySelectorAll('.ov').forEach(
     return { avant, okVu: r.bottom <= innerHeight + 1 && r.top >= 0, sugg: (document.getElementById('cmp-sugg-b') || {}).textContent || '' };
   });
   t(g.avant, 'le champ du prix vient avant la façon de vendre (il ne manque que lui)');
-  t(/Prix habituel : FCFA 50/.test(g.sugg), `le prix habituel est proposé sous le champ (« ${g.sugg.trim()} »)`);
+  t(/Prix habituel : 50 FCFA/.test(g.sugg), `le prix habituel est proposé sous le champ (« ${g.sugg.trim()} »)`);
   t(g.okVu, '« Enregistrer » est visible sans faire défiler, à 360 × 640');
   await p.locator('#cmp-sugg-b').tap(); await p.waitForTimeout(200);
   t(await p.locator('#cmp-pv').inputValue() === '50', 'un toucher écrit 50 dans le champ');

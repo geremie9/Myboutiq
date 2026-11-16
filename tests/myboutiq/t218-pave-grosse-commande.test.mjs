@@ -67,7 +67,7 @@ const nombre = x => Number(String(x).replace(/[^\d]/g, ''));
   await taper(p, ['3']);
   v = await pave(p);
   t(v && v.n === '3' && v.mot === 'cartons' && nombre(v.tot) === 39000, `3 cartons = 39 000 (« ${v && v.tot} »)`);
-  t(v && v.actif && /Ajouter 3 cartons · FCFA 39\s000/.test(v.ok), `le bouton dit ce qu'il va faire (« ${v && v.ok} »)`);
+  t(v && v.actif && /Ajouter 3 cartons · 39\s000 FCFA/.test(v.ok), `le bouton dit ce qu'il va faire (« ${v && v.ok} »)`);
   await valider(p); await p.waitForTimeout(300);
   const l = await ligne(p, '6-0');
   t(l.q === ref.q && l.lots === ref.lots && l.total === ref.total && l.q === 72 && l.lots === 3,

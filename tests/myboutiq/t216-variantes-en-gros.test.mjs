@@ -74,7 +74,7 @@ const ligne = (p, k) => p.evaluate(k => {
   t(c.q === 13 && c.lots === 1 && c.total === 10900, `la puce du bas ajoute un carton : ${c.q} bouteilles, ${c.total} F`);
   t(c.barre === 10900, `et la barre du panier affiche le même total (${c.barre} F, pas 13 × 900)`);
   const dit = await p.evaluate(() => (window.__toasts || []).join(' | '));
-  t(/1 carton/.test(dit) && !/× FCFA 900/.test(dit), `et l'app le dit en cartons, jamais « 12 × 900 » (« ${dit} »)`);
+  t(/1 carton/.test(dit) && !/× 900 FCFA/.test(dit), `et l'app le dit en cartons, jamais « 12 × 900 » (« ${dit} »)`);
   // 23.31 — la pastille de quantité retire, comme dehors (plus de « − » à part).
   await toucher(p, '1 L', '.vt-badge'); await p.waitForTimeout(250);
   c = await ligne(p, '30-1');
@@ -193,7 +193,7 @@ const ligne = (p, k) => p.evaluate(k => {
   c = await ligne(p, '40-1');
   t(c.q === 25 && c.total === 15000, `la puce vend le sac : ${c.q} kg, ${c.total} F`);
   dit = await p.evaluate(() => (window.__toasts || []).join(' | '));
-  t(/1 sac \(25 kg\) · FCFA 15\s000/.test(dit) && !/× FCFA 0/.test(dit), `« 1 sac (25 kg) · 15 000 », jamais « × 0 » (« ${dit} »)`);
+  t(/1 sac \(25 kg\) · 15\s000 FCFA/.test(dit) && !/× 0 FCFA/.test(dit), `« 1 sac (25 kg) · 15 000 », jamais « × 0 » (« ${dit} »)`);
   await fermer(p);
   await p.evaluate(() => { DB.cfg.facon = 'detail'; renderProd(DB.articles); }); await p.waitForTimeout(300);
   t(await p.evaluate(() => document.getElementById('pc-40').classList.contains('incomplete')), 'au détail, la même famille redit qu\'il lui manque un prix');

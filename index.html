@@ -7595,7 +7595,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.68'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.69'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -8794,7 +8794,14 @@ var _invitationCode=null; // code reçu via un lien /join/xxxxx
 var planSel='pro',durSel='m',pmntSel='wave',planSelAbo=null;
 
 function t(k){return (TR[lang]&&TR[lang][k])||TR.fr[k]||k;}
-function fmt(n){var s=DB&&DB.cfg?DB.cfg.s:'F';return s+' '+(Math.round(n)||0).toLocaleString('fr-FR');}
+// ⚠️ 23.69 — « 6 480 FCFA », PAS « FCFA 6 480 ». Sa remarque, relevée sur
+// ses captures : l'objectif et le panier écrivaient la devise DEVANT, les
+// tuiles DERRIÈRE (« 900 F »). Au Cameroun comme dans toute l'Afrique
+// francophone, on dit et on écrit le montant d'abord. Une seule règle pour
+// tout l'écran, les reçus et les PDF ; seuls $, £ et ₦ restent devant, là
+// où c'est l'usage.
+function _nbFr(n){return (Math.round(n)||0).toLocaleString('fr-FR');}
+function fmt(n){var s=DB&&DB.cfg?DB.cfg.s:'F';return (/^(\$|US\$|£|₦)$/.test(String(s||''))?(s+' '+_nbFr(n)):(_nbFr(n)+' '+s));}
 // ══════════════════════════════════════════════════════════════════
 //  🛡️ UN TEXTE VENU D'AILLEURS N'EST JAMAIS DU CODE
 //
@@ -13908,9 +13915,9 @@ function prixCarte(p){
   if(p.vr&&p.vr.length){
     var pxs=p.vr.map(function(v){return v.px;}).filter(function(x){return x>0;});
     if(!pxs.length)return '—';
-    return (lang==='fr'?'dès ':'from ')+fmt(Math.min.apply(null,pxs)).replace(s+' ','')+s;
+    return (lang==='fr'?'dès ':'from ')+_nbFr(Math.min.apply(null,pxs))+s;
   }
-  return fmt(p.px).replace(s+' ','')+s;
+  return _nbFr(p.px)+s;
 }
 var ordrePrio=[];
 // 23.22 — les articles que l'écoute en continu vient d'entendre (voir
@@ -18955,7 +18962,7 @@ function _grosDeTuile(p){
   var g=null;try{g=_grosDe(p,null);}catch(e){}
   return (g&&g.n>1&&g.px>0)?g:null;
 }
-function _montantCarte(v){var s=DB.cfg.s;return fmt(v).replace(s+' ','')+s;}
+function _montantCarte(v){var s=DB.cfg.s;return _nbFr(v)+s;}
 // La puce d'un contenant qui a un prix : une petite étiquette, le MONTANT
 // en gras et ce qu'il achète dessous (« 13 000 / carton de 24 »). Sur une
 // ligne, « casier · 6 800 » ne tenait pas dans une tuile de 360 px et
