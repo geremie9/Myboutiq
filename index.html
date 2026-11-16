@@ -4853,7 +4853,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
      de nous deux puisse dire s'il avait REÇU la version. Ce numéro était
      écrit en 10 px à 28 % d'opacité — illisible sur un téléphone au soleil.
      C'est la seule preuve dont il dispose : elle doit se lire. -->
-<div id="app-build" style="color:rgba(255,255,255,.72);font-size:12px;font-weight:800;margin-top:2px"></div></div>
+<div id="app-build" style="color:rgba(255,255,255,.72);font-size:12px;font-weight:800;margin-top:2px"></div><!-- 23.72 — la licence CC BY-SA demande de créditer la source des photos. --><div id="credit-off" style="color:rgba(255,255,255,.6);font-size:10.5px;font-weight:700;margin-top:2px">📷 Photos de produits : <a href="/photos-off/LICENCE.txt" target="_blank" rel="noopener" style="color:inherit">Open Food Facts (CC BY-SA 3.0)</a></div></div>
     </div>
     <!-- Code boutique avec QR -->
     <div class="qr-wrap" style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px;margin-bottom:0">
@@ -7601,7 +7601,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.71'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.72'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -23899,7 +23899,53 @@ function photoCatalogue(nom){
   // nos « photos » et jugés pour ce qu'ils sont) et la bibliothèque des
   // photos offertes, jamais vérifiées. MyBoutiQ ne propose plus que ce
   // qu'elle a vu : une vraie photo, certifiée. Sinon, le dessin de la caisse.
+  // 23.72 — …ou une vraie photo d'Open Food Facts, choisie une à une (voir
+  // _PHOTOS_OFF) : elle passe APRÈS la certifiée, jamais avant.
+  try{var _o=_photoOff(nom);if(_o)return _o;}catch(e){}
   return '';
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.72 — LES VRAIES PHOTOS D'OPEN FOOD FACTS, LIVRÉES AVEC L'APP
+//  Le patron, le 16/11 : « Go go » pour importer les photos trouvées sur
+//  Open Food Facts (base mondiale de photos de produits, licence libre
+//  CC BY-SA 3.0, à créditer — voir Réglages et photos-off/LICENCE.txt).
+//  52 photos sûres sur 67 (les 19 correspondances douteuses — mauvaise
+//  contenance, marque voisine — attendent son tri), chacune regardée.
+//  ⚠️ Elles ne passent PAS par `photos_partagees` (la certification est SON
+//  geste, jamais le nôtre) : elles sont des fichiers du site, servis à côté
+//  de l'app (srcSure accepte un chemin du site), gardés hors ligne par le
+//  service worker comme les photos du serveur.
+//  ⚠️ UNE PHOTO DE MARQUE NE VA QU'À SA MARQUE. Chaque photo a ses
+//  expressions (nom, marque, fautes courantes : « mayore », « guness »…) ;
+//  un article la reçoit si TOUS les mots d'une expression sont dans son nom
+//  ET si cette expression porte un mot de marque. « Huile » ne reçoit pas la
+//  Mayor ; « Huile Mayor », « mayor 1l » oui. Une expression sans marque
+//  (« semoule de maïs ») ne vaut que pour le nom exact.
+// ══════════════════════════════════════════════════════════════════
+var _PHOTOS_OFF_BASE='/photos-off/';
+var _PHOTOS_OFF=[["biere-beaufort-65cl","beaufor|beaufort|biere beaufort|bofort","9501100003072"],["biere-k44-33cl","biere k44|k 44|k44|ka44","6176000000990"],["biere-kadji-33cl","bière kadji 33 cl","6176000001072"],["biere-mutzig-65cl","biere mutzig|moutzig|mutzig|mutzik","6176000000136"],["biscuits-biskrem","biscrem|biscuit biskrem|biscuits biskrem|biskream|biskrem","8690504114154"],["biscuits-parle-g","biscuit parle g|biscuits parle g|parle|parle g|parleg","8901719101014"],["boisson-predator","boisson predator|predator","5061013962506"],["cerelac-250g","bouillie bebe|cerelac|cerelak|serelac","6221007032540"],["chips-de-plantain-200g","chips de plantain|chips plantain|croustille|ships plantain","6177000003790"],["coca-cola-1l","coca|coca cola|cocacola|coka|coke","5449000054227"],["dentifrice-colgate","colgat|colgate|dentifrice colgate|dentifrice colgate 75 ml|kolgate","6920354812521"],["dentifrice-signal","dentifrice signal|signal|signale","6221048407796"],["deodorant-rexona","deodorant rexona|rexona|rexonna","8714100019733"],["djino-orange","dino|djino|djinot|jino","9501100006608"],["eau-supermont-0-5l","eau supermont 0 5 l|supermont 0 5 l|supermont 50cl|supermont petit","0853148003019"],["eau-supermont-1-5l","eau supermont|eau supermont 1 5 l|super mont|supermon|supermont|supermont 1 5 l","0853148003002"],["eau-tangui","eau tangui|tangui","6174000003010"],["eau-vitale","eau vitale|vital|vitale","9501100000958"],["fanta-orange-33cl","fanta|fanta orange|fenta","5449000011527"],["guinness-65cl","biere guinness|ginness|guiness|guinnes|guinness|guness","5000213013007"],["heineken-33cl","heineken|heineken 33 cl","87120158"],["huile-diamaor-1l","diamaor|diamaor 1 l|diamaore|diamor|huile coton|huile diamaor|huile diamaor 1 l","6171003000008"],["huile-mayor-1l","huile mayor|huile mayor 1 l|huile palme raffinee|l huile mayor 1l|maior|mayor|mayor 1 l|mayor 1l|mayore|uile mayor","6171100000017"],["indomie-poulet-70g","endomie|indomi|indomie|indomie poulet|indomy","0089686130010"],["lait-bonnet-rouge-boite","bonet rouge|bonnet rouge|lait bonnet rouge","8716200674904"],["lait-gloria-410g","glori|gloria|lait evapore|lait gloria|lait non sucre","6033000082107"],["lait-nido-sachet","lait nido|nedo|nidaux|nido","6171100031325"],["lait-peak-boite","lait peak|peack|peak|pik","8716200449250"],["maggi-crevette","bouillon maggi crevette|maggi crevette|maggie|magi crevette","6181002001265"],["malta-guinness","malta|malta guiness|malta guinness|maltina","5000213021828"],["mambo-25g","chococam|chocolat mambo|mambo|manbo","6171100013819"],["margarine-blue-band-450g","beurre|blu band|blue band|blueband|margarin|margarine blue band","6034000482072"],["mayonnaise-calve-450ml","calve|mayo|mayonaise|mayonnaise|mayonnaise calve|mayonnez","6181001998061"],["milo-400g","milau|milo|mylo","6033000089199"],["nescafe-classic","cafe soluble|nes cafe|nescaf|nescafe","6111018903161"],["nivea-creme-150ml","creme nivea|nivea|niveya","4005800001192"],["orangina-1l","orangena|orangina|oranjina","8435185961914"],["pastis-51-70cl","pasti|pastis|pastis 51","3047100000247"],["poivre-blanc-de-penja-250g","blanc de penja|pepper|poivr|poivre blanc|poivre blanc de penja|poivre penja|pwavre","6177000014277"],["pringles-original-165g","chips pringles|pringels|pringle|pringles","5053990127726"],["quaker-white-oats-500g","kwaker|oats|quacker|quaker|quaker flocons d avoine","5000108478119"],["reaktor","jus reaktor|reaktor","0853148003835"],["riz-bijou","riz bijou","6033000382498"],["sardines-omega-125g","du maroc omega|sardine du maroc omega|sardine maroc|sardine omega|sardines du maroc|sardinne","6111255761494"],["sardines-titus-125g","sardine titus|sardines titus|sardinne|titus|tutus","6111239500026"],["savon-protex","protek|protex|protexe|savon protex","8718951697980"],["semoule-de-mais","polenta|semoul mais|semoule de mais","7611631143078"],["smirnoff-ice-275ml","ice|smirnof|smirnoff|smirnoff ice","5410316992060"],["sprite-1l","spraite|sprit|sprite","5449000006295"],["tartina","chococam|tartina|tartinat|tartine","6171100014526"],["the-lipton-yellow-label","lipeton|lipton|lipton en boite|the lipton|yellow label","6221048700705"],["tomate-tasty-tom","tasti tom|tasty tom|tasty tome|tomate concentree|tomate concentree tasty tom|tomate tasty tom","6033000300140"],["top-ananas-1l","top ananas|top ananas 1l","6174000001573"],["top-pamplemousse-1l","top pamplemousse","6174000001566"],["vaseline-100ml","vaseline|vaselinne|vasline|vazeline","6001085120946"],["vimto-33cl","jus vimto|vimto|vimtoh|vinto","5010438007187"],["whisky-jameson","jameson|jamesson|whisky jameson|wisky","5011007003227"],["whisky-johnnie-walker-red-75cl","johnnie walker|johnnie walker red|johny walker|red label|whisky johnnie walker red|wisky","5000267014005"]];
+var _OFF_GENERIQUE={};('huile biere biscuit biscuits lait eau jus the cafe savon dentifrice deo deodorant sardine sardines cube cubes bouillon poulet crevette oignon chips '
+  +'margarine mayonnaise whisky gin vin boisson boissons canette bouteille boite sachet paquet petit grand orange ananas pamplemousse plantain blanc poivre semoule '
+  +'mais flocons avoine creme tomate concentre sucre riz pate pates spaghetti macaroni nouilles chocolat cacao poudre soda limonade gazeuse minerale pot tube '
+  +'de du des la le les l a au en et pour sans avec ml cl kg g l litre litres gr').split(' ').forEach(function(w){_OFF_GENERIQUE[w]=1;});
+var _offIdx=null;
+function _photoOff(nom){
+  var mots=txtNorm(nom||'').split(/[^a-z0-9]+/).filter(Boolean);
+  if(!mots.length)return '';
+  var set={};mots.forEach(function(w){set[w]=1;});
+  if(!_offIdx){_offIdx=_PHOTOS_OFF.map(function(x){return {s:x[0],ph:String(x[1]).split('|').map(function(e){return e.split(' ').filter(Boolean);})};});}
+  var best='',bs=0;
+  _offIdx.forEach(function(it){
+    it.ph.forEach(function(pw){
+      if(!pw.length||pw.length<=bs)return;
+      for(var i=0;i<pw.length;i++)if(!set[pw[i]])return;
+      var marque=pw.some(function(w){return !_OFF_GENERIQUE[w]&&!/^\d+$/.test(w);});
+      var exact=(pw.length===mots.length);
+      if(!marque&&!exact)return;
+      best=it.s;bs=pw.length;
+    });
+  });
+  return best?(_PHOTOS_OFF_BASE+best+'.jpg'):'';
 }
 // Pose la photo partagée sur les articles qui n'en ont pas. Ne REMPLACE
 // jamais une photo prise par le commerçant : la sienne est la vérité.
