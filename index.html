@@ -1214,10 +1214,14 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 #fab-add.nav-ok{display:none!important}
 /* La dépense rejoint « Ajouter » : en haut, Modifier, Alertes, Réglages. */
 #s-caisse .mhdr #btn-dep.nav-ok{display:none!important}
-.ajr{padding:6px 16px calc(18px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.ajr button{border:0;border-radius:16px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font:800 15px 'Outfit',sans-serif;color:#1E1B2E;background:var(--af);cursor:pointer}
-.ajr button i{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--ac);color:#fff}
-.ajr button small{font-size:11.5px;font-weight:700;color:#5C586B;margin-top:-4px}
+/* 23.77 — une ligne par geste, aux couleurs de la caisse : le violet nuit du
+   haut, l'orange du store. Plus de pastels qui ne parlaient à rien d'autre. */
+.ajr{padding:6px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
+.ajr button{border:1.5px solid var(--BD);border-radius:16px;min-height:76px;display:grid;grid-template-columns:54px 1fr;grid-template-rows:auto auto;column-gap:14px;align-items:center;padding:11px 14px;text-align:left;font:800 19px 'Outfit',sans-serif;color:var(--T);background:var(--C);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.ajr button:active{background:var(--BG)}
+.ajr button i{grid-row:1 / span 2;width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:#221F2B;color:#F0A93E}
+.ajr button span{align-self:end}
+.ajr button small{align-self:start;font-size:13.5px;font-weight:700;color:var(--M)}
 .stk-dette{display:flex;align-items:center;gap:9px;width:100%;margin:8px 0 2px;padding:11px 13px;border:0;border-radius:13px;background:#FDE8E4;color:#7A1F14;font:700 13.5px 'Outfit',sans-serif;text-align:left;cursor:pointer}
 .stk-dette span{flex:1}.stk-dette b{font-weight:900}.stk-dette i{font-style:normal;font-weight:900;color:#B42318;white-space:nowrap}
 .fd-ligne{border:1.5px solid var(--BD);border-radius:14px;padding:11px 12px;margin-bottom:9px}
@@ -7647,7 +7651,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.76'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.77'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -22820,13 +22824,17 @@ function fdPayer(i){
 }
 function _ajrChoix(){
   var fr=(lang==='fr'),pat=(role==='patron'),out=[];
-  if(pat||hasPerm('produits'))out.push({k:'art',c:'#D97706',f:'#FDF1DC',t:fr?'Un article':'An item',s:fr?'nouveau dans la boutique':'new in the shop',ic:'plus',fn:function(){ouvrirAjouter();}});
-  // 23.59 — un article neuf en photo : + → En photo → la photo → son prix.
-  if(pat||hasPerm('produits'))out.push({k:'aph',c:'#B45309',f:'#FDEBC8',t:fr?'Un article en photo':'An item from a photo',s:fr?'la photo, son prix, et c\'est sur l\'étagère':'photo, price, on the shelf',ic:'appareil',fn:function(){ouvrirArticlePhoto('');}});
+  if(pat||hasPerm('produits'))out.push({k:'art',c:'#D97706',f:'#FDF1DC',t:fr?'Un article':'An item',s:fr?'en photo, ou dans le catalogue':'from a photo or the catalogue',ic:'plus',fn:function(){ouvrirAjouter();}});
+  // ⚠️ 23.77 — « TROP DE BOUTONS, ET LA COULEUR NE COLLE PAS » (capture du
+  // patron, 16/11) : cinq tuiles pastel (beige, orange, jaune, rose), dont
+  // deux pour la même chose. « Un article en photo » est parti : « Un
+  // article » ouvre le catalogue, où l'appareil photo attend en haut, orange
+  // (23.59). « Un client » aussi : il s'ajoute dans « Dettes » ou pendant la
+  // vente. Il ne reste que pour un vendeur qui n'a rien d'autre ici.
   if(pat||hasPerm('stock'))out.push({k:'arr',c:'#8A5A22',f:'#F3E8D8',t:fr?'Un arrivage':'A delivery',s:fr?'marchandise reçue':'goods received',ic:'entree',fn:function(){ouvrirStk(null);}});
   if(pat||hasPerm('depenses'))out.push({k:'dep',c:'#B45309',f:'#FEF3C7',t:fr?'Une dépense':'An expense',s:fr?'taxi, loyer, courant…':'taxi, rent, power…',ic:'sortie',fn:function(){ouvrirDep();}});
   try{if((pat||hasPerm('depenses'))&&_fdSoldes().length)out.push({k:'fd',c:'#7A1F14',f:'#FDE8E4',t:fr?'Payer un fournisseur':'Pay a supplier',s:fr?('tu dois '+fmt(totalDetteFourn())):('you owe '+fmt(totalDetteFourn())),ic:'portefeuille',fn:function(){ouvrirDettesFourn();}});}catch(e){}
-  out.push({k:'cli',c:'#B42318',f:'#FDE8E4',t:fr?'Un client':'A customer',s:fr?'pour le crédit':'for credit',ic:'clients',fn:function(){navTo('clients',document.querySelector('#s-caisse .ni-cli')||null);ouvrirAddCli();}});
+  if(!out.length)out.push({k:'cli',c:'#B42318',f:'#FDE8E4',t:fr?'Un client':'A customer',s:fr?'pour le crédit':'for credit',ic:'clients',fn:function(){navTo('clients',document.querySelector('#s-caisse .ni-cli')||null);ouvrirAddCli();}});
   return out;
 }
 function ouvrirAjoutRapide(){
@@ -22837,7 +22845,7 @@ function ouvrirAjoutRapide(){
   l.forEach(function(x){
     var b=document.createElement('button');b.type='button';b.id='ajr-'+x.k;
     b.style.setProperty('--ac',x.c);b.style.setProperty('--af',x.f);
-    b.innerHTML='<i>'+ico(x.ic,24)+'</i><span>'+escH(x.t)+'</span><small>'+escH(x.s)+'</small>';
+    b.innerHTML='<i>'+ico(x.ic,28)+'</i><span>'+escH(x.t)+'</span><small>'+escH(x.s)+'</small>';
     b.onclick=function(){closeSheet('ov-ajr');setTimeout(x.fn,60);};
     z.appendChild(b);
   });

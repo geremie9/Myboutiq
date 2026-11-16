@@ -27,12 +27,14 @@ const db = nouvelleBoutique(); db.cfg.facon = 'detail';
 const { ctx, p, errs } = await ouvrirCaisse(b, port, db, { tactile: true });
 await p.setViewportSize({ width: 360, height: 760 });
 
-// 1. Le geste : + → « Un article en photo » → l'appareil.
+// 1. Le geste : + → « Un article » → l'appareil (23.77 : une seule entrée,
+//    l'appareil orange en haut du catalogue).
 await p.evaluate(() => ouvrirAjoutRapide()); await p.waitForTimeout(300);
+await p.locator('#ajr-art').tap(); await p.waitForTimeout(900);
 const fc = p.waitForEvent('filechooser', { timeout: 4000 }).catch(() => null);
-await p.locator('#ajr-aph').tap();
+await p.locator('#cha-photo').tap();
 const ch = await fc;
-t(!!ch && await p.evaluate(() => document.getElementById('inp-apn').getAttribute('capture')) === 'environment', '« + » → « Un article en photo » ouvre directement l\'appareil photo');
+t(!!ch && await p.evaluate(() => document.getElementById('inp-apn').getAttribute('capture')) === 'environment', '« + » → « Un article » → l\'appareil orange : la photo en trois touches');
 await ch.setFiles({ name: 'photo.jpg', mimeType: 'image/jpeg', buffer: VERTE });
 await p.waitForFunction(() => document.getElementById('ov-apn').classList.contains('show'), null, { timeout: 5000 }).catch(() => {});
 await p.waitForTimeout(300);
@@ -84,7 +86,7 @@ await ctx.close();
 {
   const { ctx, p } = await ouvrirCaisse(b, port, nouvelleBoutique({}), { vendeur: 'Ibrahim', tactile: true });
   const v = await p.evaluate(() => { try { return _ajrChoix().map(x => x.k); } catch (e) { return ['?']; } });
-  t(!v.includes('aph'), `le vendeur sans droit sur les articles ne voit pas « Un article en photo » (${v.join(', ')})`);
+  t(!v.includes('art') && !v.includes('aph'), `le vendeur sans droit sur les articles ne voit pas « Un article » (${v.join(', ')})`);
   await ctx.close();
 }
 await b.close(); s.close(); fin();
