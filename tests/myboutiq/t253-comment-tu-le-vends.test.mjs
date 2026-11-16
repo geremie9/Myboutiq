@@ -35,7 +35,7 @@ const tape = async (p, sel, txt) => { await p.locator(sel).fill(''); await p.loc
   const f1 = await p.evaluate(() => ({ eq: document.getElementById('cond-eq-2').textContent, res: document.getElementById('cond-res').textContent,
     sh: (() => { const x = document.querySelector('#ov-cond .bsht'); return x.scrollHeight <= x.clientHeight + 260; })() }));
   t(m2 === 'carton' && /= 500 boîtes/.test(f1.eq), `« + un étage » propose le carton ; « ${f1.eq} » se calcule sous ses yeux`);
-  t(/soit \D*18 la boîte/.test(f1.res) && /tu gagnes/.test(f1.res) && /le paquet/.test(f1.res) && /le carton/.test(f1.res), `ce qu'il gagne à chaque étage : « ${f1.res} »`);
+  t(/soit \D*18\D*la boîte/.test(f1.res) && /tu gagnes/.test(f1.res) && /le paquet/.test(f1.res) && /le carton/.test(f1.res), `ce qu'il gagne à chaque étage : « ${f1.res} »`);
   await p.locator('#cond-ok').tap(); await p.waitForTimeout(400);
   const a = await p.evaluate(() => { const a = DB.articles.find(x => x.id === 8); return { umNom: a.umNom, umSac: a.umSac, umCont: a.umCont, umPar: a.umPar, umParMot: a.umParMot, umParTaille: a.umParTaille, pxPar: a.pxPar, pxGros: a.pxGros, pa: a.pa, paGros: a.paGros, px: a.px, lib: _libelleCond(a, null), j: DB.journal.filter(x => x.act === 'conditionnement').length, ouv: document.getElementById('ov-cond').classList.contains('show') }; });
   t(!a.ouv && a.umNom === 'boîte' && a.umSac === 500 && a.umCont === 'carton' && a.umPar === 50 && a.umParMot === 'paquet' && a.umParTaille === 10,
@@ -47,7 +47,7 @@ const tape = async (p, sel, txt) => { await p.locator(sel).fill(''); await p.loc
   await p.waitForTimeout(250);
   const et = await p.evaluate(() => [...document.querySelectorAll('#etg-lst .stitl')].map(x => x.textContent));
   const mots = await p.evaluate(() => ({ sous: [...document.querySelectorAll('#etg-lst .stisub')].map(x => x.textContent).join(' | '), art: document.getElementById('etg-art').textContent, tuile: _libPiece(DB.articles.find(a => a.id === 8)) }));
-  t(/500 boîtes/.test(mots.sous) && /10 boîtes/.test(mots.sous) && /25 la boîte/.test(mots.art) && mots.tuile === 'la boîte', `les mots suivent : « ${mots.art} » · ${mots.sous} · tuile « ${mots.tuile} »`);
+  t(/500 boîtes/.test(mots.sous) && /10 boîtes/.test(mots.sous) && /25\D*la boîte/.test(mots.art) && mots.tuile === 'la boîte', `les mots suivent : « ${mots.art} » · ${mots.sous} · tuile « ${mots.tuile} »`);
   await p.evaluate(() => { etgVendre(10, 'paquet'); }); await p.waitForTimeout(250);
   const tot1 = await p.evaluate(() => calcTotal());
   await p.evaluate(() => { choisirEtageGros(null, 8); etgVendre(500, 'carton'); }); await p.waitForTimeout(250);

@@ -23,7 +23,7 @@ const succ = () => p.evaluate(() => ({ det: document.getElementById('succ-det').
 await vendre(p, { lignes: [[2, 2]], recu: 2000 });                     // 1 200, il tend 2 000
 let r = await succ();
 t(r.ico && !EMO.test(r.emo), 'la coche est dessinée, plus d\'emoji sur l\'écran');
-t(/Reçu FCFA 2\s?000/.test(r.det) && /rends/.test(r.det) && /800/.test(r.det), `espèces : « ${r.det} »`);
+t(/Reçu 2\s?000 FCFA/.test(r.det) && /rends/.test(r.det) && /800/.test(r.det), `espèces : « ${r.det} »`);
 const tempo = await p.evaluate(() => { const t0 = Date.now(); return new Promise(res => { const sc = document.getElementById('succ'); sc.classList.add('show'); planifierFermetureSucces(sc, true);
   const i = setInterval(() => { if (!sc.classList.contains('show')) { clearInterval(i); res(Date.now() - t0); } }, 100); }); });
 t(tempo > 3500, `avec de la monnaie à rendre, l'écran reste le temps de compter (${tempo} ms)`);

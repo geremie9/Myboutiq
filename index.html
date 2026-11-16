@@ -1506,6 +1506,8 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 /* ── OBJECTIF BAR ── */
 .obj-bar{background:var(--P);padding:0 15px 12px}
 .obj-card{background:rgba(255,255,255,.05);border-radius:12px;padding:9px 12px}
+#etg-snack-b.neutre{background:transparent!important;color:#fff!important;border:1.5px solid rgba(255,255,255,.55)!important;box-shadow:none!important}
+.rpt-ess span svg.ic{vertical-align:-2px;margin-right:4px}
 .sicont{font-size:10.5px;font-weight:800;color:#1B5E20;margin-top:2px;white-space:nowrap}
 .obj-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .obj-lbl{font-size:10px;color:rgba(255,255,255,.45);font-weight:700}
@@ -5113,7 +5115,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       </div>
     </div>
     <div class="stsc"><div class="stcd"><div class="stit2" onclick="fermerCaisseDepuisReglages()"><div class="stico" style="background:#FFEBEE">🚪</div><div class="stii"><div class="stitl" id="st-logout" style="color:var(--R)">Se déconnecter</div></div><span class="starr">›</span></div></div></div>
-    <!-- 23.69 — Les photos certifiées venues d'Open Food Facts (17/11/2026 :
+    <!-- 23.72 — Les photos certifiées venues d'Open Food Facts (17/11/2026 :
          Diamaor, Mayor, Coca-Cola, Guinness, Tangui…) sont sous licence
          CC BY-SA 3.0, qui OBLIGE à créditer la source. Une ligne, en bas,
          là où personne n'est gêné mais où le crédit existe. -->
@@ -6376,7 +6378,9 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="ov-cli-t">👤 Nouveau Client</div><button class="bcl" onclick="closeSheet('ov-cli')">✕</button></div>
     <div class="pstps">
-      <div class="pig"><label class="pl" id="lbl-cli-nm">Nom</label><input class="pi sm" type="text" id="cli-nm" style="font-size:15px;font-weight:700"></div>
+      <!-- 23.70 — le nom d'un client se DIT : celui qui ne sait pas l'écrire
+           touche le micro (même geste que pour le nom de sa boutique). -->
+      <div class="pig"><label class="pl" id="lbl-cli-nm">Nom</label><div style="position:relative"><input class="pi sm" type="text" id="cli-nm" style="font-size:15px;font-weight:700;padding-right:52px"><button type="button" id="mic-clinm" onclick="dicterDans('cli-nm','mic-clinm')" title="Dicter" aria-label="Dicter le nom" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:none;border-radius:12px;background:var(--P);color:#fff;font-size:18px;cursor:pointer">🎤</button></div></div>
       <div class="pig"><label class="pl" id="lbl-cli-tel">Téléphone</label><input class="pi sm" type="tel" id="cli-tel"></div>
       <div class="pig"><label class="pl" id="lbl-cli-cred">Montant du crédit</label><input class="pi" type="number" id="cli-cred" inputmode="numeric"></div>
       <div class="pig"><label class="pl" id="lbl-cli-date">Date de remboursement</label><input class="pi sm" type="date" id="cli-date"></div>
@@ -6434,7 +6438,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
     <div class="pstps">
       <div class="fonds-card"><div style="font-size:11px;color:rgba(255,255,255,.45);font-weight:700;margin-bottom:5px" id="lbl-fonds">FONDS DE DÉPART</div><div style="font-size:26px;font-weight:900;color:var(--A)" id="clot-fonds">0</div></div>
       <div class="rcd"><div class="rctit" id="lbl-resume-j">📊 Résumé</div><div id="clot-det"></div></div>
-      <div class="pig"><label class="pl" id="lbl-especes">Espèces comptées</label><input class="pi" type="number" id="inp-compt" oninput="calcEcart()" inputmode="numeric"></div>
+      <div class="pig"><label class="pl" id="lbl-especes">Espèces comptées</label><input class="pi" type="number" id="inp-compt" oninput="calcEcart()" inputmode="numeric" placeholder="💵 Compte tes billets, tape le total" style="font-size:20px;font-weight:800"></div>
       <div class="bcard bon" id="ecart-cd" style="display:none"><div><div class="blbl" id="ecart-lbl">✅ Équilibrée</div></div><div class="bamt" id="ecart-amt">0</div></div>
       <button class="bnxt" onclick="validerClot()" id="btn-val-clot">✅ <span id="lbl-val-clot">Valider</span></button>
     </div>
@@ -7365,7 +7369,9 @@ const SECTEURS=[
   {id:'maquis',e:'🍽️',n:'Maquis/Restaurant',ne:'Restaurant',ok:false},
   {id:'menage',e:'🧹',n:'Ménage/Quincail.',ne:'Hardware',ok:false},
   {id:'pharmacie',e:'💊',n:'Pharmacie',ne:'Pharmacy',ok:false},
-  {id:'mode',e:'👗',n:'Mode/Vêtements',ne:'Fashion',ok:true},   // ouvert à sa demande : deux métiers disponibles
+  // 23.71 — « pas de prêt-à-porter » : refermé (visible, « Bientôt »). La
+  // boutique est le seul choix : l'étape se saute (apresRegion).
+  {id:'mode',e:'👗',n:'Mode/Vêtements',ne:'Fashion',ok:false},
 ];
 
 // ═══════════════════════════════════════════
@@ -7600,7 +7606,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.69'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.72'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -8799,7 +8805,14 @@ var _invitationCode=null; // code reçu via un lien /join/xxxxx
 var planSel='pro',durSel='m',pmntSel='wave',planSelAbo=null;
 
 function t(k){return (TR[lang]&&TR[lang][k])||TR.fr[k]||k;}
-function fmt(n){var s=DB&&DB.cfg?DB.cfg.s:'F';return s+' '+(Math.round(n)||0).toLocaleString('fr-FR');}
+// ⚠️ 23.69 — « 6 480 FCFA », PAS « FCFA 6 480 ». Sa remarque, relevée sur
+// ses captures : l'objectif et le panier écrivaient la devise DEVANT, les
+// tuiles DERRIÈRE (« 900 F »). Au Cameroun comme dans toute l'Afrique
+// francophone, on dit et on écrit le montant d'abord. Une seule règle pour
+// tout l'écran, les reçus et les PDF ; seuls $, £ et ₦ restent devant, là
+// où c'est l'usage.
+function _nbFr(n){return (Math.round(n)||0).toLocaleString('fr-FR');}
+function fmt(n){var s=DB&&DB.cfg?DB.cfg.s:'F';return (/^(\$|US\$|£|₦)$/.test(String(s||''))?(s+' '+_nbFr(n)):(_nbFr(n)+' '+s));}
 // ══════════════════════════════════════════════════════════════════
 //  🛡️ UN TEXTE VENU D'AILLEURS N'EST JAMAIS DU CODE
 //
@@ -8908,7 +8921,10 @@ var _RAYON_FORT={amber:{bg:'#F0A93E',tx:'#2B1B00'},blue:{bg:'#1F63C6',tx:'#fff'}
 function _poserCouleurRayon(el,cat){
   try{var f=_RAYON_FORT[_rayonFamille(cat)]||_RAYON_FORT.amber;el.style.setProperty('--ray',f.bg);el.style.setProperty('--ray-tx',f.tx);el.setAttribute('data-ray',_rayonFamille(cat));}catch(e){}
 }
-function _rayonFamille(cat){var c=txtNorm(cat||'');if(/autre|other/.test(c))return 'gray';if(/boisson|drink/.test(c))return 'blue';if(/alcool|alcohol|biere/.test(c))return 'red';if(/menage|household/.test(c))return 'teal';if(/hygiene/.test(c))return 'purple';if(/electro/.test(c))return 'indigo';if(/medic|pharma/.test(c))return 'green';return 'amber';}
+// 23.71 — les catégories du dépôt (Eaux, Jus, Vins) et de la boutique
+// (Maison) ont chacune leur couleur : dans un même commerce, deux
+// catégories ne se confondent pas.
+function _rayonFamille(cat){var c=txtNorm(cat||'');if(/autre|other/.test(c))return 'gray';if(/^eaux?\b|water/.test(c))return 'indigo';if(/^jus\b|juice/.test(c))return 'green';if(/^vins?\b|spiritueux|liqueur|wine/.test(c))return 'purple';if(/maison|home/.test(c))return 'purple';if(/boisson|drink|sucrerie|soda/.test(c))return 'blue';if(/alcool|alcohol|biere/.test(c))return 'red';if(/menage|household/.test(c))return 'teal';if(/hygiene/.test(c))return 'purple';if(/electro/.test(c))return 'indigo';if(/medic|pharma/.test(c))return 'green';return 'amber';}
 function iconArticle(p){
   var s=txtNorm((p&&p.nm)||''),ico='bag';
   // ⚠️ 23.32 — « rice » et « oil » sans bornes de mot : « dentifRICE »
@@ -13240,7 +13256,10 @@ var _ETAGERE={
   // les biscuits et les piles entrent.
   boutique:[['Riz','🍚'],['Huile','🫗'],['Sucre','🍬'],['Lait','🥛'],['Pain','🍞'],['Sardines','🐟'],['Spaghetti','🍝'],
     ['Cube','🧊'],['Sucrerie','🥤'],['Bière','🍺'],['Eau minérale','💧'],['Jus','🧃'],['Savon','🧼'],['Lessive','🧺'],
-    ['Biscuits','🍪'],['Bonbons','🍬'],['Bougie','🕯️'],['Allumettes','🔥'],['Pile','🔋']],
+    ['Biscuits','🍪'],['Bonbons','🍬'],['Bougie','🕯️'],['Allumettes','🔥'],['Pile','🔋'],
+    // 23.71 — « boutique (alimentation, ménage, maison) » : ses trois rayons
+    // sont dans la liste, chacun avec ce qu'il vend le plus.
+    ['Eau de javel','🧴'],['Insecticide','🦟'],['Ampoule','💡']],
   mode:[['Robe','👗'],['Pantalon','👖'],['Chemise','👔'],['T-shirt','👕'],['Short','🩳'],['Veste','🧥'],['Pagne','🧵'],
     ['Chaussures','👟'],['Sandales','👡'],['Sac','👜'],['Casquette','🧢'],['Foulard','🧣'],['Chaussettes','🧦'],['Bijoux','💍'],['Lunettes','🕶️']],
   // 23.32 — quatre métiers de plus (voir _RAYONS). Leurs listes ne sont pas
@@ -13276,9 +13295,17 @@ var _ETAGERE={
 // 23.33 — les mots des enseignes d'ici, pas ceux de France : « Épicerie »
 // ne se dit pas au Cameroun, « Alimentation » et « Boutique » s'écrivent
 // sur les façades ; « Dépôt », « Cosmétiques », « Friperie » aussi.
+// ⭐⭐ 23.71 — « ON DOIT ÊTRE FOCUS, ON NE DOIT PAS TOUT FAIRE EN MÊME
+// TEMPS. PAS DE PRÊT-À-PORTER, MAIS LA BOISSON ET LA BOUTIQUE
+// (ALIMENTATION, MÉNAGE, MAISON) : NOTRE OUTIL LE PEUT. CHAQUE COMMERCE
+// AVEC SES CATÉGORIES. » (le patron, 16/11)
+// Deux commerces sont PROPOSÉS (`offert`) : la boutique et le dépôt de
+// boissons. Les autres restent définis — une boutique qui les a déjà
+// choisis garde sa liste et sa tuile — mais aucune nouvelle boutique ne
+// les voit plus. Rien n'est retiré à ceux qui s'en servent.
 var _RAYONS=[
-  {id:'boutique',fr:'Boutique · Alimentation',en:'Shop · Groceries',rep:'Riz'},
-  {id:'boissons',fr:'Dépôt de boissons',en:'Drinks depot',rep:'Bière'},
+  {id:'boutique',fr:'Boutique · Alimentation, ménage, maison',en:'Shop · Food, household',rep:'Riz',offert:true},
+  {id:'boissons',fr:'Dépôt de boissons',en:'Drinks depot',rep:'Bière',offert:true},
   {id:'beaute',fr:'Cosmétiques',en:'Cosmetics',rep:'Savon de toilette'},
   {id:'tel',fr:'Téléphonie, accessoires',en:'Phones, accessories',rep:'Chargeur'},
   {id:'menage',fr:'Ménage, maison',en:'Household',rep:'Eau de javel'},
@@ -13294,10 +13321,18 @@ var _RAYON_CAT={boissons:'Boissons',beaute:'Hygiène',tel:'Électronique',menage
 // 23.33 — la boutique polyvalente mélange les rayons : chacun de ses
 // articles a sa catégorie écrite ici. Déduite du nom, « Sucrerie » partait
 // en Alimentation (« sucre »), « Bougie » et « Allumettes » aussi.
+// 23.71 — la boutique : Alimentation, Boissons, Ménage, Maison.
 var _ETAGERE_CAT={'Sucrerie':'Boissons','Bière':'Boissons','Eau minérale':'Boissons','Jus':'Boissons',
-  'Savon':'Ménage','Lessive':'Ménage','Bougie':'Ménage','Allumettes':'Ménage','Pile':'Ménage'};
+  'Savon':'Ménage','Lessive':'Ménage','Eau de javel':'Ménage','Insecticide':'Ménage',
+  'Bougie':'Maison','Allumettes':'Maison','Pile':'Maison','Ampoule':'Maison'};
+// 23.71 — le dépôt de boissons a SES catégories, pas un seul onglet
+// « Boissons » : il cherche ses bières, ses sucreries, ses eaux.
+var _CAT_DEPOT={'Bière':'Bières','Guinness':'Bières','Sucrerie':'Sucreries','Canette':'Sucreries','Énergisant':'Sucreries',
+  'Malta':'Sucreries','Eau minérale':'Eaux','Sachet d\'eau':'Eaux','Jus':'Jus','Yaourt':'Jus','Vin':'Vins'};
 function _rayonCat(nm,ray){
-  return _RAYON_CAT[ray||_rayonCourant()]||_ETAGERE_CAT[nm]||categorieDepuisNomProduit(nm);
+  var r=ray||_rayonCourant();
+  if(r==='boissons')return _CAT_DEPOT[nm]||'Boissons';
+  return _RAYON_CAT[r]||_ETAGERE_CAT[nm]||categorieDepuisNomProduit(nm);
 }
 // ⭐ 23.33 — LE MÉTIER SE LIT SUR L'ENSEIGNE. « Cosmétiques Awa », « Dépôt
 // Ngo », « Friperie du marché » : le nom tapé à l'inscription dit déjà ce
@@ -13308,11 +13343,9 @@ function _rayonCat(nm,ray){
 function _rayonDuNom(nom){
   var n=txtNorm(nom||'');
   if(!n)return '';
-  if(/cosmeti|beaute|meche|parfum|coiffure/.test(n))return 'beaute';
-  if(/telephon|call ?box|cellulaire|\bgsm\b|accessoire|electroni/.test(n))return 'tel';
-  if(/pret.a.porter|friperie|\bfripe|couture|vetement|chaussure|\bpagne|textile|\bmode\b/.test(n))return 'mode';
+  // 23.71 — seul le dépôt de boissons se devine encore : les autres métiers
+  // ne sont plus proposés, l'enseigne mène à la boutique (voir _RAYONS).
   if(/boisson|\bdepot\b|brasserie|casier/.test(n))return 'boissons';
-  if(/\bmenage\b|plastique/.test(n))return 'menage';
   return '';
 }
 function _rayonCourant(){
@@ -13413,13 +13446,14 @@ function _etagereMontrer(tout){
     if(DB.arch&&Array.isArray(DB.arch.resume)&&DB.arch.resume.length)return false;
     // 23.32 — tant qu'un des métiers a encore quelque chose à proposer : il
     // a tout mis de l'épicerie, il vend aussi des boissons.
-    return !(DB.articles||[]).length||_RAYONS.some(function(r){return _etagereListe(r.id).length>0;});
+    return !(DB.articles||[]).length||_RAYONS.some(function(r){return (r.offert||r.id===_rayonCourant())&&_etagereListe(r.id).length>0;});
   }catch(e){return false;}
 }
 // Les métiers, en images : le même dessin que l'article qui les représente.
 function _rayonsHtml(){
   var fr=(lang==='fr'),cur=_rayonCourant(),h='<div class="etg-rayons" role="radiogroup" aria-label="'+(fr?'Ce que tu vends':'What you sell')+'">';
   _RAYONS.forEach(function(r){
+    if(!r.offert&&r.id!==cur)return;     // 23.71 — deux commerces proposés (voir _RAYONS)
     var m={bg:'var(--BG)',fg:'var(--T)',svg:''};
     try{m=mediaArtInner({nm:r.rep,cat:_rayonCat(r.rep,r.id)},26);}catch(e){}
     var on=(r.id===cur);
@@ -13583,6 +13617,10 @@ function _etgSnackTout(ids){
     :(ids.length+' items in your till, at the usual price');
   var b=document.getElementById('etg-snack-b');
   b.textContent=fr?'Annuler':'Undo';
+  // 23.70 — au test d'usage : le bouton le plus vif de l'écran (orange)
+  // était « Annuler », qui retire les 19 articles qu'il vient de poser.
+  // Celui qui ne lit pas touche ce qui brille. Il reste, mais discret.
+  b.classList.add('neutre');
   b.onclick=function(){
     el.classList.remove('on');clearTimeout(_etgSnackT);
     etagereAnnulerTout(ids);
@@ -13633,6 +13671,7 @@ function _etgSnack(art,pc){
   }
   document.getElementById('etg-snack-t').textContent=art.nm+' · '+Number(art.px).toLocaleString('fr-FR')+' F — '+(fr?'dans ta caisse':'in your till');
   var b=document.getElementById('etg-snack-b');
+  b.classList.remove('neutre');     // 23.70 — « Changer le prix » reste une action pleine
   b.textContent=fr?'Changer le prix':'Change price';
   b.onclick=function(){
     el.classList.remove('on');clearTimeout(_etgSnackT);
@@ -13913,9 +13952,9 @@ function prixCarte(p){
   if(p.vr&&p.vr.length){
     var pxs=p.vr.map(function(v){return v.px;}).filter(function(x){return x>0;});
     if(!pxs.length)return '—';
-    return (lang==='fr'?'dès ':'from ')+fmt(Math.min.apply(null,pxs)).replace(s+' ','')+s;
+    return (lang==='fr'?'dès ':'from ')+_nbFr(Math.min.apply(null,pxs))+s;
   }
-  return fmt(p.px).replace(s+' ','')+s;
+  return _nbFr(p.px)+s;
 }
 var ordrePrio=[];
 // 23.22 — les articles que l'écoute en continu vient d'entendre (voir
@@ -18960,7 +18999,7 @@ function _grosDeTuile(p){
   var g=null;try{g=_grosDe(p,null);}catch(e){}
   return (g&&g.n>1&&g.px>0)?g:null;
 }
-function _montantCarte(v){var s=DB.cfg.s;return fmt(v).replace(s+' ','')+s;}
+function _montantCarte(v){var s=DB.cfg.s;return _nbFr(v)+s;}
 // La puce d'un contenant qui a un prix : une petite étiquette, le MONTANT
 // en gras et ce qu'il achète dessous (« 13 000 / carton de 24 »). Sur une
 // ligne, « casier · 6 800 » ne tenait pas dans une tuile de 360 px et
@@ -30093,10 +30132,12 @@ function renderRpt(){
   var _mt=function(v){var sy=(DB.cfg&&DB.cfg.s)||'',t=fmt(v),n=sy?t.replace(sy,''):t;n=n.replace(/^\s*-\s*/,'-').trim();
     return '<em>'+escH(n)+'</em>'+(sy?'<small>'+escH(sy)+'</small>':'');};
   var _ess='<div class="rpt-ess">'
-    +'<div><span>'+(_fr?'Ventes':'Sales')+'</span><b>'+_mt(_V)+'</b><i>'+_N+' '+(_fr?('vente'+(_N>1?'s':'')):('sale'+(_N>1?'s':'')))+'</i></div>'
-    +'<div><span>'+(_fr?'Bénéfice net':'Net profit')+'</span><b class="'+(benNet<0?'r':'g')+'">'+_mt(benNet)+'</b><i>'+(_fr?'marge ':'margin ')+m+' %</i></div>'
+    // 23.70 — chaque chiffre a son dessin (le panier, la courbe, le billet) :
+    // il reconnaît la carte avant de lire son titre.
+    +'<div><span>'+ico('caisse',15)+(_fr?'Ventes':'Sales')+'</span><b>'+_mt(_V)+'</b><i>'+_N+' '+(_fr?('vente'+(_N>1?'s':'')):('sale'+(_N>1?'s':'')))+'</i></div>'
+    +'<div><span>'+ico('rapports',15)+(_fr?'Bénéfice net':'Net profit')+'</span><b class="'+(benNet<0?'r':'g')+'">'+_mt(benNet)+'</b><i>'+(_fr?'marge ':'margin ')+m+' %</i></div>'
     +(_cais!=null
-      ?('<div><span>'+(_fr?'Espèces à compter':'Cash to count')+'</span><b>'+_mt(_cais)+'</b><i>'+(_fr?'dans la caisse':'in the drawer')+'</i></div>')
+      ?('<div><span>'+ico('billet',15)+(_fr?'Espèces à compter':'Cash to count')+'</span><b>'+_mt(_cais)+'</b><i>'+(_fr?'dans la caisse':'in the drawer')+'</i></div>')
       :('<div><span>'+(_fr?'Dépenses':'Expenses')+'</span><b>'+_mt(totalDep)+'</b><i>'+escH(_motP)+'</i></div>'))
     +'</div>';
   var _ouvert=false;try{_ouvert=sessionStorage.getItem('mb_rpt_plus')==='1';}catch(e){}
@@ -34437,10 +34478,18 @@ function _guideCible(el){
   document.querySelectorAll('.demo-cible').forEach(function(x){x.classList.remove('demo-cible');});
   if(el)el.classList.add('demo-cible');
 }
+// ⚠️ 23.70 — TEST D'USAGE (« soit sincère sur ce qui bloquera un non
+// lettré »). La bulle qui guide la première vente (« Touche un article
+// pour le vendre », « Maintenant, encaisse ») n'était QUE du texte : pour
+// celui qui ne lit pas, un rectangle muet avec une flèche. Elle se dit
+// maintenant aussi à voix haute (si la voix est permise), une fois par
+// consigne.
+var _guideDit='';
 function _guideDire(t){
   var b=document.getElementById('demo-bulle'),x=document.getElementById('demo-bulle-t');
   if(!b||!x)return;
   x.textContent=t; b.style.display='flex';
+  try{var _s=String(t).replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]\uFE0F?/gu,'').trim();if(_s&&_s!==_guideDit){_guideDit=_s;parler(_s);}}catch(e){}
   _guidePlacer();
   // La tuile désignée peut être en train de glisser vers le centre : on se
   // recale une fois le glissement fini.

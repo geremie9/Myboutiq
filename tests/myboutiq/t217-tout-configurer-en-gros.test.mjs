@@ -76,7 +76,7 @@ const article = (p, id, vid) => p.evaluate(([id, vid]) => {
   let a = await article(p, 6);
   t(a.paGros === 10800 && a.pa === 450, `carton payé 10 800 → la pièce coûte 450 (${a.paGros} → ${a.pa})`);
   t(a.garde.paGros === 10800 && a.garde.pa === 450, 'gardé sur le téléphone');
-  t(/Savon Mont Claire \(achat\) FCFA 500 → FCFA 450/.test(a.journal), `et noté au journal (« ${a.journal.slice(0, 160)} »)`);
+  t(/Savon Mont Claire \(achat\) 500 FCFA → 450 FCFA/.test(a.journal), `et noté au journal (« ${a.journal.slice(0, 160)} »)`);
   l = await lire(p, 'a6');
   t(l && /achat 450 la pièce \(10\s800 ÷ 24\)/.test(l.dessous), `la ligne le redit : « ${l && l.dessous} »`);
 

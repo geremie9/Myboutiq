@@ -132,8 +132,8 @@ async function choisir(p, noms) {
   const v = await p.evaluate(() => { const g = id => document.getElementById(id);
     return { ben: (g('expg-ben-0') || {}).textContent || '', pa: (g('expg-pa-0') || {}).textContent || '',
       ok: !!g('expg-ok-0') && getComputedStyle(g('expg-ok-0')).display !== 'none', n: (g('exp-compte') || {}).textContent || '' }; });
-  t(/Bénéfice : \D*500 par carton/.test(v.ben), `le bénéfice par carton se lit tout de suite (« ${v.ben} »)`);
-  t(/soit \D*80 la pièce/.test(v.pa), `le prix d'achat du carton est divisé devant lui, pas en silence (« ${v.pa} »)`);
+  t(/Bénéfice : \D*500\D*par carton/.test(v.ben), `le bénéfice par carton se lit tout de suite (« ${v.ben} »)`);
+  t(/soit \D*80\D*la pièce/.test(v.pa), `le prix d'achat du carton est divisé devant lui, pas en silence (« ${v.pa} »)`);
   t(v.ok && /2 articles prêts sur 2/.test(v.n), `la carte se coche, et le compte suit (« ${v.n} »)`);
   await clic(p, '#exp-valider'); await p.waitForTimeout(500);
   const st = await p.evaluate(() => ({ tit: document.getElementById('exp-tit').textContent, cartons: (document.getElementById('exps-w-0') || {}).textContent,

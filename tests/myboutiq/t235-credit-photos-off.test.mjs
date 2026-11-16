@@ -1,4 +1,4 @@
-// t235 — LE CRÉDIT DES PHOTOS OPEN FOOD FACTS (23.69).
+// t235 — LE CRÉDIT DES PHOTOS OPEN FOOD FACTS (23.72).
 // Le 17/11/2026, 29 articles réels des boutiques (Diamaor, Mayor, Coca-Cola,
 // Guinness, Tangui, Reaktor…) ont reçu une photo certifiée venue d'Open Food
 // Facts. Ces photos sont sous licence CC BY-SA 3.0 : la licence OBLIGE à

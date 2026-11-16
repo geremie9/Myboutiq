@@ -90,12 +90,12 @@ await vendre(p, { lignes: [[5, 1]], mode: 'credit', client: 1, avance: 0 }); // 
   const det = await p.evaluate(() => { for (const r of document.querySelectorAll('#rpt-cont .rrow')) if (/à compter/.test(r.textContent)) return r.textContent; return ''; });
   t(/remboursements de crédit/.test(det), 'et il nomme les remboursements dans le détail');
   const clot = await p.evaluate(() => { ouvrirClot(); return document.getElementById('clot-det').textContent.replace(/[\s  ]+/g, ' '); });
-  t(/Remboursements de crédit \(espèces\) ?FCFA 2 700/.test(clot), `la clôture montre + 2 700 remboursés en espèces`);
-  t(/remboursements mobile money \(hors caisse\) ?FCFA 500/.test(clot), 'et les 500 Orange à part, hors caisse');
+  t(/Remboursements de crédit \(espèces\) ?2 700 FCFA/.test(clot), `la clôture montre + 2 700 remboursés en espèces`);
+  t(/remboursements mobile money \(hors caisse\) ?500 FCFA/.test(clot), 'et les 500 Orange à part, hors caisse');
   const ec = n => p.evaluate(n => { document.getElementById('inp-compt').value = n; calcEcart(); return document.getElementById('ecart-lbl').textContent + ' ' + document.getElementById('ecart-amt').textContent; }, n);
   t(/Équilibrée/.test(await ec(9500)), '9 500 comptés : équilibrée');
   const vol = await ec(8500);
-  t(/Déficit/.test(vol) && nombre(vol.split('FCFA')[1]) === -1000, `billets gardés en poche : la clôture le voit (${vol})`);
+  t(/Déficit/.test(vol) && nombre(vol.split('Déficit')[1]) === -1000, `billets gardés en poche : la clôture le voit (${vol})`);
   const apres = await p.evaluate(() => { validerClot(); return { att: caisseAttendue(), n: remboursementsDuJour().length,
     clot: DB.encaissements.length === 3 && DB.encaissements.every(e => e.cloturee) }; });
   t(apres.n === 0 && apres.clot && apres.att === 5000, `clôturé : les remboursements du jour sont fermés, le tiroir repart du fonds (${apres.att})`);
