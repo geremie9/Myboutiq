@@ -7606,7 +7606,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.73'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.74'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -23986,36 +23986,90 @@ function _articlesARafraichir(){
   });
   return out;
 }
-function proposerRafraichirPhotos(){
-  if(role!=='patron')return;
-  // 23.35 — une nouvelle clé : « non merci » aux cartes emoji d'avant ne
-  // vaut pas refus des vraies photos, qu'on ne lui a jamais montrées.
-  try{if(localStorage.getItem('myboutiq_photos_reelles_vues')==='1')return;}catch(e){}
+// ══════════════════════════════════════════════════════════════════
+//  23.74 — « ESSAIE DE SIMPLIFIER TOUT AU MAXIMUM ET RASSURE QUE LES
+//            PHOTOS ARRIVENT, C'EST IMPORTANT » (le patron, 16/11/2026)
+//
+//  ⚠️ LA PROPOSITION NE VENAIT QU'UNE FOIS DANS LA VIE D'UNE BOUTIQUE. Le
+//  bandeau « N de tes articles peuvent avoir une vraie photo » posait une clé
+//  `myboutiq_photos_reelles_vues` dès qu'il avait répondu, OUI OU NON — et ne
+//  revenait plus jamais. Les 58 photos d'Open Food Facts de la 23.72 ne
+//  pouvaient donc pas atteindre une boutique qui avait déjà vu le bandeau :
+//  ni Coca-Cola, ni Mayor, ni Tangui. Et sous 3 articles, on ne disait rien.
+//  Pour un commerçant qui ne lit pas, un bandeau à lire puis une feuille à
+//  valider, c'était déjà deux obstacles.
+//
+//  Maintenant les photos se posent TOUTES SEULES, sans question :
+//   • seulement là où il n'a PAS mis sa propre photo (la sienne est la
+//     vérité, on n'y touche jamais) ;
+//   • jamais une photo qu'il a retirée (« Retirer cette photo », appui long) ;
+//   • seulement une photo qu'on a VU ARRIVER sur ce téléphone (chargée pour de
+//     vrai, voir _photoArriveVraiment) : pas d'adresse morte sur une carte ;
+//   • à chaque ouverture : ce qui n'est pas arrivé aujourd'hui (réseau
+//     coupé) arrivera demain, et les nouvelles photos du catalogue aussi.
+//  On ne touche QUE `img` : jamais le prix, le stock, une vente, un total.
+// ══════════════════════════════════════════════════════════════════
+function _photosAPoser(){
   var l=_articlesARafraichir();
-  if(l.length<3)return;                    // pas la peine de déranger pour deux
-  var fr=(lang==='fr');
-  var b=document.getElementById('annonce-banner');
-  if(!b)return;
-  // ⚠️ 23.23 — ELLE ÉCRASAIT UNE ANNONCE DE MYBOUTIQ. Vu au banc t242 : le
-  // message du jour à peine affiché, la proposition des photos prenait sa
-  // place (titre, texte, geste) — et l'annonce, jamais lue, n'était jamais
-  // marquée vue. Un seul message à la fois : celui qui est là reste.
-  if(b.style.display==='flex')return;
-  _annonceCourante=null;
-  document.getElementById('annonce-ico').innerHTML=window.ico('image',20);
-  document.getElementById('annonce-titre').textContent=fr
-    ?(l.length+' de tes articles peuvent avoir une vraie photo')
-    :(l.length+' of your items can get a real photo');
-  document.getElementById('annonce-msg').textContent=fr
-    ?'Prises en boutique, vérifiées par MyBoutiQ. Touche pour les voir.'
-    :'Shot in real shops, checked by MyBoutiQ. Tap to see them.';
-  b.style.borderLeftColor='#B8860B';
-  b.style.display='flex';
-  b.onclick=function(ev){
-    if(ev&&ev.target&&ev.target.closest&&ev.target.closest('button'))return;
-    b.style.display='none';b.onclick=null;
-    ouvrirRafraichirPhotos();
-  };
+  ((DB&&DB.articles)||[]).forEach(function(p){
+    if(!p||!p.nm||!p.vr||!p.vr.length)return;
+    p.vr.forEach(function(v){
+      if(!v||v.img||!v.nm)return;
+      // Le nom complet seulement (« Jus » + « Top Ananas ») : le nom de la
+      // variante seul (« Rouge », « 1 L ») ne dit pas de quel produit il s'agit.
+      var u='';try{u=photoCatalogue(p.nm+' '+v.nm)||'';}catch(e){}
+      if(u&&u!==p.img)l.push({p:p,v:v,url:u});
+    });
+  });
+  return l;
+}
+var _posePhotosEnCours=false;
+function poserPhotosToutSeul(){
+  if(role!=='patron'||_posePhotosEnCours||!DB||!DB.articles)return Promise.resolve(0);
+  var l=_photosAPoser();
+  if(!l.length)return Promise.resolve(0);
+  _posePhotosEnCours=true;
+  // Six à la fois, pas tout d'un coup : le téléphone n'en charge que six en
+  // parallèle, et les autres auraient « échoué » au bout de 7 s en attendant
+  // leur tour sur une connexion lente.
+  var arrivees=[],i=0;
+  function lot(){
+    if(i>=l.length)return Promise.resolve();
+    var part=l.slice(i,i+6);i+=6;
+    return Promise.all(part.map(function(x){
+      return _photoArriveVraiment(x.url).then(function(ok){if(ok)arrivees.push(x);});
+    })).then(lot);
+  }
+  return lot().then(function(){
+    _posePhotosEnCours=false;
+    var n=0;
+    arrivees.forEach(function(x){
+      // Revérifié au moment de poser : il a pu prendre sa photo entre-temps.
+      if(x.v){if(x.v.img)return;x.v.img=x.url;n++;return;}
+      var p=x.p;
+      if(p.img&&!p._imgCat)return;
+      if(p._imgNon&&p._imgNon.indexOf(x.url)>=0)return;
+      if(p.img===x.url)return;
+      p.img=x.url;p._imgCat=true;n++;
+    });
+    if(!n)return 0;
+    try{save();}catch(e){}
+    // ⚠️ Ne pas redessiner la caisse SOUS SES DOIGTS. Mesuré au banc (t241) :
+    // pendant qu'il cherchait « castel » à la voix, la pose redessinait la
+    // grille et ses Castel quittaient la tête. S'il cherche, écoute ou a une
+    // feuille ouverte, les photos attendent le prochain dessin.
+    var _occupe=false;
+    try{
+      var _q=document.getElementById('src-c');
+      _occupe=!!((_q&&_q.value)||(typeof ecouteContinue!=='undefined'&&ecouteContinue)||document.querySelector('.ov.show'));
+    }catch(e){}
+    if(!_occupe){try{renderProd(DB.articles);}catch(e){}}
+    try{renderStock(DB.articles);}catch(e){}
+    var fr=(lang==='fr');
+    try{journalAjouter('photos',fr?'Photos posées':'Photos added','',arrivees.map(function(x){return x.p.nm+(x.v?' '+x.v.nm:'');}).slice(0,30).join(', '));}catch(e){}
+    showToast('🖼️ +'+n+' '+(fr?(n>1?'photos':'photo'):(n>1?'photos':'photo')));
+    return n;
+  },function(){_posePhotosEnCours=false;return 0;});
 }
 // ══════════════════════════════════════════════════════════════════
 //  ⚠️⚠️ « QUAND L'APP ME DIT QUE MES ARTICLES PEUVENT AVOIR DE VRAIES
@@ -38857,11 +38911,12 @@ if('serviceWorker' in navigator){
       // par le service worker. Ensuite tout se décide hors ligne.
       setTimeout(function(){chargerCatalogue600().then(function(){
         try{_corrigerPhotosCatalogue();}catch(e){}});},1200);
-      // ⚠️ ON N'APPLIQUE PLUS RIEN TOUT SEUL. Sa boutique lui appartient :
-      // même une photo ne s'ajoute pas sans qu'il l'ait voulu. On se contente
-      // de compter ce qui pourrait changer et de le lui PROPOSER une fois.
+      // 23.74 — les photos se posent toutes seules, à chaque ouverture, là
+      // où il n'a pas mis la sienne (voir poserPhotosToutSeul). Avant, on les
+      // PROPOSAIT une seule fois dans la vie de la boutique : les photos
+      // arrivées après ne l'atteignaient jamais.
       setTimeout(function(){chargerManifestePhotos().then(function(){
-        try{proposerRafraichirPhotos();}catch(e){}
+        try{poserPhotosToutSeul();}catch(e){}
         // 23.32 — les vraies photos arrivent après le premier dessin de
         // l'étagère : on la redessine, si elle est là et qu'il ne cherche pas.
         try{if(document.querySelector('#pgrid .pcard.etg')&&_photoManif&&_photoManif._cert&&Object.keys(_photoManif._cert).length)renderProd(DB.articles);}catch(e){}

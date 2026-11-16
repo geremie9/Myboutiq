@@ -166,7 +166,9 @@ const fermer = p => p.evaluate(() => { document.querySelectorAll('.ov').forEach(
   t(d && d.ph && pg && !pg.ph, `la tuile « Dentifrice » montre sa vraie photo ; « Peigne » (photo seulement offerte) garde son dessin`);
   await p.locator('#etg-tout').tap(); await p.waitForTimeout(500);
   const a = await p.evaluate(() => DB.articles.filter(x => x.img).map(x => x.nm + '=' + x.img));
-  t(a.length === 1 && a[0] === 'Dentifrice=' + URL_CERT, `entré dans la caisse avec SA photo, et lui seul : ${a.join(', ')}`);
+  // 23.74 — les autres reçoivent seules leur photo Open Food Facts (t291) ;
+  // la photo seulement offerte (Peigne), jamais.
+  t(a.includes('Dentifrice=' + URL_CERT) && !a.some(x => /^Peigne=/.test(x)) && a.every(x => x === 'Dentifrice=' + URL_CERT || /=\/photos-off\//.test(x)), `entré dans la caisse avec SA photo ; Peigne sans (offerte, pas vérifiée) : ${a.join(', ')}`);
   const carte = await p.evaluate(() => { const x = DB.articles.find(y => y.nm === 'Dentifrice'); const c = document.getElementById('pc-' + x.id); return !!(c && c.querySelector('.pmedia.pphoto')); });
   t(carte, 'sa carte dans la caisse porte la photo (le dessin reste dessous si elle ne vient pas)');
   t(errs.length === 0, 'aucune erreur JS (vraies photos)' + (errs.length ? ' : ' + errs.join(' | ') : ''));

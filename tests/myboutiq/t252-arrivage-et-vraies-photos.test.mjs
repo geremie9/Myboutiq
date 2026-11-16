@@ -127,14 +127,10 @@ const feuille = p => p.evaluate(() => {
   t(c.cat600 && !c.sans.riz && !c.sans.huile, `catalogue chargé, et aucune carte emoji proposée (« ${c.sans.riz} »)`);
   t(/\/APP\/partagees\//.test(c.avec) && !c.bougie, 'une photo certifiée est proposée ; une photo offerte non vérifiée ne l\'est pas');
 
-  // Le bandeau dit « une vraie photo », même s'il avait dit non aux cartes d'avant.
-  const ban = await p.evaluate(() => {
-    try { localStorage.setItem('myboutiq_photos_proposees', '1'); } catch (e) {}
-    const bb = document.getElementById('annonce-banner'); bb.style.display = 'none';
-    proposerRafraichirPhotos();
-    return { vu: bb.style.display === 'flex', tit: document.getElementById('annonce-titre').textContent, n: _articlesARafraichir().map(x => x.p.nm).join(',') };
-  });
-  t(ban.vu && /4 de tes articles peuvent avoir une vraie photo/.test(ban.tit), `le bandeau : « ${ban.tit} » (${ban.n})`);
+  // 23.74 — plus de bandeau : les photos se posent toutes seules (t291).
+  // Ce qui serait posé : les 4 articles certifiés, jamais sa photo à lui.
+  const ban = await p.evaluate(() => ({ n: _articlesARafraichir().map(x => x.p.nm).join(',') }));
+  t(ban.n.split(',').length === 4, `4 articles recevraient une vraie photo (${ban.n})`);
   t(!/Huile/.test(ban.n), 'sa photo à lui n\'est jamais proposée au remplacement');
 
   // « Chercher dans le catalogue » : le dessin, plus de carte emoji par-dessus.

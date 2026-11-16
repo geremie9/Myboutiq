@@ -44,7 +44,9 @@ const f = await p.evaluate(() => Array.from(document.querySelectorAll('#stk-filt
 t(f[0] === 'Tout' && /^À commander/.test(f[1]) && f[2] === 'Stock bas' && f[3] === 'Épuisés', `les filtres en mots (${f.join(' · ')})`);
 await p.evaluate(() => filtreStock('cmd')); await p.waitForTimeout(250);
 vu(await releve(p), 'à commander');
-t(await p.evaluate(() => !!document.querySelector('.cmdm svg')), 'la liste à commander : le dessin de chaque article');
+// 23.74 — « Lait Nido » reçoit seul sa vraie photo : dessin OU photo, jamais un emoji ni un vide.
+const cm = await p.evaluate(() => Array.from(document.querySelectorAll('.cmdm')).map(m => m.querySelector('svg') ? 'dessin' : m.querySelector('img') ? 'photo' : 'rien:' + m.textContent.trim()));
+t(cm.length > 0 && cm.every(x => x === 'dessin' || x === 'photo'), `la liste à commander : le dessin ou la photo de chaque article (${cm.join(', ')})`);
 for (const x of ['bas', 'out', 'vend']) { await p.evaluate(x => filtreStock(x), x); await p.waitForTimeout(200); vu(await releve(p), 'filtre « ' + x + ' »'); }
 await p.evaluate(() => filtreStock('tout'));
 await p.evaluate(() => ouvrirStk(DB.articles.find(a => a.id === 6))); await p.waitForTimeout(500);
