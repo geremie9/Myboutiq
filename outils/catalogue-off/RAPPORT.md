@@ -5,17 +5,19 @@ Généré par `construire.py` le 16/11/2026. Source unique : Open Food Facts (li
 ## Bilan
 
 - Produits de la liste : **222**
-- Avec une photo OFF : **76** (67 photos différentes, plusieurs produits partagent la même)
-  - dont douteuses : **19** (liste plus bas)
-- Sans photo : **146**
-  - cherchés sur OFF, rien de bon : 31
-  - recherche incomplète (OFF a répondu 503 trois fois de suite) : 8
-  - pas encore cherchés (la recherche a été coupée au bout de 2 h, voir plus bas) : 54
+- Avec une photo OFF : **110** (101 photos différentes, plusieurs produits partagent la même)
+  - dont douteuses : **43** (liste plus bas)
+- Sans photo : **112**
+  - cherchés sur OFF, rien de bon : 58
+  - recherche incomplète (OFF a répondu 503 à chaque essai, plusieurs passes) : 1
+  - pas encore cherchés : 0
   - pas cherchés exprès (vrac, frais, service, objet sans code-barres) : 53
 
-## Pourquoi tout n'a pas été cherché
+## Comment la recherche s'est faite
 
-La recherche d'OFF (`/cgi/search.pl`) est limitée à environ 10 requêtes par minute et a répondu « 503 Service Temporarily Unavailable » à peu près une fois sur deux le 16/11/2026, même à une requête toutes les 6,5 s. La recherche a tourné 2 h (la limite d'une tâche de fond dans cette session) et s'est arrêtée au produit « Détergent Madar ». `chercher.py` reprend là où il s'est arrêté : le relancer complète `candidats.json`, puis il faut ajouter les choix dans `choix.tsv` et relancer `construire.py`.
+La recherche d'OFF (`/cgi/search.pl`) est limitée à environ 10 requêtes par minute et a répondu « 503 Service Temporarily Unavailable » plus d'une fois sur deux le 16/11/2026, même à une requête toutes les 6,5 s. Une 1re session s'est arrêtée au produit « Détergent Madar » au bout de 2 h ; une 2e session a repris avec `chercher.py` le même jour (environ 4 h de recherche, toujours à une requête toutes les 6,5 s, 30 à 90 s d'attente après chaque 503) et a refait les requêtes qui avaient échoué. `chercher.py` ne redemande plus que la moitié manquante d'une requête, et un 503 n'efface plus une réponse déjà reçue (« orangina » avait perdu ses candidats Cameroun de cette façon).
+
+Chaque photo a été choisie à l'œil sur une planche contact : produit entier (bouteille, boîte ou paquet complet, rien de coupé), le bon produit ou, à défaut, un emballage très proche signalé « douteux ». Quand aucune photo n'était entière (Rambo, Raid, Harp, Semovita Golden Penny, gombo séché), le produit est laissé sans photo plutôt qu'avec une photo coupée.
 
 ## Photos retenues
 
@@ -68,6 +70,7 @@ produit → produit OFF retenu (code)
 - Malta Guinness → Malta guinness (Guinness) (5000213021828) — `photos/malta-guinness.jpg`
 - Eau Supermont 1,5 L → Eau Supermont (Source du Pays, Supermont, 1.5 l) (0853148003002) — `photos/eau-supermont-1-5l.jpg`
 - Eau Supermont 0,5 L → Supermont (Supermont, 0,5 l) (0853148003019) — `photos/eau-supermont-0-5l.jpg`
+- Eau Tangui → Source Tangui (6174000003010) — `photos/eau-tangui.jpg` ⚠️
 - Eau Vitale → Eau vitale (9501100000958) — `photos/eau-vitale.jpg`
 - Jus Don Simon → Don Simón Néctar De Mango (Don Simon, 1.5l) (8410261657820) — `photos/jus-don-simon-1-5l.jpg` ⚠️
 - 33 Export → 33 Export, (33cle) (3184520001284) — `photos/biere-33-export.jpg` ⚠️
@@ -78,8 +81,10 @@ produit → produit OFF retenu (code)
 - Smirnoff Ice → Smirnoff Ice Bottle 275ML (Smirnoff) (5410316992060) — `photos/smirnoff-ice-275ml.jpg`
 - Kadji Beer → KADJI (KADJI, .33l) (6176000001072) — `photos/biere-kadji-33cl.jpg` ⚠️
 - K44 → k44 (K44, 0.33l) (6176000000990) — `photos/biere-k44-33cl.jpg`
+- Vin Don Simon → Vino blanco (Don Simon, 3 x 187 ml) (8410261273402) — `photos/vin-don-simon.jpg` ⚠️
 - Johnnie Walker Red → Red Label (Johnnie Walker, 75 cl) (5000267014005) — `photos/whisky-johnnie-walker-red-75cl.jpg`
 - Jameson → Jameson Whiskey (Jameson, Jameson, 1000 g) (5011007003227) — `photos/whisky-jameson.jpg`
+- Gin Gordon's → Gin Gordon's (Gordon's, 1l) (5000289925433) — `photos/gin-gordons-1l.jpg` ⚠️
 - Pastis 51 → Pastis 51,Pernod Ricard (Pastis 51, Pernod Ricard, 0.7l) (3047100000247) — `photos/pastis-51-70cl.jpg`
 - Savon Palmolive → Palmolive Naturals Moisture Care olive & milk (Palmolive, 6 * 90g) (8714789702926) — `photos/savon-palmolive.jpg` ⚠️
 - Savon Protex → deep clean (protex, 175g) (8718951697980) — `photos/savon-protex.jpg`
@@ -89,14 +94,45 @@ produit → produit OFF retenu (code)
 - Vaseline → ? (unilever, vaseline, 100ml) (6001085120946) — `photos/vaseline-100ml.jpg`
 - Nivea → Nivea Creme (Nivea, 150 ml) (4005800001192) — `photos/nivea-creme-150ml.jpg`
 - Déodorant Rexona → ReXona (Unilever, rexona) (8714100019733) — `photos/deodorant-rexona.jpg`
+- Coton-tiges → Coty'lys Family batonnets ouatés (Coty'lys, 200 pièces) (6130552001034) — `photos/coton-tiges.jpg` ⚠️
+- Détergent Ariel → Ariel (P&G) (8700216604062) — `photos/lessive-ariel.jpg` ⚠️
+- Eau de javel → EAU DE JAVEL BREF (1 L) (6130430005413) — `photos/eau-de-javel-bref.jpg` ⚠️
+- Insecticide Baygon → Baygon Crawling Insect killer (6001298899752) — `photos/insecticide-baygon.jpg` ⚠️
+- Couches Pampers → Bleier klasse 1 (2-5 kg) (Pampers, 24 pcs) (8700216664448) — `photos/couches-pampers.jpg` ⚠️
+- Lingettes → Lingettes Natural Care with Aloe Vera (Huggies, 56 pcs) (5029053550152) — `photos/lingettes-huggies.jpg` ⚠️
+- Serviettes Always → Ultra normal (always, 14 pcs) (8006540822340) — `photos/serviettes-always.jpg`
+- Lait bébé Nan → Nan Optipro 1 (Nestlé, 400g) (7613035502727) — `photos/lait-bebe-nan-400g.jpg`
+- Piles Duracell → Duracell AA (Duracell) (5000394176027) — `photos/piles-duracell-aa.jpg`
+- Vache qui rit → La Vache qui rit légère 16 portions (La Vache qui rit, Bel, 267 g) (3073781175011) — `photos/vache-qui-rit.jpg` ⚠️
+- Yaourt → yaourt (Dolait, 200g) (6500220585430) — `photos/yaourt-dolait.jpg`
+- Tapioca → tapioca (Priméal, 250 g) (3380380021619) — `photos/tapioca-sachet.jpg` ⚠️
+- Couscous de manioc → Attiéké (Fatou, 500 g) (6186000019021) — `photos/couscous-de-manioc-attieke.jpg` ⚠️
 - Huile Diamaor 1 L → DIAMAOR Huile De Graine De Coton (DIAMAOR, 1L) (6171003000008) — `photos/huile-diamaor-1l.jpg`
 - Huile Diamaor 5 L → DIAMAOR Huile De Graine De Coton (DIAMAOR, 1L) (6171003000008) — `photos/huile-diamaor-1l.jpg` ⚠️
 - Bidon Diamaor 20 L → DIAMAOR Huile De Graine De Coton (DIAMAOR, 1L) (6171003000008) — `photos/huile-diamaor-1l.jpg` ⚠️
 - Huile Mayor → Mayor (mayor, 1 litre) (6171100000017) — `photos/huile-mayor-1l.jpg`
+- Riz brisé → Riz Thaï Brisé Parfumé Golden Phoenix 4,5 KG (8858306001618) — `photos/riz-brise-golden-phoenix.jpg` ⚠️
+- Spaghetti Golden Penny → Spaghetti (Golden Penny, 500g) (6156000032207) — `photos/spaghetti-golden-penny-500g.jpg`
+- Macaroni → la pasta gold (Panzani, 500g) (3760277891073) — `photos/macaroni-panzani-gold.jpg` ⚠️
 - Indomie → Instant Noodles Chicken (indomie, 40 x 70 g) (0089686130010) — `photos/indomie-poulet-70g.jpg`
+- Sucre Dangote → Sugar (Dangote, 500 g) (6156000061016) — `photos/sucre-dangote-500g.jpg` ⚠️
+- Thé vert de Chine « gunpowder » – marque 1 → China green tea special gunpowder (Marwan, 200 g) (3683080232157) — `photos/the-vert-marwan.jpg` ⚠️
+- Thé vert de Chine « gunpowder » – marque 2 → Temple of heaven, special gunpowder china green tea (Temple Du Ciel, Temple Of Heaven, 500 g) (6931708306030) — `photos/the-vert-temple-du-ciel.jpg` ⚠️
+- Thé vert de Chine « gunpowder » – marque 3 → Dahmiss (Dahmiss) (6111175000772) — `photos/the-vert-dahmiss.jpg` ⚠️
 - Lipton en boîte → Yellow Label Tea (Lipton, 25×2.0g) (6221048700705) — `photos/the-lipton-yellow-label.jpg`
 - Lipton en sachets → Yellow Label Tea (Lipton, 25×2.0g) (6221048700705) — `photos/the-lipton-yellow-label.jpg` ⚠️
+- Bournvita → BournVita (Cadbury) (7622201679187) — `photos/bournvita.jpg`
+- Ovaltine → Olvatine (Ovaltine, 800g) (7612100062760) — `photos/ovaltine-800g.jpg` ⚠️
+- Lait Dano → Dano lait entier en poudre (arla dano, 400 g) (6044000141053) — `photos/lait-dano-poudre-400g.jpg`
+- Lait Three Crowns → Filled Evaporated Milk (Three Crowns) (04443544) — `photos/lait-three-crowns-boite.jpg` ⚠️
+- Lait Cowbell → Cowbell lait (PROMASIDOR, 12g) (6008155009330) — `photos/lait-cowbell-sachet.jpg`
+- Sel → Sel de table iodé (Star, 400g) (6111184001562) — `photos/sel-de-table-star.jpg` ⚠️
+- Soumbala (daddawa) → Soumbala en Poudre (3123456789217) — `photos/soumbala-poudre.jpg` ⚠️
+- Poivre → Poivre noir moulu (Ducros, 38g) (3166296203116) — `photos/poivre-noir-ducros.jpg` ⚠️
+- Arachides → Arachide grillé (Mafor, 50gi) (6780201501301) — `photos/arachides-grillees-mafor.jpg`
 - Eau Supermont → Eau Supermont (Source du Pays, Supermont, 1.5 l) (0853148003002) — `photos/eau-supermont-1-5l.jpg`
+- Jus Chivita → Orange Juice Blend 100% Fruit Juice (Chivita, 1 l) (6151100050014) — `photos/jus-chivita-1l.jpg`
+- Bissap → Thé De Bissap (KOPACRE, 35g) (6176000113102) — `photos/bissap-kopacre.jpg` ⚠️
 
 ## Correspondances douteuses
 
@@ -112,20 +148,44 @@ La photo est vraie, mais pas exactement le produit de la liste. À regarder avan
 - **Petits pois** (3083681094282) : marque française Cassegrain, pas celle du quartier
 - **Mentos** (87108026) : parfum fruits ; le rouleau menthe existe aussi
 - **Chewing-gum** (8935001723516) : boîte de Mentos Pure Fresh ; la tablette de rue n'a pas de photo
+- **Eau Tangui** (6174000003010) : le bas de la bouteille est coupé sur la photo d'origine
 - **Jus Don Simon** (8410261657820) : parfum mangue ; les autres parfums ont la même bouteille
 - **33 Export** (3184520001284) : canette vendue en France ; au Cameroun c'est surtout la bouteille 65 cl
 - **Castel Beer** (9501100002181) : bouteille du Burkina, même étiquette
 - **Kadji Beer** (6176000001072) : bouteille 33 cl ; la 65 cl n'a pas de photo nette
+- **Vin Don Simon** (8410261273402) : briques de vin blanc 187 ml ; le vin rouge en brique de 1 L n'a pas de photo
+- **Gin Gordon's** (5000289925433) : le bouchon touche le bord de la photo d'origine
 - **Savon Palmolive** (8714789702926) : photo du paquet de 6 pains
 - **Brosses à dents** (8720181236341) : marque Signal par défaut, paquet de 4
+- **Coton-tiges** (6130552001034) : marque algérienne Coty'lys : la marque du quartier peut être autre
+- **Détergent Ariel** (8700216604062) : bouteille de lessive liquide (France) ; au quartier c'est le sachet de poudre (le carton de poudre n'avait pas de photo entière)
+- **Eau de javel** (6130430005413) : marque algérienne Bref : la marque du quartier peut être autre
+- **Insecticide Baygon** (6001298899752) : bombe vendue au Qatar, même bombe verte
+- **Couches Pampers** (8700216664448) : paquet vendu en Norvège, même emballage
+- **Lingettes** (5029053550152) : marque Huggies par défaut
+- **Vache qui rit** (3073781175011) : boîte « légère » de 16 portions (France) ; au quartier la portion se vend à l'unité
+- **Tapioca** (3380380021619) : tapioca en sachet bio (France) ; le tapioca du quartier est en vrac ou en sachet local
+- **Couscous de manioc** (6186000019021) : attiéké en boîte (marque Fatou) ; le couscous de manioc du quartier est en sachet
 - **Huile Diamaor 5 L** (6171003000008) : photo de la bouteille de 1 L
 - **Bidon Diamaor 20 L** (6171003000008) : photo de la bouteille de 1 L
+- **Riz brisé** (8858306001618) : sac de riz thaï brisé 4,5 kg ; au Nord le riz brisé se vend souvent au sac de 25 ou 50 kg
+- **Macaroni** (3760277891073) : pâtes Panzani « Gold » vendues au Cameroun ; la forme (coudes ou penne) est à vérifier
+- **Sucre Dangote** (6156000061016) : sachet photographié en main
+- **Thé vert de Chine « gunpowder » – marque 1** (3683080232157) : marque au hasard : la marque vendue au Nord n'est pas connue
+- **Thé vert de Chine « gunpowder » – marque 2** (6931708306030) : marque au hasard : la marque vendue au Nord n'est pas connue
+- **Thé vert de Chine « gunpowder » – marque 3** (6111175000772) : marque marocaine au hasard : la marque vendue au Nord n'est pas connue
 - **Lipton en sachets** (6221048700705) : photo de la boîte, pas du sachet seul
+- **Ovaltine** (7612100062760) : le couvercle est un peu coupé sur la photo d'origine
+- **Lait Three Crowns** (04443544) : boîte de lait concentré ; le sachet de poudre n'a pas de photo entière
+- **Sel** (6111184001562) : sel de table Star en flacon (Maroc) ; au Nord le sel se vend en sachet
+- **Soumbala (daddawa)** (3123456789217) : pot de soumbala en poudre (France) ; au marché il se vend en boules
+- **Poivre** (3166296203116) : flacon Ducros (France) ; au Nord le poivre se vend en vrac ou en sachet
+- **Bissap** (6176000113102) : boîte de bissap séché (Cameroun) ; le jus en sachet n'a pas de photo
 
 ## Sans photo — à photographier en boutique
 
 
-### Cherchés sur OFF, aucune photo convenable (31)
+### Cherchés sur OFF, aucune photo convenable (58)
 
 - Huile Azur — Huiles — NORD/SUD
 - Huile Azur Gold — Huiles — SUD
@@ -145,87 +205,53 @@ La photo est vraie, mais pas exactement le produit de la liste. À regarder avan
 - Tomate Gino — Conserves, tartinables — NORD/SUD
 - Bonbons Tom Tom — Biscuits, confiseries — NORD/SUD
 - Arachides grillées — Biscuits, confiseries — SUD
+- Planet — Sucreries, eaux — SUD
 - Beaufort Light — Bières — SUD
 - Isenbeck — Bières — SUD
 - Booster — Bières — NORD/SUD
+- Harp — Bières — SUD
 - Vin Baron de Valls — Vins, alcools — SUD
 - Whisky Lion d'Or — Vins, alcools — SUD
+- King Arthur — Vins, alcools — SUD
 - Savon Lux — Hygiène du corps — NORD/SUD
 - Savon Dettol — Hygiène du corps — NORD/SUD
 - Dentifrice Close-Up — Hygiène du corps — NORD/SUD
 - Caro White — Hygiène du corps — SUD
 - Lames Gillette — Hygiène du corps — SUD
 - Savon Azur — Entretien de la maison — NORD/SUD
-- Détergent Omo — Entretien de la maison — NORD/SUD
-- Maggi — Assaisonnements — NORD
-
-### Recherche incomplète (503 répétés) (8)
-
-- Planet — Sucreries, eaux — SUD
-- Eau Tangui — Sucreries, eaux — NORD/SUD
-- Harp — Bières — SUD
-- Vin Don Simon — Vins, alcools — SUD
-- King Arthur — Vins, alcools — SUD
-- Gin Gordon's — Vins, alcools — SUD
-- Coton-tiges — Hygiène du corps — SUD
 - Savon Sanet — Entretien de la maison — NORD/SUD
-
-### Pas encore cherchés (recherche coupée) (54)
-
+- Détergent Omo — Entretien de la maison — NORD/SUD
 - Détergent Madar — Entretien de la maison — NORD/SUD
-- Détergent Ariel — Entretien de la maison — NORD/SUD
-- Eau de javel — Entretien de la maison — NORD/SUD
-- Insecticide Baygon — Entretien de la maison — NORD/SUD
 - Spirales Rambo — Entretien de la maison — SUD
 - Insecticide Raid — Entretien de la maison — SUD
-- Couches Pampers — Bébé et femme — NORD/SUD
 - Couches Molfix — Bébé et femme — NORD/SUD
-- Lingettes — Bébé et femme — SUD
-- Serviettes Always — Bébé et femme — NORD/SUD
-- Lait bébé Nan — Bébé et femme — NORD/SUD
 - Piles Tiger Head — Divers — NORD/SUD
-- Piles Duracell — Divers — SUD
-- Vache qui rit — Vrac et frais — NORD/SUD
-- Yaourt — Vrac et frais — SUD
 - Gari — Vrac et frais — SUD
-- Tapioca — Vrac et frais — SUD
-- Couscous de manioc — Vrac et frais — SUD
 - Power Oil / King's Oil (Nigeria) — Huiles — NORD
-- Riz brisé — Céréales, pâtes — NORD
 - Riz de Yagoua (Semry) — Céréales, pâtes — NORD
 - Farine de maïs — Céréales, pâtes — NORD
 - Couscous — Céréales, pâtes — NORD
 - Spaghetti Dangote — Céréales, pâtes — NORD
-- Spaghetti Golden Penny — Céréales, pâtes — NORD
-- Macaroni — Céréales, pâtes — NORD
 - Semoule Golden Penny — Céréales, pâtes — NORD
-- Sucre Dangote — Sucre, thé, café — NORD
-- Thé vert de Chine « gunpowder » – marque 1 — Sucre, thé, café — NORD
-- Thé vert de Chine « gunpowder » – marque 2 — Sucre, thé, café — NORD
-- Thé vert de Chine « gunpowder » – marque 3 — Sucre, thé, café — NORD
-- Bournvita — Sucre, thé, café — NORD
-- Ovaltine — Sucre, thé, café — NORD
-- Lait Dano — Laits — NORD
-- Lait Three Crowns — Laits — NORD
-- Lait Cowbell — Laits — NORD
+- Maggi — Assaisonnements — NORD
 - Maggi Star — Assaisonnements — NORD
-- Sel — Assaisonnements — NORD
 - Piment sec — Assaisonnements — NORD
-- Soumbala (daddawa) — Assaisonnements — NORD
-- Poivre — Assaisonnements — NORD
 - Curry — Assaisonnements — NORD
 - Margarine — Conserves, tartinables — NORD
-- Biscuits Cabin (Nigeria) — Biscuits, confiseries — NORD
 - Dattes — Biscuits, confiseries — NORD
-- Arachides — Biscuits, confiseries — NORD
 - Bonbons à la menthe — Biscuits, confiseries — NORD
-- Jus Chivita — Boissons sans alcool — NORD
 - Bigi — Boissons sans alcool — NORD
-- Bissap — Boissons sans alcool — NORD
 - Insecticide Rambo — Maison — NORD
 - Niébé — Vrac et frais — NORD
 - Gombo sec — Vrac et frais — NORD
 - Sésame — Vrac et frais — NORD
+
+### Recherche incomplète (503 répétés) (1)
+
+- Biscuits Cabin (Nigeria) — Biscuits, confiseries — NORD
+
+### Pas encore cherchés (0)
+
 
 ### Pas cherchés exprès : vrac, frais, service ou objet sans code-barres (53)
 
@@ -291,3 +317,9 @@ La photo est vraie, mais pas exactement le produit de la liste. À regarder avan
 - `chercher.py`, `photo.py`, `construire.py` : les scripts (Python 3 + Pillow).
 - `photos/` : JPEG 600×600, produit entier, fond blanc, < 120 Ko.
 - `catalogue-off.json` : prêt à importer, format de `catalogue-600.json` + crédit de licence.
+
+## Pour la session qui importera dans l'app
+
+- Rien de ce dossier n'est encore dans l'app : `catalogue-off.json` et `photos/` sont prêts, la base (`base`) est vide tant que les photos ne sont pas sur le stockage.
+- La licence CC BY-SA 3.0 oblige à créditer Open Food Facts (une ligne « Photos de produits : Open Food Facts, licence CC BY-SA 3.0 » suffit) : le crédit a été retiré de l'app avec le revert de 94ec244, à remettre avec l'import.
+- Demande du patron le 16/11/2026, à faire dans l'app (pas dans cette session) : « l'objectif de la journée, il faut l'effacer ». Ça touche la barre « Objectif » en haut de la caisse (`#obj-bar`, `updateObjBar`), la ligne 🎯 « Objectif journalier » de Réglages (`ouvrirObj`, feuille `ov-obj`), et la notification « 🎯 Objectif atteint ! » (`DB.objectif`). Garder `DB.objectif` dans les données pour ne rien casser à la synchro.

@@ -30,9 +30,20 @@ def url_off(code):
     return f'https://world.openfoodfacts.org/product/{code}'
 
 def telecharger(u):
-    req = urllib.request.Request(u, headers={'User-Agent': UA})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return r.read()
+    # images.openfoodfacts.org coupe parfois la connexion (« Connection reset
+    # by peer », mesuré le 16/11/2026) : trois essais espacés avant d'abandonner.
+    for essai in range(3):
+        try:
+            req = urllib.request.Request(u, headers={'User-Agent': UA})
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return r.read()
+        except urllib.error.HTTPError:
+            raise
+        except Exception as e:
+            print('  ! image', e, file=sys.stderr)
+            if essai == 2:
+                raise
+            time.sleep(10 * (essai + 1))
 
 # 1. Photos (une par slug)
 os.makedirs(os.path.join(ICI, 'photos'), exist_ok=True)
@@ -128,15 +139,21 @@ L.append(f'- Avec une photo OFF : **{len(trouves)}** ({len(photo_src)} photos di
 L.append(f'  - dont douteuses : **{len(douteux)}** (liste plus bas)')
 L.append(f'- Sans photo : **{len(non)}**')
 L.append(f"  - cherchés sur OFF, rien de bon : {len(groupes['rien'])}")
-L.append(f"  - recherche incomplète (OFF a répondu 503 trois fois de suite) : {len(groupes['incomplet'])}")
-L.append(f"  - pas encore cherchés (la recherche a été coupée au bout de 2 h, voir plus bas) : {len(groupes['pas_cherche'])}")
+L.append(f"  - recherche incomplète (OFF a répondu 503 à chaque essai, plusieurs passes) : {len(groupes['incomplet'])}")
+L.append(f"  - pas encore cherchés : {len(groupes['pas_cherche'])}")
 L.append(f"  - pas cherchés exprès (vrac, frais, service, objet sans code-barres) : {len(groupes['sans'])}\n")
-L.append("## Pourquoi tout n'a pas été cherché\n")
+L.append("## Comment la recherche s'est faite\n")
 L.append("La recherche d'OFF (`/cgi/search.pl`) est limitée à environ 10 requêtes par minute et a répondu "
-         "« 503 Service Temporarily Unavailable » à peu près une fois sur deux le 16/11/2026, même à une requête "
-         "toutes les 6,5 s. La recherche a tourné 2 h (la limite d'une tâche de fond dans cette session) et s'est "
-         "arrêtée au produit « Détergent Madar ». `chercher.py` reprend là où il s'est arrêté : le relancer "
-         "complète `candidats.json`, puis il faut ajouter les choix dans `choix.tsv` et relancer `construire.py`.\n")
+         "« 503 Service Temporarily Unavailable » plus d'une fois sur deux le 16/11/2026, même à une requête "
+         "toutes les 6,5 s. Une 1re session s'est arrêtée au produit « Détergent Madar » au bout de 2 h ; "
+         "une 2e session a repris avec `chercher.py` le même jour (environ 4 h de recherche, toujours à une requête "
+         "toutes les 6,5 s, 30 à 90 s d'attente après chaque 503) et a refait les requêtes qui avaient échoué. "
+         "`chercher.py` ne redemande plus que la moitié manquante d'une requête, et un 503 n'efface plus une réponse "
+         "déjà reçue (« orangina » avait perdu ses candidats Cameroun de cette façon).\n")
+L.append("Chaque photo a été choisie à l'œil sur une planche contact : produit entier (bouteille, boîte ou paquet "
+         "complet, rien de coupé), le bon produit ou, à défaut, un emballage très proche signalé « douteux ». "
+         "Quand aucune photo n'était entière (Rambo, Raid, Harp, Semovita Golden Penny, gombo séché), le produit est "
+         "laissé sans photo plutôt qu'avec une photo coupée.\n")
 L.append('## Photos retenues\n')
 L.append('produit → produit OFF retenu (code)\n')
 for p in trouves:
@@ -153,7 +170,7 @@ for p in douteux:
 L.append('\n## Sans photo — à photographier en boutique\n')
 tit = {'rien': 'Cherchés sur OFF, aucune photo convenable',
        'incomplet': 'Recherche incomplète (503 répétés)',
-       'pas_cherche': 'Pas encore cherchés (recherche coupée)',
+       'pas_cherche': 'Pas encore cherchés',
        'sans': 'Pas cherchés exprès : vrac, frais, service ou objet sans code-barres'}
 for k in ('rien', 'incomplet', 'pas_cherche', 'sans'):
     L.append(f"\n### {tit[k]} ({len(groupes[k])})\n")
@@ -166,5 +183,16 @@ L.append('- `choix.tsv` : le choix fait à la main pour chaque produit, avec la 
 L.append('- `chercher.py`, `photo.py`, `construire.py` : les scripts (Python 3 + Pillow).')
 L.append('- `photos/` : JPEG 600×600, produit entier, fond blanc, < 120 Ko.')
 L.append('- `catalogue-off.json` : prêt à importer, format de `catalogue-600.json` + crédit de licence.')
+L.append('\n## Pour la session qui importera dans l\'app\n')
+L.append("- Rien de ce dossier n'est encore dans l'app : `catalogue-off.json` et `photos/` sont prêts, la base "
+         "(`base`) est vide tant que les photos ne sont pas sur le stockage.")
+L.append("- La licence CC BY-SA 3.0 oblige à créditer Open Food Facts (une ligne « Photos de produits : Open Food Facts, "
+         "licence CC BY-SA 3.0 » suffit) : le crédit a été retiré de l'app avec le revert de 94ec244, à remettre "
+         "avec l'import.")
+L.append("- Demande du patron le 16/11/2026, à faire dans l'app (pas dans cette session) : « l'objectif de la journée, "
+         "il faut l'effacer ». Ça touche la barre « Objectif » en haut de la caisse (`#obj-bar`, `updateObjBar`), "
+         "la ligne 🎯 « Objectif journalier » de Réglages (`ouvrirObj`, feuille `ov-obj`), et la notification "
+         "« 🎯 Objectif atteint ! » (`DB.objectif`). Garder `DB.objectif` dans les données pour ne rien casser à la "
+         "synchro.")
 open(os.path.join(ICI, 'RAPPORT.md'), 'w', encoding='utf-8').write('\n'.join(L) + '\n')
 print(len(trouves), len(douteux), len(non), {k: len(v) for k, v in groupes.items()}, file=sys.stderr)
