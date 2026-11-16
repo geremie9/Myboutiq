@@ -21,7 +21,7 @@ const tuiles = p => p.evaluate(() => Array.from(document.querySelectorAll('#rpt-
   const ordre = await p.evaluate(() => { const c = document.getElementById('rpt-cont'); const ess = c.querySelector('.rpt-ess'), det = c.querySelector('.rcd');
     return !!ess && !!det && !!(ess.compareDocumentPosition(det) & Node.DOCUMENT_POSITION_FOLLOWING); });
   const T = await tuiles(p);
-  t(ordre && T.map(x => x.t).join(',') === 'Ventes,Bénéfice net,Espèces à compter', `en tête : ${T.map(x => x.t + ' ' + x.v).join(' · ')}`);
+  t(ordre && T.map(x => x.t).join(',') === "J'ai vendu,J'ai gagné,Dans la caisse", `en tête : ${T.map(x => x.t + ' ' + x.v).join(' · ')}`);
   const cais = await p.evaluate(() => caisseAttendue());
   t(nombre(T[0].v) === 4450, `ventes : ${T[0].v} (calculé : 4 450)`);
   t(nombre(T[2].v) === cais && nombre(await ligneRapport(p, 'à compter')) === cais && cais === 3150 - 500, `espèces à compter : ${T[2].v} — la même que la ligne « à compter » et que la clôture (3 150 − 500 de moto)`);
