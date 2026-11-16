@@ -24090,7 +24090,20 @@ function _photosAPoser(){
   });
   return l;
 }
-var _posePhotosEnCours=false;
+var _posePhotosEnCours=false,_derniereTouche=0;
+try{['pointerdown','touchstart','keydown'].forEach(function(ev){document.addEventListener(ev,function(){_derniereTouche=Date.now();},true);});}catch(e){}
+function _redessinerQuandCalme(n){
+  var occupe=false;
+  try{
+    var q=document.getElementById('src-c');
+    occupe=!!((q&&q.value)||(typeof ecouteContinue!=='undefined'&&ecouteContinue)||document.querySelector('.ov.show'));
+  }catch(e){}
+  if(occupe||Date.now()-_derniereTouche<4000){
+    if(n<6)setTimeout(function(){_redessinerQuandCalme(n+1);},4000);
+    return;
+  }
+  try{renderProd(DB.articles);}catch(e){}
+}
 function poserPhotosToutSeul(){
   if(role!=='patron'||_posePhotosEnCours||!DB||!DB.articles)return Promise.resolve(0);
   var l=_photosAPoser();
@@ -24125,12 +24138,11 @@ function poserPhotosToutSeul(){
     // pendant qu'il cherchait « castel » à la voix, la pose redessinait la
     // grille et ses Castel quittaient la tête. S'il cherche, écoute ou a une
     // feuille ouverte, les photos attendent le prochain dessin.
-    var _occupe=false;
-    try{
-      var _q=document.getElementById('src-c');
-      _occupe=!!((_q&&_q.value)||(typeof ecouteContinue!=='undefined'&&ecouteContinue)||document.querySelector('.ov.show'));
-    }catch(e){}
-    if(!_occupe){try{renderProd(DB.articles);}catch(e){}}
+    // ⚠️ Et pas juste après un toucher : mesuré au banc (t222), la tuile
+    // « Bougie » venait d'allumer sa barre « touche le bas » quand la pose a
+    // tout redessiné — la barre s'éteignait avant qu'il la voie. On attend
+    // 4 s de calme (essayé six fois au plus, puis au prochain dessin).
+    _redessinerQuandCalme(0);
     try{renderStock(DB.articles);}catch(e){}
     var fr=(lang==='fr');
     try{journalAjouter('photos',fr?'Photos posées':'Photos added','',arrivees.map(function(x){return x.p.nm+(x.v?' '+x.v.nm:'');}).slice(0,30).join(', '));}catch(e){}
