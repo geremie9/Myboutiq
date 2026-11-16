@@ -1,4 +1,4 @@
-const CACHE_NAME='myboutiq-v371';
+const CACHE_NAME='myboutiq-v374';
 const IMG_CACHE='myboutiq-images-v1';
 // ⚠️ Les polices vivaient hors du cache : chaque ouverture repartait les
 // chercher chez Google, et hors ligne la boutique s'affichait dans une police
@@ -65,6 +65,10 @@ self.addEventListener('activate',function(e){
 });
 
 function isProductImage(url){
+  // 23.72 — les photos Open Food Facts livrées avec l'app (/photos-off/) vont
+  // dans le même cache que celles du serveur : gardées d'une version à
+  // l'autre, au lieu d'être retéléchargées à chaque mise à jour.
+  if(url.origin===self.location.origin&&url.pathname.indexOf('/photos-off/')===0&&/\.jpg$/i.test(url.pathname))return true;
   return url.hostname===SUPABASE_STORAGE_HOST&&url.pathname.indexOf('/storage/')!==-1;
 }
 
