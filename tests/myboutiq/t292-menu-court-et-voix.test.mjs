@@ -47,13 +47,13 @@ await p.evaluate(() => document.getElementById('ctxm').classList.remove('show'))
 const v0 = await p.evaluate(() => ({ on: voixActive(), cfg: DB.cfg.voix }));
 t(!v0.on, `par défaut, l'app se tait (voix : ${v0.cfg})`);
 await p.evaluate(() => { addPanier(DB.articles.find(a => a.id === 2)); procederPmt(); }); await p.waitForTimeout(500);
-const bt = await p.evaluate(() => { const x = document.getElementById('btn-voix'), r = x && x.getBoundingClientRect(); return x ? { vu: !!x.offsetParent && r.height >= 40, txt: x.textContent.trim() } : null; });
-t(bt && bt.vu && bt.txt === '🔇', `au paiement, avant tout montant : le bouton 🔇 est là, assez grand pour le doigt (${bt && bt.txt})`);
+const bt = await p.evaluate(() => { const x = document.getElementById('btn-voix'), r = x && x.getBoundingClientRect(); return x ? { vu: !!x.offsetParent && r.height >= 40 && !!x.querySelector('svg'), txt: x.getAttribute('data-on') === '1' ? '🔊' : '🔇' } : null; });
+t(bt && bt.vu && bt.txt === '🔇', `au paiement, avant tout montant : le haut-parleur barré est là (au trait, pas d'emoji), assez grand pour le doigt (${bt && bt.txt})`);
 await p.locator('#btn-voix').tap(); await p.waitForTimeout(250);
-const v1 = await p.evaluate(() => ({ on: voixActive(), txt: document.getElementById('btn-voix').textContent.trim(), sauve: JSON.parse(localStorage.getItem('myboutiq_v6') || '{}').cfg.voix }));
+const v1 = await p.evaluate(() => ({ on: voixActive(), txt: document.getElementById('btn-voix').getAttribute('data-on') === '1' ? '🔊' : '🔇', sauve: JSON.parse(localStorage.getItem('myboutiq_v6') || '{}').cfg.voix }));
 t(v1.on && v1.txt === '🔊' && v1.sauve === true, `un geste et elle parle, et elle s'en souvient (${v1.txt}, enregistré : ${v1.sauve})`);
 await p.locator('#btn-voix').tap(); await p.waitForTimeout(250);
-t(await p.evaluate(() => !voixActive() && DB.cfg.voix === false && document.getElementById('btn-voix').textContent.trim() === '🔇'), 'un second geste et elle se tait');
+t(await p.evaluate(() => !voixActive() && DB.cfg.voix === false && document.getElementById('btn-voix').getAttribute('data-on') === '0'), 'un second geste et elle se tait');
 t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
 await ctx.close(); await b.close(); s.close();
 fin();
