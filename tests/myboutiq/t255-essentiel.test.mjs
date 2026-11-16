@@ -18,12 +18,12 @@ await p.setViewportSize({ width: 360, height: 740 }); await p.waitForTimeout(300
 await p.evaluate(() => showCtx({ clientX: 80, clientY: 200 }, DB.articles.find(a => a.id === 2))); await p.waitForTimeout(250);
 const m1 = await vis(p, '#ctxm .ctxi');
 const emo = await p.evaluate(() => /[\u{1F300}-\u{1FAFF}☀-➿]/u.test(document.getElementById('ctxm').textContent));
-t(m1.length === 6 && m1[0] === 'Saisir une quantité' && m1[5] === 'Plus d\'actions' && !m1.includes('Supprimer'), `l'essentiel d'abord : ${m1.join(' · ')}`);
+t(m1.length === 6 && m1[0] === 'Quantité' && m1[5] === 'Plus d\'actions' && !m1.includes('Supprimer'), `l'essentiel d'abord : ${m1.join(' · ')}`);
 t(!emo && await p.evaluate(() => document.querySelectorAll('#ctxm .cxic svg').length >= 12), 'au trait, sans emoji');
 await p.locator('#ctxi-plus').tap(); await p.waitForTimeout(250);
 const m2 = await vis(p, '#ctxm .ctxi');
 const ouv = await p.evaluate(() => { const m = document.getElementById('ctxm'), r = m.getBoundingClientRect(); return { show: m.classList.contains('show'), dans: r.bottom <= innerHeight + 1 && r.top >= 0 }; });
-t(ouv.show && ouv.dans && m2.includes('Renommer') && m2.includes('Supprimer') && !m2.includes('Plus d\'actions') && m2.some(x => /Vente en rupture : (dés)?activée/.test(x)),
+t(ouv.show && ouv.dans && m2.includes('Renommer') && m2.includes('Supprimer') && !m2.includes('Plus d\'actions') && m2.some(x => /Vendre sans stock : (oui|non)/.test(x)),
   `« Plus d'actions » déplie le reste sans fermer le menu, et il tient dans l'écran (${m2.length} lignes)`);
 await p.evaluate(() => document.getElementById('ctxm').classList.remove('show'));
 
