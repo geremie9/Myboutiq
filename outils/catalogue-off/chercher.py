@@ -42,13 +42,21 @@ for i, q in enumerate(reqs):
     if q in cache and cache[q].get('cm') is not None and cache[q].get('monde') is not None:
         continue
     print(f'[{i+1}/{len(reqs)}] {q}', file=sys.stderr)
-    cm = appel(q, 'en:cameroon'); time.sleep(6.5)
+    # ⚠️ On ne redemande que la moitié qui manque, et un 503 n'efface jamais
+    # une réponse déjà reçue : au 1er passage du 16/11 (2e session), « orangina »
+    # avait perdu ses candidats Cameroun parce que la nouvelle requête a échoué.
+    avant = cache.get(q) or {}
+    cm = avant.get('cm')
+    if cm is None:
+        cm = appel(q, 'en:cameroon'); time.sleep(6.5)
     # Assez de candidats au Cameroun : la recherche monde ne servirait à rien
     # (et chaque requête en trop coûte un 503 sur deux, mesuré le 16/11).
-    if cm is not None and len(cm) >= 3:
-        monde = []
-    else:
-        monde = appel(q, None, 30); time.sleep(6.5)
+    monde = avant.get('monde')
+    if monde is None:
+        if cm is not None and len(cm) >= 3:
+            monde = []
+        else:
+            monde = appel(q, None, 30); time.sleep(6.5)
     cache[q] = {'cm': cm, 'monde': monde}
     json.dump(cache, open(SORTIE, 'w'), ensure_ascii=False)
 print('fini', len(cache), file=sys.stderr)
