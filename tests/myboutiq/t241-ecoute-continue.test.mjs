@@ -89,7 +89,8 @@ await p.evaluate(() => { micLongPress(null); micTape(); }); await p.waitForTimeo
 const e0 = await p.evaluate(() => ({ on: ecouteContinue, st: __sr.starts, lbl: (document.getElementById('ec-etat') || {}).textContent || '' }));
 t(e0.on && e0.st === 1 && /J'écoute les noms d'articles/.test(e0.lbl), `appui long : elle écoute, et le dit sous la recherche (« ${e0.lbl} »)`);
 
-const tete = n => p.evaluate(n => Array.from(document.querySelectorAll('#pgrid .pcard')).slice(0, n).map(c => Number(c.id.replace('pc-', ''))), n);
+// 23.89 — une famille sur l'étagère est un bloc `.pfam` (ses sortes dedans) : il compte comme une tuile.
+const tete = n => p.evaluate(n => Array.from(document.querySelectorAll('#pgrid .pcard, #pgrid .pfam')).slice(0, n).map(c => Number(c.id.replace('pc-', ''))), n);
 // Il parle sa langue ; seul « castel » est un nom d'article. Phrase encore provisoire.
 await p.evaluate(() => { __sr.dire('mbolo ma tanti', false); __sr.dire('mbolo ma tanti donne moi deux castel', false); });
 await p.waitForTimeout(100);

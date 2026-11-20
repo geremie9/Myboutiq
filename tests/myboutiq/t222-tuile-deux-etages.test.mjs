@@ -20,6 +20,7 @@ const A = (id, nm, px, stk, extra) => Object.assign({ id, nm, e: '📦', cat: 'D
 function boutique(facon) {
   const d = nouvelleBoutique();
   d.cfg.facon = facon; d.cfg.venteDeverrouillee = false;      // la caisse de tous les jours
+  d.cfg.varStyle = 'carre';   // 23.89 — la tuile FERMÉE d'une famille n'existe que dans la fenêtre ; l'étagère : t304
   d.articles.push(
     A(20, 'Sucre', 700, 200, { um: 'kg', umSac: 50, umCont: 'sac', pxGros: 25000 }),
     A(21, 'Farine', 600, 200, { um: 'kg', umSac: 50, umCont: 'sac', pxGros: 25000 }),

@@ -10,6 +10,7 @@ const { t, fin } = compteur('t285');
 const { s, port } = await serveur();
 const b = await chromium.launch();
 const d = nouvelleBoutique(); d.cfg.facon = 'detail';
+d.cfg.varStyle = 'carre';   // 23.89 — la tuile FERMÉE d'une famille n'existe que dans la fenêtre ; l'étagère : t304
 const riz = d.articles.find(a => a.id === 2);
 Object.assign(riz, { nm: 'Riz', um: 'kg', px: 700, pa: 600, stk0: 125, umSac: 50, umCont: 'sac' });
 // Sa famille « Riz » de G : 50 au niveau de la famille, aucun mot, deux variantes.

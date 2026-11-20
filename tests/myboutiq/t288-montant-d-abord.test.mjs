@@ -9,6 +9,7 @@ const { t, fin } = compteur('t288');
 const { s, port } = await serveur();
 const b = await chromium.launch();
 const d = nouvelleBoutique(); d.cfg.facon = 'detail'; d.objectif = 25000;
+d.cfg.varStyle = 'carre';   // 23.89 — la tuile FERMÉE d'une famille n'existe que dans la fenêtre ; l'étagère : t304
 d.articles.push({ id: 40, nm: 'Jus Top', e: '🥤', cat: 'Boissons', px: 0, pa: 0, stk0: 0, al: 0, vd: 0, vr: [{ id: 1, nm: 'Ananas', px: 500, pa: 300, stk0: 10, qBase: 1 }, { id: 2, nm: 'Orange', px: 600, pa: 300, stk0: 10, qBase: 1 }] });
 const { ctx, p, errs } = await ouvrirCaisse(b, port, d);
 await p.waitForTimeout(400);
