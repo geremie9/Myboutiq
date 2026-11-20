@@ -15,6 +15,8 @@ const d = nouvelleBoutique();
 d.articles.push({ id: 90, nm: 'Safran', e: '', cat: 'Alimentation', px: 40000, pa: 30000, stk0: 1, al: 0, vd: 0, um: 'kg' });
 d.articles.push({ id: 91, nm: 'Viande', e: '', cat: 'Alimentation', px: 3500, pa: 2800, stk0: 0.05, al: 0, vd: 0, um: 'kg' });
 d.articles.push({ id: 92, nm: 'Tomates', e: '', cat: 'Alimentation', px: 2000, pa: 1500, stk0: 6, al: 0, vd: 0, umNom: 'cuvette' });
+d.articles.push({ id: 94, nm: 'Arachides', e: '', cat: 'Alimentation', px: 300, pa: 200, stk0: 40, al: 0, vd: 0, umNom: 'verre' });
+d.articles.push({ id: 95, nm: 'Lait Peak', e: '', cat: 'Alimentation', px: 600, pa: 500, stk0: 40, al: 0, vd: 0, umNom: 'boîte' });
 d.articles.push({ id: 93, nm: 'Tomates en tas', e: '', cat: 'Alimentation', px: 200, pa: 150, stk0: 20, al: 0, vd: 0, umNom: 'tas' });
 const { ctx, p, errs } = await ouvrirCaisse(b, port, d);
 const pour = (id, m) => p.evaluate(([id, m]) => { window.__toasts = []; viderPanier(); ouvrirQteMesure(DB.articles.find(x => x.id === id)); qtePourMontant(m); return { q: panier[id + '-0'] || 0, total: calcTotal(), toast: window.__toasts.join(' / '), badge: (document.querySelector('#qb-' + id + ' .qbdg-n') || {}).textContent || '' }; }, [id, m]);
@@ -44,6 +46,11 @@ t(hab.q === 1 && !hab.f, 'trois cuvettes entières vendues : la tuile en vend un
 // ── 4. Le tas reste une pièce entière ──
 const tas = await p.evaluate(() => { viderPanier(); document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); document.getElementById('pc-93').click(); return { q: panier['93-0'] || 0, f: document.getElementById('ov-qte').classList.contains('show') }; });
 t(tas.q === 1 && !tas.f, 'un tas de tomates : une touche, un tas — on ne vend pas un tiers de tas');
+// ── 5. Les mesures du marché : le verre d'arachides oui, la boîte de lait non ──
+const mk = await p.evaluate(() => ({ verre: seVendAuDetail(DB.articles.find(x => x.id === 94)), boite: seVendAuDetail(DB.articles.find(x => x.id === 95)) }));
+r = await pour(94, 100);
+t(mk.verre && r.total === 100 && Math.abs(r.q - 0.333) < 0.001, `le verre d'arachides à 300 F se vend pour 100 F (${r.q} verre)`);
+t(!mk.boite, 'la boîte de lait reste une pièce entière');
 t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
 await ctx.close(); await b.close(); s.close();
 fin();

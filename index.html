@@ -9155,7 +9155,12 @@ function estMesure(p){return !!_umDe(p);}
 // entières : on ne vend pas un tiers de tas (voir UNITES_VIVRIER).
 function _uniteVrac(p){
   if(!p||estMesure(p)||!p.umNom)return false;
-  return /^(cuvettes?|sceaux?|seaux?|paniers?|bassines?|seilles?)$/.test(txtNorm(String(p.umNom)).trim());
+  // Le patron, le 20/11 (« oui, ta recommandation ») : les mesures du marché
+  // aussi — le verre de riz, le kopo d'arachides, la boîte de tomate qui
+  // sert de mesure. « Boîte » toute seule reste une pièce (boîte de lait).
+  var u=txtNorm(String(p.umNom)).trim();
+  return /^(cuvettes?|sceaux?|seaux?|paniers?|bassines?|seilles?|verres?|gobelets?|bols?|tasses?|kopos?|pots?|louches?|assiettes?|mesures?)$/.test(u)
+      || /^boites? de tomates?$/.test(u);
 }
 function seVendAuDetail(p){return estMesure(p)||_uniteVrac(p);}
 // Le vivrier ne se vend ni au kilo ni à la pièce : il se vend au TAS, à la
