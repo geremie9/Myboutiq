@@ -110,7 +110,8 @@ Deno.serve(async (req: Request) => {
         const sec = r.secondes || Math.max(1, Math.min(dite || 30, son.size / 1500));
         // 23.84 — le compteur ne fait plus attendre la réponse : il s'écrit
         // après, en arrière-plan (EdgeRuntime.waitUntil), quand c'est possible.
-        const compte = db.rpc('voix_compter', { p_code: code, p_secondes: Math.round(sec * 10) / 10 });
+        // Promise.resolve : la requête Supabase ne part que si on l'attend.
+        const compte = Promise.resolve(db.rpc('voix_compter', { p_code: code, p_secondes: Math.round(sec * 10) / 10 }));
         const ER = (globalThis as unknown as { EdgeRuntime?: { waitUntil?: (p: unknown) => void } }).EdgeRuntime;
         if (ER && typeof ER.waitUntil === 'function') ER.waitUntil(compte); else await compte;
         return rep({ ok: true, texte: r.texte, fournisseur: nom, reste: Math.max(0, (a.reste || 0) - sec) });
