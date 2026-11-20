@@ -7674,7 +7674,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.82'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.83'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -32404,6 +32404,9 @@ async function _voixEnvoyer(son,duree){
     if(d&&d.ok){
       if(typeof d.reste==='number'){_vpro.reste=d.reste;try{localStorage.setItem('myboutiq_voixpro',JSON.stringify(_vpro));}catch(e){}}
       var t=String(d.texte||'').trim();
+      // 23.83 — vu au pilote : sur un silence, le service rend « … » (ou une
+      // phrase fantôme de sous-titres) — la recherche affichait « Créer « … » ».
+      if(!/[a-z0-9à-ÿ]{2,}/i.test(t)||/sous-titr|amara\.org|merci d.avoir regard/i.test(t))t='';
       if(!t)showToast('🎤 '+(fr?'Je n\'ai rien entendu. Réessaie.':'Heard nothing. Try again.'));
       return t||null;
     }
@@ -32457,11 +32460,86 @@ function dicterDans(idChamp,idBouton){
   r.onend=fini;
   try{r.start();showToast('🎤 '+(fr?'Parle maintenant…':'Speak now…'));}catch(x){fini();}
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.83 — LE PANIER À LA VOIX
+//  Le patron, le 20/11, avec sa capture de la voix payante : « l'app doit
+//  être capable, de façon automatique, de mettre les articles prononcés
+//  dans le panier ; le commerçant valide juste ».
+//  « Deux Mützig et un Tangui » → la phrase est coupée en morceaux (et,
+//  virgule, puis, plus), chaque morceau donne une QUANTITÉ (2, « deux »,
+//  « une ») et un ARTICLE — trouvé comme l'écoute continue le trouve
+//  (_articlesEntendus : fautes d'une lettre, mots distinctifs). Les
+//  articles vont dans le panier, le panier s'ouvre : il n'a plus qu'à
+//  encaisser, ou corriger d'un doigt.
+//  ⚠️ Une famille à plusieurs sortes (« un savon ») : on NE devine PAS la
+//  sorte — ses sortes s'ouvrent en images, il touche la bonne.
+//  ⚠️ Ce qui n'est pas reconnu est dit (« Pas trouvé : banane »), jamais
+//  ajouté au hasard.
+// ══════════════════════════════════════════════════════════════════
+var _NB_DITS={un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10,onze:11,douze:12,treize:13,quatorze:14,quinze:15,seize:16,vingt:20,trente:30,quarante:40,cinquante:50};
+function _qteDansMorceau(seg){
+  var w=_ecNorm(seg).split(' ');
+  for(var i=0;i<w.length;i++){
+    if(/^\d{1,3}$/.test(w[i]))return Math.min(200,parseInt(w[i],10));
+    if(_NB_DITS[w[i]])return _NB_DITS[w[i]];
+  }
+  return 1;
+}
+// La sorte nommée dans le morceau (« savon ROSE »), sinon null.
+function _sorteDite(p,seg){
+  var T=_ecNorm(seg).split(' ').filter(Boolean);
+  var vs=(p.vr||[]).filter(function(v){try{return v&&v.nm&&!_estGrosDeVariante(v);}catch(e){return !!(v&&v.nm);}});
+  if(!vs.length)return {aucune:true};
+  var bons=vs.filter(function(v){var k=_ecMots(v.nm);return k.length&&k.every(function(m){return T.some(function(w){return _ecProche(w,m);});});});
+  if(bons.length===1)return {v:bons[0]};
+  if(vs.length===1)return {v:vs[0]};
+  return {choix:true};
+}
+// Rend ce qui a été fait : {ajoutes:[{p,v,q}], aChoisir:[p], absents:[texte]}
+function _voixPanier(txt){
+  var R={ajoutes:[],aChoisir:[],absents:[]};
+  var morceaux=String(txt||'').split(/\s*(?:,|;|\bet\b|\bpuis\b|\bplus\b|\bavec\b)\s*/i).map(function(x){return x.trim();}).filter(Boolean);
+  morceaux.forEach(function(seg){
+    var ids=_articlesEntendus(seg);
+    if(!ids.length){if(/[a-zà-ÿ]{3,}/i.test(seg))R.absents.push(seg);return;}
+    var p=(DB.articles||[]).find(function(x){return x.id===ids[0];});if(!p)return;
+    var q=_qteDansMorceau(seg),s=_sorteDite(p,seg);
+    if(s.choix){R.aChoisir.push(p);return;}
+    var v=s.v||null,avant=panier[v?p.id+'-'+v.id:p.id+'-0']||0;
+    for(var i=0;i<q;i++)addPanier(p,v);
+    var pris=(panier[v?p.id+'-'+v.id:p.id+'-0']||0)-avant;
+    if(pris>0)R.ajoutes.push({p:p,v:v,q:pris});
+  });
+  return R;
+}
+function _voixPanierDire(R){
+  var fr=(lang==='fr'),msg=[];
+  if(R.ajoutes.length)msg.push('🛒 '+R.ajoutes.map(function(x){return x.q+' '+(x.v?(x.p.nm+' '+x.v.nm):x.p.nm);}).join(', '));
+  if(R.absents.length)msg.push((fr?'Pas trouvé : ':'Not found: ')+R.absents.join(', '));
+  if(msg.length)showToast(msg.join(' · '));
+  if(R.ajoutes.length&&!R.aChoisir.length){try{ouvrirPanier();}catch(e){}}
+  if(R.aChoisir.length){
+    var p=R.aChoisir[0],c=document.getElementById('pc-'+p.id);
+    try{if(c)c.scrollIntoView({block:'center'});ouvrirVarInline(p,c);}catch(e){}
+    setTimeout(function(){showToast('👆 '+(fr?'Quelle sorte de '+p.nm+' ?':'Which '+p.nm+'?'));},R.ajoutes.length||R.absents.length?2200:0);
+  }
+}
 function voiceSearch(){
   // Le micro touché sans voix payante : on redemande en silence (le « non »
   // a peut-être changé depuis), sans faire attendre cette dictée-ci.
   if(!voixProDispo()){try{voixProEtat();}catch(e){}}
-  if(voixProDispo()){voixProEcouter().then(function(q){if(!q)return;var c=document.getElementById('src-c');if(c){c.value=q;filtrC(q);}});return;}
+  if(voixProDispo()){voixProEcouter().then(function(q){
+    if(!q)return;
+    // 23.83 — « … » ou « Sous-titrage » : le service a entendu le silence.
+    if(!/[a-z0-9à-ÿ]{2,}/i.test(q)||/sous-titr|amara\.org|merci d.avoir regard/i.test(q)){showToast('🎤 '+(lang==='fr'?'Je n\'ai rien entendu. Réessaie.':'Heard nothing. Try again.'));return;}
+    // 23.83 — les articles dits vont dans le panier ; sinon, c'est une recherche.
+    var R=_voixPanier(q);
+    if(R.ajoutes.length||R.aChoisir.length){_voixPanierDire(R);return;}
+    // Rien de sûr (« un savon » quand il y en a trois) : la recherche, sans
+    // les petits mots ni la quantité — la grille montre les savons, il touche.
+    var mots=_ecNorm(q).split(' ').filter(function(w){return w&&!_EC_VIDES[w]&&!_NB_DITS[w]&&!/^\d+$/.test(w)&&!/^(donne|moi|veux|voudrais|mets|ajoute|stp|svp)$/.test(w);});
+    var c=document.getElementById('src-c');if(c){c.value=mots.join(' ')||q;filtrC(c.value);}
+  });return;}
   _voiceSearchGratuit();
 }
 function _voiceSearchGratuit(){if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}var SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();r.lang=lang==='fr'?'fr-FR':'en-US';r.onresult=function(e){var q=e.results[0][0].transcript;document.getElementById('src-c').value=q;filtrC(q);};r.onerror=function(){showToast('🎤');};r.start();showToast(t('microParle'));}

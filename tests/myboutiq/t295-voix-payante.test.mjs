@@ -15,7 +15,7 @@ const URL_VOIX = 'https://bbncilovxzkcvlxvoqtg.supabase.co/functions/v1/voix';
 const d = nouvelleBoutique();
 d.articles.push({ id: 40, nm: 'Mützig 65 cl', e: '🍺', cat: 'Boissons', px: 750, pa: 620, stk0: 24, al: 0, vd: 99 });
 const { ctx, p, errs } = await ouvrirCaisse(b, port, d);
-let envois = [], reponseEtat = { ok: true, reste: 36000 }, reponsePhrase = { status: 200, j: { ok: true, texte: 'mützig', fournisseur: 'groq', reste: 35990 } };
+let envois = [], reponseEtat = { ok: true, reste: 36000 }, reponsePhrase = { status: 200, j: { ok: true, texte: 'tomate', fournisseur: 'groq', reste: 35990 } };   // un mot qui n'est pas un article : il reste une recherche (t297 : les articles vont au panier)
 await p.route(URL_VOIX, async r => {
   const req = r.request(), ct = req.headers()['content-type'] || '';
   if (ct.includes('application/json')) { envois.push({ etat: JSON.parse(req.postData() || '{}') }); return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reponseEtat) }); }
@@ -34,10 +34,10 @@ t(envois[0] && envois[0].etat.code === 'MARI0001' && envois[0].etat.action === '
 // ── 2. Une phrase : le micro, l'envoi, le texte dans la recherche ──
 envois = [];
 await p.evaluate(() => { voiceSearch(); setTimeout(voixProArreter, 900); });
-await p.waitForFunction(() => (document.getElementById('src-c') || {}).value === 'mützig', null, { timeout: 12000 }).catch(() => {});
+await p.waitForFunction(() => (document.getElementById('src-c') || {}).value === 'tomate', null, { timeout: 12000 }).catch(() => {});
 const ph = envois.find(x => x.phrase);
 const r2 = await p.evaluate(() => ({ q: document.getElementById('src-c').value, tete: (document.querySelector('#pgrid .pcard') || {}).id, gratuit: window.__gratuit }));
-t(r2.q === 'mützig' && r2.gratuit === 0, `la phrase revient en texte dans la recherche (« ${r2.q} »), sans la dictée gratuite`);
+t(r2.q === 'tomate' && r2.gratuit === 0, `la phrase revient en texte dans la recherche (« ${r2.q} »), sans la dictée gratuite`);
 t(!!ph && /multipart\/form-data/.test(ph.ct) && /name="code"\r\n\r\nMARI0001/.test(ph.phrase) && /name="pin"\r\n\r\n4321/.test(ph.phrase), 'la phrase part avec le code et le PIN de la boutique (le serveur vérifie)');
 t(!!ph && /name="mots"/.test(ph.phrase) && /M.tzig 65 cl/.test(ph.phrase) && /name="son"; filename="phrase.webm"/.test(ph.phrase), 'avec le son et la liste des articles de la boutique (Mützig 65 cl en tête)');
 t(!!ph && ph.phrase.length < 60000, `le son est léger (${Math.round((ph ? ph.phrase.length : 0) / 1024)} Ko envoyés)`);
