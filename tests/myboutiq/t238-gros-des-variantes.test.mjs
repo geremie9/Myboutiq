@@ -6,11 +6,11 @@
 // « carton de 24 / prix ? » ou « 6 800 / carton de 24 ». Et la photo d'une
 // variante faisait 58 px quand celle d'une tuile du dehors prend la largeur.
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t238');
 const { s, port } = await serveur();
 const b = await chromium.launch();
-const d = nouvelleBoutique(); d.cfg.facon = 'gros';
+const d = nouvelleBoutiqueCarres(); d.cfg.facon = 'gros';
 d.articles.unshift({ id: 40, nm: 'Savon vaisselle en pâte', e: '🧽', cat: 'Divers', px: 0, pa: 0, stk0: 0, al: 0, vd: 0,
   vr: [['Savon vaisselle', 200, 28], ['Savon ménage', 300, 48], ['Savon bébé', 400, 35]].map(([n, px, st], i) => ({ id: i + 1, nm: n, px, pa: px - 50, stk0: st, qBase: 1, umSac: 24, umCont: 'carton', pxGros: i === 1 ? 6800 : 0 })) });
 const { ctx, p, errs } = await ouvrirCaisse(b, port, d, { tactile: true });

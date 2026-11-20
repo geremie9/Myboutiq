@@ -11,7 +11,7 @@
 // une pièce, la puce 📦 du bas = un carton. Plus de tuile qui change de geste
 // selon l'article.
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t216');
 const { s, port } = await serveur();
 const b = await chromium.launch();
@@ -21,7 +21,7 @@ const HUILE = () => ({ id: 30, nm: 'Huile', e: '🫗', cat: 'Alimentation', px: 
        { id: 2, nm: '2 L', px: 1700, pa: 1400, stk: 0, stk0: 24, umSac: 6, umCont: 'carton', pxGros: 9800 },
        { id: 3, nm: '5 L', px: 4000, pa: 3400, stk: 0, stk0: 8, umSac: 4, umCont: 'carton' }] });
 function boutique(facon, extra) {
-  const d = nouvelleBoutique();
+  const d = nouvelleBoutiqueCarres();
   d.cfg.facon = facon; d.cfg.venteDeverrouillee = false;   // la caisse de tous les jours
   d.articles.push(HUILE());
   if (extra) d.articles.push(extra);

@@ -33,6 +33,15 @@ export function nouvelleBoutique(x) {
 // fenêtre de confirmation. `__toasts` garde tout ce que l'app a dit.
 // `tactile` : un vrai écran tactile (hasTouch/isMobile) — le toucher ne suit
 // pas le même chemin que la souris (t237).
+// 23.89 — « Sur l'étagère » est la présentation par défaut des familles.
+// Les bancs écrits pour la FENÊTRE des familles (carrés, cercle, liste) la
+// demandent explicitement : elle existe toujours (Réglages › Fenêtre).
+export function nouvelleBoutiqueCarres(x) {
+  const d = nouvelleBoutique(x);
+  d.cfg.varStyle = 'carre';
+  return d;
+}
+
 export async function ouvrirCaisse(b, port, db, { vendeur = null, tactile = false } = {}) {
   const ctx = await b.newContext(Object.assign({ viewport: { width: 390, height: 800 }, locale: 'fr-FR', timezoneId: 'Africa/Douala' },
     tactile ? { hasTouch: true, isMobile: true } : {}));

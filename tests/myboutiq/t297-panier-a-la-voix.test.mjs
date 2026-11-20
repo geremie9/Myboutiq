@@ -6,12 +6,12 @@
 // Vu sur la même capture : la recherche affichait « … » — le service rend
 // « … » quand il n'a entendu que le silence.
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t297');
 const { s, port } = await serveur();
 const b = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
 const URL_VOIX = 'https://bbncilovxzkcvlxvoqtg.supabase.co/functions/v1/voix';
-const d = nouvelleBoutique();
+const d = nouvelleBoutiqueCarres();
 d.articles.push({ id: 40, nm: 'Mützig 65 cl', e: '🍺', cat: 'Boissons', px: 750, pa: 620, stk0: 24, al: 0, vd: 0 });
 d.articles.push({ id: 41, nm: 'Eau Tangui', e: '💧', cat: 'Boissons', px: 400, pa: 300, stk0: 36, al: 0, vd: 0 });
 d.articles.push({ id: 42, nm: 'Biscuit Tonton', e: '🍪', cat: 'Alimentation', px: 100, pa: 80, stk0: 0, al: 0, vd: 0,

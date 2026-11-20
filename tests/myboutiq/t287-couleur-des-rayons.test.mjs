@@ -5,11 +5,11 @@
 // Avant : toutes les étiquettes blanches, la couleur du rayon n'existait que
 // sur la vignette d'un article SANS photo et sur le petit dessin de l'onglet.
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t287');
 const { s, port } = await serveur();
 const b = await chromium.launch();
-const d = nouvelleBoutique(); d.cfg.facon = 'detail';
+const d = nouvelleBoutiqueCarres(); d.cfg.facon = 'detail';
 const A = (id, nm, cat, px, x = {}) => Object.assign({ id, nm, cat, e: '📦', px, pa: Math.round(px * .8), stk0: 40, al: 0, vd: 0 }, x);
 d.articles = [A(1, 'Riz', 'Alimentation', 700), A(2, 'Huile', 'Alimentation', 1300), A(3, 'Bière locale', 'Boissons', 600), A(4, 'Top ananas', 'Boissons', 400),
   A(5, 'Bougie', 'Ménage', 200), A(6, 'Agrafeuse', 'Autre', 40), A(7, 'Savon', 'Hygiène', 250), A(8, 'Chargeur', 'Électronique', 1500),

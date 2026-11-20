@@ -6,11 +6,11 @@
 // « palette » en gris pâle ; « Objectif » coupé par le store ; « Lait
 // concentré À l'u… » tronqué ; « Supprimer » avec une flèche de sortie.
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t286');
 const { s, port } = await serveur();
 const b = await chromium.launch();
-const d = nouvelleBoutique(); d.cfg.facon = 'gros'; d.objectif = 25000;
+const d = nouvelleBoutiqueCarres(); d.cfg.facon = 'gros'; d.objectif = 25000;
 d.cfg._repliSolo = 1;            // le 1er rattrapage est passé il y a longtemps
 // Données simulées d'après sa base (« G ») : Cube Maggi resté seul, et un
 // article que l'ancienne règle de repli a mal nommé (`vfus` en est la preuve).

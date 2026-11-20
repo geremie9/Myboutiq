@@ -4,7 +4,7 @@
 // articles à la caisse sans changer l'emplacement » ; « le bois sur lequel
 // ils sont posés doit être épais, comme dans une vraie boutique ».
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t276');
 const { s, port } = await serveur();
 const b = await chromium.launch();
@@ -12,7 +12,7 @@ const pg = await b.newPage();
 const photo = c => pg.evaluate(c => { const cv = document.createElement('canvas'); cv.width = cv.height = 300; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 300, 300); x.fillStyle = c; x.fillRect(110, 40, 80, 230); return cv.toDataURL('image/png'); }, c);
 const [rouge, bleu, vert, jaune, perso] = [await photo('#c62828'), await photo('#1565c0'), await photo('#2e7d32'), await photo('#f9a825'), await photo('#6a1b9a')];
 await pg.close();
-const db = nouvelleBoutique(); db.cfg.facon = 'detail';
+const db = nouvelleBoutiqueCarres(); db.cfg.facon = 'detail';
 db.articles = db.articles.slice(0, 2);
 const V = (id, nm, img) => ({ id, nm, px: 500, pa: 400, stk: 10, stk0: 10, img });
 // La photo de la famille est celle de sa première sorte (ce que fait la création).

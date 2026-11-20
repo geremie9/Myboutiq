@@ -5,13 +5,13 @@
 //  · « Stock bas » montrait la famille Huile entière : 537 unités en vert.
 //  · « Son prix » : le titre coupé en haut quand la feuille défile.
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t266');
 const { s, port } = await serveur();
 const b = await chromium.launch();
 const pg = await b.newPage();
 const ph = c => pg.evaluate(c => { const cv = document.createElement('canvas'); cv.width = cv.height = 400; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 400, 400); x.fillStyle = c; x.fillRect(120, 80, 160, 260); return cv.toDataURL('image/jpeg', .8); }, c);
-const db = nouvelleBoutique(); db.cfg.facon = 'gros';
+const db = nouvelleBoutiqueCarres(); db.cfg.facon = 'gros';
 db.articles = [
   { id: 1, nm: 'Riz (kg)', e: '📦', cat: 'Alimentation', px: 0, pa: 0, stk0: 0, al: 0, vd: 0, img: await ph('#ddd'), um: 'kg',
     vr: [{ id: 1, nm: 'Riz (kg)', px: 800, pa: 600, stk0: 40, img: await ph('#eee'), umSac: 50, umCont: 'sac', pxGros: 38000 }, { id: 2, nm: 'Riz local', px: 500, pa: 300, stk0: 30, img: await ph('#cb9'), umSac: 50, umCont: 'sac' }] },

@@ -8,7 +8,7 @@
 // sur tous les téléphones (les emojis, eux, changent de visage d'un Tecno
 // à un Samsung, et deviennent des carrés vides sur les vieux Android).
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t225');
 const { s, port } = await serveur();
 const b = await chromium.launch();
@@ -30,7 +30,7 @@ const HUILE = { id: 30, nm: 'Huile', e: '🫗', cat: 'Alimentation', px: 0, pa: 
   vr: [{ id: 1, nm: '1 L', px: 900, pa: 700, stk0: 48, umSac: 12, umCont: 'carton', pxGros: 10000 }, { id: 2, nm: '5 L', px: 4000, pa: 3400, stk0: 8 }] };
 
 {
-  const d = nouvelleBoutique(); d.cfg.venteDeverrouillee = false; d.articles.push(HUILE);
+  const d = nouvelleBoutiqueCarres(); d.cfg.venteDeverrouillee = false; d.articles.push(HUILE);
   const { ctx, p, errs } = await ouvrirCaisse(b, port, d);
   let r = await releve(p);
   t(!r.length, `la caisse : aucun emoji${r.length ? ' — ' + r.slice(0, 5).join(' · ') : ''}`);
@@ -67,7 +67,7 @@ const HUILE = { id: 30, nm: 'Huile', e: '🫗', cat: 'Alimentation', px: 0, pa: 
   await ctx.close();
 }
 {
-  const d = nouvelleBoutique(); d.cfg.facon = 'gros'; d.cfg.venteDeverrouillee = false;
+  const d = nouvelleBoutiqueCarres(); d.cfg.facon = 'gros'; d.cfg.venteDeverrouillee = false;
   const { ctx, p, errs } = await ouvrirCaisse(b, port, d);
   const r = await releve(p);
   t(!r.length, `boutique en gros : aucun emoji${r.length ? ' — ' + r.slice(0, 5).join(' · ') : ''}`);
@@ -79,7 +79,7 @@ const HUILE = { id: 30, nm: 'Huile', e: '🫗', cat: 'Alimentation', px: 0, pa: 
   await ctx.close();
 }
 {
-  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique(), { vendeur: 'Ibrahim' });
+  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutiqueCarres(), { vendeur: 'Ibrahim' });
   const r = await releve(p);
   t(!r.length, `le vendeur : aucun emoji${r.length ? ' — ' + r.slice(0, 5).join(' · ') : ''}`);
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));

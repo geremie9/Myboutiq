@@ -5,11 +5,11 @@
 // parti, le « clic » qui suit tombait sur la tuile d'en dessous et l'ajoutait
 // au panier. Rejoué ici avec un vrai toucher, aux trois présentations.
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t237');
 const { s, port } = await serveur();
 const b = await chromium.launch();
-const d = nouvelleBoutique();
+const d = nouvelleBoutiqueCarres();
 d.articles.unshift({ id: 40, nm: 'Jus Top', e: '🥤', cat: 'Divers', px: 0, pa: 0, stk0: 0, al: 0, vd: 0,
   vr: ['Ananas', 'Orange', 'Cocktail'].map((n, i) => ({ id: i + 1, nm: n, px: 400, pa: 300, stk0: 24, qBase: 1 })) });
 const { ctx, p, errs } = await ouvrirCaisse(b, port, d, { tactile: true });

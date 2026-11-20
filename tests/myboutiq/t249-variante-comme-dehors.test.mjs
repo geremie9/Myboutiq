@@ -5,11 +5,11 @@
 // restants » sous chaque prix, et « palette de 1 / prix ? » — la palette en
 // a douze, le « 2 » était coupé. Sa fiche est reprise telle quelle.
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t249');
 const { s, port } = await serveur();
 const b = await chromium.launch();
-const db = nouvelleBoutique();
+const db = nouvelleBoutiqueCarres();
 db.articles.push({ e: '🍍', al: 5, id: 145, nm: 'Jus', pa: 0, px: 0, rt: true, um: null, vd: 0, cat: 'Boissons', stk: 0, dep0: 0, stk0: 0, umSac: 12, umCont: 'palette',
   vr: [{ id: 1, nm: 'Jus ananas 75 cl', pa: 0, px: 750, rt: true, stk: 0, stk0: 0, qBase: 1, umSac: 12, umCont: 'palette', reprisBase: 1 },
        { id: 2, nm: 'Jus ananas 25cl', pa: 0, px: 250, rt: true, stk: 71, stk0: 0, qBase: 1, umSac: 12, umCont: 'palette' }] });

@@ -6,7 +6,7 @@
 // Option choisie sur captures (B) : marges serrées, « la pièce » seulement
 // à côté d'un gros, étiquette « palette » plus mince, image 62 → 48 px.
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t243');
 const { s, port } = await serveur();
 const b = await chromium.launch();
@@ -30,7 +30,7 @@ const mesurer = p => p.evaluate(() => {
 
 // ── En gros, comme sa capture ──
 {
-  const d = nouvelleBoutique({ articles: saGrille() }); d.cfg.facon = 'gros';
+  const d = nouvelleBoutiqueCarres({ articles: saGrille() }); d.cfg.facon = 'gros';
   const { ctx, p, errs } = await ouvrirCaisse(b, port, d, { tactile: true });
   await p.setViewportSize({ width: 360, height: 760 }); await p.evaluate(() => renderProd(DB.articles)); await p.waitForTimeout(400);
   const m = await mesurer(p);
@@ -54,7 +54,7 @@ const mesurer = p => p.evaluate(() => {
 }
 // ── Au détail ──
 {
-  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique({ articles: saGrille() }), { tactile: true });
+  const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutiqueCarres({ articles: saGrille() }), { tactile: true });
   await p.setViewportSize({ width: 360, height: 760 }); await p.evaluate(() => renderProd(DB.articles)); await p.waitForTimeout(400);
   const m = await mesurer(p);
   t(m.t56.lib === '' && m.t55.lib === '', `au détail, plus de « la pièce » sous chaque prix : une tuile seule vend forcément la pièce`);

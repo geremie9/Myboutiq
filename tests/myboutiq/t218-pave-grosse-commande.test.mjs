@@ -7,7 +7,7 @@
 // carton. Le pavé doit poser exactement ce que posent N touches : même
 // panier, mêmes cartons, même total — et dire le stock avant d'ajouter.
 import { chromium, serveur, compteur } from './lib.mjs';
-import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
+import { nouvelleBoutiqueCarres, ouvrirCaisse } from './caisse.mjs';
 const { t, fin } = compteur('t218');
 const { s, port } = await serveur();
 const b = await chromium.launch();
@@ -21,7 +21,7 @@ const RIZ = () => ({ id: 41, nm: 'Riz 25 kg', e: '🍚', cat: 'Alimentation', um
 const BISCUIT = () => ({ id: 42, nm: 'Biscuit Tiger', e: '🍪', cat: 'Alimentation', px: 100, pa: 80, stk0: 48, al: 0, vd: 0, rt: true,
   umSac: 24, umCont: 'carton', pxGros: 2200, paGros: 1900 });
 function boutique(facon) {
-  const d = nouvelleBoutique();
+  const d = nouvelleBoutiqueCarres();
   d.cfg.facon = facon; d.cfg.venteDeverrouillee = false;    // la caisse de tous les jours
   d.articles.push(HUILE(), RIZ(), BISCUIT());
   return d;
