@@ -32,6 +32,8 @@ r = await etat({ code: '64972 08757', pin: '1212' });
 t(r.j.ok, 'un vrai code, avec son espace (« 64972 08757 ») : accepté');
 r = await etat({ code: 'MARI0001<script>', pin: '4321' });
 t(r.s === 403, 'un code bizarre ne va même pas jusqu\'à la base');
+for (let i = 0; i < 8; i++) await etat({ code: 'MARI0001' });
+t(!BASE.echecs.MARI0001, 'un téléphone sans PIN qui redemande ne bloque pas la boutique (aucun essai compté)');
 for (let i = 0; i < 5; i++) await etat({ code: 'MARI0001', pin: '0' + i });
 r = await etat({ code: 'MARI0001', pin: '4321' });
 t(r.j.motif === 'bloque', 'cinq PIN faux de suite : la boutique est freinée, même avec le bon ensuite');

@@ -61,6 +61,12 @@ begin
     if v_wait > 0 then
       return jsonb_build_object('ok', false, 'motif', 'bloque', 'attente', v_wait);
     end if;
+    -- ⚠️ Un téléphone sans PIN en mémoire (patron revenu sans session) ne
+    -- TENTE rien : le compter comme un essai raté bloquerait, toutes les 6 h,
+    -- la connexion de toute la boutique.
+    if coalesce(p_pin, '') = '' then
+      return jsonb_build_object('ok', false, 'motif', 'acces');
+    end if;
     if v_row.id is null then
       perform public._pin_echec(p_code);           -- un code inventé compte aussi
       return jsonb_build_object('ok', false, 'motif', 'acces');

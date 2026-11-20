@@ -75,6 +75,18 @@ reponsePhrase = { status: 200, j: { ok: true, texte: 'mama bertine' } };
 await p.evaluate(() => { _vpro = { ok: true, ts: Date.now(), code: DB.cfg.code }; _vproPanne = 0; ouvrirAddCli(); dicterDans('cli-nm', 'mic-clinm'); setTimeout(voixProArreter, 700); });
 await p.waitForFunction(() => document.getElementById('cli-nm').value === 'Mama bertine', null, { timeout: 12000 }).catch(() => {});
 t(await p.evaluate(() => document.getElementById('cli-nm').value) === 'Mama bertine', '« Nouveau client » : le nom dicté arrive dans le champ, avec sa majuscule');
+// ── 7. 23.81 — un « non » ne se garde que 10 minutes (pilote du 20/11) ──
+envois = []; reponseEtat = { ok: true, reste: 36000 };
+const r7 = await p.evaluate(async () => {
+  _vpro = { ok: false, ts: Date.now() - 5 * 60e3, code: DB.cfg.code }; const a = await voixProEtat();
+  _vpro = { ok: false, ts: Date.now() - 11 * 60e3, code: DB.cfg.code }; const b = await voixProEtat();
+  return { a, b };
+});
+t(!r7.a && r7.b && envois.filter(x => x.etat).length === 1, `un « non » de 5 min reste « non » ; de 11 min, on redemande, et le « oui » arrive (${envois.length} demande)`);
+// Le patron revenu sans PIN de session : celui de la boutique part.
+envois = [];
+await p.evaluate(async () => { window._shopPin = null; role = 'patron'; DB.cfg.pin = '123456'; await voixProEtat(true); });
+t(envois[0] && envois[0].etat.pin === '123456', 'le patron sans PIN de session : celui gardé dans la boutique part (le serveur le vérifie)');
 t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
 await ctx.close(); await b.close(); s.close();
 fin();

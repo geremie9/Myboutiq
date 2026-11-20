@@ -19,6 +19,7 @@ export function createClient() {
       let role = null;
       if (b && a.p_user && b.owner === a.p_user) role = 'patron';
       else {
+        if (!a.p_pin) return { data: { ok: false, motif: 'acces' }, error: null };   // un PIN vide ne compte pas
         if ((BASE.echecs[a.p_code] || 0) >= 5) return { data: { ok: false, motif: 'bloque', attente: 60 }, error: null };
         role = b ? (b.pins[a.p_pin] || null) : null;
         if (!role) { BASE.echecs[a.p_code] = (BASE.echecs[a.p_code] || 0) + 1; return { data: { ok: false, motif: 'acces' }, error: null }; }
