@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
---  Le temps réel sans les codes des boutiques — étape 2 (23.94)
+--  Le temps réel sans les codes des boutiques — étape 2 (base seule, après la 23.93)
 --
 --  L'étape 1 (2026-10-10-canal-signal.sql) a donné à chaque boutique un
 --  canal secret et l'a écrit À CÔTÉ du code dans boutique_signal, pour que

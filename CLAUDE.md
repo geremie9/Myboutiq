@@ -58,7 +58,7 @@ cd tests/mybar && node run.js                         # MyBar bench (CommonJS)
 - **Realtime:** every write to `boutiques` upserts a row into `boutique_signal`, and phones refetch when their row changes.
   - Since 22.96 each shop has a secret `data.cfg.canal` (32 hex characters, generated server-side by the `trg_canal_signal` trigger and preserved when an old client writes without it). `subscribeRealtime` listens to `canal=eq.…` only.
   - Without a canal it falls back to the old listener, which receives every shop's row and filters by code.
-  - Step 2 done on 20/11/2026 (23.94): `boutique_signal` is keyed by the canal and never holds a shop code; rows with real codes were deleted (see `base-de-donnees/2026-11-20-canal-signal-etape2.sql`). Phones older than 22.96 lose realtime and keep the 45 s re-read.
+  - Step 2 done on 20/11/2026 (database only, after 23.93): `boutique_signal` is keyed by the canal and never holds a shop code; rows with real codes were deleted (see `base-de-donnees/2026-11-20-canal-signal-etape2.sql`). Phones older than 22.96 lose realtime and keep the 45 s re-read.
 - **The day's cash:**
   - `getCaisseSales()` returns today's sales that are not `cloturee`.
   - `caisseAttendue()` = opening cash + cash sales (including credit advances) + cash credit repayments − expenses paid from the till.
