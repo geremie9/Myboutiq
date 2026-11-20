@@ -2668,6 +2668,15 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
    de la caisse. La barre qui fond dit le temps qui reste, sans un mot. */
 .succ-annul{margin-top:14px;display:inline-flex;align-items:center;gap:8px;background:transparent;color:#fff;border:1.5px dashed rgba(255,255,255,.7);border-radius:12px;padding:10px 18px;font-size:15px;font-weight:800;font-family:Outfit,sans-serif;min-height:48px;cursor:pointer}
 .succ-annul .ic{stroke:#fff}
+/* 23.87 — ce que le client tape pour payer par mobile money */
+.ussd{margin-top:12px;border:2px solid;border-radius:14px;padding:12px 14px 14px;background:var(--W,#fff);text-align:center}
+.ussd-t{display:flex;align-items:center;justify-content:center;gap:7px;font-size:14px;font-weight:800;color:var(--T,#221F2B)}
+.ussd-t i,.ussd-ajout i{display:inline-block;width:12px;height:12px;border-radius:50%;flex:none}
+.ussd-code{margin:9px auto 7px;display:inline-block;max-width:100%;box-sizing:border-box;border-radius:12px;padding:10px 14px;font-size:26px;font-weight:900;letter-spacing:1px;font-family:'Roboto Mono',ui-monospace,monospace;white-space:nowrap;overflow-wrap:normal}
+.ussd-l{font-size:15px;font-weight:700;color:var(--M)}
+.ussd-l b{color:var(--T,#221F2B);font-size:17px;letter-spacing:.5px}
+.ussd-mod{margin-top:9px;background:none;border:none;color:var(--B);font-size:13px;font-weight:800;font-family:Outfit,sans-serif;cursor:pointer;min-height:40px}
+.ussd-ajout{margin-top:12px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:#FFF8EE;border:1.5px dashed #F0A93E;border-radius:12px;padding:12px;font-size:14px;font-weight:800;color:#8A5300;font-family:Outfit,sans-serif;cursor:pointer;min-height:48px}
 .annul-chip{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:190;display:none;align-items:center;gap:10px;background:#221F2B;color:#fff;border-radius:16px;padding:12px 18px 14px;font-family:Outfit,sans-serif;font-size:16px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.28);overflow:hidden;cursor:pointer;min-height:52px;white-space:nowrap;max-width:calc(100vw - 32px)}
 .annul-chip.show{display:flex}
 .annul-chip .ic{stroke:#F0A93E;flex:none}
@@ -5419,6 +5428,8 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
         <div class="calc-tot" id="calc-tot-mobile">0</div>
         <div style="text-align:center;font-size:12px;color:var(--M);font-weight:700;margin-top:9px" id="calc-mobile-hint">Montant exact reçu via mobile money — aucune monnaie à rendre</div>
       </div>
+      <!-- 23.87 — ce que le client compose sur SON téléphone (majUssdBox) -->
+      <div id="ussd-box"></div>
     </div>
     <div class="calc-pied" style="padding:0 19px">
       <button class="bpay" onclick="closeSheet('ov-calc');encaisser()" id="btn-conf-vente"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span id="lbl-conf-vente">Confirmer la vente</span></button>
@@ -7699,7 +7710,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.86'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.87'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -21727,6 +21738,65 @@ function selPmntVente(mode){
     document.getElementById('calc-wrap-mobile').style.display='block';
     document.getElementById('calc-tot-mobile').textContent=fmt(calcTotal());
   }
+  try{majUssdBox();}catch(e){}
+}
+// ═══ 23.87 — LE CLIENT PAIE PAR MOBILE MONEY : CE QU'IL COMPOSE ═══
+// Feuille de route V1 (avis du 20/11), le patron : « fais des recherches
+// sur leur site officiel ». Au comptoir, le client demande « c'est quel
+// code ? » et le commerçant cherche le papier collé au mur. La feuille de
+// paiement montre maintenant, en grand, ce qu'il doit taper, montant
+// compris quand l'opérateur le permet. Relevé sur les sites des opérateurs
+// le 20/11/2026 :
+//   · Orange Money Cameroun (orangemoney.orange.cm, « Paiement marchand ») :
+//     « composez le #150*47#, saisissez le code du marchand, validez avec
+//     votre code secret » — gratuit pour le client.
+//   · MTN MoMo Cameroun (mtn.cm, MoMo Pay) : « *126*4*code marchand*montant# »,
+//     code marchand à 6 chiffres, puis le code secret.
+// ⚠️ Le téléphone du COMMERÇANT ne compose rien : le client paie depuis le
+// sien, avec son code secret. On n'affiche que ce qu'il doit taper.
+// Moov n'a pas de code relevé : rien n'est inventé.
+var _USSD={orange:{nm:'Orange Money',c:'#FF7900',t:'#fff'},mtn:{nm:'MTN MoMo',c:'#FFCB05',t:'#1A1A1A'}};
+function _codeMarchand(mode){var c=(DB&&DB.cfg&&DB.cfg.codesMarchand)||{};return String(c[mode]||'').replace(/\D/g,'').slice(0,10);}
+function _texteUssd(mode,montant){
+  var code=_codeMarchand(mode);if(!code)return '';
+  if(mode==='orange')return '#150*47#';
+  if(mode==='mtn')return '*126*4*'+code+'*'+Math.max(0,Math.round(Number(montant)||0))+'#';
+  return '';
+}
+function majUssdBox(){
+  var z=document.getElementById('ussd-box');if(!z)return;
+  var mode=pmntModeVente,o=_USSD[mode],fr=(lang!=='en');
+  if(!o||splitVenteOn){z.innerHTML='';return;}
+  var code=_codeMarchand(mode),m=0;try{m=calcAPayer();}catch(e){try{m=calcTotal();}catch(e2){}}
+  if(!code){
+    // Seul le patron pose son code ; le vendeur ne voit rien de plus qu'avant.
+    z.innerHTML=(role==='patron')
+      ?('<button type="button" class="ussd-ajout" onclick="poserCodeMarchand(\''+mode+'\')"><i style="background:'+o.c+'"></i>'
+        +escH(fr?('Ajouter mon code marchand '+o.nm):('Add my '+o.nm+' merchant code'))+'</button>')
+      :'';
+    return;
+  }
+  var h='<div class="ussd" style="border-color:'+o.c+'"><div class="ussd-t"><i style="background:'+o.c+'"></i>'
+    +escH(fr?'Le client tape sur son téléphone':'The customer dials on their phone')+'</div>'
+    +'<div class="ussd-code" style="background:'+o.c+';color:'+o.t+(_texteUssd(mode,m).length>14?';font-size:20px;letter-spacing:0':'')+'">'+escH(_texteUssd(mode,m))+'</div>';
+  h+=(mode==='orange')
+    ?('<div class="ussd-l">'+escH(fr?'puis le code marchand':'then the merchant code')+' <b>'+escH(code)+'</b> · '+escH(fmt(m))+'</div>')
+    :('<div class="ussd-l">'+escH(fr?'code marchand':'merchant code')+' <b>'+escH(code)+'</b> · '+escH(fr?'montant compris':'amount included')+'</div>');
+  if(role==='patron')h+='<button type="button" class="ussd-mod" onclick="poserCodeMarchand(\''+mode+'\')">'+escH(fr?'Changer le code':'Change code')+'</button>';
+  z.innerHTML=h+'</div>';
+}
+function poserCodeMarchand(mode){
+  var fr=(lang!=='en'),o=_USSD[mode];if(!o)return;
+  if(role!=='patron'){showToast('⛔ '+(fr?'Réservé au patron':'Owner only'));return;}
+  var v=prompt(fr?('Ton code marchand '+o.nm+' : les chiffres donnés par '+(mode==='orange'?'Orange':'MTN')+'.\n\nLaisse vide pour l\'enlever.')
+                 :('Your '+o.nm+' merchant code.\n\nLeave empty to remove it.'),_codeMarchand(mode));
+  if(v===null)return;
+  v=String(v).replace(/\D/g,'');
+  if(v&&(v.length<4||v.length>10)){showToast('⚠️ '+(fr?'Un code marchand a de 4 à 10 chiffres':'A merchant code has 4 to 10 digits'));return;}
+  if(!DB.cfg.codesMarchand||typeof DB.cfg.codesMarchand!=='object')DB.cfg.codesMarchand={};
+  if(v)DB.cfg.codesMarchand[mode]=v;else delete DB.cfg.codesMarchand[mode];
+  save();majUssdBox();
+  showToast(v?('✅ '+(fr?'Code marchand '+o.nm+' enregistré':o.nm+' merchant code saved')):('🗑 '+(fr?'Code marchand enlevé':'Merchant code removed')));
 }
 // ── Vente à crédit : le client est obligatoire, l'avance optionnelle ──
 function majCredClientBox(){
