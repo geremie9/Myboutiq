@@ -7737,7 +7737,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.89'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.90'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -9146,6 +9146,18 @@ function _umDe(p){
   return _umDuNom(p.nm);
 }
 function estMesure(p){return !!_umDe(p);}
+// ⭐ 23.90 — « TOUS CEUX QUI SE MESURENT EN KG, EN LITRE, ET LES AUTRES MESURES :
+// CERTAINS NE PEUVENT PAS SE VENDRE POUR 100 F » (le patron, 20/11).
+// La cuvette, le seau, le panier sont des contenants de VRAC : « donne-moi
+// pour 100 F de tomates » se sert dedans. Ils se vendent donc comme le kilo
+// (la feuille des doses, « pour un montant », la dose habituelle d'une
+// touche). Le tas, la botte, le régime, le sachet restent des pièces
+// entières : on ne vend pas un tiers de tas (voir UNITES_VIVRIER).
+function _uniteVrac(p){
+  if(!p||estMesure(p)||!p.umNom)return false;
+  return /^(cuvettes?|sceaux?|seaux?|paniers?|bassines?|seilles?)$/.test(txtNorm(String(p.umNom)).trim());
+}
+function seVendAuDetail(p){return estMesure(p)||_uniteVrac(p);}
 // Le vivrier ne se vend ni au kilo ni à la pièce : il se vend au TAS, à la
 // BOTTE, à la CUVETTE. L'app disait « 3 unités » pour trois tas de tomates —
 // un mot que le commerçant n'emploie jamais. Le nom de l'unité est donc
@@ -9166,7 +9178,7 @@ function uniteArt(p){
   if(p&&p.umNom)return p.umNom;
   return lang==='fr'?'unités':'units';
 }
-function fmtQ(n){var v=Math.round((+n||0)*100)/100;return String(v).replace('.',',');}
+function fmtQ(n){var x=+n||0,v=(Math.abs(x)>0&&Math.abs(x)<0.1)?Math.round(x*1000)/1000:Math.round(x*100)/100;return String(v).replace('.',',');}
 // Jeu d'icônes cohérent pour la barre de navigation (remplace les emojis disparates)
 function installerIconesNav(){
   // Choix utilisateur : les FONCTIONS (Caisse, Stock, Rapports, Clients, Dash)
@@ -14607,7 +14619,7 @@ function renderProd(lst){
       if(hasV){ouvrirVarInline(p,d);return;} // famille -> les variantes sortent SOUS la carte
       // ⚠️ 23.07 — PLUS DE « LA TUILE VEND LE CARTON » : le gros, c'est la
       // barre du bas (`_barreGros`), sur toutes les tuiles.
-      if(estMesure(p)){vendreMesureTuile(p);return;}
+      if(seVendAuDetail(p)){vendreMesureTuile(p);return;}
       if(isOut&&p.rt&&livePq===0&&!_stockJamaisCompte(p)){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
       _astucePave('a'+p.id);
       addPanier(p,null);
@@ -14646,7 +14658,7 @@ function renderProd(lst){
     if(_sansPrix)d.classList.remove('fini');
     d.innerHTML=
       (((role==='patron'||hasPerm('produits'))&&!venteVerrouillee())?'<button class="pedit" onclick="quickEditPrix(event,'+p.id+')" title="'+(lang==='fr'?'Modifier prix':'Edit price')+'">✎</button>':'')+
-      '<div class="qbdg '+(pq>0?'show':'')+'" id="qb-'+p.id+'" onclick="retirerUn(event,'+p.id+')">'+'<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">'+((!hasV&&estMesure(p))?'⚖':'✕')+'</span></div>'+
+      '<div class="qbdg '+(pq>0?'show':'')+'" id="qb-'+p.id+'" onclick="retirerUn(event,'+p.id+')">'+'<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">'+((!hasV&&seVendAuDetail(p))?'⚖':'✕')+'</span></div>'+
       // ⚠️⚠️ UNE SEULE CARTE, DEUX VIGNETTES. Avant, la carte à photo et la
       // carte sans photo étaient DEUX MISES EN PAGE DIFFÉRENTES : l'une
       // écrivait son nom en bas sur un voile, sur UNE ligne coupée par des
@@ -15262,7 +15274,7 @@ function venteRapide(pid){
   if(articleIncomplet(p)){if(role==='patron'||hasPerm('produits'))ouvrirCompleterArticle(p);return;}
   if(ts<=0&&!p.rt){_direPourquoiVide(p);return;}
   if(p.vr.length){ouvrirVar(p);return;}
-  if(estMesure(p)){vendreMesureTuile(p);return;}
+  if(seVendAuDetail(p)){vendreMesureTuile(p);return;}
   var livePq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
   if(ts<=0&&p.rt&&livePq===0&&!_stockJamaisCompte(p)){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
   addPanier(p,null);
@@ -16780,7 +16792,7 @@ function _reprendreVente(p){
   if(!p)return;
   var d=_tuileCaisse(p.id);
   if(p.vr&&p.vr.length){if(d)ouvrirVarInline(p,d);return;}
-  if(estMesure(p)){vendreMesureTuile(p);return;}
+  if(seVendAuDetail(p)){vendreMesureTuile(p);return;}
   addPanier(p,null);
 }
 // ⚠️ CE QUE J'AVAIS RATÉ, ET QUI RENDAIT LE BOUTON « CORRIGER » MENSONGER.
@@ -16851,6 +16863,13 @@ function ouvrirQteMesure(p,remplacer){
 //  repesé au prix du kilo du jour).
 // ══════════════════════════════════════════════════════════════════
 var _qteRemplace=null;
+// 23.90 — « Plus de stock ! » ne disait ni combien il en reste, ni quoi faire.
+function _resteMesure(p,reste){
+  var fr=(lang==='fr');reste=Math.max(0,Math.round((Number(reste)||0)*1000)/1000);
+  if(!(reste>0)){closeSheet('ov-qte');try{_direPourquoiVide(p);}catch(e){showToast(t('stockInsuf'));}return;}
+  showToast('⚠️ '+(fr?('Il ne reste que '+fmtQ(reste)+' '+uniteArt(p)+' de '+p.nm+((Number(p.px)>0)?(' (pour '+fmt(Math.floor(reste*p.px))+')'):''))
+                    :('Only '+fmtQ(reste)+' '+uniteArt(p)+' of '+p.nm+' left')));
+}
 function _dosesDe(p){
   if(!p||!DB||!Array.isArray(DB.ventes))return [];
   var cpt={},ordre=[],occ=[],V=DB.ventes,n=0,sac=Number(p.umSac)||0;
@@ -16898,7 +16917,7 @@ function _vendreDose(p,d){
   if(!p||!d||!(Number(p.px)>0||d.k==='mes'))return false;
   _qteArt=p;
   if(d.k==='q'){ajouterQteMesure(d.q);return true;}
-  if(d.k==='mt'){var px=Number(p.px)||0,q=Math.round(d.M/px*100)/100;if(!(q>0))return false;
+  if(d.k==='mt'){var px=Number(p.px)||0,q=Math.round(d.M/px*1000)/1000;if(!(q>0))return false;
     return _ajouterMesure(p,q,d.M,(lang==='fr'?'pour ':'for ')+fmt(d.M));}
   var m=_mesuresDe(p).find(function(x){return txtNorm(x.nm)===txtNorm(d.nm);});
   return m?_ajouterMesure(p,Number(m.q),Number(m.px),String(m.nm)):false;
@@ -16958,7 +16977,8 @@ function _qteRendreMesures(p){
     return '<button type="button" class="qte-m" onclick="qteMesure('+i+')"><b>'+escH(m.nm)+'</b><span>'+fmt(m.px)+'</span></button>';
   }).join('');
   var pl=document.getElementById('qte-poids-l');
-  if(pl)pl.textContent=fr?('Au poids ('+uniteArt(p)+')'):('By weight ('+uniteArt(p)+')');
+  if(pl)pl.textContent=estMesure(p)?(fr?('Au poids ('+uniteArt(p)+')'):('By weight ('+uniteArt(p)+')'))
+                                   :(fr?('En '+uniteArt(p)):('By '+uniteArt(p)));
   if(mt){
     if(!(Number(p.px)>0)){mt.innerHTML='';return;}
     mt.innerHTML='<div class="pl">'+(fr?'Pour un montant':'For an amount')+'</div><div class="qte-mt-ch">'
@@ -16967,13 +16987,13 @@ function _qteRendreMesures(p){
   }
 }
 function _ajouterMesure(p,q,px,mot){
-  q=Math.round(q*100)/100;
+  q=Math.round(q*1000)/1000;
   if(!(q>0)||!(px>0))return false;
   var key=p.id+'-0';
   if(_qteRemplace===p.id){delete panier[key];try{delete _grosPanier[key];}catch(e){}_qteRemplace=null;}
   var cur=panier[key]||0,ts=getStk(p);
-  if(cur+q>ts&&!p.rt){showToast(t('stockInsuf'));return false;}
-  panier[key]=Math.round((cur+q)*100)/100;
+  if(cur+q>ts&&!p.rt){_resteMesure(p,ts-cur);return false;}
+  panier[key]=Math.round((cur+q)*1000)/1000;
   // Le coût de la mesure : son poids au prix d'achat de l'unité.
   var pa=(Number(p.pa)>0)?Math.round(Number(p.pa)*q*100)/100:0;
   _grosPanier[key]=_empilerLot(_grosPanier[key],q,mot,{px:px,pa:pa},Number(p.px)||0,_umDe(p));
@@ -16994,7 +17014,10 @@ function qtePourMontant(v){
   var M=(v>0)?v:(parseFloat(String((document.getElementById('qte-mt-i')||{}).value||'').replace(',','.'))||0);
   if(!(M>0)){showToast('⚠️ '+(fr?'Dis pour combien':'Enter an amount'));return;}
   var px=Number(p.px)||0;if(!(px>0))return;
-  var q=Math.round(M/px*100)/100;
+  // ⚠️ 23.90 — AU GRAMME PRÈS, PLUS AU DIX GRAMMES. 100 F de safran à
+  // 40 000 F le kilo, c'est 2,5 g : arrondi à 0,01 kg, il tombait à 0 et
+  // l'app répondait « Trop peu pour être pesé » (mesuré au banc).
+  var q=Math.round(M/px*1000)/1000;
   if(!(q>0)){showToast('⚠️ '+(fr?'Trop peu pour être pesé':'Too little to weigh'));return;}
   _ajouterMesure(p,q,Math.round(M),(fr?'pour ':'for ')+fmt(Math.round(M)));
 }
@@ -17019,8 +17042,8 @@ function ajouterQteMesure(q){
   var key=p.id+'-0';
   if(_qteRemplace===p.id){delete panier[key];try{delete _grosPanier[key];}catch(e){}_qteRemplace=null;}
   var cur=panier[key]||0,ts=getStk(p);
-  if(cur+q>ts&&!p.rt){showToast(t('stockInsuf'));return;}
-  panier[key]=Math.round((cur+q)*100)/100;
+  if(cur+q>ts&&!p.rt){_resteMesure(p,ts-cur);return;}
+  panier[key]=Math.round((cur+q)*1000)/1000;
   updatePUI(p.id);
   closeSheet('ov-qte');
   showToast('🛒 '+fmtQ(q)+' '+uniteArt(p)+' — '+p.nm+((Number(p.px)>0)?(' · '+fmt(Math.round(p.px*q))):''));
@@ -17058,7 +17081,7 @@ function retirerUn(e,pid){
   // 23.88 — au kilo/litre, le badge « 1 kg ⚖ » CHANGE la quantité : retirer
   // « un » kilo à un quart n'avait pas de sens (et laissait le lot du quart).
   var _pm=DB.articles.find(function(x){return x.id==pid;});
-  if(_pm&&!(_pm.vr&&_pm.vr.length)&&estMesure(_pm)){changerQteMesure(_pm);return;}
+  if(_pm&&!(_pm.vr&&_pm.vr.length)&&seVendAuDetail(_pm)){changerQteMesure(_pm);return;}
   var keys=Object.keys(panier).filter(function(k){return k.split('-')[0]==pid;});
   if(!keys.length)return;
   var key=keys[keys.length-1];
@@ -19497,7 +19520,7 @@ function vendreUnite(e,pid){
   var ts=getStk(p),out=ts<=0,jamais=!!(p.rt&&_stockJamaisCompte(p));
   if(jamais)out=false;
   if(out&&!p.rt){_direPourquoiVide(p);return;}
-  if(estMesure(p)){vendreMesureTuile(p);return;}
+  if(seVendAuDetail(p)){vendreMesureTuile(p);return;}
   var deja=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
   if(out&&p.rt&&deja===0&&!jamais){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
   addPanier(p,null);
@@ -21706,7 +21729,7 @@ function updatePUI(pid){
   var total=calcTotal(),nb=Object.values(panier).reduce(function(a,b){return a+b;},0)+panierLibre.length;
   var pq=Object.keys(panier).filter(function(k){return k.split('-')[0]==pid;}).reduce(function(s,k){return s+panier[k];},0);
   var badge=document.getElementById('qb-'+pid),card=document.getElementById('pc-'+pid);
-  if(badge){var _pB=DB.articles.find(function(x){return x.id==pid;}),_mB=!!(_pB&&!(_pB.vr&&_pB.vr.length)&&estMesure(_pB));
+  if(badge){var _pB=DB.articles.find(function(x){return x.id==pid;}),_mB=!!(_pB&&!(_pB.vr&&_pB.vr.length)&&seVendAuDetail(_pB));
     badge.innerHTML='<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">'+(_mB?'⚖':'✕')+'</span>';badge.classList.toggle('show',pq>0);}
   if(card)card.classList.toggle('sel',pq>0);
   var fc=document.getElementById('fcart');
