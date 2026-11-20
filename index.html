@@ -7737,7 +7737,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.93'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.94'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -22232,12 +22232,30 @@ function voixActive(){
     return !!(window.speechSynthesis&&window.SpeechSynthesisUtterance);
   }catch(e){return false;}
 }
+// ⚠️ 23.94 — LA VOIX DE LA BONNE LANGUE, ET CELLE DU TÉLÉPHONE D'ABORD.
+// Avant : la première voix française, sinon `v[0]` — la première de la
+// liste, souvent anglaise. Un téléphone sans voix française lisait donc
+// « Merci ! 1300 francs » avec une voix anglaise, imposée : le moteur ne
+// pouvait même plus choisir sa voix française à lui (u.lang). Et en anglais,
+// l'app imposait la voix FRANÇAISE. Depuis la 23.93 elle parle d'elle-même
+// à chaque vente : ce défaut s'entendait toute la journée.
+// Maintenant : une voix de la langue de l'app, celles du téléphone avant
+// celles du réseau (« Google français » sur un ordinateur ne marche pas
+// sans internet, et répond plus lentement) ; sans voix de la langue, on
+// n'en impose aucune et le moteur fait avec u.lang.
+var _voixOkLang=null;
 function _voixFr(){
-  if(_voixOk!==null)return _voixOk;
+  var lg=(typeof lang!=='undefined'&&lang==='en')?'en':'fr';
+  if(_voixOk!==null&&_voixOkLang===lg)return _voixOk;
   try{
     var v=window.speechSynthesis.getVoices()||[];
-    _voixOk=v.filter(function(x){return /^fr/i.test(x.lang);})[0]||v[0]||null;
+    var re=lg==='en'?/^en/i:/^fr/i,pref=lg==='en'?/^en[-_](US|GB)/i:/^fr[-_]FR/i;
+    var m=v.filter(function(x){return x&&re.test(x.lang||'');});
+    var note=function(x){return (x.localService?2:0)+(pref.test(x.lang||'')?1:0);};
+    m.sort(function(a,b){return note(b)-note(a);});
+    _voixOk=m[0]||null;
   }catch(e){_voixOk=null;}
+  _voixOkLang=lg;
   return _voixOk;
 }
 // Les nombres se disent, ils ne s'épellent pas : « 1 500 » doit s'entendre
