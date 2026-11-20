@@ -2490,6 +2490,17 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .sistock{text-align:right}.siqty{font-size:19px;font-weight:900}
 .siqty.ok{color:var(--G)}.siqty.low{color:var(--O)}.siqty.out{color:var(--R)}
 .siu{font-size:10px;color:var(--M);font-weight:600}
+/* 23.84 — l'écran d'écoute de la voix payante : un grand rond qui bat au
+   rythme de la voix, la consigne, un gros « C'est fini » sous le pouce. */
+.vpro-ov{position:fixed;inset:0;z-index:2147483000;background:rgba(18,14,30,.82);display:none;align-items:flex-end;justify-content:center}
+.vpro-ov.show{display:flex}
+.vpro-boite{width:100%;max-width:520px;background:var(--C);border-radius:26px 26px 0 0;padding:30px 22px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:12px}
+.vpro-rond{width:132px;height:132px;border-radius:50%;background:#F0A93E;color:#221F2B;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 14px rgba(240,169,62,.22);transition:transform .1s linear;margin:6px 0 10px}
+.vpro-ov.pense .vpro-rond{background:#221F2B;color:#F0A93E;animation:vproPense 1s ease-in-out infinite}
+@keyframes vproPense{50%{transform:scale(.9)}}
+.vpro-t{font-size:26px;font-weight:900;color:var(--T)}
+.vpro-s{font-size:16px;font-weight:700;color:var(--M);text-align:center;min-height:20px}
+.vpro-fini{width:100%;min-height:64px;border:0;border-radius:18px;background:#1B7A3A;color:#fff;font:900 21px 'Outfit',sans-serif;margin-top:8px;cursor:pointer}
 /* 23.80 — le micro de la voix payante porte un point orange. */
 #btn-mic.vpro{position:relative}
 #btn-mic.vpro::after{content:'';position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:#F0A93E;box-shadow:0 0 0 2px #fff}
@@ -7674,7 +7685,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.83'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.84'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -32363,27 +32374,79 @@ function _voixMots(){
 }
 // Touche à nouveau le micro : la phrase s'arrête et part tout de suite.
 function voixProArreter(){if(_vproRec&&_vproRec.state==='recording'){try{_vproRec.stop();}catch(e){}}}
-function voixProEcouter(maxMs){
+// ⚠️ 23.84 — « L'ÉCRAN N'EST PAS VRAIMENT ADAPTÉ ET C'EST TRÈS LENT » (le
+// patron, 20/11, au pilote). Mesuré : le serveur répond en 1,1 à 2,5 s,
+// mais l'enregistrement attendait qu'il RETOUCHE le micro — ou 6 s — et
+// seul un petit message disait qu'on l'écoutait. Maintenant :
+//  · un ÉCRAN d'écoute : un grand micro qui bat au rythme de sa voix (il
+//    voit qu'on l'entend), la consigne, un gros « C'est fini » ;
+//  · l'arrêt TOUT SEUL : 0,9 s de silence après qu'il a parlé ;
+//  · le serveur RÉVEILLÉ pendant qu'il parle (une petite question « etat »
+//    partie au premier mot) : son démarrage à froid ne s'ajoute plus.
+function _vproEcran(etat,texte){
+  var fr=(lang==='fr'),o=document.getElementById('vpro-ov');
+  if(etat==='ferme'){if(o)o.classList.remove('show');return;}
+  if(!o){
+    o=document.createElement('div');o.id='vpro-ov';o.className='vpro-ov';
+    o.innerHTML='<div class="vpro-boite"><div class="vpro-rond" id="vpro-rond"><i id="vpro-ic"></i></div>'
+      +'<div class="vpro-t" id="vpro-t"></div><div class="vpro-s" id="vpro-s"></div>'
+      +'<button type="button" class="vpro-fini" id="vpro-fini"></button></div>';
+    document.body.appendChild(o);
+    o.querySelector('#vpro-fini').onclick=function(ev){ev.stopPropagation();voixProArreter();};
+    o.onclick=function(ev){if(ev.target===o)voixProArreter();};
+  }
+  var ec=(etat==='ecoute');
+  o.classList.add('show');o.classList.toggle('pense',!ec);
+  document.getElementById('vpro-ic').innerHTML=window.ico(ec?'micro':'ecoute',54);
+  document.getElementById('vpro-t').textContent=ec?(fr?'Je t\'écoute':'Listening'):(fr?'Je réfléchis…':'Thinking…');
+  document.getElementById('vpro-s').textContent=texte||(ec?(fr?'Dis les articles : « deux Mützig et un Tangui »':'Say the items'):'');
+  var b=document.getElementById('vpro-fini');b.style.display=ec?'':'none';b.textContent=fr?'✓  C\'est fini':'✓  Done';
+}
+function _vproNiveau(n){var r=document.getElementById('vpro-rond');if(r)r.style.transform='scale('+(1+Math.min(0.45,n*6)).toFixed(3)+')';}
+function voixProEcouter(maxMs,consigne){
   var fr=(lang==='fr');
   if(_vproRec&&_vproRec.state==='recording'){voixProArreter();return Promise.resolve(null);}
   return new Promise(function(fin){
-    navigator.mediaDevices.getUserMedia({audio:true}).then(function(flux){
+    navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}).then(function(flux){
       var type=(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))?'audio/webm;codecs=opus':'';
       var rec;try{rec=type?new MediaRecorder(flux,{mimeType:type,audioBitsPerSecond:16000}):new MediaRecorder(flux);}catch(e){rec=new MediaRecorder(flux);}
-      var bouts=[],t0=Date.now();_vproRec=rec;
+      var bouts=[],t0=Date.now(),actx=null,minuteur=null,reveil=false;_vproRec=rec;
       rec.ondataavailable=function(e){if(e.data&&e.data.size)bouts.push(e.data);};
       rec.onstop=function(){
+        clearInterval(minuteur);try{actx&&actx.close();}catch(e){}
         try{flux.getTracks().forEach(function(t){t.stop();});}catch(e){}
         _vproRec=null;
         var son=new Blob(bouts,{type:rec.mimeType||'audio/webm'});
-        if(!son.size){fin(null);return;}
-        showToast('⏳ '+(fr?'Je t\'écoute…':'Listening…'));
-        _voixEnvoyer(son,(Date.now()-t0)/1000).then(fin);
+        if(!son.size){_vproEcran('ferme');fin(null);return;}
+        _vproEcran('pense');
+        _voixEnvoyer(son,(Date.now()-t0)/1000).then(function(t){_vproEcran('ferme');fin(t);});
       };
-      rec.start();
-      showToast('🎤 '+(fr?'Parle — touche le micro quand tu as fini':'Speak — tap the mic when done'));
-      setTimeout(voixProArreter,maxMs||6000);
+      rec.start(250);
+      _vproEcran('ecoute',consigne);
+      // L'oreille : le niveau de sa voix fait battre le rond, et le silence
+      // après la parole arrête l'écoute tout seul.
+      try{
+        var AC=window.AudioContext||window.webkitAudioContext;actx=new AC();
+        var an=actx.createAnalyser();an.fftSize=512;actx.createMediaStreamSource(flux).connect(an);
+        var buf=new Float32Array(an.fftSize),fond=0,nFond=0,parle=false,dernierSon=0;
+        minuteur=setInterval(function(){
+          if(!_vproRec)return;
+          an.getFloatTimeDomainData(buf);var q=0;for(var i=0;i<buf.length;i++)q+=buf[i]*buf[i];var rms=Math.sqrt(q/buf.length);
+          _vproNiveau(rms);
+          var age=Date.now()-t0;
+          if(age<350){fond+=rms;nFond++;return;}           // le bruit de la boutique, mesuré au début
+          var seuil=Math.max(0.012,(nFond?fond/nFond:0)*2.2);
+          if(rms>seuil){
+            parle=true;dernierSon=Date.now();
+            if(!reveil){reveil=true;try{voixProEtat(true);}catch(e){}}   // réveille le serveur pendant qu'il parle
+          }
+          if(parle&&Date.now()-dernierSon>900)voixProArreter();
+          if(!parle&&age>4500)voixProArreter();            // rien dit en 4,5 s
+        },100);
+      }catch(e){}
+      setTimeout(voixProArreter,maxMs||9000);
     }).catch(function(){
+      _vproEcran('ferme');
       showToast('🎤 '+(fr?'Le micro est refusé : autorise-le dans le téléphone':'Microphone blocked'));
       fin(null);
     });

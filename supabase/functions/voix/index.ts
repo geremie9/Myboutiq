@@ -108,7 +108,11 @@ Deno.serve(async (req: Request) => {
         // La durée vient du fournisseur quand il la donne ; sinon celle du
         // téléphone, bornée par la taille du son (on ne croit pas un « 0 s »).
         const sec = r.secondes || Math.max(1, Math.min(dite || 30, son.size / 1500));
-        await db.rpc('voix_compter', { p_code: code, p_secondes: Math.round(sec * 10) / 10 });
+        // 23.84 — le compteur ne fait plus attendre la réponse : il s'écrit
+        // après, en arrière-plan (EdgeRuntime.waitUntil), quand c'est possible.
+        const compte = db.rpc('voix_compter', { p_code: code, p_secondes: Math.round(sec * 10) / 10 });
+        const ER = (globalThis as unknown as { EdgeRuntime?: { waitUntil?: (p: unknown) => void } }).EdgeRuntime;
+        if (ER && typeof ER.waitUntil === 'function') ER.waitUntil(compte); else await compte;
         return rep({ ok: true, texte: r.texte, fournisseur: nom, reste: Math.max(0, (a.reste || 0) - sec) });
       } catch (e) { dernier = String((e as Error).message || e); }
     }
