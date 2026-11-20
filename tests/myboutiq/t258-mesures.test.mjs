@@ -42,7 +42,8 @@ t(tot === 400, `le bouton ¼ vend aussi le quart à 200 (${tot})`);
 await p.locator('#pc-9').tap(); await p.waitForTimeout(300);
 await p.locator('#qte-mt .qte-mt-ch button').nth(2).tap(); await p.waitForTimeout(300);
 const c = await p.evaluate(() => ({ tot: calcTotal(), q: panier['9-0'] }));
-t(c.tot === 900 && Math.abs(c.q - 1.21) < 0.001, `« pour 500 » : 500 F au total (${c.tot}), 0,71 kg pesé (panier ${c.q} kg)`);
+// 23.90 — au gramme près : 500 F à 700 le kilo pèsent 0,714 kg (avant, arrondi à 0,71).
+t(c.tot === 900 && Math.abs(c.q - 1.214) < 0.001, `« pour 500 » : 500 F au total (${c.tot}), 0,714 kg pesé (panier ${c.q} kg)`);
 // 1 kg au poids, à côté : le kilo reste à 700
 await p.locator('#pc-9').tap(); await p.waitForTimeout(300);
 await p.evaluate(() => ajouterQteMesure(1)); await p.waitForTimeout(200);
@@ -55,9 +56,9 @@ const v = await p.evaluate(() => { const x = DB.ventes[DB.ventes.length - 1]; re
 t(v.total === 1600, `vente enregistrée : ${v.total} F — ${v.lignes}`);
 t(/— quart ×2 @200 q0.25/.test(v.lignes) && /— pour [^;]*500[^;]*×1 @500 q0.71/.test(v.lignes), 'le reçu nomme chaque mesure, sans « de 0,25 »');
 const s1 = await stock(p, 9);
-t(Math.abs((s0 - s1) - 2.21) < 0.001, `le stock baisse en kilos : ${s0} → ${s1} (2,21 kg)`);
-// bénéfice : 1600 − 2,21 × 600 = 274
-t(Math.abs(v.ben - (1600 - 2.21 * 600)) < 1.5, `le bénéfice compte le poids vendu au prix d'achat (${v.ben})`);
+t(Math.abs((s0 - s1) - 2.214) < 0.001, `le stock baisse en kilos : ${s0} → ${s1} (2,214 kg)`);
+// bénéfice : 1600 − 2,214 × 600 = 271,6
+t(Math.abs(v.ben - (1600 - 2.214 * 600)) < 1.5, `le bénéfice compte le poids vendu au prix d'achat (${v.ben})`);
 
 // ── 3. Idempotence et nettoyage ──
 const idem = await p.evaluate(() => { const a = JSON.stringify(migrateDBData(JSON.parse(JSON.stringify(DB))).articles.find(x => x.id === 9).mes); DB.articles.find(x => x.id === 9).mes.push({ nm: '<b>x', q: -1, px: 5 }, 'n\'importe quoi'); const b2 = JSON.stringify(migrateDBData(JSON.parse(JSON.stringify(DB))).articles.find(x => x.id === 9).mes); return a === b2; });
