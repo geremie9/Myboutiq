@@ -52,7 +52,7 @@ for (const f of ['conseils/commun/guides.js']) {
     t(ok, path.relative(RACINE, f) + ' : TypeScript lisible' + (err ? ' : ' + err : ''));
   }
 }
-for (const f of ['sw.js', 'supabase/functions/notifier/webpush.js']) {
+for (const f of ['sw.js', 'supabase/functions/notifier/webpush.js', 'supabase/functions/voix/fournisseurs.js']) {
   const r = spawnSync(process.execPath, ['--check', path.join(RACINE, f)], { encoding: 'utf8' });
   t(r.status === 0, f + (r.status ? ' : ' + (r.stderr || '').split('\n').slice(0, 4).join(' ') : ''));
 }

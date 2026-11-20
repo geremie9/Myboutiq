@@ -2490,6 +2490,9 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .sistock{text-align:right}.siqty{font-size:19px;font-weight:900}
 .siqty.ok{color:var(--G)}.siqty.low{color:var(--O)}.siqty.out{color:var(--R)}
 .siu{font-size:10px;color:var(--M);font-weight:600}
+/* 23.80 — le micro de la voix payante porte un point orange. */
+#btn-mic.vpro{position:relative}
+#btn-mic.vpro::after{content:'';position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:#F0A93E;box-shadow:0 0 0 2px #fff}
 #ob-pin::placeholder{font-size:16px;letter-spacing:0;font-weight:700}
 /* 23.76 — « + Entrée » en 9 px : un mot à lire pour un geste qui se fait
    en touchant la ligne. Un rond « + » qu'on voit sans lire. */
@@ -7669,7 +7672,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.79'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.80'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -32266,8 +32269,141 @@ function partagerLienInvitation(){
 // sont exactement les deux murs pour un commerçant qui ne sait pas écrire.
 // Le micro était déjà là, mais il ne servait qu'à CHERCHER un article.
 // Il sert maintenant aussi à répondre.
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 23.80 — LA VOIX PAYANTE
+//  Le patron, le 20/11/2026 : « la voix avec des API payantes à faible
+//  coût — ceux qui sont prêts à payer ont souvent du wifi et du solaire ».
+//  La dictée gratuite (celle du téléphone) se trompe sur « Mützig »,
+//  « Tangui », « Tasty Tom » et sur l'accent. La boutique abonnée envoie sa
+//  phrase (3–5 s, ≈ 8 Ko) à notre fonction serveur `voix`, avec la liste de
+//  SES articles ; le serveur la fait transcrire chez un service payant dont
+//  la clé ne quitte jamais le serveur.
+//  ⚠️ La voix ne bloque JAMAIS une vente : pas de réseau, pas d'abonnement,
+//  serveur lent (> 9 s) ou en panne → la dictée gratuite et le tactile,
+//  comme avant. Une panne la met de côté 5 minutes, sans le dire deux fois.
+//  ⚠️ La boutique de démonstration n'appelle jamais le serveur.
+// ══════════════════════════════════════════════════════════════════
+var VOIX_URL=SUPA_URL+'/functions/v1/voix';
+var _vpro={ok:false,ts:0,code:''},_vproPanne=0,_vproRec=null;
+try{var _vps=JSON.parse(localStorage.getItem('myboutiq_voixpro')||'null');if(_vps&&typeof _vps==='object')_vpro=_vps;}catch(e){}
+function _voixPin(){try{return (typeof _shopPin!=='undefined'&&_shopPin!=null)?String(_shopPin):'';}catch(e){return '';}}
+async function _voixJeton(){
+  try{if(supa&&supa.auth&&role!=='vendeur'){var s=await supa.auth.getSession();return (s&&s.data&&s.data.session&&s.data.session.access_token)||'';}}catch(e){}
+  return '';
+}
+async function _voixEntetes(json){
+  var h={apikey:SUPA_KEY};if(json)h['Content-Type']='application/json';
+  var j=await _voixJeton();if(j)h.Authorization='Bearer '+j;
+  return h;
+}
+// Demandé au plus toutes les 6 h, et gardé pour les coupures de réseau.
+async function voixProEtat(force){
+  try{if(typeof estDemo==='function'&&estDemo())return false;}catch(e){}
+  if(!DB||!DB.cfg||!DB.cfg.code)return false;
+  var code=String(DB.cfg.code);
+  if(navigator.onLine===false)return !!(_vpro.ok&&_vpro.code===code);
+  if(!force&&_vpro.code===code&&Date.now()-(_vpro.ts||0)<6*3600e3)return !!_vpro.ok;
+  try{
+    var r=await fetch(VOIX_URL,{method:'POST',headers:await _voixEntetes(true),body:JSON.stringify({action:'etat',code:code,pin:_voixPin()})});
+    var d={};try{d=await r.json();}catch(e){}
+    _vpro={ok:!!(d&&d.ok),ts:Date.now(),code:code,reste:Number(d&&d.reste)||0};
+    try{localStorage.setItem('myboutiq_voixpro',JSON.stringify(_vpro));}catch(e){}
+  }catch(e){}
+  try{majBoutonMic();}catch(e){}
+  return !!_vpro.ok;
+}
+function voixProDispo(){
+  try{if(typeof estDemo==='function'&&estDemo())return false;}catch(e){}
+  return !!(_vpro&&_vpro.ok&&DB&&DB.cfg&&_vpro.code===String(DB.cfg.code)&&navigator.onLine!==false
+    &&Date.now()-_vproPanne>5*60e3&&window.MediaRecorder&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+}
+// Les noms que le service doit connaître : ceux de CETTE boutique, les plus
+// vendus d'abord (le serveur en garde 150).
+function _voixMots(){
+  var L=[];
+  ((DB&&DB.articles)||[]).slice().sort(function(a,b){return (Number(b.vd)||0)-(Number(a.vd)||0);}).forEach(function(p){
+    if(!p||!p.nm)return;L.push(String(p.nm));
+    (p.vr||[]).forEach(function(v){if(v&&v.nm)L.push(String(v.nm));});
+  });
+  return L.slice(0,200);
+}
+// Touche à nouveau le micro : la phrase s'arrête et part tout de suite.
+function voixProArreter(){if(_vproRec&&_vproRec.state==='recording'){try{_vproRec.stop();}catch(e){}}}
+function voixProEcouter(maxMs){
+  var fr=(lang==='fr');
+  if(_vproRec&&_vproRec.state==='recording'){voixProArreter();return Promise.resolve(null);}
+  return new Promise(function(fin){
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(flux){
+      var type=(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))?'audio/webm;codecs=opus':'';
+      var rec;try{rec=type?new MediaRecorder(flux,{mimeType:type,audioBitsPerSecond:16000}):new MediaRecorder(flux);}catch(e){rec=new MediaRecorder(flux);}
+      var bouts=[],t0=Date.now();_vproRec=rec;
+      rec.ondataavailable=function(e){if(e.data&&e.data.size)bouts.push(e.data);};
+      rec.onstop=function(){
+        try{flux.getTracks().forEach(function(t){t.stop();});}catch(e){}
+        _vproRec=null;
+        var son=new Blob(bouts,{type:rec.mimeType||'audio/webm'});
+        if(!son.size){fin(null);return;}
+        showToast('⏳ '+(fr?'Je t\'écoute…':'Listening…'));
+        _voixEnvoyer(son,(Date.now()-t0)/1000).then(fin);
+      };
+      rec.start();
+      showToast('🎤 '+(fr?'Parle — touche le micro quand tu as fini':'Speak — tap the mic when done'));
+      setTimeout(voixProArreter,maxMs||6000);
+    }).catch(function(){
+      showToast('🎤 '+(fr?'Le micro est refusé : autorise-le dans le téléphone':'Microphone blocked'));
+      fin(null);
+    });
+  });
+}
+async function _voixEnvoyer(son,duree){
+  var fr=(lang==='fr');
+  var ctl=window.AbortController?new AbortController():null;
+  var minut=setTimeout(function(){try{ctl&&ctl.abort();}catch(e){}},9000);
+  try{
+    var fd=new FormData();
+    fd.append('code',String(DB.cfg.code));fd.append('pin',_voixPin());
+    fd.append('mots',JSON.stringify(_voixMots()));fd.append('duree',String(Math.round(duree*10)/10));
+    fd.append('son',son,'phrase.webm');
+    var r=await fetch(VOIX_URL,{method:'POST',headers:await _voixEntetes(false),body:fd,signal:ctl?ctl.signal:undefined});
+    var d={};try{d=await r.json();}catch(e){}
+    clearTimeout(minut);
+    if(d&&d.ok){
+      if(typeof d.reste==='number'){_vpro.reste=d.reste;try{localStorage.setItem('myboutiq_voixpro',JSON.stringify(_vpro));}catch(e){}}
+      var t=String(d.texte||'').trim();
+      if(!t)showToast('🎤 '+(fr?'Je n\'ai rien entendu. Réessaie.':'Heard nothing. Try again.'));
+      return t||null;
+    }
+    // Abonnement fini ou minutes du mois passées : la dictée gratuite reprend.
+    if(d&&(d.motif==='abonnement'||d.motif==='quota'||d.motif==='ferme'||d.motif==='acces')){
+      _vpro.ok=false;try{localStorage.setItem('myboutiq_voixpro',JSON.stringify(_vpro));}catch(e){}
+      try{majBoutonMic();}catch(e){}
+    }else _vproPanne=Date.now();
+  }catch(e){clearTimeout(minut);_vproPanne=Date.now();}
+  showToast('🎤 '+(fr?'La voix ne répond pas. Réessaie, ou touche l\'article.':'Voice not answering. Try again, or tap the item.'));
+  return null;
+}
+// Ce que la dictée a compris va dans le champ, avec une majuscule, et se relit.
+function _dicteeRemplir(champ,t){
+  var fr=(lang==='fr');
+  // Un nom propre commence par une majuscule : il l'aurait mise s'il
+  // écrivait. La dictée rend tout en minuscules.
+  champ.value=t.charAt(0).toUpperCase()+t.slice(1);
+  try{champ.dispatchEvent(new Event('input',{bubbles:true}));}catch(x){}
+  // On lui relit ce qu'on a compris : il ne peut pas le vérifier des yeux.
+  try{parler((fr?'J\'ai écrit ':'I wrote ')+champ.value);}catch(x){}
+}
 function dicterDans(idChamp,idBouton){
   var fr=(lang==='fr');
+  // 23.80 — la voix payante d'abord, si la boutique l'a et qu'il y a du réseau.
+  if(voixProDispo()){
+    var _ch=document.getElementById(idChamp),_bt=idBouton&&document.getElementById(idBouton);if(!_ch)return;
+    if(_bt){_bt.textContent='🔴';_bt.disabled=false;}
+    voixProEcouter().then(function(t){
+      if(_bt){_bt.textContent='🎤';_bt.disabled=false;}
+      if(t)_dicteeRemplir(_ch,t);
+    });
+    return;
+  }
   if(!('SpeechRecognition' in window||'webkitSpeechRecognition' in window)){
     showToast('🎤 '+(fr?'Ce téléphone ne comprend pas la dictée':'No dictation on this phone'));return;}
   var champ=document.getElementById(idChamp);if(!champ)return;
@@ -32280,19 +32416,18 @@ function dicterDans(idChamp,idBouton){
   r.onresult=function(e){
     var t=String((e.results[0][0]||{}).transcript||'').trim();
     if(!t){fini();return;}
-    // Un nom propre commence par une majuscule : il l'aurait mise s'il
-    // écrivait. La dictée rend tout en minuscules.
-    champ.value=t.charAt(0).toUpperCase()+t.slice(1);
-    try{champ.dispatchEvent(new Event('input',{bubbles:true}));}catch(x){}
+    _dicteeRemplir(champ,t);
     fini();
-    // On lui relit ce qu'on a compris : il ne peut pas le vérifier des yeux.
-    try{parler((fr?'J\'ai écrit ':'I wrote ')+champ.value);}catch(x){}
   };
   r.onerror=function(){fini();showToast('🎤 '+(fr?'Je n\'ai pas entendu. Réessaie.':'Did not hear. Try again.'));};
   r.onend=fini;
   try{r.start();showToast('🎤 '+(fr?'Parle maintenant…':'Speak now…'));}catch(x){fini();}
 }
-function voiceSearch(){if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}var SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();r.lang=lang==='fr'?'fr-FR':'en-US';r.onresult=function(e){var q=e.results[0][0].transcript;document.getElementById('src-c').value=q;filtrC(q);};r.onerror=function(){showToast('🎤');};r.start();showToast(t('microParle'));}
+function voiceSearch(){
+  if(voixProDispo()){voixProEcouter().then(function(q){if(!q)return;var c=document.getElementById('src-c');if(c){c.value=q;filtrC(q);}});return;}
+  _voiceSearchGratuit();
+}
+function _voiceSearchGratuit(){if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}var SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();r.lang=lang==='fr'?'fr-FR':'en-US';r.onresult=function(e){var q=e.results[0][0].transcript;document.getElementById('src-c').value=q;filtrC(q);};r.onerror=function(){showToast('🎤');};r.start();showToast(t('microParle'));}
 // ══════════════════════════════════════════════════════════════════
 //  UN SEUL MICRO
 //
@@ -32336,6 +32471,7 @@ function majBoutonMic(){
   b.innerHTML=window.ico(ecouteContinue?'ecoute':'micro',21);
   var _p=!!(ecouteContinue&&_ec.pause);
   b.classList.toggle('pause',_p);
+  try{b.classList.toggle('vpro',voixProDispo());}catch(e){}
   b.title=ecouteContinue
     ?(_p?(fr?'Écoute en pause, pas de réseau — toucher pour arrêter':'Listening paused, no network — tap to stop')
         :(fr?'Écoute continue — toucher pour arrêter':'Listening — tap to stop'))
@@ -39119,6 +39255,8 @@ if('serviceWorker' in navigator){
       // Les annonces suivent le même rythme : au retour sur l'app et au retour
       // du réseau. Même bridage de 2 minutes, côté chercherAnnonces().
       setTimeout(function(){chercherAnnonces(true);verifierAdmin();},4000);
+      // 23.80 — la boutique a-t-elle la voix payante ? (une fois toutes les 6 h)
+      setTimeout(function(){try{voixProEtat();}catch(e){}},5000);
       // Le manifeste des photos : un seul fichier, servi avec l'app et gardé
       // par le service worker. Ensuite tout se décide hors ligne.
       setTimeout(function(){chargerCatalogue600().then(function(){
