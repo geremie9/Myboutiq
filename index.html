@@ -7737,7 +7737,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.92'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.93'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -22221,9 +22221,14 @@ var _voixOk=null;
 // devant ses clients. Elle se tait désormais tant qu'il ne l'a pas allumée
 // (🔊 sur l'écran du paiement, là où elle sert). Celui qui l'avait allumée
 // exprès (voix === true) la garde.
+// ⭐ 23.93 — « MOI JE VEUX QUE L'APP PARLE À SON UTILISATEUR, DYNAMISME »
+// (le patron, 20/11). La 23.75 l'avait mise « à la demande » (éteinte par
+// défaut) ; elle parle maintenant d'elle-même. Celui qui l'a coupée
+// (`DB.cfg.voix === false`) garde le silence : on ne revient pas sur son geste.
+function _voixVoulue(){return !(DB&&DB.cfg&&DB.cfg.voix===false);}
 function voixActive(){
   try{
-    if(!(DB&&DB.cfg&&DB.cfg.voix===true))return false;
+    if(!(DB&&DB.cfg&&_voixVoulue()))return false;
     return !!(window.speechSynthesis&&window.SpeechSynthesisUtterance);
   }catch(e){return false;}
 }
@@ -22297,8 +22302,10 @@ try{
     document.addEventListener(ev,_armerVoix,true);
   });
 }catch(e){}
+var _ditJournal=[];
 function parler(texte){
   if(!voixActive()||!texte)return;
+  try{_ditJournal.push(String(texte));if(_ditJournal.length>30)_ditJournal.shift();}catch(e){}
   try{
     var s=window.speechSynthesis;
     var dire=function(){
@@ -22323,8 +22330,90 @@ function parler(texte){
 // Certains navigateurs ne chargent les voix qu'après un premier événement.
 try{if(window.speechSynthesis)window.speechSynthesis.onvoiceschanged=function(){_voixOk=null;};}catch(e){}
 
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.93 — L'APP PARLE À CELUI QUI VEND
+//  Des phrases courtes, au bon moment, jamais deux fois la même chose :
+//   · BONJOUR, une fois par jour, au premier geste (un navigateur refuse de
+//     parler avant qu'on l'ait touché) : « Bonjour Marie ! Bonne journée de
+//     vente. » ;
+//   · APRÈS CHAQUE VENTE : « Merci ! 1 950 francs. Rends 50 francs. » ;
+//   · LES ENCOURAGEMENTS : la première vente du jour, chaque dizaine de
+//     ventes, l'objectif du jour atteint ;
+//   · LE STOCK QUI S'ÉPUISE, sur ce qu'il vient de vendre : « Attention :
+//     plus que 3 Mützig. » ;
+//   · LE SOIR, à la clôture, la journée en une phrase.
+// ══════════════════════════════════════════════════════════════════
+function _prenomOperateur(){
+  try{
+    if(role==='vendeur')return String(nomVendeur||'').split(' ')[0];
+    var pt=(DB.equipe||[]).find(function(m){return m&&m.role==='patron'&&m.nm;});
+    return pt?String(pt.nm).split(' ')[0]:'';
+  }catch(e){return '';}
+}
+function _direBonjour(){
+  try{
+    if(!DB||!DB.cfg||estDemo&&estDemo())return;
+    var j=new Date().toDateString(),cle='myboutiq_bonjour_'+String(DB.cfg.code||'');
+    if(localStorage.getItem(cle)===j)return;
+    localStorage.setItem(cle,j);
+    var fr=(lang==='fr'),h=new Date().getHours(),pn=_prenomOperateur();
+    var salut=fr?(h>=18?'Bonsoir':'Bonjour'):(h>=18?'Good evening':'Hello');
+    var nb=0;try{nb=getCaisseSales().length;}catch(e){}
+    parler(salut+(pn?(' '+pn):'')+' ! '+(fr
+      ?(nb?('Déjà '+nb+' vente'+(nb>1?'s':'')+' aujourd\'hui. On continue !'):'Bonne journée de vente.')
+      :(nb?(nb+' sales today already. Keep going!'):'Have a good day of sales.')));
+  }catch(e){}
+}
+// Au premier geste de la journée (et pas avant : le navigateur refuserait).
+(function(){
+  var fait=false;
+  var go=function(){if(fait)return;fait=true;setTimeout(_direBonjour,400);
+    try{document.removeEventListener('pointerdown',go,true);}catch(e){}};
+  try{document.addEventListener('pointerdown',go,true);}catch(e){}
+})();
+// Après une vente : le montant, la monnaie, puis ce qui mérite d'être dit.
+function _direApresVente(total,rendu,lignes,totalAvant){
+  try{
+    if(!voixActive())return;
+    var fr=(lang==='fr'),dit=[];
+    var nb=0;try{nb=getCaisseSales().length;}catch(e){}
+    if(nb===1)dit.push(fr?'Première vente de la journée !':'First sale of the day!');
+    dit.push((fr?'Merci ! ':'Thank you! ')+_nombreParlable(total)+(fr?' francs.':' francs.'));
+    if(rendu>0)dit.push((fr?'Rends ':'Give back ')+_nombreParlable(rendu)+(fr?' francs.':' francs.'));
+    var obj=Number(DB.objectif)||0,apres=0;try{apres=getCaisseSales().reduce(function(s,v){return s+(Number(v.total)||0);},0);}catch(e){}
+    if(obj>0&&totalAvant<obj&&apres>=obj)dit.push(fr?'Bravo ! Objectif du jour atteint !':'Well done! Daily goal reached!');
+    else if(nb>1&&nb%10===0)dit.push(fr?(nb+' ventes aujourd\'hui, continue !'):(nb+' sales today, keep going!'));
+    // Le stock : un seul article, le plus urgent, parmi ceux qu'il vient de vendre.
+    var vus={},urgent=null;
+    (lignes||[]).forEach(function(l){
+      if(!l||!l.pid||vus[l.pid+'-'+(l.vid||0)])return;vus[l.pid+'-'+(l.vid||0)]=1;
+      var p=(DB.articles||[]).find(function(x){return x.id==l.pid;});if(!p||p.rt||_stockJamaisCompte(p))return;
+      var v=l.vid?(p.vr||[]).find(function(x){return String(x.id)===String(l.vid);}):null;
+      var q=0;try{q=v?stockVarDispo(p,v):getStk(p);}catch(e){return;}
+      var seuil=Math.max(Number(p.al)||0,seVendAuDetail(p)?0:3);
+      if(q<=seuil&&(!urgent||q<urgent.q))urgent={q:q,nm:v?(p.nm+' '+(v.nm||'')):p.nm,p:p};
+    });
+    if(urgent)dit.push(urgent.q<=0
+      ?(fr?('Attention : '+urgent.nm+' est épuisé.'):('Careful: '+urgent.nm+' is sold out.'))
+      :(fr?('Attention : plus que '+fmtQ(urgent.q)+(seVendAuDetail(urgent.p)?(' '+uniteArt(urgent.p)+' de '):' ')+urgent.nm+'.'):('Careful: only '+fmtQ(urgent.q)+' '+urgent.nm+' left.')));
+    parler(dit.join(' '));
+  }catch(e){}
+}
+function _direCloture(vendu,gagne,nb){
+  try{
+    var fr=(lang==='fr');
+    parler(fr?('Journée fermée. '+nb+' vente'+(nb>1?'s':'')+', '+_nombreParlable(vendu)+' francs vendus'+(gagne>0?(', '+_nombreParlable(gagne)+' francs gagnés'):'')+'. Repose-toi bien, à demain !')
+             :('Day closed. '+nb+' sales, '+_nombreParlable(vendu)+' francs sold. See you tomorrow!'));
+  }catch(e){}
+}
 function direMonnaie(){
   var fr=(lang==='fr');
+  // ⚠️ 23.93 — « RENDS 2 000 FRANCS » APRÈS LA VENTE. L'annonce part avec un
+  // petit retard ; si l'encaissement passe entre-temps, le panier est vide et
+  // elle calculait sur un total de 0 : 2 000 reçus → « rends 2 000 ». Caché
+  // tant que la voix était coupée par défaut, entendu au banc dès qu'elle
+  // parle. Feuille de paiement fermée ou panier vide : elle se tait.
+  try{var _oc=document.getElementById('ov-calc');if(!_oc||!_oc.classList.contains('show')||panierVide())return;}catch(e){}
   var total=calcAPayer(),recu=parseFloat((document.getElementById('calc-recu')||{}).value)||0;
   var m=recu-total;
   if(!recu){parler(fr?('À payer : '+_nombreParlable(total)+' francs'):('To pay: '+_nombreParlable(total)));return;}
@@ -22334,7 +22423,7 @@ function direMonnaie(){
 }
 function _majBoutonVoix(){
   var b=document.getElementById('btn-voix');if(!b)return;
-  var on=!!(DB&&DB.cfg&&DB.cfg.voix===true);
+  var on=!!(DB&&DB.cfg&&_voixVoulue());
   // Au trait, comme toute la caisse (t225 : aucun emoji sur l'écran du
   // paiement) : le haut-parleur qui parle, ou barré.
   b.innerHTML=ico(on?'annonce':'muet',24);b.setAttribute('data-on',on?'1':'0');
@@ -22342,7 +22431,7 @@ function _majBoutonVoix(){
 }
 function basculerVoix(){
   if(!DB||!DB.cfg)return;
-  DB.cfg.voix=(DB.cfg.voix===true)?false:true;
+  DB.cfg.voix=!_voixVoulue();
   save();
   var on=(DB.cfg.voix===true);
   _majBoutonVoix();
@@ -22532,7 +22621,10 @@ function _succProposerPush(){
   clearTimeout(_succTimer);
   // La question se dit toute seule si l'app parle (réglage de la voix),
   // APRÈS ce qui se dit déjà — « Rends 400 francs » ne se coupe jamais.
-  if(voixActive())setTimeout(function(){if(bx.style.display==='block')_succPushDire(false);},700);
+  // 23.93 — elle attend la fin de « Merci ! 1 950 francs » : parler coupe la phrase en cours.
+  if(voixActive())(function attendre(n){setTimeout(function(){
+    try{if(window.speechSynthesis&&window.speechSynthesis.speaking&&n<40){attendre(n+1);return;}}catch(e){}
+    if(bx.style.display==='block')_succPushDire(false);},n?200:700);})(0);
 }
 function _succPushTexte(){
   return (lang!=='en')
@@ -32427,6 +32519,7 @@ function ouvrirClot(){var att=caisseAttendue(),_dc=totalDepCaisseJour(),_dh=tota
 function calcEcart(){var compt=parseFloat(document.getElementById('inp-compt').value)||0,att=caisseAttendue(),ec=compt-att,el=document.getElementById('ecart-cd');el.style.display='flex';el.className='bcard '+(Math.abs(ec)<100?'bon':'bad');document.getElementById('ecart-lbl').textContent=ec===0?'✅ '+(lang==='fr'?'Équilibrée':'Balanced'):ec>0?'📈 '+(lang==='fr'?'Excédent':'Surplus'):'⚠️ '+(lang==='fr'?'Déficit':'Deficit');document.getElementById('ecart-amt').textContent=(ec>=0?'+':'')+fmt(ec);}
 function validerClot(){
   closeSheet('ov-clot');
+  try{var _vj=getCaisseSales();_direCloture(_vj.reduce(function(s,v){return s+(Number(v.total)||0);},0),totalB-totalDepJour(),_vj.length);}catch(e){}   // 23.93
   showToast(t('clotureOk')+' '+t('benefice')+': '+fmt(totalB-totalDepJour()));
   (DB.ventes||[]).forEach(function(v){if(!v.annulee&&!v.cloturee&&isSaleToday(v))v.cloturee=true;});
   // Avant : DB.depenses=[] — la clôture EFFAÇAIT toutes les dépenses. Aucun
@@ -37214,6 +37307,7 @@ function _refusSansStock(){
   return true;
 }
 encaisser=function(){
+  try{clearTimeout(_direMonnaieT);}catch(e){}   // 23.93 — l'annonce de monnaie en attente ne survit pas à la vente
   if(_refusSansStock())return;
   // ⚠️⚠️ UNE VENTE VIDE S'ENREGISTRAIT. Vu au banc pendant le démarrage
   // guidé : la feuille de paiement s'ouvre même panier vide, et « Encaisser »
@@ -37321,6 +37415,7 @@ encaisser=function(){
   // n'est ni un chiffre d'affaires ni un bénéfice. On garde aussi le détail
   // pris/rendu pour pouvoir expliquer la somme au commerçant.
   var _consNet=consigneNette(),_consU=consigneUnitPanier();
+  var _totalAvantVente=0;try{_totalAvantVente=getCaisseSales().reduce(function(s,x){return s+(Number(x.total)||0);},0);}catch(e){}
   var _idV=genVenteId();
   // 23.85 — la photo du panier, AVANT qu'il soit vidé : « Annuler » le rend
   // tel quel, cartons et prix négociés compris (voir annulerDerniereVente).
@@ -37349,6 +37444,7 @@ encaisser=function(){
   var _rendu=0;try{_rendu=_succDetail(paiement,total,clientNm);}catch(e){}
   var sc=document.getElementById('succ');sc.classList.add('show');if(navigator.vibrate)navigator.vibrate([50,30,50]);
   planifierFermetureSucces(sc,_rendu>0);
+  try{_direApresVente(total,_rendu,lignes,_totalAvantVente);}catch(e){}   // 23.93
   try{_succProposerPush();}catch(e){}
   try{_guideApresVente(total,ben,lignes);}catch(e){}
   try{_montrerAnnulRapide(total);}catch(e){}

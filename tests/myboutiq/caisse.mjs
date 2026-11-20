@@ -53,7 +53,8 @@ export async function ouvrirCaisse(b, port, db, { vendeur = null, tactile = fals
     window.__toasts = [];
     const st = window.showToast;
     window.showToast = function (m) { window.__toasts.push(String(m)); try { return st.apply(this, arguments); } catch (e) {} };
-    window.parler = () => {}; window.confirm = () => true;
+    // La caisse se tait au banc ; la vraie voix reste à portée (t308 la reprend).
+    window.__parlerVrai = window.parler; window.parler = () => {}; window.confirm = () => true;
     supa = null; _suppressSync = true; _demarre = true;
     DB = migrateDBData(db);
     if (vendeur) _ouvrirCaisseVendeur(vendeur, DB.cfg.code); else { role = 'patron'; lancerApp(); }

@@ -43,17 +43,18 @@ await p.evaluate(() => showCtx({ clientX: 80, clientY: 200 }, DB.articles.find(a
 t(!(await vis()).includes('Pas la bonne photo'), 'sans photo du catalogue, la ligne n\'est pas là');
 await p.evaluate(() => document.getElementById('ctxm').classList.remove('show'));
 
-// ── 2. La voix : éteinte par défaut, allumée d'un geste là où elle sert ──
+// ── 2. La voix : 23.93 — elle parle par défaut (« je veux que l'app parle à
+// son utilisateur », le patron, 20/11) ; un geste la coupe, et elle s'en souvient ──
 const v0 = await p.evaluate(() => ({ on: voixActive(), cfg: DB.cfg.voix }));
-t(!v0.on, `par défaut, l'app se tait (voix : ${v0.cfg})`);
+t(v0.on, `par défaut, l'app parle (voix : ${v0.cfg})`);
 await p.evaluate(() => { addPanier(DB.articles.find(a => a.id === 2)); procederPmt(); }); await p.waitForTimeout(500);
 const bt = await p.evaluate(() => { const x = document.getElementById('btn-voix'), r = x && x.getBoundingClientRect(); return x ? { vu: !!x.offsetParent && r.height >= 40 && !!x.querySelector('svg'), txt: x.getAttribute('data-on') === '1' ? '🔊' : '🔇' } : null; });
-t(bt && bt.vu && bt.txt === '🔇', `au paiement, avant tout montant : le haut-parleur barré est là (au trait, pas d'emoji), assez grand pour le doigt (${bt && bt.txt})`);
+t(bt && bt.vu && bt.txt === '🔊', `au paiement : le haut-parleur (au trait, pas d'emoji), assez grand pour le doigt (${bt && bt.txt})`);
 await p.locator('#btn-voix').tap(); await p.waitForTimeout(250);
 const v1 = await p.evaluate(() => ({ on: voixActive(), txt: document.getElementById('btn-voix').getAttribute('data-on') === '1' ? '🔊' : '🔇', sauve: JSON.parse(localStorage.getItem('myboutiq_v6') || '{}').cfg.voix }));
-t(v1.on && v1.txt === '🔊' && v1.sauve === true, `un geste et elle parle, et elle s'en souvient (${v1.txt}, enregistré : ${v1.sauve})`);
+t(!v1.on && v1.txt === '🔇' && v1.sauve === false, `un geste et elle se tait, et elle s'en souvient (${v1.txt}, enregistré : ${v1.sauve})`);
 await p.locator('#btn-voix').tap(); await p.waitForTimeout(250);
-t(await p.evaluate(() => !voixActive() && DB.cfg.voix === false && document.getElementById('btn-voix').getAttribute('data-on') === '0'), 'un second geste et elle se tait');
+t(await p.evaluate(() => voixActive() && DB.cfg.voix === true && document.getElementById('btn-voix').getAttribute('data-on') === '1'), 'un second geste et elle parle de nouveau');
 t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
 await ctx.close(); await b.close(); s.close();
 fin();
