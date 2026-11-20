@@ -1356,6 +1356,7 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .pdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .vb-dette{cursor:pointer}
 .vb-dette b{color:var(--R)}
+.vb-cons{cursor:default}
 .vb-regle{display:flex;align-items:center;gap:6px;margin-top:10px;padding:8px 0;border-top:1px solid var(--BD)}
 .vb-regle span{flex:1;font-size:12.5px;font-weight:800;color:var(--T)}
 .vb-regle button{min-height:36px;padding:0 12px;border-radius:10px;border:1.5px solid var(--BD);background:var(--BG);color:var(--M);font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;cursor:pointer}
@@ -7698,7 +7699,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.85'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.86'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -7915,6 +7916,7 @@ function _applyRemoteDB(data,silent){
   if(role==='vendeur'){var un=document.getElementById('u-nm');if(un)un.textContent=nomVendeur||'Vendeur';}
   if(typeof applyRolePerms==='function')applyRolePerms();
   if(!silent)showSync();
+  try{_fermerSiRetire();}catch(e){}   // 23.86 — son patron vient de le retirer
 }
 // ═══ Connexion au serveur : elle DOIT pouvoir se rétablir ═══
 // Avant, initSupa() n'était appelé qu'une fois au démarrage. Si la bibliothèque
@@ -12942,6 +12944,12 @@ function creerNouveauCodeEquipe(){
     :((fr?'REMPLACER le code équipe ?':'REPLACE the team code?')+'\n\n'
       +(fr?('Tes '+nb+' vendeurs ne pourront plus entrer tant qu\'ils n\'auront pas appris le nouveau. À ne faire que si un vendeur est parti, ou si le code a fuité.')
           :('Your '+nb+' sellers will be locked out until they learn the new one.')))))return;
+  _remplacerCodeEquipe();
+}
+// Le remplacement lui-même, sans la question : `togV` la pose à sa façon
+// (« Il a quitté la boutique pour de bon ? »).
+function _remplacerCodeEquipe(){
+  var fr=(lang==='fr');
   var n=String(Math.floor(1000+Math.random()*9000));
   if(String(n)===String(DB.cfg.pin))n=String((parseInt(n,10)+1)%10000).padStart(4,'0');
   DB.cfg.pinVendeur=n;DB.cfg.pvPose=1;
@@ -13035,6 +13043,8 @@ function _finishLoginV(nm,code){
 }
 function _ouvrirCaisseVendeur(nm,code){
   role='vendeur';nomVendeur=nm;
+  if(_fermerSiRetire())return;   // 23.86 — retiré par son patron
+
   _annoncerArrivee(nm);   // 23.61 — le patron l'accueillera (voir _accueillirArrivees)
   document.getElementById('u-nm').textContent=nm;
   document.getElementById('u-role').textContent=t('vendeur');
@@ -28962,9 +28972,25 @@ function valeurBoutique(){
   _lignesInventaire().forEach(function(l){var q=Math.max(0,l.th);if(q>0&&l.px>0)vente+=q*l.px;});
   var credits=0;(DB&&DB.clients||[]).forEach(function(c){var x=Number(c&&c.credit)||0;if(x>0)credits+=x;});
   var caisse=0;try{caisse=Math.max(0,Number(caisseAttendue())||0);}catch(e){}
-  var autre=_argentHors().total,dt=_detteStock();
-  return {achat:r.val,sansPa:r.sansPa,vente:vente,credits:credits,caisse:caisse,autre:autre,dette:dt.val,detteN:dt.n,detteL:dt.L,
-          total:r.val+credits+caisse+autre-dt.val};
+  var autre=_argentHors().total,dt=_detteStock(),cs=_consignesARendre();
+  return {achat:r.val,sansPa:r.sansPa,aber:r.aber,vente:vente,credits:credits,caisse:caisse,autre:autre,dette:dt.val,detteN:dt.n,detteL:dt.L,
+          consignes:cs.val,consignesN:cs.n,
+          total:r.val+credits+caisse+autre-dt.val-cs.val};
+}
+// ⚠️ 23.85 — LES CONSIGNES NE SONT PAS À LUI. Feuille de route V1 (avis du
+// 20/11). Le client laisse 100 F par bouteille et les reprend en la
+// rendant : cet argent est dans la caisse (ou dans l'argent des jours
+// passés) et la valeur le comptait comme le sien. Un dépôt de boissons
+// avec 300 bouteilles dehors se croyait 30 000 F plus riche. On additionne
+// ce que les ventes encore valables ont pris moins ce qu'elles ont rendu.
+function _consignesARendre(){
+  var val=0,n=0;
+  (DB&&DB.ventes||[]).forEach(function(v){
+    if(!v||v.annulee)return;
+    var c=Number(v.consigne)||0;if(!c)return;
+    val+=c;n+=(Number(v.consignePrises)||0)-(Number(v.consigneRendues)||0);
+  });
+  return {val:Math.max(0,Math.round(val)),n:Math.max(0,n)};
 }
 // ⚠️ 23.15 — CE QUI EST PARTI SANS AVOIR ÉTÉ ENTRÉ. Un stock sous zéro,
 // c'est de la marchandise vendue que l'app n'a jamais vue arriver : une
@@ -29023,6 +29049,11 @@ function ouvrirValeur(){
         return '<div class="vb-a"><label for="vb-a-'+x[0]+'">'+escH(fr?x[1]:x[2])+'</label>'
           +'<input id="vb-a-'+x[0]+'" type="text" inputmode="numeric" autocomplete="off" placeholder="0" value="'+(n>0?n:'')+'" oninput="argentHorsTape(\''+x[0]+'\',this.value)"></div>';}).join('')
       +'</div>';
+  }
+  if(v.consignes>0){
+    h+='<div class="vb-l vb-dette vb-cons"><span>'+(fr?'Consignes à rendre':'Deposits to give back')
+      +'<i>'+(v.consignesN>0?(fmtQ(v.consignesN)+' '+(fr?('emballage'+(v.consignesN>1?'s':'')+' dehors — '):('container'+(v.consignesN>1?'s':'')+' out — '))):'')
+      +(fr?'l\'argent des clients, pas le tien':'customers\' money, not yours')+'</i></span><b>−'+fmt(v.consignes)+'</b></div>';
   }
   if(v.detteN>0){
     var _ex=v.detteL.slice(0,3).map(function(x){return fmtQ(x.q)+' '+x.nm;}).join(', ')+(v.detteN>3?' …':'');
@@ -31259,7 +31290,55 @@ async function _ouvrirApresEmpreinte(){
   }catch(e){}
   showToast('🔐 '+(fr?'Entre ton PIN cette fois-ci':'Enter your PIN this time'));
 }
-function togV(i){DB.equipe[i].actif=!DB.equipe[i].actif;save();renderEquipe();}
+// ⚠️⚠️ 23.86 — « RÉVOQUER CE TÉLÉPHONE ». Feuille de route V1 (avis du
+// 20/11). L'interrupteur de la ligne du vendeur ne fermait RIEN : vérifié,
+// un vendeur éteint ouvrait sa caisse et vendait comme avant. Et le seul
+// vrai verrou du serveur est le code équipe, que tous les vendeurs
+// partagent : un vendeur parti le garde en tête. Le geste du patron fait
+// maintenant les deux :
+//   · éteint, le vendeur voit sa caisse se fermer dès que son téléphone
+//     reçoit la nouvelle (`_fermerSiRetire`) et ne peut plus y rentrer ;
+//   · s'il est parti POUR DE BON, le code équipe change dans la foulée :
+//     même avec un autre téléphone, il ne lit plus rien.
+function togV(i){
+  var v=DB.equipe[i];if(!v)return;
+  var fr=(lang!=='en');
+  if(role!=='patron'){showToast('⛔ '+(fr?'Réservé au patron':'Patron only'));return;}
+  if(!v.actif){
+    v.actif=true;delete v.retireLe;
+    try{journalAjouter('equipe',v.nm,'',fr?'remis dans l\'équipe':'back in the team');}catch(e){}
+    try{sauverEtEnvoyerVite();}catch(e){save();}
+    renderEquipe();
+    showToast('✅ '+v.nm+(fr?' peut de nouveau vendre':' can sell again'));
+    return;
+  }
+  if(!confirm(fr?('Retirer '+v.nm+' de l\'équipe ?\n\nSa caisse se ferme dès que son téléphone reçoit la nouvelle, et il ne peut plus y rentrer.')
+                :('Remove '+v.nm+' from the team?\n\nTheir till closes as soon as their phone gets the news.')))return;
+  v.actif=false;v.retireLe=new Date().toISOString();
+  try{journalAjouter('equipe',v.nm,'',fr?'retiré de l\'équipe':'removed from the team');}catch(e){}
+  try{sauverEtEnvoyerVite();}catch(e){save();}
+  renderEquipe();
+  var parti=!!(DB.cfg&&DB.cfg.pvPose)&&confirm(fr
+    ?(v.nm+' a quitté la boutique pour de bon ?\n\nOK : je change aussi le code équipe. Il ne pourra plus rien voir, même avec un autre téléphone. Tu diras le nouveau code à tes autres vendeurs.\n\nAnnuler : c\'est juste une pause.')
+    :(v.nm+' has left for good?\n\nOK: I also change the team code.\n\nCancel: just a pause.'));
+  if(parti)_remplacerCodeEquipe();
+  else showToast('⏸ '+v.nm+(fr?' est en pause : sa caisse se ferme':' is paused: their till closes'));
+}
+// Le vendeur éteint par son patron : la caisse se ferme sur son téléphone.
+function _vendeurRetire(){
+  if(typeof role==='undefined'||role!=='vendeur'||!nomVendeur||!DB||!Array.isArray(DB.equipe))return false;
+  var k=txtNorm(nomVendeur);
+  var m=DB.equipe.find(function(x){return x&&x.role!=='patron'&&txtNorm(x.nm||'')===k;});
+  return !!(m&&m.actif===false);
+}
+function _fermerSiRetire(){
+  if(!_vendeurRetire())return false;
+  var fr=(lang!=='en');
+  try{_panierOublier();}catch(e){}
+  logout();
+  showToast('🔒 '+(fr?'Ton patron t\'a retiré de l\'équipe : la caisse est fermée sur ce téléphone. Parle-lui.':'Your owner removed you from the team: the till is closed on this phone.'));
+  return true;
+}
 // Combien de vendeurs le patron accepte. 0 = pas de limite (comportement
 // d'avant : on ne change rien pour les boutiques déjà en route).
 function definirMaxVendeurs(v){
