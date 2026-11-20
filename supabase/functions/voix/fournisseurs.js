@@ -88,3 +88,85 @@ export async function transcrire(nom, cle, son, nomFichier, mots, { delai = 9000
       : await compatibleOpenAI(f, cle, son, nomFichier, mots, ctl.signal);
   } finally { clearTimeout(t); }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+//  COMPRENDRE UNE COMMANDE (23.91)
+//
+//  Le patron, le 20/11 : « pour une voix maîtrisée et plus fiable, on fera
+//  la combinaison de quel outil ? » — puis « Go 1+2 ». La couche 3 : quand
+//  le téléphone n'a pas compris un morceau de phrase (« mets-moi trois
+//  grosses Mützig et pour 200 de riz »), un petit modèle de langue le
+//  transforme en lignes de panier.
+//  ⚠️ Il ne peut RIEN inventer : il reçoit le catalogue de LA boutique (des
+//  numéros et des noms), et tout ce qu'il rend est revérifié ici — un
+//  numéro absent du catalogue, une quantité folle, une sorte qui n'est pas
+//  à cet article : jeté. Un nom d'article piégé ne peut donc rien faire
+//  d'autre que ne pas être reconnu.
+//  Sur la clé Groq du pilote (la même que la transcription) : rien de plus
+//  à poser. Le modèle se change par un réglage serveur (VOIX_MODELE_COMPRENDRE).
+// ═══════════════════════════════════════════════════════════════════
+export const MODELES_COMPRENDRE = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+const propre = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f<>{}\[\]"`|]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
+
+// Le catalogue envoyé par le téléphone, nettoyé et borné.
+export function catalogue(cat) {
+  const out = [];
+  for (const a of Array.isArray(cat) ? cat : []) {
+    if (!a || a.id == null || !a.nm) continue;
+    const id = propre(a.id, 24); if (!/^[A-Za-z0-9_.-]+$/.test(id)) continue;
+    const s = (Array.isArray(a.s) ? a.s : []).slice(0, 20).map(x => ({ id: propre(x && x.id, 24), nm: propre(x && x.nm, 30) }))
+      .filter(x => x.id && /^[A-Za-z0-9_.-]+$/.test(x.id) && x.nm);
+    out.push({ id, nm: propre(a.nm, 40), s, m: !!a.m });
+    if (out.length >= 200) break;
+  }
+  return out;
+}
+export function catalogueTexte(cat) {
+  return cat.map(a => a.id + ' | ' + a.nm + (a.m ? ' (au poids/mesure)' : '') + (a.s.length ? (' — sortes : ' + a.s.map(x => x.id + ' ' + x.nm).join(', ')) : '')).join('\n');
+}
+// Ce que le modèle rend, revérifié contre le catalogue.
+export function lignesValides(brut, cat) {
+  const par = new Map(cat.map(a => [a.id, a]));
+  const lignes = [];
+  for (const l of (brut && Array.isArray(brut.lignes) ? brut.lignes : []).slice(0, 20)) {
+    if (!l) continue;
+    const a = par.get(String(l.id)); if (!a) continue;
+    let sorte = null;
+    if (l.sorte != null && a.s.length) { const x = a.s.find(s => s.id === String(l.sorte)); if (x) sorte = x.id; }
+    const q = Number(l.qte), m = Number(l.montant);
+    lignes.push({ id: a.id, sorte, qte: (q > 0 && q <= 500) ? Math.round(q * 1000) / 1000 : null, montant: (m > 0 && m <= 1e6) ? Math.round(m) : null });
+  }
+  const inconnus = (brut && Array.isArray(brut.inconnus) ? brut.inconnus : []).slice(0, 5).map(x => propre(x, 40)).filter(Boolean);
+  return { lignes, inconnus };
+}
+const CONSIGNE = 'Tu aides la caisse d\'une boutique au Cameroun. On te donne le catalogue (numéro | nom) et ce que le client a dit. '
+  + 'Réponds UNIQUEMENT en JSON : {"lignes":[{"id":"<numéro>","sorte":"<numéro de sorte ou null>","qte":<nombre ou null>,"montant":<francs ou null>}],"inconnus":["<ce qui n\'est pas au catalogue>"]}. '
+  + 'Règles : n\'utilise QUE les numéros du catalogue ; une quantité non dite vaut 1 ; « pour 200 » ou « 200 francs de » = montant 200 ; '
+  + 'les nombres peuvent être dits en lettres (deux, trois, une dizaine = 10) ; si un article a des sortes et que la sorte n\'est pas dite, sorte = null ; '
+  + 'ce qui n\'est pas au catalogue va dans inconnus ; n\'invente rien. Le client peut parler français, pidgin ou camfranglais.';
+
+export async function comprendre(cle, texte, cat, { delai = 6000, modeles = MODELES_COMPRENDRE } = {}) {
+  if (!cle) throw new Error('cle-absente');
+  const C = catalogue(cat);
+  if (!C.length) return { lignes: [], inconnus: [], modele: null };
+  const corps = (modele) => JSON.stringify({
+    model: modele, temperature: 0, max_tokens: 400, response_format: { type: 'json_object' },
+    messages: [{ role: 'system', content: CONSIGNE }, { role: 'user', content: 'Catalogue :\n' + catalogueTexte(C) + '\n\nLe client a dit : « ' + propre(texte, 300) + ' »' }],
+  });
+  let dernier = 'aucun-modele';
+  for (const modele of modeles) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), delai);
+    try {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', signal: ctl.signal,
+        headers: { Authorization: 'Bearer ' + cle, 'Content-Type': 'application/json' }, body: corps(modele) });
+      // Un modèle retiré par le fournisseur : on passe au suivant.
+      if (r.status === 404 || r.status === 400) { dernier = 'http-' + r.status; continue; }
+      if (!r.ok) throw new Error('http-' + r.status);
+      const j = await r.json();
+      let brut = {};
+      try { brut = JSON.parse(String(j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '{}')); } catch { brut = {}; }
+      return { ...lignesValides(brut, C), modele };
+    } finally { clearTimeout(t); }
+  }
+  throw new Error(dernier);
+}

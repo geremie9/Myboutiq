@@ -7737,7 +7737,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.90'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.91'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -33118,6 +33118,29 @@ function dicterDans(idChamp,idBouton){
 //  ajouté au hasard.
 // ══════════════════════════════════════════════════════════════════
 var _NB_DITS={un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10,onze:11,douze:12,treize:13,quatorze:14,quinze:15,seize:16,vingt:20,trente:30,quarante:40,cinquante:50};
+// ⚠️ 23.91 — « POUR TROIS CENTS » ÉTAIT LU « 3 KG ». Seuls les chiffres
+// (« pour 300 ») faisaient un montant ; dit en lettres, « trois » devenait la
+// quantité. Le montant après « pour », en chiffres OU en lettres :
+// cent, deux cents, mille cinq cents, deux mille… Rend 0 s'il n'y en a pas.
+function _montantDit(seg){
+  var w=_ecNorm(seg).split(' '),i=w.indexOf('pour');
+  if(i<0)return 0;
+  var tot=0,cur=0,vu=false;
+  for(var j=i+1;j<w.length;j++){
+    var m=w[j];
+    if(/^\d{2,7}$/.test(m)){tot+=parseInt(m,10);vu=true;continue;}
+    if(_NB_DITS[m]&&m!=='une'){cur+=_NB_DITS[m];vu=true;continue;}
+    if(m==='soixante'){cur+=60;vu=true;continue;}
+    if(m==='cent'||m==='cents'){cur=(cur||1)*100;vu=true;continue;}
+    if(m==='mille'){tot+=(cur||1)*1000;cur=0;vu=true;continue;}
+    if(m==='et'&&vu)continue;
+    if(vu)break;
+    if(m==='francs'||m==='franc'||m==='f')continue;
+    break;
+  }
+  var r=tot+cur;
+  return (vu&&r>=25)?r:0;
+}
 function _qteDansMorceau(seg){
   var w=_ecNorm(seg).split(' ');
   for(var i=0;i<w.length;i++){
@@ -33147,23 +33170,99 @@ function _voixPanier(txt){
     var q=_qteDansMorceau(seg),s=_sorteDite(p,seg);
     if(s.choix){R.aChoisir.push(p);return;}
     var v=s.v||null,avant=panier[v?p.id+'-'+v.id:p.id+'-0']||0;
-    for(var i=0;i<q;i++)addPanier(p,v);
+    // 23.91 — « pour 200 de riz » : un montant, pas 200 kilos.
+    var M=(!v&&seVendAuDetail(p))?_montantDit(seg):0;
+    if(M>0&&Number(p.px)>0){_qteRemplace=null;_ajouterMesure(p,Math.round(M/p.px*1000)/1000,M,(lang==='fr'?'pour ':'for ')+fmt(M));
+      if((panier[p.id+'-0']||0)>avant)R.ajoutes.push({p:p,v:null,q:(panier[p.id+'-0']||0)-avant,mt:M});return;}
+    if(!v&&seVendAuDetail(p)){_qteRemplace=null;_qteArt=p;ajouterQteMesure(q);}
+    else for(var i=0;i<q;i++)addPanier(p,v);
     var pris=(panier[v?p.id+'-'+v.id:p.id+'-0']||0)-avant;
-    if(pris>0)R.ajoutes.push({p:p,v:v,q:pris});
+    if(pris>0)R.ajoutes.push({p:p,v:v,q:Math.round(pris*1000)/1000});
   });
   return R;
 }
+function _voixNomLigne(x){
+  var fr=(lang==='fr'),nm=x.v?(x.p.nm+' '+x.v.nm):x.p.nm;
+  if(x.mt)return nm+(fr?' pour ':' for ')+fmt(x.mt);
+  if(!x.v&&seVendAuDetail(x.p))return fmtQ(x.q)+' '+uniteArt(x.p)+' '+nm;
+  return fmtQ(x.q)+' '+nm;
+}
+// ⭐ 23.91 — LA RELECTURE (couche 4). Celui qui ne lit pas ENTEND ce qui a été
+// compris avant de valider : « 3 Mützig, riz pour 200 : 2 150 francs ». Elle
+// parle même si « l'app parle » est coupé : il vient de parler à l'app, il
+// attend qu'elle réponde.
+var _derniereRelecture='';
+function _parlerCommande(t){
+  _derniereRelecture=String(t||'');
+  if(!t)return;
+  if(voixActive()){parler(t);return;}
+  try{
+    if(!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;
+    var u=new SpeechSynthesisUtterance(String(t));u.lang=(lang==='fr')?'fr-FR':'en-US';
+    var vx=_voixFr();if(vx)u.voice=vx;
+    window.speechSynthesis.cancel();setTimeout(function(){try{window.speechSynthesis.speak(u);}catch(e){}},60);
+  }catch(e){}
+}
 function _voixPanierDire(R){
   var fr=(lang==='fr'),msg=[];
-  if(R.ajoutes.length)msg.push('🛒 '+R.ajoutes.map(function(x){return x.q+' '+(x.v?(x.p.nm+' '+x.v.nm):x.p.nm);}).join(', '));
+  if(R.ajoutes.length)msg.push('🛒 '+R.ajoutes.map(_voixNomLigne).join(', '));
   if(R.absents.length)msg.push((fr?'Pas trouvé : ':'Not found: ')+R.absents.join(', '));
   if(msg.length)showToast(msg.join(' · '));
+  try{
+    var dit=R.ajoutes.map(function(x){return _voixNomLigne(x).replace(/FCFA|F\b/g,fr?'francs':'francs');}).join(', ');
+    if(dit){var tot=0;try{tot=calcAPayer();}catch(e){tot=calcTotal();}
+      dit+=' : '+(fr?'total ':'total ')+_nombreParlable(tot)+' francs';}
+    if(R.aChoisir.length)dit+=(dit?'. ':'')+(fr?('Quelle sorte de '+R.aChoisir[0].nm+' ?'):('Which '+R.aChoisir[0].nm+'?'));
+    if(R.absents.length)dit+=(dit?'. ':'')+(fr?'Je n\'ai pas trouvé : ':'Not found: ')+R.absents.join(', ');
+    _parlerCommande(dit);
+  }catch(e){}
   if(R.ajoutes.length&&!R.aChoisir.length){try{ouvrirPanier();}catch(e){}}
   if(R.aChoisir.length){
     var p=R.aChoisir[0],c=document.getElementById('pc-'+p.id);
     try{if(c)c.scrollIntoView({block:'center'});ouvrirVarInline(p,c);}catch(e){}
     setTimeout(function(){showToast('👆 '+(fr?'Quelle sorte de '+p.nm+' ?':'Which '+p.nm+'?'));},R.ajoutes.length||R.absents.length?2200:0);
   }
+}
+// ⭐ 23.91 — COMPRENDRE (couche 3). Les morceaux que le téléphone n'a pas
+// compris partent au serveur, avec le catalogue de la boutique ; il rend des
+// lignes revérifiées (numéros du catalogue seulement). 6 s au plus : une
+// vente n'attend pas un serveur.
+function _voixCatalogue(){
+  return ((DB&&DB.articles)||[]).slice().sort(function(a,b){return (Number(b.vd)||0)-(Number(a.vd)||0);}).slice(0,200).map(function(p){
+    var o={id:String(p.id),nm:String(p.nm||'')};
+    var vs=(p.vr||[]).filter(function(v){try{return v&&v.nm&&!_estGrosDeVariante(v);}catch(e){return !!(v&&v.nm);}});
+    if(vs.length)o.s=vs.map(function(v){return {id:String(v.id),nm:String(v.nm)};});
+    if(seVendAuDetail(p))o.m=1;
+    return o;
+  });
+}
+async function _voixComprendre(texte){
+  try{
+    if(!voixProDispo()||!texte)return null;
+    var ctl=window.AbortController?new AbortController():null,tm=setTimeout(function(){try{ctl&&ctl.abort();}catch(e){}},6000);
+    var r=await fetch(VOIX_URL,{method:'POST',headers:await _voixEntetes(true),signal:ctl?ctl.signal:undefined,
+      body:JSON.stringify({action:'comprendre',code:String(DB.cfg.code),pin:_voixPin(),texte:String(texte).slice(0,300),articles:_voixCatalogue()})});
+    clearTimeout(tm);
+    var d={};try{d=await r.json();}catch(e){}
+    return (d&&d.ok)?d:null;
+  }catch(e){return null;}
+}
+function _voixAppliquer(lignes,R){
+  var fr=(lang==='fr');
+  (lignes||[]).forEach(function(l){
+    var p=(DB.articles||[]).find(function(x){return String(x.id)===String(l.id);});if(!p)return;
+    var vs=(p.vr||[]).filter(function(v){try{return !_estGrosDeVariante(v);}catch(e){return true;}});
+    var v=(l.sorte!=null)?vs.find(function(x){return String(x.id)===String(l.sorte);})||null:null;
+    if(vs.length&&!v){if(vs.length===1)v=vs[0];else{if(R.aChoisir.indexOf(p)<0)R.aChoisir.push(p);return;}}
+    var key=v?p.id+'-'+v.id:p.id+'-0',avant=panier[key]||0,mt=0;
+    if(!v&&seVendAuDetail(p)){
+      _qteRemplace=null;
+      if(Number(l.montant)>0&&Number(p.px)>0){mt=Math.round(l.montant);_ajouterMesure(p,Math.round(mt/p.px*1000)/1000,mt,(fr?'pour ':'for ')+fmt(mt));}
+      else{_qteArt=p;ajouterQteMesure(Number(l.qte)>0?Number(l.qte):1);}
+    }else{var q=Math.max(1,Math.min(200,Math.round(Number(l.qte)||1)));for(var i=0;i<q;i++)addPanier(p,v);}
+    var pris=(panier[key]||0)-avant;
+    if(pris>0)R.ajoutes.push({p:p,v:v,q:Math.round(pris*1000)/1000,mt:mt});
+  });
 }
 function voiceSearch(){
   // Le micro touché sans voix payante : on redemande en silence (le « non »
@@ -33175,6 +33274,18 @@ function voiceSearch(){
     if(!/[a-z0-9à-ÿ]{2,}/i.test(q)||/sous-titr|amara\.org|merci d.avoir regard/i.test(q)){showToast('🎤 '+(lang==='fr'?'Je n\'ai rien entendu. Réessaie.':'Heard nothing. Try again.'));return;}
     // 23.83 — les articles dits vont dans le panier ; sinon, c'est une recherche.
     var R=_voixPanier(q);
+    // 23.91 — ce qui n'a pas été compris part au serveur (couche 3) ; ce qui
+    // l'a été est déjà au panier et n'y repart pas.
+    var reste=R.absents.length?R.absents.join(', '):((R.ajoutes.length||R.aChoisir.length)?'':q);
+    if(reste&&voixProDispo()){
+      _voixComprendre(reste).then(function(d){
+        if(d&&d.lignes&&d.lignes.length){R.absents=[];_voixAppliquer(d.lignes,R);(d.inconnus||[]).forEach(function(x){R.absents.push(x);});}
+        if(R.ajoutes.length||R.aChoisir.length){_voixPanierDire(R);return;}
+        var mots=_ecNorm(q).split(' ').filter(function(w){return w&&!_EC_VIDES[w]&&!_NB_DITS[w]&&!/^\d+$/.test(w)&&!/^(donne|moi|veux|voudrais|mets|ajoute|stp|svp)$/.test(w);});
+        var c=document.getElementById('src-c');if(c){c.value=mots.join(' ')||q;filtrC(c.value);}
+      });
+      return;
+    }
     if(R.ajoutes.length||R.aChoisir.length){_voixPanierDire(R);return;}
     // Rien de sûr (« un savon » quand il y en a trois) : la recherche, sans
     // les petits mots ni la quantité — la grille montre les savons, il touche.

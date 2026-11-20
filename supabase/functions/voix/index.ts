@@ -17,7 +17,7 @@
 //  Seule la durée est comptée (voix_compter), pour l'usage raisonnable.
 // ═══════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { transcrire, FOURNISSEURS } from './fournisseurs.js';
+import { transcrire, FOURNISSEURS, comprendre, MODELES_COMPRENDRE } from './fournisseurs.js';
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   { auth: { persistSession: false, autoRefreshToken: false } });
@@ -80,6 +80,23 @@ Deno.serve(async (req: Request) => {
     // ── etat : le téléphone demande s'il a la voix payante ──
     if (type.includes('application/json')) {
       const c = await req.json().catch(() => ({}));
+      // ── comprendre (23.91) : un morceau de phrase → des lignes de panier ──
+      if (c.action === 'comprendre') {
+        const a = await autoriser(req, String(c.code || ''), String(c.pin || ''));
+        if (!a.ok) return rep({ ok: false, motif: a.motif }, a.motif === 'abonnement' || a.motif === 'quota' ? 402 : 403);
+        await lireCles();
+        const k = cle('groq');
+        if (!k) return rep({ ok: false, motif: 'ferme' }, 503);
+        const texte = String(c.texte || '').slice(0, 300).trim();
+        if (!texte) return rep({ ok: false, motif: 'texte' }, 400);
+        const mod = (Deno.env.get('VOIX_MODELE_COMPRENDRE') || '').split(',').map(x => x.trim()).filter(Boolean);
+        try {
+          const r = await comprendre(k, texte, c.articles, { delai: 6000, modeles: mod.length ? mod : MODELES_COMPRENDRE });
+          return rep({ ok: true, lignes: r.lignes, inconnus: r.inconnus });
+        } catch (e) {
+          return rep({ ok: false, motif: 'service', detail: String((e as Error).message || e).slice(0, 40) }, 502);
+        }
+      }
       if (c.action !== 'etat') return rep({ ok: false, motif: 'action' }, 400);
       const a = await autoriser(req, String(c.code || ''), String(c.pin || ''));
       // Pas de clé configurée : la voix payante n'est pas encore ouverte.
