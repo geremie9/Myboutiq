@@ -2663,6 +2663,16 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 
 /* ── SUCCESS ── */
 .succ{position:fixed;inset:0;background:var(--G);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+/* 23.85 — « Annuler » juste après la vente : sur l'écran vert, puis en bas
+   de la caisse. La barre qui fond dit le temps qui reste, sans un mot. */
+.succ-annul{margin-top:14px;display:inline-flex;align-items:center;gap:8px;background:transparent;color:#fff;border:1.5px dashed rgba(255,255,255,.7);border-radius:12px;padding:10px 18px;font-size:15px;font-weight:800;font-family:Outfit,sans-serif;min-height:48px;cursor:pointer}
+.succ-annul .ic{stroke:#fff}
+.annul-chip{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:190;display:none;align-items:center;gap:10px;background:#221F2B;color:#fff;border-radius:16px;padding:12px 18px 14px;font-family:Outfit,sans-serif;font-size:16px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.28);overflow:hidden;cursor:pointer;min-height:52px;white-space:nowrap;max-width:calc(100vw - 32px)}
+.annul-chip.show{display:flex}
+.annul-chip .ic{stroke:#F0A93E;flex:none}
+.annul-chip b{color:#F0A93E;font-weight:800}
+.annul-chip i{position:absolute;left:0;bottom:0;height:4px;width:100%;background:#F0A93E;transform-origin:left;animation:annulFond linear forwards}
+@keyframes annulFond{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 .succ.show{display:flex}
 .succ-ico{font-size:78px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1)}
 @keyframes popIn{from{transform:scale(0) rotate(-20deg)}to{transform:scale(1) rotate(0)}}
@@ -7374,7 +7384,10 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
     <button id="succ-recu" onclick="voirRecuDepuisSucces()" style="background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.5);border-radius:12px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;min-height:48px"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="vertical-align:-3px;margin-right:6px"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg><span id="succ-recu-l">Reçu</span></button>
     <button onclick="fermerSucces()" style="background:#fff;color:var(--G);border:none;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;min-height:48px"><span id="succ-suite-l">Vente suivante</span> →</button>
   </div>
+  <!-- 23.85 — « Je me suis trompé » : la vente part, le panier revient. -->
+  <button type="button" class="succ-annul" id="succ-annul" onclick="annulerDerniereVente()" style="display:none"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span id="succ-annul-l">Annuler</span></button>
 </div>
+<div class="annul-chip" id="annul-chip" onclick="annulerDerniereVente()" role="button"><svg class="ic" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span id="annul-chip-t">Annuler</span><b id="annul-chip-m"></b><i id="annul-chip-b"></i></div>
 
 <!-- CONFIRM ANNULATION -->
 <div class="conf-ov" id="conf-annul">
@@ -7685,7 +7698,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.84'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.85'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -22140,6 +22153,88 @@ function fermerSucces(){
   clearTimeout(_succTimer);
   var sc=document.getElementById('succ');if(sc)sc.classList.remove('show');
 }
+// ═══ 23.85 — « ANNULER », JUSTE APRÈS LA VENTE ═══
+// Feuille de route V1 (avis du 20/11), le patron : « Go ». Au comptoir, la
+// faute se voit APRÈS avoir encaissé : deux Mützig au lieu de trois, le
+// mauvais savon. Annuler passait par Ma journée › Dernières ventes ›
+// Annuler › confirmer — et le vendeur n'en a pas le droit par défaut :
+// il laissait la vente fausse. Pendant 15 secondes, la vente qu'IL vient
+// de faire s'annule d'une touche, et le panier revient tel quel pour
+// corriger et réencaisser.
+// ⚠️ Rien ne disparaît : la vente reste, marquée annulée, avec QUI l'a
+// annulée — le patron la voit dans Ma journée (« Ventes annulées »).
+var _dernVente=null,_ANNUL_RAPIDE_MS=15000,_annulTic=null;
+function _annulRapideOuverte(){
+  var d=_dernVente;if(!d)return null;
+  if(Date.now()-d.t>_ANNUL_RAPIDE_MS)return null;
+  if(!DB||!DB.cfg||String(DB.cfg.code)!==d.c)return null;
+  if(_nomOperateur()!==d.op)return null;               // un autre a pris le téléphone
+  var v=(DB.ventes||[]).find(function(x){return x.id===d.id;});
+  if(!v||v.annulee||v.cloturee)return null;
+  return v;
+}
+function _cacherAnnulRapide(){
+  clearInterval(_annulTic);_annulTic=null;
+  var b=document.getElementById('succ-annul');if(b)b.style.display='none';
+  var c=document.getElementById('annul-chip');if(c)c.classList.remove('show');
+}
+function _montrerAnnulRapide(total){
+  _cacherAnnulRapide();
+  var d=_dernVente;if(!d||!_annulRapideOuverte())return;
+  var fr=(lang!=='en');
+  var b=document.getElementById('succ-annul');
+  if(b){document.getElementById('succ-annul-l').textContent=fr?'Je me suis trompé : annuler':'Wrong? Undo';b.style.display='inline-flex';}
+  document.getElementById('annul-chip-t').textContent=fr?'Annuler la vente':'Undo sale';
+  document.getElementById('annul-chip-m').textContent=fmt(total);
+  var bar=document.getElementById('annul-chip-b');
+  if(bar){bar.style.animation='none';void bar.offsetWidth;bar.style.animation='';bar.style.animationDuration=Math.max(0,_ANNUL_RAPIDE_MS-(Date.now()-d.t))+'ms';}
+  _annulTic=setInterval(function(){
+    var c=document.getElementById('annul-chip'),sc=document.getElementById('succ');
+    // Il a commencé la vente suivante : l'ancienne ne s'annule plus d'ici.
+    if(!_annulRapideOuverte()||!panierVide()){_dernVente=null;_cacherAnnulRapide();return;}
+    c.classList.toggle('show',!(sc&&sc.classList.contains('show')));
+  },300);
+}
+function annulerDerniereVente(){
+  var fr=(lang!=='en');
+  var v=_annulRapideOuverte(),d=_dernVente;
+  _cacherAnnulRapide();
+  if(!v){_dernVente=null;showToast('⏱ '+(fr?'Trop tard ici : le patron annule dans Ma journée':'Too late here: the owner can cancel in My day'));return;}
+  fermerSucces();
+  v.annulPar=d.op;v.annulTs=new Date().toISOString();v.annulRapide=true;
+  ventAnnulEnCours=v.id;
+  confirmerAnnulVente();                  // le même chemin que Ma journée : stock, crédit, points
+  _dernVente=null;
+  if(!v.annulee)return;
+  try{sauverEtEnvoyerVite();}catch(e){}
+  // Le panier revient tel quel : il corrige la ligne fausse et réencaisse.
+  panier=d.p||{};_grosPanier=d.g||{};_negoLigne=d.n||{};panierLibre=d.l||[];
+  remiseVente=d.rem||0;consignePrises=d.cp||0;consigneRendues=d.cr||0;
+  clientVente=d.cli?((DB.clients||[]).find(function(c){return c.id===d.cli;})||null):null;
+  renderProd(DB.articles);
+  try{updateClientVenteUI();}catch(e){}
+  var k=Object.keys(panier)[0];updatePUI(k?k.split('-')[0]:null);
+  ouvrirPanier();
+  showToast('↩️ '+(fr?'Vente annulée. Corrige le panier, puis encaisse.':'Sale cancelled. Fix the basket, then charge.'));
+}
+// Pour le patron : les ventes annulées de la période, et qui les a annulées.
+function _rptAnnuleesHtml(){
+  if(role==='vendeur'&&!hasPerm('rapports'))return '';
+  var d=new Date();d.setHours(0,0,0,0);
+  if(_rptPer==='mois')d.setDate(1); else if(_rptPer!=='jour')d.setDate(d.getDate()-6);
+  var lim=d.getTime(),fr=(lang!=='en');
+  var l=(DB.ventes||[]).filter(function(v){
+    if(!v||!v.annulee)return false;
+    try{return getSaleDateObj(v).getTime()>=lim;}catch(e){return false;}
+  });
+  if(!l.length)return '';
+  var tot=l.reduce(function(s,v){return s+(Number(v.total)||0);},0);
+  var qui={};l.forEach(function(v){var n=String(v.annulPar||v.vendeur||'?');qui[n]=(qui[n]||0)+1;});
+  return '<div class="rcd rpt-annul"><div class="rctit">'+ico('rapports',18)+' '+(fr?'Ventes annulées':'Cancelled sales')+'</div>'
+    +'<div class="rrow"><span class="rlbl">'+l.length+' '+(fr?('vente'+(l.length>1?'s':'')):('sale'+(l.length>1?'s':'')))+'</span><span class="rval">'+escH(fmt(tot))+'</span></div>'
+    +Object.keys(qui).map(function(n){return '<div class="rrow"><span class="rlbl">'+(fr?'par ':'by ')+escH(n)+'</span><span class="rval">×'+qui[n]+'</span></div>';}).join('')
+    +'</div>';
+}
 function voirRecuDepuisSucces(){
   clearTimeout(_succTimer);
   var sc=document.getElementById('succ');if(sc)sc.classList.remove('show');
@@ -30363,7 +30458,7 @@ function renderRpt(){
   var _dernieres=
     '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Dernières ventes':'Recent sales')+'</div>'+
     (vr.map(function(v){
-      if(v.annulee)return '<div class="rrow"><span class="rlbl" style="text-decoration:line-through;color:var(--M)">'+v.h+' — '+(lang==='fr'?'ANNULÉE':'CANCELLED')+'</span><span class="rval" style="color:var(--M);text-decoration:line-through">'+fmt(v.total)+'</span></div>';
+      if(v.annulee)return '<div class="rrow"><span class="rlbl" style="text-decoration:line-through;color:var(--M)">'+v.h+' — '+(lang==='fr'?'ANNULÉE':'CANCELLED')+(v.annulPar?(' · '+escH(v.annulPar)):'')+'</span><span class="rval" style="color:var(--M);text-decoration:line-through">'+fmt(v.total)+'</span></div>';
       var btn=hasPerm('annuler')?'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">'+(lang==='fr'?'Annuler':'Cancel')+'</button>':'';
       return '<div class="rrow" style="align-items:center"><span class="rlbl">'+v.h+'</span><span style="display:flex;align-items:center"><span class="rval g">'+fmt(v.total)+'</span>'+btn+'</span></div>';
     }).join('')||'<div class="empty" style="padding:11px"><div class="empty-t">'+(_motCloture()||t('aucuneVente'))+'</div></div>')+
@@ -30423,7 +30518,8 @@ function renderRpt(){
   var _kids=Array.prototype.slice.call(c.children);
   var _gagne2=_kids.filter(function(k){return k.classList.contains('rpt-gagne');}).map(function(k){return k.outerHTML;}).join('');
   var _paye2=_kids.filter(function(k){return k.classList.contains('rpt-paye');}).map(function(k){return k.outerHTML;}).join('');
-  c.innerHTML=_rptBarrePeriodes()+_ess+_top+_paye2+_gagne2+_alertes+_dernieres
+  var _annul='';try{_annul=_rptAnnuleesHtml();}catch(e){}
+  c.innerHTML=_rptBarrePeriodes()+_ess+_top+_paye2+_gagne2+_alertes+_dernieres+_annul
     +(_graph?('<details class="rpt-plus"'+(_ouvert?' open':'')+' ontoggle="try{sessionStorage.setItem(\'mb_rpt_plus\',this.open?\'1\':\'0\')}catch(e){}">'
       +'<summary>'+(_fr?'Graphiques et classements':'Charts and rankings')+'<i>'+(_fr?'7 jours, heures, semaine, meilleurs articles, vendeurs':'7 days, hours, week, top items, sellers')+'</i></summary>'
       +_graph+'</details>'):'');
@@ -36536,7 +36632,13 @@ encaisser=function(){
   // n'est ni un chiffre d'affaires ni un bénéfice. On garde aussi le détail
   // pris/rendu pour pouvoir expliquer la somme au commerçant.
   var _consNet=consigneNette(),_consU=consigneUnitPanier();
-  DB.ventes.push({id:genVenteId(),total:total,totalBrut:totalBrut,benefice:ben,ben:ben,lignes:lignes,h:h,heure:h,date:dateFr,vendeur:vendeur,clientId:clientId,clientNom:clientNm,pointsGagnes:ptsGagnes,pointsUtilises:ptsUtilises,reductionPoints:remisePoints,remise:(remiseVente||0)+_negoV,negocie:_negoV||0,paiement:paiement,annulee:false,
+  var _idV=genVenteId();
+  // 23.85 — la photo du panier, AVANT qu'il soit vidé : « Annuler » le rend
+  // tel quel, cartons et prix négociés compris (voir annulerDerniereVente).
+  try{_dernVente={id:_idV,t:Date.now(),c:String(DB.cfg.code),op:_nomOperateur(),
+    p:JSON.parse(JSON.stringify(panier)),g:JSON.parse(JSON.stringify(_grosPanier||{})),n:JSON.parse(JSON.stringify(_negoLigne||{})),
+    l:JSON.parse(JSON.stringify(panierLibre||[])),cli:clientVente?clientVente.id:null,rem:remiseVente||0,cp:consignePrises||0,cr:consigneRendues||0};}catch(e){_dernVente=null;}
+  DB.ventes.push({id:_idV,total:total,totalBrut:totalBrut,benefice:ben,ben:ben,lignes:lignes,h:h,heure:h,date:dateFr,vendeur:vendeur,clientId:clientId,clientNom:clientNm,pointsGagnes:ptsGagnes,pointsUtilises:ptsUtilises,reductionPoints:remisePoints,remise:(remiseVente||0)+_negoV,negocie:_negoV||0,paiement:paiement,annulee:false,
     arrondi:_arr,num:_num,
     consigne:_consNet,consignePrises:consignePrises,consigneRendues:consigneRendues,consigneUnit:_consU});
   _grosPanier={};_negoLigne={};
@@ -36560,6 +36662,7 @@ encaisser=function(){
   planifierFermetureSucces(sc,_rendu>0);
   try{_succProposerPush();}catch(e){}
   try{_guideApresVente(total,ben,lignes);}catch(e){}
+  try{_montrerAnnulRapide(total);}catch(e){}
 };
 // La ligne sous le montant : ce qu'il doit faire MAINTENANT. Le reçu en
 // espèces d'abord (« Rends 700 » — c'est la question au comptoir), sinon le
