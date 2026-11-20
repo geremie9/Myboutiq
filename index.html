@@ -13238,7 +13238,16 @@ function initTabs(){
 // Ce qu'il cherche, retenu pour que la grille puisse proposer le catalogue
 // quand sa boutique ne connaît pas encore l'article.
 var _rechCaisse='';
-function filtrC(q){_rechCaisse=String(q||'').trim();renderProd(DB.articles.filter(function(p){return p.nm.toLowerCase().includes(q.toLowerCase());}));document.getElementById('sec-lbl').textContent=q?'🔍 "'+q+'"':t('tousArticles');}
+// ⚠️ 23.89 — « PAMPLEMOUSSE » NE TROUVAIT RIEN : la recherche ne lisait que
+// le nom de l'article (« Top »), jamais celui de ses sortes, et la caisse
+// proposait de CRÉER un article qui était en rayon. Et « mutzig » ne trouvait
+// pas « Mützig ». Elle lit maintenant les sortes, sans accents ni majuscules.
+function _rechTrouve(p,n){
+  if(!n)return true;
+  if(txtNorm(p.nm).indexOf(n)>=0)return true;
+  return (p.vr||[]).some(function(v){return txtNorm(v.nm||'').indexOf(n)>=0||txtNorm(p.nm+' '+(v.nm||'')).indexOf(n)>=0;});
+}
+function filtrC(q){_rechCaisse=String(q||'').trim();var _n=txtNorm(_rechCaisse);renderProd(DB.articles.filter(function(p){return _rechTrouve(p,_n);}));document.getElementById('sec-lbl').textContent=q?'🔍 "'+q+'"':t('tousArticles');}
 
 // ═══════════════════════════════════════════════════════════════════
 //  VENDRE CRÉE L'ARTICLE
@@ -15188,6 +15197,15 @@ function renderTopVentes(){
       ?('<img src="'+p.img+'" loading="lazy" onerror="this.style.display=\'none\';var n=this.nextElementSibling;if(n)n.style.display=\'flex\'">'
         +_repli)
       :_ic;
+    // ⭐ 23.89 — sur l'étagère, une famille se vend ici aussi d'une touche :
+    // sa sorte la plus vendue, avec sa photo et son prix (avant : la touche
+    // ouvrait l'ancienne feuille des variantes, trois gestes de plus).
+    var _sv=null;try{if(p.vr&&p.vr.length&&_famPlate(p))_sv=_sortesPlates(p)[0]||null;}catch(e){}
+    if(_sv){
+      var _iv=_imgVar(p,_sv);
+      var _mv=_iv?('<img src="'+srcSure(_iv)+'" loading="lazy" onerror="this.style.display=\'none\';var n=this.nextElementSibling;if(n)n.style.display=\'flex\'">'+_repli):_ic;
+      return '<button class="tv-chip" onclick="venteRapideSorte('+p.id+','+jsStr(String(_sv.id)).replace(/"/g,'&quot;')+')">'+_mv+'<span class="tv-nm">'+escH(p.nm+' '+(_sv.nm||''))+'</span><span class="tv-px">'+fmt(Number(_sv.px)||0)+'</span></button>';
+    }
     return '<button class="tv-chip" onclick="venteRapide('+p.id+')">'+media+'<span class="tv-nm">'+p.nm+'</span><span class="tv-px">'+prixCarte(p)+'</span></button>';
   }).join('')+'</div>';
 }
@@ -15227,6 +15245,16 @@ function _direPourquoiVide(p){
       try{selArtStk(p);document.getElementById('ov-stk').classList.add('show');}catch(e){}
     },650);
   }
+}
+// 23.89 — une sorte vendue depuis « Ventes rapides » : le même chemin que sa
+// tuile sur l'étagère (`_tuileSortePlate`).
+function venteRapideSorte(pid,vid){
+  var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
+  var v=(p.vr||[]).find(function(x){return String(x.id)===String(vid);});if(!v)return;
+  varArtCours=p;
+  (p.vr||[]).forEach(function(x){varQtys[x.id]=panier[p.id+'-'+x.id]||0;});
+  chgVQ(v.id,p.id,1,!!p.rt);
+  if(varArtCours===p&&!_varBox&&!_varCercle)_varVersPanier(p);
 }
 function venteRapide(pid){
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
@@ -18771,6 +18799,9 @@ function _dessinerFamillePlate(p,g){
   box.className='pfam';box.id='pc-'+p.id;
   _poserCouleurRayon(box,p.cat);
   var sortes=_sortesPlates(p),cols=_colsCaisse(),MAX=5;
+  // Une recherche qui vise une sorte (« pamplemousse ») ne montre qu'elle.
+  try{var _q=txtNorm(_rechCaisse||'');if(_q&&txtNorm(p.nm).indexOf(_q)<0){
+    var _m=sortes.filter(function(v){return txtNorm(v.nm||'').indexOf(_q)>=0||txtNorm(p.nm+' '+(v.nm||'')).indexOf(_q)>=0;});if(_m.length)sortes=_m;}}catch(e){}
   var replie=(sortes.length>MAX+1&&!_famDepliees[p.id]);
   var montre=replie?sortes.slice(0,MAX):sortes;
   var n=montre.length+(replie?1:0);

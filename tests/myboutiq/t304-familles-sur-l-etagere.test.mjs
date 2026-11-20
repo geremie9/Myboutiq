@@ -71,6 +71,12 @@ const vt = await vendre(p, { lignes: [[1, 1]] });
 const enc = await p.evaluate(async () => { viderPanier(); document.getElementById('pv-50-502').click(); document.getElementById('pv-50-502').click(); procederPmt(); selPmntVente('especes'); document.getElementById('calc-recu').value = 2000; calcMonnaie(true); await encaisser(); const v = DB.ventes[DB.ventes.length - 1]; return v.lignes.map(l => [l.pid, l.vid, l.qte, l.px]); });
 t(JSON.stringify(enc) === JSON.stringify([[50, '502', 2, 700]]) || JSON.stringify(enc) === JSON.stringify([[50, 502, 2, 700]]), `l'encaissement enregistre la sorte comme avant (${JSON.stringify(enc)})`);
 
+// ── 8 bis. « Ventes rapides » : la sorte la plus vendue, d'une touche ──
+const vr = await p.evaluate(() => { fermerSucces(); viderPanier(); DB.articles.find(x => x.id === 1).vd = 5; DB.articles.find(x => x.id === 50).vd = 9; renderTopVentes(); const ch = [...document.querySelectorAll('#topventes .tv-chip')].find(c => /Top/.test(c.textContent)); const txt = ch ? ch.innerText.replace(/\s+/g, ' ') : ''; if (ch) ch.click(); return { txt, q: panier['50-502'] || 0, ov: !!document.querySelector('#ov-var.show') }; });
+t(/Top Pamplemousse/.test(vr.txt) && vr.q === 1 && !vr.ov, `« Ventes rapides » montre « ${vr.txt} » et le vend d'une touche (avant : l'ancienne feuille des variantes)`);
+// ── 8 ter. La recherche trouve les sortes ──
+const rc = await p.evaluate(() => { viderPanier(); const i = document.getElementById('src-c'); i.value = 'pamplemousse'; filtrC(i.value); const f = document.getElementById('pc-50'); const r = { fam: !!f, sortes: f ? [...f.querySelectorAll('.vt-nm')].map(x => x.textContent).join('|') : '' }; i.value = 'mutzig'; filtrC(i.value); r.biere = [...document.querySelectorAll('#pgrid .pcard')].length; i.value = ''; filtrC(''); return r; });
+t(rc.fam && rc.sortes === 'Pamplemousse', `« pamplemousse » trouve la sorte dans sa famille (${rc.sortes}) — avant : « Aucun résultat, créer l'article »`);
 // ── 9. La fenêtre existe toujours, d'un réglage ──
 const fe = await p.evaluate(() => { fermerSucces(); viderPanier(); role = 'patron'; choisirStyleVar('carre'); const f = document.getElementById('pc-50'); const avant = f && !f.classList.contains('pfam'); f.click(); const ov = !!document.querySelector('.vinline'); fermerVarInline(); choisirStyleVar('plat'); return { avant, ov, retour: document.getElementById('pc-50').classList.contains('pfam') }; });
 t(fe.avant && fe.ov && fe.retour, 'Réglages › Les familles à la caisse › Fenêtre : la fenêtre revient ; Étagère : retour sur l\'étagère');
