@@ -33461,6 +33461,9 @@ function _voiceSearchGratuit(){
   if(!SR){showToast(t('microIndispo'));return;}
   // La première tape sur le micro demande au téléphone ce qu'il sait faire
   // (et prépare la langue en wifi) ; les suivantes savent déjà.
+  // Un téléphone qui ne sait pas (pas de SpeechRecognition.available) ou déjà
+  // marqué « casse » : la dictée de toujours, tout de suite, sans détour.
+  if(!_vLoc.etat&&(typeof SR.available!=='function'||_vLocMarque()==='casse'))_vLoc={etat:'absent',ts:Date.now()};
   if(!_vLoc.etat){voixLocaleEtat().then(function(){try{_voixLocalePreparer(true);}catch(e){}_dicterTelephone();});return;}
   _dicterTelephone();
 }

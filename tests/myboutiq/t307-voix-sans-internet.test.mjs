@@ -23,6 +23,7 @@ await p.evaluate(() => {
   SR.available = async (o) => { window.__sr.demande = o; return window.__sr.etat; };
   SR.install = async (o) => { window.__sr.installs++; window.__sr.etat = 'available'; return true; };
   window.SpeechRecognition = window.webkitSpeechRecognition = SR;
+  parler = window.__parlerVrai;   // 23.93 — la voix parle par défaut : la relecture passe par elle
   window.__dit = []; window.speechSynthesis.speak = u => window.__dit.push(u.text); window.speechSynthesis.cancel = () => {};
   _vpro = { ok: false, ts: Date.now(), code: DB.cfg.code };   // pas de voix payante
 });
