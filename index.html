@@ -5097,6 +5097,8 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       <div class="sttit">🧾 Facturation</div>
       <div class="stcd">
         <div class="stit2" data-exp="1" onclick="editNumFiscal()"><div class="stico" style="background:#EDE7F6">🧾</div><div class="stii"><div class="stitl" id="st-fiscal">N° d'identifiant boutique</div><div class="stisub" id="st-fiscal-s">Apparaît sur la facture</div></div><span class="starr">›</span></div>
+        <!-- 23.82 — l'arrondi des totaux : une touche fait défiler « non / 5 / 25 / 50 F ». -->
+        <div class="stit2" id="st-arr" onclick="choisirArrondi()"><div class="stico" style="background:#FFF3E0">≈</div><div class="stii"><div class="stitl">Arrondir les totaux</div><div class="stisub" id="st-arr-s">Non — au franc près</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="basculerTVA()"><div class="stico" style="background:#E3F2FD">%</div><div class="stii"><div class="stitl" id="st-tva">Je facture la TVA</div><div class="stisub" id="st-tva-s">Le reçu montre la TVA comprise</div></div><div class="tog" id="tog-tva"><div class="tok"></div></div></div>
         <div class="stit2" data-exp="1" onclick="choisirFormatRecu()"><div class="stico" style="background:#E3F2FD">📄</div><div class="stii"><div class="stitl" id="st-fmt">Format du reçu</div><div class="stisub" id="st-fmt-s">Ticket, A5 ou A6</div></div><span class="starr">›</span></div>
         <div class="stit2" data-exp="1" onclick="choisirImprimanteThermique()"><div class="stico" style="background:#FFF8E1">🖨️</div><div class="stii"><div class="stitl">Imprimante thermique</div><div class="stisub">58mm / 80mm (mode Ticket)</div></div><span class="starr">›</span></div>
@@ -7672,7 +7674,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.81'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.82'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -7716,6 +7718,24 @@ var _deviceId=(function(){
   }catch(e){return 'd_'+Date.now()+'_'+Math.random().toString(36).slice(2);}
 })();
 function genVenteId(){return _deviceId+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);}
+// ⭐ 23.82 — LE REÇU NUMÉROTÉ (feuille de route V1). « Un numéro séquentiel
+// (anti-fraude) ». ⚠️ Deux téléphones HORS LIGNE donneraient le même n° 42 :
+// chaque téléphone a donc son préfixe (lettre + chiffre, tiré de son
+// identifiant) et son compteur — « K7-0042 ». Le compteur repart du plus
+// grand numéro déjà vu pour ce préfixe (ventes synchronisées comprises) :
+// vider le téléphone ne fait pas revenir un numéro déjà donné.
+function _prefixeRecu(){
+  var h=0,s=String(_deviceId||'x');for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;
+  return 'ABCDEFGHJKLMNPRSTUVWXYZ'.charAt(h%23)+String(Math.floor(h/23)%10);
+}
+function _prochainNumRecu(){
+  var px=_prefixeRecu(),cle='myboutiq_recu_'+String((DB&&DB.cfg&&DB.cfg.code)||'local')+'_'+px,n=0;
+  try{n=parseInt(localStorage.getItem(cle)||'0',10)||0;}catch(e){}
+  ((DB&&DB.ventes)||[]).forEach(function(v){var m=v&&v.num&&String(v.num).match(/^([A-Z][0-9])-(\d+)$/);if(m&&m[1]===px)n=Math.max(n,parseInt(m[2],10)||0);});
+  n++;
+  try{localStorage.setItem(cle,String(n));}catch(e){}
+  return px+'-'+String(n).padStart(4,'0');
+}
 // ═══ S4 : journal des gestes sensibles (qui a changé quoi, quand) ═══
 function _journalQui(){return (typeof role!=='undefined'&&role==='vendeur')?((typeof nomVendeur!=='undefined'&&nomVendeur)||'Vendeur'):((DB&&DB.cfg&&DB.cfg.nom&&String(DB.cfg.nom).split(' ')[0])||'Patron');}
 function journalAjouter(act,art,av,ap){
@@ -9562,7 +9582,7 @@ function navTo(tab,btn){
   if(tab==='clients')renderClients();
   if(tab==='stock')renderStock(DB.articles);
 }
-function goSt(){if(role!=='patron'){showToast('⛔ Réservé au patron');return;}screenHist.push('s-settings');construireOngletsParams();majModeParametres();try{_majLignesPhotos();}catch(e){}try{majLigneTVA();}catch(e){}goScreen('s-settings');}
+function goSt(){if(role!=='patron'){showToast('⛔ Réservé au patron');return;}screenHist.push('s-settings');construireOngletsParams();majModeParametres();try{_majLignesPhotos();}catch(e){}try{majLigneTVA();}catch(e){}try{majLigneArrondi();}catch(e){}goScreen('s-settings');}
 // ═══════════════════════════════════════════════════════════════════
 // SE SOUVENIR DE QUI ENTRE — sans affaiblir la porte
 // Le patron voulait ne taper qu'UNE chose. La bonne réponse n'est pas de
@@ -22158,9 +22178,12 @@ function afficherRecu(){
       if(aDemander){var c=document.getElementById('rni-nm');if(c)c.value='';}
     }
   }catch(e){}
-  document.getElementById('recu-cont').innerHTML='<div class="recu-cd" id="recu-print"><div class="recu-h"><div class="recu-sh">🏪 '+r.boutique+'</div>'+(DB.cfg.numFiscal?'<div class="recu-dt">'+(lang==='fr'?'ID':'ID')+': '+DB.cfg.numFiscal+'</div>':'')+'<div class="recu-dt">'+r.date+' '+r.h+'</div></div>'+r.lignes.map(function(l){return '<div class="recu-rw"><span>'+l.nm+'</span><span>'+fmt(l.px)+'</span></div>';}).join('')+((r.remise||0)>0?'<div class="recu-rw"><span>🏷️ '+(lang==='fr'?'Remise':'Discount')+'</span><span>-'+fmt(r.remise)+'</span></div>':'')+'<div class="recu-tt"><span>TOTAL</span><span>'+fmt(r.total)+'</span></div>'+(function(){var t=tauxTVA();if(!t)return '';var x=tvaDe(r.total);
+  // 23.82 — le n° du reçu, le téléphone de la boutique, l'arrondi s'il y en a
+  // un ; et tout ce qui vient d'ailleurs (noms, synchro) passe par escH.
+  var _fr=(lang==='fr');
+  document.getElementById('recu-cont').innerHTML='<div class="recu-cd" id="recu-print"><div class="recu-h"><div class="recu-sh">🏪 '+escH(r.boutique)+'</div>'+(DB.cfg.tel?'<div class="recu-dt">'+escH(DB.cfg.tel)+'</div>':'')+(DB.cfg.numFiscal?'<div class="recu-dt">'+(_fr?'NIU':'Tax ID')+' : '+escH(DB.cfg.numFiscal)+'</div>':'')+(r.num?'<div class="recu-dt recu-num">'+(_fr?'Reçu n° ':'Receipt # ')+escH(r.num)+'</div>':'')+'<div class="recu-dt">'+escH(r.date)+' '+escH(r.h)+'</div></div>'+r.lignes.map(function(l){return '<div class="recu-rw"><span>'+escH(l.nm)+'</span><span>'+fmt(l.px)+'</span></div>';}).join('')+((r.remise||0)>0?'<div class="recu-rw"><span>🏷️ '+(_fr?'Remise':'Discount')+'</span><span>-'+fmt(r.remise)+'</span></div>':'')+((r.arrondi||0)!==0?'<div class="recu-rw"><span>≈ '+(_fr?'Arrondi':'Rounding')+'</span><span>'+(r.arrondi>0?'+':'−')+fmt(Math.abs(r.arrondi))+'</span></div>':'')+'<div class="recu-tt"><span>TOTAL</span><span>'+fmt(r.total)+'</span></div>'+(function(){var t=tauxTVA();if(!t)return '';var x=tvaDe(r.total);
     return '<div class="recu-rw" style="font-size:11px"><span>'+(lang==='fr'?'dont HT':'excl. VAT')+'</span><span>'+fmt(x.ht)+'</span></div>'
-      +'<div class="recu-rw" style="font-size:11px"><span>'+(lang==='fr'?'dont TVA ':'VAT ')+_fmtTaux(t)+'</span><span>'+fmt(x.tva)+'</span></div>';})()+(r.client?'<div class="recu-rw" style="font-size:11px;opacity:.75"><span>'+(lang==='fr'?'Client':'Customer')+'</span><span>'+r.client+'</span></div>':'')+(r.paiement?'<div class="recu-rw" style="font-size:11px;opacity:.75"><span>'+(lang==='fr'?'Paiement':'Payment')+'</span><span>'+pmntLabel(r.paiement)+'</span></div>':'')+'<div class="recu-tk">'+t('merci')+'</div></div>';
+      +'<div class="recu-rw" style="font-size:11px"><span>'+(lang==='fr'?'dont TVA ':'VAT ')+_fmtTaux(t)+'</span><span>'+fmt(x.tva)+'</span></div>';})()+(r.client?'<div class="recu-rw" style="font-size:11px;opacity:.75"><span>'+(lang==='fr'?'Client':'Customer')+'</span><span>'+escH(r.client)+'</span></div>':'')+(r.paiement?'<div class="recu-rw" style="font-size:11px;opacity:.75"><span>'+(lang==='fr'?'Paiement':'Payment')+'</span><span>'+pmntLabel(r.paiement)+'</span></div>':'')+'<div class="recu-tk">'+t('merci')+'</div></div>';
   document.getElementById('ov-recu').classList.add('show');
 }
 function imprimerRecu(){
@@ -22190,7 +22213,7 @@ function imprimerRecu(){
   w.onafterprint=function(){w.close();};
   setTimeout(function(){if(w&&!w.closed)w.print();},400);
 }
-function partagerRecu(){if(!dernierRecu)return;var r=dernierRecu;var msg='🏪 *'+r.boutique+'*\n📅 '+r.date+' '+r.h+'\n\n';r.lignes.forEach(function(l){msg+='• '+l.nm+': '+fmt(l.px)+'\n';});msg+='\n💰 *TOTAL: '+fmt(r.total)+'*\n';if(tauxTVA()){var _x=tvaDe(r.total);msg+=(lang==='fr'?'dont TVA ':'VAT ')+_fmtTaux(tauxTVA())+' : '+fmt(_x.tva)+'\n';}msg+='\n'+t('merci');window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');}
+function partagerRecu(){if(!dernierRecu)return;var r=dernierRecu;var msg='🏪 *'+r.boutique+'*\n'+(r.num?((lang==='fr'?'Reçu n° ':'Receipt # ')+r.num+'\n'):'')+'📅 '+r.date+' '+r.h+'\n\n';r.lignes.forEach(function(l){msg+='• '+l.nm+': '+fmt(l.px)+'\n';});msg+='\n💰 *TOTAL: '+fmt(r.total)+'*\n';if(tauxTVA()){var _x=tvaDe(r.total);msg+=(lang==='fr'?'dont TVA ':'VAT ')+_fmtTaux(tauxTVA())+' : '+fmt(_x.tva)+'\n';}msg+='\n'+t('merci');window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');}
 
 function updateStats(){document.getElementById('sv').textContent=fmt(totalV);document.getElementById('sb').textContent=fmt(totalB);document.getElementById('st').textContent=nbT;}
 function updateObjBar(){var ob=document.getElementById('obj-bar');if(DB.objectif>0){ob.style.display='block';var pct=Math.min(100,Math.round(totalV/DB.objectif*100));document.getElementById('obj-fill').style.width=pct+'%';document.getElementById('obj-val').textContent=fmt(totalV)+' / '+fmt(DB.objectif)+' ('+pct+'%)';}else ob.style.display='none';}
@@ -32893,6 +32916,7 @@ function getSaleBenef(v){
       return 0;                                           // rien de croyable : on n'invente pas
     }
     b-=(Number(v.remise)||0)+(Number(v.reductionPoints)||0); // les remises sortent du bénéfice
+    b+=Number(v.arrondi)||0;   // 23.82 — l'arrondi du total : +5 F reçus, ou −5 F laissés
     return b;
   }
   return Number((v.benefice!==undefined&&v.benefice!==null)?v.benefice:v.ben)||0;
@@ -33263,7 +33287,28 @@ function calcBenBrut(){return Object.entries(panier).reduce(function(s,e){var l=
 // calcul qui couperait au lieu d'arrondir aurait montré 244. Le total d'une
 // vente est arrondi au centième AVANT d'être gardé (245, pas 244,99…).
 function _arrondiMonnaie(x){return Math.round((Number(x)||0)*100)/100;}
-calcTotal=function(){return Math.max(0,_arrondiMonnaie(calcTotalBrut()-remisePoints-(remiseVente||0)-_negoTotal()));};
+// ⭐ 23.82 — L'ARRONDI DE LA BOUTIQUE (feuille de route V1, le 20/11).
+// « Les arrondis doivent être paramétrables (5, 25 ou 50 FCFA) pour éviter
+// les décimales. » Personne n'a de pièce de 5 F pour rendre 1 230 F : le
+// total se pose au multiple choisi, au plus proche (1 230 → 1 225 à 25 F).
+// L'écart est GARDÉ sur la vente (`arrondi`, signé) : la caisse compte ce
+// qui a vraiment été payé, et le bénéfice en tient compte (getSaleBenef).
+// Par défaut : aucun arrondi — rien ne change chez qui ne l'a pas choisi.
+function _pasArrondi(){var a=Number(DB&&DB.cfg&&DB.cfg.arrondi)||1;return [1,5,10,25,50,100].indexOf(a)>=0?a:1;}
+function _arrondirTotal(x){var a=_pasArrondi();if(a<=1)return x;return Math.max(0,Math.round(x/a)*a);}
+function _totalAvantArrondi(){return Math.max(0,_arrondiMonnaie(calcTotalBrut()-remisePoints-(remiseVente||0)-_negoTotal()));}
+calcTotal=function(){return _arrondirTotal(_totalAvantArrondi());};
+function choisirArrondi(){
+  if(role!=='patron'){showToast('🔒 '+(lang==='fr'?'Réservé au patron':'Owner only'));return;}
+  var L=[1,5,25,50],i=L.indexOf(_pasArrondi());
+  DB.cfg.arrondi=L[(i+1)%L.length];save();majLigneArrondi();
+  var a=DB.cfg.arrondi,fr=(lang==='fr');
+  showToast('≈ '+(a<=1?(fr?'Plus d\'arrondi : au franc près':'No rounding'):((fr?'Arrondi à ':'Rounded to ')+fmt(a)+' — '+fmt(1230)+' → '+fmt(Math.round(1230/a)*a))));
+}
+function majLigneArrondi(){
+  var e=document.getElementById('st-arr-s');if(!e)return;var a=_pasArrondi(),fr=(lang==='fr');
+  e.textContent=a<=1?(fr?'Non — au franc près':'No — to the franc'):((fr?'À ':'To ')+fmt(a)+' — '+fmt(1230)+' → '+fmt(Math.round(1230/a)*a));
+}
 // ═══════════════════════════════════════════════════════════════════
 // LA CONSIGNE — de l'argent qui passe par la caisse SANS t'appartenir
 // La bouteille de bière, le casier, la bouteille de gaz sont consignés :
@@ -36261,6 +36306,8 @@ encaisser=function(){
     majCredClientBox();ouvrirClientVente();return;
   }
   var totalBrut=calcTotalBrut(),total=calcTotal(),ben=calcBenTotal(),lignes=[];
+  var _arr=0;try{_arr=_arrondiMonnaie(total-_totalAvantArrondi());}catch(e){}
+  var _num='';try{_num=_prochainNumRecu();}catch(e){}
   // ⚠️ LU AVANT QUE LE PANIER SOIT VIDÉ. Ce qu'il a lâché en négociant est
   // enregistré AVEC la remise de la vente : c'est la même chose du point de
   // vue de ses rapports — de l'argent qu'il a choisi de ne pas prendre. Les
@@ -36349,6 +36396,7 @@ encaisser=function(){
   // pris/rendu pour pouvoir expliquer la somme au commerçant.
   var _consNet=consigneNette(),_consU=consigneUnitPanier();
   DB.ventes.push({id:genVenteId(),total:total,totalBrut:totalBrut,benefice:ben,ben:ben,lignes:lignes,h:h,heure:h,date:dateFr,vendeur:vendeur,clientId:clientId,clientNom:clientNm,pointsGagnes:ptsGagnes,pointsUtilises:ptsUtilises,reductionPoints:remisePoints,remise:(remiseVente||0)+_negoV,negocie:_negoV||0,paiement:paiement,annulee:false,
+    arrondi:_arr,num:_num,
     consigne:_consNet,consignePrises:consignePrises,consigneRendues:consigneRendues,consigneUnit:_consU});
   _grosPanier={};_negoLigne={};
   sauverEtEnvoyerVite();dernierRecu={boutique:DB.cfg.nom,lignes:lignes.map(function(l){var _p=DB.articles.find(function(x){return x.id==l.pid;});var _u=(_p&&estMesure(_p)&&!l.vid)?(' '+uniteArt(_p)):'';
@@ -36362,7 +36410,7 @@ encaisser=function(){
     var _n=l.gros?(l.nm+' — '+fmtQ(l.gros.nb)+' '+l.gros.mot+(l.gros.nb>1?'s':'')+' ('+fmtQ(_dedans)+_u+')')
                  :(l.grosTxt?(l.nm+' — '+l.grosTxt+' ('+fmtQ(_dedans)+_u+')')
                             :(l.nm+' ×'+fmtQ(l.qte)+_u));
-    return {nm:_n,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:(remiseVente||0)+_negoV,client:clientNm};
+    return {nm:_n,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:(remiseVente||0)+_negoV,client:clientNm,arrondi:_arr,num:_num};
   panier={};panierLibre=[];remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
   renderProd(DB.articles);renderStock(DB.articles);renderClients();recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
   document.getElementById('succ-amt').textContent=fmt(total);
