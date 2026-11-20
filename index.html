@@ -7737,7 +7737,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.91'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.92'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -33264,11 +33264,10 @@ function _voixAppliquer(lignes,R){
     if(pris>0)R.ajoutes.push({p:p,v:v,q:Math.round(pris*1000)/1000,mt:mt});
   });
 }
-function voiceSearch(){
-  // Le micro touché sans voix payante : on redemande en silence (le « non »
-  // a peut-être changé depuis), sans faire attendre cette dictée-ci.
-  if(!voixProDispo()){try{voixProEtat();}catch(e){}}
-  if(voixProDispo()){voixProEcouter().then(function(q){
+// 23.92 — UNE phrase entendue, UN traitement, d'où qu'elle vienne (la voix
+// payante ou celle du téléphone) : le panier, « pour 200 », ce qui n'est pas
+// compris au serveur s'il y a internet, la relecture, sinon la recherche.
+function _voixTraiterTexte(q){
     if(!q)return;
     // 23.83 — « … » ou « Sous-titrage » : le service a entendu le silence.
     if(!/[a-z0-9à-ÿ]{2,}/i.test(q)||/sous-titr|amara\.org|merci d.avoir regard/i.test(q)){showToast('🎤 '+(lang==='fr'?'Je n\'ai rien entendu. Réessaie.':'Heard nothing. Try again.'));return;}
@@ -33291,10 +33290,107 @@ function voiceSearch(){
     // les petits mots ni la quantité — la grille montre les savons, il touche.
     var mots=_ecNorm(q).split(' ').filter(function(w){return w&&!_EC_VIDES[w]&&!_NB_DITS[w]&&!/^\d+$/.test(w)&&!/^(donne|moi|veux|voudrais|mets|ajoute|stp|svp)$/.test(w);});
     var c=document.getElementById('src-c');if(c){c.value=mots.join(' ')||q;filtrC(c.value);}
-  });return;}
+}
+function voiceSearch(){
+  // Le micro touché sans voix payante : on redemande en silence (le « non »
+  // a peut-être changé depuis), sans faire attendre cette dictée-ci.
+  if(!voixProDispo()){try{voixProEtat();}catch(e){}}
+  if(voixProDispo()){voixProEcouter().then(_voixTraiterTexte);return;}
   _voiceSearchGratuit();
 }
-function _voiceSearchGratuit(){if(!('SpeechRecognition'in window||'webkitSpeechRecognition'in window)){showToast(t('microIndispo'));return;}var SR=window.SpeechRecognition||window.webkitSpeechRecognition,r=new SR();r.lang=lang==='fr'?'fr-FR':'en-US';r.onresult=function(e){var q=e.results[0][0].transcript;document.getElementById('src-c').value=q;filtrC(q);};r.onerror=function(){showToast('🎤');};r.start();showToast(t('microParle'));}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.92 — LA VOIX SANS INTERNET (couche 1)
+//  Le patron, le 20/11 : « Go 1+2 ». Vosk était prévu ; son modèle français
+//  (40 Mo) vit chez un tiers que notre environnement ne peut pas joindre.
+//  Les Chrome récents (Android) savent reconnaître la parole DANS LE
+//  TÉLÉPHONE, après un téléchargement unique géré par le système, et
+//  favoriser une liste de mots : ceux de la boutique. Gratuit, hors ligne,
+//  et le modèle de Google connaît mieux le français parlé.
+//  Tout se vérifie avant usage (SpeechRecognition.available) : un téléphone
+//  qui ne sait pas fait exactement comme avant.
+//  Et la dictée gratuite ne remplissait QUE la recherche : elle passe
+//  maintenant par le même traitement que la voix payante (_voixTraiterTexte) —
+//  le panier, « pour 200 », la relecture.
+// ══════════════════════════════════════════════════════════════════
+var _vLoc={etat:'',ts:0};
+function _SRclasse(){return window.SpeechRecognition||window.webkitSpeechRecognition||null;}
+function _langVoix(){return lang==='fr'?'fr-FR':'en-US';}
+// ⚠️⚠️ MESURÉ AU BANC : dans le Chromium sans écran, SpeechRecognition.available()
+// FAIT PLANTER LA PAGE (« Target crashed »). Sur un vrai Chrome il répond, mais
+// une caisse qui plante en pleine vente ne se rattrape pas. Trois verrous :
+//   · on ne demande QUE quand il touche le micro (jamais au démarrage) ;
+//   · le panier est posé sur le téléphone juste avant (_panierSauver) ;
+//   · « essai » est noté AVANT la question, « ok » après : si la page meurt
+//     entre les deux, la marque reste et ce téléphone ne redemande plus jamais
+//     (« casse ») — la dictée de toujours reprend.
+var _CLE_VLOC='myboutiq_vloc';
+function _vLocMarque(v){try{if(v==null)return localStorage.getItem(_CLE_VLOC)||'';localStorage.setItem(_CLE_VLOC,v);}catch(e){}return '';}
+async function voixLocaleEtat(){
+  try{
+    var SR=_SRclasse();
+    if(!SR||typeof SR.available!=='function'){_vLoc={etat:'absent',ts:Date.now()};return 'absent';}
+    var m=_vLocMarque();
+    if(m==='casse'){_vLoc={etat:'absent',ts:Date.now()};return 'absent';}
+    if(m==='essai'){_vLocMarque('casse');_vLoc={etat:'absent',ts:Date.now()};return 'absent';}
+    try{_panierSauver();}catch(e){}
+    _vLocMarque('essai');
+    var r=await SR.available({langs:[_langVoix()],processLocally:true});
+    _vLocMarque('ok');
+    _vLoc={etat:String(r||'unavailable'),ts:Date.now()};
+  }catch(e){_vLocMarque('ok');_vLoc={etat:'absent',ts:Date.now()};}
+  return _vLoc.etat;
+}
+async function voixLocaleInstaller(){
+  try{
+    var SR=_SRclasse();if(!SR||typeof SR.install!=='function')return false;
+    var ok=!!(await SR.install({langs:[_langVoix()],processLocally:true}));
+    if(ok)_vLoc={etat:'available',ts:Date.now()};
+    return ok;
+  }catch(e){return false;}
+}
+// Le téléchargement de la langue : une fois, en wifi (ou bon réseau sans
+// économie de données), jamais sur les données mobiles d'un commerçant.
+function _voixLocalePreparer(dejaSu){
+  (dejaSu?Promise.resolve(_vLoc.etat):voixLocaleEtat()).then(function(e){
+    if(e!=='downloadable')return;
+    var c=navigator.connection||{};
+    if(c.saveData)return;
+    if(c.type&&c.type!=='wifi'&&c.type!=='ethernet')return;
+    voixLocaleInstaller();
+  });
+}
+function _phrasesBoutique(){
+  var P=window.SpeechRecognitionPhrase;if(!P)return null;
+  try{return _voixMots().slice(0,100).map(function(m){return new P(String(m),5.0);});}catch(e){return null;}
+}
+function _voiceSearchGratuit(){
+  var SR=_SRclasse();
+  if(!SR){showToast(t('microIndispo'));return;}
+  // La première tape sur le micro demande au téléphone ce qu'il sait faire
+  // (et prépare la langue en wifi) ; les suivantes savent déjà.
+  if(!_vLoc.etat){voixLocaleEtat().then(function(){try{_voixLocalePreparer(true);}catch(e){}_dicterTelephone();});return;}
+  _dicterTelephone();
+}
+function _dicterTelephone(){
+  var SR=_SRclasse(),fr=(lang==='fr');
+  if(!SR){showToast(t('microIndispo'));return;}
+  var local=(_vLoc.etat==='available');
+  if(!local&&navigator.onLine===false){
+    // Pas d'internet, pas encore la voix du téléphone : on ne fait pas semblant.
+    if(_vLoc.etat==='downloadable')voixLocaleInstaller();
+    showToast('📶 '+(fr?'Pas d\'internet : touche les articles':'No internet: tap the items'));
+    return;
+  }
+  var r=new SR();r.lang=_langVoix();
+  if(local){
+    try{r.processLocally=true;}catch(e){}
+    var ph=_phrasesBoutique();if(ph&&ph.length){try{r.phrases=ph;}catch(e){}}
+  }
+  r.onresult=function(e){var q='';try{q=e.results[0][0].transcript;}catch(x){}_voixTraiterTexte(q);};
+  r.onerror=function(){showToast('🎤');};
+  try{r.start();}catch(e){showToast('🎤');return;}
+  showToast(t('microParle'));
+}
 // ══════════════════════════════════════════════════════════════════
 //  UN SEUL MICRO
 //
