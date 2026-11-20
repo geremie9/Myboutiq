@@ -1277,6 +1277,13 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .phot-fin{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:14px 4px 18px;color:var(--G)}
 .phot-fin b{font-size:17px;color:var(--T)}.phot-fin span{font-size:12px;font-weight:700;color:var(--M)}
 .qte-mes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+/* 23.88 — les doses de la boutique, en tête, en grand */
+.qte-hab-l{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 10px}
+.qte-h{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:64px;border:2px solid #F0A93E;background:#FFF8EE;border-radius:14px;font-family:Outfit,sans-serif;cursor:pointer;padding:6px 4px}
+.qte-h b{font-size:18px;font-weight:900;color:#221F2B}
+.qte-h span{font-size:13px;font-weight:800;color:#8A5300}
+.qte-rempl{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#F4F2F7;border-radius:12px;padding:8px 10px;margin-bottom:10px;font-size:15px;font-weight:700}
+.qte-rempl button{background:#FFEBEE;color:var(--R);border:none;border-radius:10px;padding:9px 12px;font-size:14px;font-weight:800;font-family:Outfit,sans-serif;cursor:pointer;min-height:44px}
 .qte-m{border:2px solid var(--B);background:var(--C);border-radius:13px;padding:9px 6px;font-family:'Outfit',sans-serif;cursor:pointer;text-align:center}
 .qte-m b{display:block;font-size:14px;font-weight:800;color:var(--T)}.qte-m span{font-size:16px;font-weight:900;color:var(--B)}
 .qte-mt{margin-top:8px}.qte-mt .pl{margin-bottom:6px}
@@ -5541,6 +5548,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
            toujours le prix du kilo divisé par quatre (175 F) quand la boutique
            le vend 200. Et « donne-moi du riz pour 500 » — la demande de tous
            les jours — obligeait à calculer le poids de tête. -->
+      <div id="qte-hab" class="qte-hab"></div>
       <div id="qte-mes" class="qte-mes"></div>
       <div id="qte-mt" class="qte-mt"></div>
       <div class="pl" id="qte-poids-l" style="margin:10px 0 6px">Au poids</div>
@@ -7710,7 +7718,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.87'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.88'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -14568,7 +14576,7 @@ function renderProd(lst){
       if(hasV){ouvrirVarInline(p,d);return;} // famille -> les variantes sortent SOUS la carte
       // ⚠️ 23.07 — PLUS DE « LA TUILE VEND LE CARTON » : le gros, c'est la
       // barre du bas (`_barreGros`), sur toutes les tuiles.
-      if(estMesure(p)){ouvrirQteMesure(p);return;}
+      if(estMesure(p)){vendreMesureTuile(p);return;}
       if(isOut&&p.rt&&livePq===0&&!_stockJamaisCompte(p)){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
       _astucePave('a'+p.id);
       addPanier(p,null);
@@ -14607,7 +14615,7 @@ function renderProd(lst){
     if(_sansPrix)d.classList.remove('fini');
     d.innerHTML=
       (((role==='patron'||hasPerm('produits'))&&!venteVerrouillee())?'<button class="pedit" onclick="quickEditPrix(event,'+p.id+')" title="'+(lang==='fr'?'Modifier prix':'Edit price')+'">✎</button>':'')+
-      '<div class="qbdg '+(pq>0?'show':'')+'" id="qb-'+p.id+'" onclick="retirerUn(event,'+p.id+')">'+'<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">✕</span></div>'+
+      '<div class="qbdg '+(pq>0?'show':'')+'" id="qb-'+p.id+'" onclick="retirerUn(event,'+p.id+')">'+'<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">'+((!hasV&&estMesure(p))?'⚖':'✕')+'</span></div>'+
       // ⚠️⚠️ UNE SEULE CARTE, DEUX VIGNETTES. Avant, la carte à photo et la
       // carte sans photo étaient DEUX MISES EN PAGE DIFFÉRENTES : l'une
       // écrivait son nom en bas sur un voile, sur UNE ligne coupée par des
@@ -15204,7 +15212,7 @@ function venteRapide(pid){
   if(articleIncomplet(p)){if(role==='patron'||hasPerm('produits'))ouvrirCompleterArticle(p);return;}
   if(ts<=0&&!p.rt){_direPourquoiVide(p);return;}
   if(p.vr.length){ouvrirVar(p);return;}
-  if(estMesure(p)){ouvrirQteMesure(p);return;}
+  if(estMesure(p)){vendreMesureTuile(p);return;}
   var livePq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
   if(ts<=0&&p.rt&&livePq===0&&!_stockJamaisCompte(p)){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
   addPanier(p,null);
@@ -16722,7 +16730,7 @@ function _reprendreVente(p){
   if(!p)return;
   var d=_tuileCaisse(p.id);
   if(p.vr&&p.vr.length){if(d)ouvrirVarInline(p,d);return;}
-  if(estMesure(p)){ouvrirQteMesure(p);return;}
+  if(estMesure(p)){vendreMesureTuile(p);return;}
   addPanier(p,null);
 }
 // ⚠️ CE QUE J'AVAIS RATÉ, ET QUI RENDAIT LE BOUTON « CORRIGER » MENSONGER.
@@ -16760,8 +16768,8 @@ function _proposerRattrapagePrixAchat(p){
 }
 // ── Vente au poids / à la mesure : sélecteur ½ · 1 · 2 · 5 ou quantité libre ──
 var _qteArt=null;
-function ouvrirQteMesure(p){
-  _qteArt=p;
+function ouvrirQteMesure(p,remplacer){
+  _qteArt=p;_qteRemplace=remplacer?p.id:null;
   var u=uniteArt(p);
   document.getElementById('qte-tit').textContent='⚖️ '+(lang==='fr'?'Quantité en ':'Quantity in ')+u;
   document.getElementById('qte-art').textContent=p.nm+' — '+fmt(p.px)+' / '+u;
@@ -16769,7 +16777,116 @@ function ouvrirQteMesure(p){
   document.getElementById('qte-inp').value='';
   document.getElementById('qte-apercu').textContent='';
   try{_qteRendreMesures(p);}catch(e){}
+  try{_qteRendreHabitudes(p,!!remplacer);}catch(e){}
   document.getElementById('ov-qte').classList.add('show');
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 23.88 — LE RIZ ET L'HUILE AUSSI VITE QU'UNE BOUTEILLE
+//  Le patron, le 20/11 : « certains articles en kg, L ou dans certaines
+//  unités ne respectent pas la rapidité, exemple le riz, l'huile ». Mesuré :
+//  une bouteille se vend d'UNE touche ; un kilo de riz ouvrait à CHAQUE
+//  fois une feuille de onze choix et deux cases (pour un montant, ¼, ½, 1,
+//  2, 5, autre quantité), et le kilo suivant la rouvrait.
+//  La boutique vend presque toujours la même chose de son riz : « 1 kg »,
+//  « un quart », « pour 500 ». L'app le lit dans SES ventes (`_dosesDe`) :
+//   · une habitude nette (au moins 3 fois, et la moitié des dernières
+//     ventes de l'article) → la tuile vend cette dose d'une touche, comme
+//     une bouteille ; une deuxième touche en ajoute une autre ;
+//   · le badge de la tuile (« 1 ⚖ ») rouvre la feuille pour CHANGER la
+//     quantité — là où il regarde, pas dans un appui long ;
+//   · pas encore d'habitude → la feuille, avec ses doses habituelles en
+//     tête dès qu'il y en a.
+//  Rien n'est deviné : sans ventes, la feuille s'ouvre comme avant. Les
+//  prix sont ceux d'AUJOURD'HUI (le quart à son prix actuel, « pour 500 »
+//  repesé au prix du kilo du jour).
+// ══════════════════════════════════════════════════════════════════
+var _qteRemplace=null;
+function _dosesDe(p){
+  if(!p||!DB||!Array.isArray(DB.ventes))return [];
+  var cpt={},ordre=[],occ=[],V=DB.ventes,n=0,sac=Number(p.umSac)||0;
+  for(var i=V.length-1;i>=0&&n<400;i--){
+    var v=V[i];if(!v||v.annulee)continue;n++;
+    (v.lignes||[]).forEach(function(l){
+      if(!l||String(l.pid)!==String(p.id)||l.vid||l.grosTxt)return;
+      var d=null,fois=1;
+      if(l.gros&&Number(l.qBase)>0){
+        var mot=String(l.gros.mot||'');
+        if(sac>0&&Number(l.qBase)>=sac)return;           // le sac : c'est la barre du bas
+        if(/^(pour|for) /i.test(mot))d={k:'mt',M:Math.round(Number(l.px)||0)};
+        else d={k:'mes',nm:mot};
+        fois=Number(l.gros.nb)||Number(l.qte)||1;
+      }else if((Number(l.qBase)||1)===1&&Number(l.qte)>0&&Number(l.qte)<=10){
+        d={k:'q',q:Math.round(Number(l.qte)*100)/100};
+      }
+      if(!d)return;
+      if(d.k==='mt'&&!(d.M>0))return;
+      var c=d.k+'|'+(d.k==='q'?d.q:(d.k==='mt'?d.M:txtNorm(d.nm)));
+      if(!cpt[c]){cpt[c]={d:d,n:0,dern:0};ordre.push(c);}
+      cpt[c].n+=fois;
+      if(occ.length<20)occ.push(c);
+    });
+  }
+  // Ce qui se vend encore aujourd'hui : une mesure supprimée ne revient pas.
+  var mes=_mesuresDe(p);
+  return ordre.map(function(c){var x=cpt[c];x.recent=occ.filter(function(o){return o===c;}).length;return x;})
+    .filter(function(x){return x.d.k!=='mes'||mes.some(function(m){return txtNorm(m.nm)===txtNorm(x.d.nm);});})
+    .sort(function(a,b){return (b.recent-a.recent)||(b.n-a.n);});
+}
+function _doseHabituelle(p){
+  var L=_dosesDe(p);if(!L.length)return null;
+  var tot=L.reduce(function(s,x){return s+x.recent;},0),t=L[0];
+  return (t.n>=3&&t.recent>=3&&t.recent*2>=tot)?t.d:null;
+}
+function _doseTexte(p,d){
+  var fr=(lang==='fr'),px=Number(p.px)||0;
+  if(d.k==='q')return {b:fmtQ(d.q)+' '+uniteArt(p),i:fmt(Math.round(px*d.q))};
+  if(d.k==='mt')return {b:(fr?'pour ':'for ')+fmt(d.M),i:fmtQ(Math.round(d.M/px*100)/100)+' '+uniteArt(p)};
+  var m=_mesuresDe(p).find(function(x){return txtNorm(x.nm)===txtNorm(d.nm);});
+  return {b:m?m.nm:d.nm,i:m?fmt(m.px):''};
+}
+function _vendreDose(p,d){
+  if(!p||!d||!(Number(p.px)>0||d.k==='mes'))return false;
+  _qteArt=p;
+  if(d.k==='q'){ajouterQteMesure(d.q);return true;}
+  if(d.k==='mt'){var px=Number(p.px)||0,q=Math.round(d.M/px*100)/100;if(!(q>0))return false;
+    return _ajouterMesure(p,q,d.M,(lang==='fr'?'pour ':'for ')+fmt(d.M));}
+  var m=_mesuresDe(p).find(function(x){return txtNorm(x.nm)===txtNorm(d.nm);});
+  return m?_ajouterMesure(p,Number(m.q),Number(m.px),String(m.nm)):false;
+}
+// La tuile d'un article au kilo/litre : l'habitude d'une touche, sinon la feuille.
+function vendreMesureTuile(p){
+  _qteRemplace=null;
+  var d=null;try{d=_doseHabituelle(p);}catch(e){}
+  if(d&&_vendreDose(p,d))return;
+  ouvrirQteMesure(p);
+}
+// Le badge « 1 ⚖ » : la feuille, et ce qu'il choisit REMPLACE ce qui est au panier.
+function changerQteMesure(p){ouvrirQteMesure(p,true);}
+function retirerMesure(){
+  var p=_qteArt;if(!p)return;
+  var key=p.id+'-0';delete panier[key];try{delete _grosPanier[key];}catch(e){}
+  _qteRemplace=null;updatePUI(p.id);closeSheet('ov-qte');
+  showToast('🗑 '+p.nm+(lang==='fr'?' retiré du panier':' removed'));
+}
+function _qteRendreHabitudes(p,remplacer){
+  var z=document.getElementById('qte-hab');if(!z)return;
+  var fr=(lang==='fr'),L=_dosesDe(p).slice(0,3);
+  var h='';
+  if(L.length){
+    h+='<div class="pl">'+(fr?'Comme d\'habitude':'As usual')+'</div><div class="qte-hab-l">'
+      +L.map(function(x,i){var t=_doseTexte(p,x.d);return '<button type="button" class="qte-h" onclick="qteDose('+i+')"><b>'+escH(t.b)+'</b><span>'+escH(t.i)+'</span></button>';}).join('')+'</div>';
+  }
+  if(remplacer){
+    var key=p.id+'-0',q=panier[key]||0;
+    if(q>0)h='<div class="qte-rempl"><span>'+(fr?'Au panier : ':'In basket: ')+'<b>'+escH(fmtQ(q)+' '+uniteArt(p))+'</b></span>'
+      +'<button type="button" onclick="retirerMesure()">🗑 '+(fr?'Retirer':'Remove')+'</button></div>'+h;
+  }
+  z.innerHTML=h;
+}
+function qteDose(i){
+  var p=_qteArt;if(!p)return;
+  var x=_dosesDe(p)[i];if(!x)return;
+  _vendreDose(p,x.d);
 }
 // ══════════════════════════════════════════════════════════════════
 //  ⭐⭐ 23.41 — LES MESURES
@@ -16802,7 +16919,9 @@ function _qteRendreMesures(p){
 function _ajouterMesure(p,q,px,mot){
   q=Math.round(q*100)/100;
   if(!(q>0)||!(px>0))return false;
-  var key=p.id+'-0',cur=panier[key]||0,ts=getStk(p);
+  var key=p.id+'-0';
+  if(_qteRemplace===p.id){delete panier[key];try{delete _grosPanier[key];}catch(e){}_qteRemplace=null;}
+  var cur=panier[key]||0,ts=getStk(p);
   if(cur+q>ts&&!p.rt){showToast(t('stockInsuf'));return false;}
   panier[key]=Math.round((cur+q)*100)/100;
   // Le coût de la mesure : son poids au prix d'achat de l'unité.
@@ -16847,12 +16966,14 @@ function validerQte(){
 function ajouterQteMesure(q){
   var p=_qteArt;if(!p)return;
   q=Math.round(q*100)/100;
-  var key=p.id+'-0',cur=panier[key]||0,ts=getStk(p);
+  var key=p.id+'-0';
+  if(_qteRemplace===p.id){delete panier[key];try{delete _grosPanier[key];}catch(e){}_qteRemplace=null;}
+  var cur=panier[key]||0,ts=getStk(p);
   if(cur+q>ts&&!p.rt){showToast(t('stockInsuf'));return;}
   panier[key]=Math.round((cur+q)*100)/100;
   updatePUI(p.id);
   closeSheet('ov-qte');
-  showToast('🛒 '+fmtQ(q)+' '+uniteArt(p)+' — '+p.nm);
+  showToast('🛒 '+fmtQ(q)+' '+uniteArt(p)+' — '+p.nm+((Number(p.px)>0)?(' · '+fmt(Math.round(p.px*q))):''));
   if(navigator.vibrate)navigator.vibrate(25);
 }
 // Modèle d'articles en OPTION (la boutique démarre vide) : chargé à la demande
@@ -16884,6 +17005,10 @@ async function importerModeleArticles(){
 }
 function retirerUn(e,pid){
   e.stopPropagation();
+  // 23.88 — au kilo/litre, le badge « 1 kg ⚖ » CHANGE la quantité : retirer
+  // « un » kilo à un quart n'avait pas de sens (et laissait le lot du quart).
+  var _pm=DB.articles.find(function(x){return x.id==pid;});
+  if(_pm&&!(_pm.vr&&_pm.vr.length)&&estMesure(_pm)){changerQteMesure(_pm);return;}
   var keys=Object.keys(panier).filter(function(k){return k.split('-')[0]==pid;});
   if(!keys.length)return;
   var key=keys[keys.length-1];
@@ -19195,7 +19320,7 @@ function vendreUnite(e,pid){
   var ts=getStk(p),out=ts<=0,jamais=!!(p.rt&&_stockJamaisCompte(p));
   if(jamais)out=false;
   if(out&&!p.rt){_direPourquoiVide(p);return;}
-  if(estMesure(p)){ouvrirQteMesure(p);return;}
+  if(estMesure(p)){vendreMesureTuile(p);return;}
   var deja=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
   if(out&&p.rt&&deja===0&&!jamais){negEnCours={p:p,v:null};ouvrirNeg(p,null);return;}
   addPanier(p,null);
@@ -21402,7 +21527,8 @@ function updatePUI(pid){
   var total=calcTotal(),nb=Object.values(panier).reduce(function(a,b){return a+b;},0)+panierLibre.length;
   var pq=Object.keys(panier).filter(function(k){return k.split('-')[0]==pid;}).reduce(function(s,k){return s+panier[k];},0);
   var badge=document.getElementById('qb-'+pid),card=document.getElementById('pc-'+pid);
-  if(badge){badge.innerHTML='<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">✕</span>';badge.classList.toggle('show',pq>0);}
+  if(badge){var _pB=DB.articles.find(function(x){return x.id==pid;}),_mB=!!(_pB&&!(_pB.vr&&_pB.vr.length)&&estMesure(_pB));
+    badge.innerHTML='<span class="qbdg-n">'+fmtQ(pq)+'</span><span class="qbdg-x">'+(_mB?'⚖':'✕')+'</span>';badge.classList.toggle('show',pq>0);}
   if(card)card.classList.toggle('sel',pq>0);
   var fc=document.getElementById('fcart');
   try{_guidePanier();}catch(e){}
