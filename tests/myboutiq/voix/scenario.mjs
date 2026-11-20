@@ -28,6 +28,8 @@ r = await etat({ code: 'MARI0001' }, { authorization: 'Bearer aaa.bbb.ccc' });
 t(r.j.ok, 'le patron connecté, sans PIN : oui (son compte possède la boutique)');
 r = await etat({ code: 'SANS0001', pin: '9999' });
 t(r.s === 200 && !r.j.ok && r.j.motif === 'abonnement', 'une boutique sans abonnement : « abonnement », pas une erreur');
+r = await etat({ code: '64972 08757', pin: '1212' });
+t(r.j.ok, 'un vrai code, avec son espace (« 64972 08757 ») : accepté');
 r = await etat({ code: 'MARI0001<script>', pin: '4321' });
 t(r.s === 403, 'un code bizarre ne va même pas jusqu\'à la base');
 for (let i = 0; i < 5; i++) await etat({ code: 'MARI0001', pin: '0' + i });
@@ -78,5 +80,14 @@ ENV.VOIX_CLE_OPENAI = 'CLE-OPENAI-SECRETE'; ENV.VOIX_FOURNISSEUR = 'openai';
 reseau.length = 0;
 r = await dire({ code: 'MARI0001', pin: '4321' });
 t(r.j.fournisseur === 'openai' && reseau.every(x => !x.url.includes('groq')), 'le fournisseur se change par un réglage serveur, sans toucher au code');
+// ── La clé rangée en base (le patron ne pouvait pas poser un Secret) ──
+delete ENV.VOIX_CLE_OPENAI; delete ENV.VOIX_FOURNISSEUR;
+BASE.cles.push({ fournisseur: 'groq', cle: 'CLE-GROQ-EN-BASE' });
+const _vrai = Date.now; Date.now = () => _vrai() + 6 * 60e3;   // la relecture des 5 minutes
+reseau.length = 0;
+r = await dire({ code: 'MARI0001', pin: '4321' });
+const g2 = reseau.find(x => x.url.includes('api.groq.com'));
+t(r.j.fournisseur === 'groq' && g2 && g2.i.headers.Authorization === 'Bearer CLE-GROQ-EN-BASE' && !JSON.stringify(r.j).includes('EN-BASE'), 'sans Secret, la clé rangée dans la table fermée sert, et ne revient jamais au téléphone');
+Date.now = _vrai;
 console.log(`voix : ${ok} ✅ · ${ko} ❌`);
 process.exit(ko ? 1 : 0);

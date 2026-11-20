@@ -107,5 +107,21 @@ $$;
 revoke execute on function public.voix_autoriser(text, text, uuid) from public, anon, authenticated;
 revoke execute on function public.voix_compter(text, numeric)      from public, anon, authenticated;
 
+-- ── Les clés des services, rangées en base (23.80, le 20/11) ──
+-- Le patron n'arrivait pas à les poser dans les « Secrets » de Supabase
+-- depuis son téléphone. Même rangement que la clé VAPID des notifications
+-- (notif_cles) : une table FERMÉE, que seule la fonction serveur lit.
+-- Une clé posée dans les Secrets (VOIX_CLE_GROQ…) reste prioritaire.
+create table if not exists public.voix_cles (
+  fournisseur text primary key,          -- groq | openai | assemblyai
+  cle         text not null,
+  maj_le      timestamptz not null default now()
+);
+alter table public.voix_cles enable row level security;
+revoke all on public.voix_cles from anon, authenticated;
+-- La valeur se pose À LA MAIN, jamais dans ce fichier :
+--   insert into public.voix_cles (fournisseur, cle) values ('groq', '…')
+--   on conflict (fournisseur) do update set cle = excluded.cle, maj_le = now();
+
 -- Pour ouvrir le pilote à une boutique (à faire à la main, par le patron) :
 --   insert into public.voix_abonnes (code, note) values ('CODE1234', 'pilote novembre');

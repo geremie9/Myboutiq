@@ -30,13 +30,29 @@ const rep = (corps: unknown, statut = 200) =>
   new Response(JSON.stringify(corps), { status: statut, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
 const SON_MAX = 512 * 1024;      // ≈ 4 min d'opus à 16 kbit/s : une phrase en fait 8 Ko
-const CODE_OK = /^[A-Za-z0-9_-]{4,40}$/;
+// ⚠️ Les vrais codes ont un ESPACE (« 64972 08757 ») : vu le 20/11 en ouvrant
+// le pilote — la première version les refusait toutes.
+const CODE_OK = /^[A-Za-z0-9 _-]{4,40}$/;
 
-// Lues à chaque appel : changer de clé ou de fournisseur dans les secrets
-// Supabase suffit, sans toucher au code.
-const cle = (n: string) => Deno.env.get('VOIX_CLE_' + n.toUpperCase()) || '';
+// Les clés : d'abord les Secrets Supabase (VOIX_CLE_GROQ…), sinon la table
+// fermée `voix_cles` — le patron n'arrivait pas à poser un Secret depuis son
+// téléphone. Relue toutes les 5 minutes : changer de clé ne demande pas de
+// redéployer.
+let _cles: Record<string, string> = {}, _clesLues = 0;
+async function lireCles() {
+  if (Date.now() - _clesLues < 5 * 60e3) return;
+  _clesLues = Date.now();
+  try {
+    const { data } = await db.from('voix_cles').select('fournisseur, cle');
+    const m: Record<string, string> = {};
+    (data || []).forEach((r: { fournisseur: string; cle: string }) => { if (r && r.fournisseur && r.cle) m[String(r.fournisseur).toLowerCase()] = String(r.cle); });
+    _cles = m;
+  } catch { /* la table manque : les Secrets seuls */ }
+}
+const cle = (n: string) => Deno.env.get('VOIX_CLE_' + n.toUpperCase()) || _cles[n] || '';
 // Le fournisseur choisi d'abord, puis ceux qui ont une clé, en secours.
-function ordre() {
+async function ordre() {
+  await lireCles();
   const pref = (Deno.env.get('VOIX_FOURNISSEUR') || 'groq').toLowerCase();
   const l = [pref, 'groq', 'openai', 'assemblyai'].filter((n, i, a) => FOURNISSEURS[n as keyof typeof FOURNISSEURS] && a.indexOf(n) === i);
   return l.filter(n => cle(n));
@@ -67,7 +83,7 @@ Deno.serve(async (req: Request) => {
       if (c.action !== 'etat') return rep({ ok: false, motif: 'action' }, 400);
       const a = await autoriser(req, String(c.code || ''), String(c.pin || ''));
       // Pas de clé configurée : la voix payante n'est pas encore ouverte.
-      if (a.ok && !ordre().length) return rep({ ok: false, motif: 'ferme' });
+      if (a.ok && !(await ordre()).length) return rep({ ok: false, motif: 'ferme' });
       return rep(a.ok ? { ok: true, reste: a.reste } : { ok: false, motif: a.motif }, a.ok || a.motif === 'abonnement' || a.motif === 'quota' ? 200 : 403);
     }
 
@@ -80,7 +96,7 @@ Deno.serve(async (req: Request) => {
     if (son.size > SON_MAX) return rep({ ok: false, motif: 'trop-long' }, 413);
     const a = await autoriser(req, code, pin);
     if (!a.ok) return rep({ ok: false, motif: a.motif }, a.motif === 'abonnement' || a.motif === 'quota' ? 402 : 403);
-    const l = ordre();
+    const l = await ordre();
     if (!l.length) return rep({ ok: false, motif: 'ferme' }, 503);
     let mots: unknown = [];
     try { mots = JSON.parse(String(f.get('mots') || '[]')); } catch { mots = []; }

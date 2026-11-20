@@ -3,12 +3,13 @@
 // compte propriétaire, ou PIN de la boutique avec frein aux essais ; puis
 // abonnement actif et minutes restantes.
 export const BASE = {
-  boutiques: { MARI0001: { owner: 'u-marie', pins: { '123456': 'patron', '4321': 'vendeur' } }, SANS0001: { owner: 'u-x', pins: { '9999': 'patron' } } },
-  abonnes: { MARI0001: { actif: true, minutes: 600 } },
-  usage: {}, echecs: {}, users: { 'aaa.bbb.ccc': { id: 'u-marie' } }, appels: [],
+  boutiques: { MARI0001: { owner: 'u-marie', pins: { '123456': 'patron', '4321': 'vendeur' } }, SANS0001: { owner: 'u-x', pins: { '9999': 'patron' } }, '64972 08757': { owner: 'u-g', pins: { '1212': 'patron' } } },
+  abonnes: { MARI0001: { actif: true, minutes: 600 }, '64972 08757': { actif: true, minutes: 600 } },
+  usage: {}, echecs: {}, users: { 'aaa.bbb.ccc': { id: 'u-marie' } }, appels: [], cles: [],
 };
 export function createClient() {
   return {
+    from: t => ({ select: async () => t === 'voix_cles' ? { data: BASE.cles.map(x => ({ ...x })), error: null } : { data: null, error: { message: 'table' } } }),
     auth: { getUser: async j => ({ data: { user: BASE.users[j] || null } }) },
     rpc: async (n, a) => {
       BASE.appels.push([n, a]);
