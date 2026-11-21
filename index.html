@@ -7737,7 +7737,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.94'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.95'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -19701,7 +19701,7 @@ function paveValider(){
   var mq=(i.um==='kg')?'kg':((i.um==='L')?'L':(fr?(q>1?'pièces':'pièce'):(q>1?'units':'unit')));
   showToast('🛒 '+nm+' — '+fmtQ(q)+' '+mq+' · '+fmt(q*i.pxU));
   // « 12,5 kilos de riz », mais « 15 Savon » : « 15 de Savon » ne se dit pas.
-  try{var _ud=_uniteDite(p);parler(_ud?(fmtQ(q)+' '+_ud+(fr?' de ':' of ')+nm):(fmtQ(q)+' '+nm));}catch(e){}
+  try{parler(_qteNomDit(p,q,nm));}catch(e){}
 }
 // Le pavé ne sert à rien s'il ne le trouve pas. La troisième touche de
 // suite sur la même tuile, une seule fois dans la vie du téléphone : on lui
@@ -22413,7 +22413,7 @@ function _direApresVente(total,rendu,lignes,totalAvant){
     });
     if(urgent)dit.push(urgent.q<=0
       ?(fr?('Attention : '+urgent.nm+' est épuisé.'):('Careful: '+urgent.nm+' is sold out.'))
-      :(fr?('Attention : plus que '+fmtQ(urgent.q)+(seVendAuDetail(urgent.p)?(' '+uniteArt(urgent.p)+' de '):' ')+urgent.nm+'.'):('Careful: only '+fmtQ(urgent.q)+' '+urgent.nm+' left.')));
+      :(fr?('Attention : plus '+(function(x){return (/^[aeiouyhé]/i.test(x)?"qu'":'que ')+x;})(_qteNomDit(urgent.p,urgent.q,urgent.nm))+'.'):('Careful: only '+_qteNomDit(urgent.p,urgent.q,urgent.nm)+' left.')));
     parler(dit.join(' '));
   }catch(e){}
 }
@@ -25571,6 +25571,45 @@ function _uniteDite(p){
   if(u==='kg')return 'kilos';
   if(u==='L')return fr?'litres':'liters';
   return '';
+}
+// ⚠️ 23.95 — CE QUE LA VOIX DIT D'UN KILO, D'UN LITRE, D'UNE CUVETTE.
+// Depuis la 23.93 l'app parle à chaque vente ; la relecture d'une commande
+// et l'alerte de stock écrivaient la quantité comme sur l'écran :
+// « 0,25 kg Riz », « plus que 2 L de Huile ». La voix lisait « L » comme la
+// lettre (« deux elle »), « zéro virgule vingt-cinq kg », et « de huile ».
+// Au comptoir on dit « un quart de kilo de riz », « 250 grammes »,
+// « un demi-litre d'huile ». La quantité dite, sans le nom :
+function _qteDite(p,q){
+  var fr=(lang==='fr'),u=_umDe(p),x=Math.round((Number(q)||0)*1000)/1000;
+  if(u==='kg'||u==='L'){
+    var kg=(u==='kg');
+    if(x===0.25)return fr?(kg?'un quart de kilo':'un quart de litre'):(kg?'a quarter kilo':'a quarter liter');
+    if(x===0.5)return fr?(kg?'un demi-kilo':'un demi-litre'):(kg?'half a kilo':'half a liter');
+    if(x>0&&x<1){
+      // Sous le kilo : en grammes (à 10 g près), sous le litre : en centilitres.
+      if(kg){var g=Math.max(1,Math.round(x*1000/(x<0.1?1:10))*(x<0.1?1:10));return g+(fr?' grammes':' grams');}
+      return Math.max(1,Math.round(x*100))+(fr?' centilitres':' centiliters');
+    }
+    if(x===1)return fr?(kg?'un kilo':'un litre'):(kg?'one kilo':'one liter');
+    return fmtQ(x)+' '+_uniteDite(p);
+  }
+  if(_uniteVrac(p)&&p.umNom){
+    var n=String(p.umNom).replace(/s$/i,'');
+    if(x===0.5)return (fr?'une demi-':'half a ')+n;
+    return fmtQ(x)+' '+n+(x>1?'s':'');
+  }
+  return fmtQ(x);
+}
+// « de riz », mais « d'huile », « d'arachides » — et « of » en anglais.
+function _deNom(nm){
+  if(lang!=='fr')return ' of '+nm;
+  return /^[aeiouyhàâéèêëîïôöûüœ]/i.test(String(nm||'').trim())?" d'"+nm:' de '+nm;
+}
+// La quantité et le nom, comme on les dit : « 250 grammes de riz »,
+// « 3 Mützig » (une pièce n'a pas de « de »).
+function _qteNomDit(p,q,nm){
+  if(seVendAuDetail(p))return _qteDite(p,q)+_deNom(nm);
+  return fmtQ(q)+' '+nm;
 }
 function _libelleCond(p,v){
   var fr=(lang==='fr'),cd=_condDe(p,v);
@@ -33292,9 +33331,11 @@ function _voixPanier(txt){
   });
   return R;
 }
-function _voixNomLigne(x){
+function _voixNomLigne(x,dite){
   var fr=(lang==='fr'),nm=x.v?(x.p.nm+' '+x.v.nm):x.p.nm;
-  if(x.mt)return nm+(fr?' pour ':' for ')+fmt(x.mt);
+  if(x.mt)return nm+(fr?' pour ':' for ')+(dite?(_nombreParlable(x.mt)+' francs'):fmt(x.mt));
+  // 23.95 — à l'oreille : « un quart de kilo de riz », pas « 0,25 kg Riz ».
+  if(dite&&!x.v)return _qteNomDit(x.p,x.q,nm);
   if(!x.v&&seVendAuDetail(x.p))return fmtQ(x.q)+' '+uniteArt(x.p)+' '+nm;
   return fmtQ(x.q)+' '+nm;
 }
@@ -33320,7 +33361,7 @@ function _voixPanierDire(R){
   if(R.absents.length)msg.push((fr?'Pas trouvé : ':'Not found: ')+R.absents.join(', '));
   if(msg.length)showToast(msg.join(' · '));
   try{
-    var dit=R.ajoutes.map(function(x){return _voixNomLigne(x).replace(/FCFA|F\b/g,fr?'francs':'francs');}).join(', ');
+    var dit=R.ajoutes.map(function(x){return _voixNomLigne(x,true).replace(/FCFA|F\b/g,fr?'francs':'francs');}).join(', ');
     if(dit){var tot=0;try{tot=calcAPayer();}catch(e){tot=calcTotal();}
       dit+=' : '+(fr?'total ':'total ')+_nombreParlable(tot)+' francs';}
     if(R.aChoisir.length)dit+=(dit?'. ':'')+(fr?('Quelle sorte de '+R.aChoisir[0].nm+' ?'):('Which '+R.aChoisir[0].nm+'?'));
