@@ -56,6 +56,9 @@ export async function ouvrirCaisse(b, port, db, { vendeur = null, tactile = fals
     // La caisse se tait au banc ; la vraie voix reste à portée (t308 la reprend).
     window.__parlerVrai = window.parler; window.parler = () => {}; window.confirm = () => true;
     supa = null; _suppressSync = true; _demarre = true;
+    // 24.01 — l'étagère d'un ancien réglage devient la tuile au démarrage ;
+    // un banc qui DEMANDE l'étagère (varStyle 'plat') la garde.
+    if (db && db.cfg && db.cfg.varStyle === 'plat') db.cfg._tuileVu = 1;
     DB = migrateDBData(db);
     if (vendeur) _ouvrirCaisseVendeur(vendeur, DB.cfg.code); else { role = 'patron'; lancerApp(); }
   }, [db, vendeur]);

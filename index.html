@@ -889,6 +889,17 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .pfam-plus{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:120px;border:2px dashed var(--ray,#B98A4E);background:rgba(255,255,255,.7);border-radius:10px;font-family:Outfit,sans-serif;cursor:pointer;color:#221F2B}
 .pfam-plus b{font-size:24px;font-weight:900}
 .pfam-moins{min-height:0;border-style:solid;opacity:.85}
+/* 24.01 — la tuile de famille : la sorte du moment, les autres en pastilles. */
+.pfam.ptuile{padding:19px 3px 3px}
+.pt-sortes{position:absolute;left:1px;right:1px;top:30px;z-index:4;display:flex;gap:2px;justify-content:center;pointer-events:none}
+.pt-s{pointer-events:auto;position:relative;flex:1 1 0;min-width:30px;max-width:60px;height:30px;border:2px solid #fff;border-radius:15px;padding:0 3px;display:flex;align-items:center;justify-content:center;font:900 11px/1 Outfit,sans-serif;letter-spacing:-.02em;box-shadow:0 2px 5px rgba(0,0,0,.22);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pt-s b{white-space:nowrap;overflow:hidden;text-overflow:clip;max-width:100%}
+.pt-plus{flex:0 0 auto;min-width:26px;padding:0 3px}
+.pt-s i{position:absolute;top:-8px;right:-6px;min-width:17px;height:17px;border-radius:9px;background:#E53935;color:#fff;font:900 10px/17px Outfit,sans-serif;font-style:normal;text-align:center;padding:0 3px;border:1.5px solid #fff}
+.pt-s.sel{border-color:#00C853}
+.pt-s.out{opacity:.45}
+.pt-s:active{transform:scale(.92)}
+.pt-plus{background:#1E1B2E!important;color:#F59E0B!important}
 .pfam-plus span{font-size:12px;font-weight:800}
 .pfam.appel{animation:famAppel 1s ease}
 @keyframes famAppel{0%,100%{box-shadow:inset 0 0 0 2px var(--ray,#B98A4E)}30%,70%{box-shadow:inset 0 0 0 4px #F0A93E,0 0 0 4px rgba(240,169,62,.35)}}
@@ -5184,7 +5195,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
           <div class="stico" style="background:#FFF3E0">🗂️</div>
           <div class="stii"><div class="stitl" id="st-fams">Les familles à la caisse</div>
             <div class="stisub" id="st-fams-s">Sur l'étagère : chaque sorte a sa tuile</div></div>
-          <div class="facon-sw"><button type="button" id="fs-plat" class="on" onclick="choisirStyleVar('plat')">Étagère</button><button type="button" id="fs-carre" onclick="choisirStyleVar('carre')">Fenêtre</button></div>
+          <div class="facon-sw"><button type="button" id="fs-tuile" class="on" onclick="choisirStyleVar('tuile')">Tuile</button><button type="button" id="fs-plat" onclick="choisirStyleVar('plat')">Étagère</button><button type="button" id="fs-carre" onclick="choisirStyleVar('carre')">Fenêtre</button></div>
         </div>
         <div class="stit2" id="row-maville" onclick="ouvrirMaVille()"><div class="stico" style="background:#E0F2F1">📍</div><div class="stii"><div class="stitl" id="st-mv">Ma ville</div><div class="stisub" id="st-mv-s">—</div></div><span class="starr">›</span></div>
       </div>
@@ -7775,7 +7786,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.00'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.01'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -13195,6 +13206,10 @@ function _finirLancement(){
   try{f();}catch(e){}
 }
 function lancerApp(){
+  // 24.01 — « regroupe les variantes sur une seule tuile » (le patron) :
+  // l'étagère, défaut depuis la 23.89, devient la tuile une fois. Celui qui
+  // rechoisit l'étagère ensuite la garde (_tuileVu).
+  try{if(DB&&DB.cfg&&DB.cfg.varStyle==='plat'&&!DB.cfg._tuileVu){DB.cfg.varStyle='tuile';DB.cfg._tuileVu=1;}}catch(e){}
   setTimeout(function(){try{_accueillirArrivees();}catch(e){}},1500);   // 23.61
   screenHist=['s-caisse'];
   goScreen('s-caisse');
@@ -18204,6 +18219,7 @@ function fermerVarInline(){
 function ouvrirVarInline(p,carte){
   // 23.89 — sur l'étagère, la famille est déjà ouverte : on l'amène sous ses
   // yeux et elle clignote (la voix, « Quelle sorte de Top ? », passe ici).
+  if(carte&&carte.classList&&carte.classList.contains('ptuile')){try{ouvrirVar(p);}catch(e){}return;}
   if(carte&&carte.classList&&carte.classList.contains('pfam')){
     try{carte.scrollIntoView({block:'center',behavior:'smooth'});}catch(e){}
     carte.classList.remove('appel');void carte.offsetWidth;carte.classList.add('appel');
@@ -18326,7 +18342,7 @@ function _panierAuDessus(oui){
     if(f)f.style.zIndex=oui?'81':'';
   }catch(e){}
 }
-var VAR_STYLES=['carre','cercle','liste','plat'];
+var VAR_STYLES=['carre','cercle','liste','plat','tuile'];
 // ⚠️⚠️ LE DÉFAUT REPASSE AUX RECTANGLES, ET C'EST LUI QUI A TRANCHÉ.
 //
 // Sa remarque : « dans les variantes ça a une forme cercle alors que les
@@ -18350,8 +18366,8 @@ var VAR_STYLES=['carre','cercle','liste','plat'];
 // chose ». Comme en 22.xx, seul le défaut de ceux qui n'ont jamais choisi
 // change : `DB.cfg.varStyle` posé reste respecté.
 function _styleVar(){
-  var s=(DB&&DB.cfg&&DB.cfg.varStyle)||'plat';
-  return VAR_STYLES.indexOf(s)<0?'plat':s;
+  var s=(DB&&DB.cfg&&DB.cfg.varStyle)||'tuile';
+  return VAR_STYLES.indexOf(s)<0?'tuile':s;
 }
 // La pastille de la fenêtre fait le tour des trois présentations de la
 // fenêtre ; l'étagère se choisit dans Réglages (il n'y a plus de fenêtre).
@@ -18359,20 +18375,23 @@ function choisirStyleVar(s){
   var fr=(lang==='fr');
   if(role!=='patron'){showToast('🔒 '+(fr?'Réservé au patron':'Owner only'));return;}
   if(!DB.cfg)DB.cfg={};
-  DB.cfg.varStyle=(s==='plat')?'plat':'carre';
+  DB.cfg.varStyle=(s==='plat'||s==='tuile')?s:'carre';
+  DB.cfg._tuileVu=1;
   save();majLigneFams();
   try{renderProd(DB.articles);}catch(e){}
-  showToast(s==='plat'?('🗂️ '+(fr?'Chaque sorte a sa tuile, sur l\'étagère':'Each kind has its own tile'))
+  showToast(s==='tuile'?('🗂️ '+(fr?'Une tuile par famille : la sorte du jour, les autres en pastilles':'One tile per family'))
+    :s==='plat'?('🗂️ '+(fr?'Chaque sorte a sa tuile, sur l\'étagère':'Each kind has its own tile'))
                      :('🗂️ '+(fr?'Une famille s\'ouvre dans une fenêtre':'A family opens in a window')));
 }
 function majLigneFams(){
   var r=document.getElementById('row-fams');if(!r)return;
   r.style.display=(role==='patron')?'':'none';
-  var pl=(_styleVar()==='plat'),fr=(lang==='fr');
-  var a=document.getElementById('fs-plat'),b=document.getElementById('fs-carre');
-  if(a)a.classList.toggle('on',pl);if(b)b.classList.toggle('on',!pl);
+  var st=_styleVar(),pl=(st==='plat'),tu=(st==='tuile'),fr=(lang==='fr');
+  var a=document.getElementById('fs-plat'),b=document.getElementById('fs-carre'),c=document.getElementById('fs-tuile');
+  if(a)a.classList.toggle('on',pl);if(b)b.classList.toggle('on',!pl&&!tu);if(c)c.classList.toggle('on',tu);
   var t=document.getElementById('st-fams-s');
-  if(t)t.textContent=pl?(fr?'Sur l\'étagère : chaque sorte a sa tuile':'On the shelf: each kind has its tile')
+  if(t)t.textContent=tu?(fr?'Une tuile par famille : la sorte du jour, les autres en pastilles':'One tile per family, kinds as chips')
+                      :pl?(fr?'Sur l\'étagère : chaque sorte a sa tuile':'On the shelf: each kind has its tile')
                       :(fr?'Dans une fenêtre : on touche la famille, puis la sorte':'In a window: tap the family, then the kind');
 }
 // ⚠️ PLUS DE NOMBRE EN DUR. Avant : « 8 maximum », choisi au jugé — et
@@ -18943,7 +18962,7 @@ function _creerTuileVar(p,v){
 //  La fenêtre reste (Réglages › Les familles à la caisse › Fenêtre).
 // ══════════════════════════════════════════════════════════════════
 var _famDepliees={},_famOrdre={};
-function _famPlate(p){return !!(p&&p.vr&&p.vr.length&&_styleVar()==='plat');}
+function _famPlate(p){var st=_styleVar();return !!(p&&p.vr&&p.vr.length&&(st==='plat'||st==='tuile'));}
 function _colsCaisse(){
   try{var g=document.getElementById('pgrid');
     var n=String(getComputedStyle(g).gridTemplateColumns||'').split(' ').filter(function(x){return x&&x!=='0px';}).length;
@@ -18968,6 +18987,7 @@ function _sortesPlates(p){
   return c.ordre.map(function(id){return vis.find(function(v){return String(v.id)===id;});}).filter(Boolean);
 }
 function _dessinerFamillePlate(p,g){
+  if(_styleVar()==='tuile')return _dessinerFamilleTuile(p,g);
   var fr=(lang==='fr'),old=document.getElementById('pc-'+p.id);
   var box=document.createElement('div');
   box.className='pfam';box.id='pc-'+p.id;
@@ -19029,6 +19049,80 @@ function _dessinerFamillePlate(p,g){
   return box;
 }
 function _redessinerFamille(p){var g=document.getElementById('pgrid');if(g)_dessinerFamillePlate(p,g);}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 24.01 — LA TUILE DE FAMILLE INTELLIGENTE
+//  Le patron, le 22/11 : « regroupe les variantes sur une seule tuile, mais
+//  de façon intelligente, rapide ». L'étagère (23.89) avait supprimé la
+//  touche de trop (ouvrir la famille, puis la sorte) mais posait une tuile
+//  par sorte : 7 écrans à défiler sur sa boutique. La « Fenêtre » prenait
+//  une case par famille mais demandait deux touches à chaque vente.
+//  Ici, une case par famille, et zéro touche de trop :
+//   · la tuile EST la sorte du moment — la plus vendue ces 30 jours et pas
+//     épuisée (ordre gardé pour la journée : rien ne bouge sous le doigt) ;
+//     une touche la vend, comme une bouteille ;
+//   · les autres sortes en PASTILLES sur la photo, chacune sa couleur et son
+//     mot (« Dia », « bébé », « 1,5 L ») — une touche la vend ;
+//   · « +N » ouvre la famille entière (la fenêtre) ;
+//   · une famille au kilo garde la feuille des mesures (24.00).
+//  La recherche qui vise une sorte la met en tuile ; la voix la trouve.
+// ══════════════════════════════════════════════════════════════════
+function _vendreSorteTuile(p,v){
+  if(!p||!v)return;
+  if(seVendAuDetail(p)&&Number(v.px)>0){try{vendreMesureTuile(p,v);return;}catch(e){}}
+  venteRapideSorte(p.id,v.id);
+}
+function _dessinerFamilleTuile(p,g){
+  var fr=(lang==='fr'),old=document.getElementById('pc-'+p.id);
+  var box=document.createElement('div');
+  box.className='pfam ptuile';box.id='pc-'+p.id;
+  _poserCouleurRayon(box,p.cat);
+  var tout=_sortesPlates(p),sortes=tout.slice();
+  try{var _q=txtNorm(_rechCaisse||'');if(_q&&txtNorm(p.nm).indexOf(_q)<0){
+    var _m=sortes.filter(function(v){return txtNorm(v.nm||'').indexOf(_q)>=0||txtNorm(p.nm+' '+(v.nm||'')).indexOf(_q)>=0;});if(_m.length)sortes=_m.concat(sortes.filter(function(v){return _m.indexOf(v)<0;}));}}catch(e){}
+  var epuisee=function(v){try{return !!_infoVar(p,v).out;}catch(e){return false;}};
+  var main=sortes.filter(function(v){return !epuisee(v);})[0]||sortes[0];
+  if(!main)return null;
+  var autres=sortes.filter(function(v){return v!==main;});
+  // Deux pastilles lisibles (« Mayor », « Locale ») valent mieux que trois
+  // coupées (« Ma », « co ») : au-delà, « +N » ouvre la famille.
+  var vus=autres.slice(0,2),reste=autres.length-vus.length;
+  var pq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
+  if(pq>0)box.classList.add('sel');
+  box.innerHTML='<div class="pfam-l">'+escH(p.nm)+'</div>';
+  var gr=document.createElement('div');
+  gr.className='vgrid pfam-g';gr.style.gridTemplateColumns='minmax(0,1fr)';
+  var tuile=_tuileSortePlate(p,main);
+  if(vus.length||reste){
+    var vsTous=(p.vr||[]).filter(function(x){try{return x&&!_estGrosDeVariante(x);}catch(e){return !!x;}});
+    var st=document.createElement('div');st.className='pt-sortes';
+    vus.forEach(function(v){
+      var i=Math.max(0,vsTous.indexOf(v)),h=Math.round((i*137.508+28)%360);
+      var mot='';try{mot=_motDistinctif(p,v,vsTous);}catch(e){}
+      if(!mot)mot=String(v.nm||'?').split(/\s+/).pop();
+      var q=panier[p.id+'-'+v.id]||0;
+      var b=document.createElement('button');b.type='button';
+      b.className='pt-s'+(q>0?' sel':'')+(epuisee(v)?' out':'');
+      b.style.background='hsl('+h+',75%,88%)';b.style.color='hsl('+h+',65%,22%)';
+      b.setAttribute('aria-label',(v.nm||'')+' '+fmt(Number(v.px)||0));
+      b.innerHTML='<b>'+escH(mot)+'</b>'+(q>0?'<i>'+escH(fmtQ(q))+'</i>':'');
+      b.onclick=function(e){if(e){e.stopPropagation();e.preventDefault();}_vendreSorteTuile(p,v);};
+      st.appendChild(b);
+    });
+    if(reste>0){
+      var plus=document.createElement('button');plus.type='button';plus.className='pt-s pt-plus';
+      plus.innerHTML='<b>+'+reste+'</b>';
+      plus.setAttribute('aria-label',fr?('les '+(autres.length+1)+' sortes'):'all kinds');
+      plus.onclick=function(e){if(e){e.stopPropagation();e.preventDefault();}try{ouvrirVar(p);}catch(x){}};
+      st.appendChild(plus);
+    }
+    tuile.appendChild(st);
+  }
+  gr.appendChild(tuile);
+  box.appendChild(gr);
+  box.style.gridColumn='span 1';
+  if(old&&old.parentNode)old.parentNode.replaceChild(box,old);else g.appendChild(box);
+  return box;
+}
 // La tuile d'une sorte sur l'étagère : la tuile de la fenêtre, et ses gestes.
 // Les gestes de la fenêtre travaillent sur `varQtys` (la famille ouverte) :
 // on les recale sur le panier avant chaque touche, puis le panier les reprend.
