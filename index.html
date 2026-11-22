@@ -888,6 +888,7 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .pfam.sel{box-shadow:inset 0 0 0 2px var(--G,#00C853)}
 .pfam-plus{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:120px;border:2px dashed var(--ray,#B98A4E);background:rgba(255,255,255,.7);border-radius:10px;font-family:Outfit,sans-serif;cursor:pointer;color:#221F2B}
 .pfam-plus b{font-size:24px;font-weight:900}
+.pfam-moins{min-height:0;border-style:solid;opacity:.85}
 .pfam-plus span{font-size:12px;font-weight:800}
 .pfam.appel{animation:famAppel 1s ease}
 @keyframes famAppel{0%,100%{box-shadow:inset 0 0 0 2px var(--ray,#B98A4E)}30%,70%{box-shadow:inset 0 0 0 4px #F0A93E,0 0 0 4px rgba(240,169,62,.35)}}
@@ -1596,6 +1597,15 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 #s-caisse .stats-bar,#s-caisse .shdr{display:none}
 #s-caisse .ssec{padding-bottom:10px}
 .tabs-ligne{display:flex;align-items:center;gap:8px}
+/* 23.99 — « ⭐ Le plus vendu », et la recherche + les rayons restent en haut
+   pendant qu'on défile : on saute d'un rayon à l'autre sans remonter. */
+.tpil.tpil-top{color:#B45309;border-color:#F59E0B}
+.tpil.tpil-top.on{background:#F59E0B;color:#1E1B2E;border-color:#F59E0B}
+/* ⚠️ La caisse défile avec la PAGE ; .mcont (overflow:auto) devenait le
+   conteneur du « collé » sans jamais défiler, et la barre partait avec le
+   reste (mesuré au banc). À la caisse, .mcont ne coupe plus rien. */
+#s-caisse .mcont{overflow-y:visible}
+#s-caisse .mcont>.ssec:first-child{position:sticky;top:var(--hautHdr,80px);z-index:20;background:var(--fondCaisse,#F6EFE3);box-shadow:0 6px 10px -8px rgba(60,35,5,.25)}
 .tabs-ligne .tscr{flex:1;min-width:0}
 .tabs-ligne #btn-libre{flex:none}
 #s-caisse #annonce-banner{padding:8px 10px 8px 12px!important;align-items:center!important;cursor:pointer}
@@ -1902,6 +1912,9 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .micp:active{transform:scale(.93)}
 #s-caisse.on .micp{display:flex}
 #fcart:not(.hide)~.micp{bottom:152px}
+/* 23.99 — « Annuler la vente » (15 s) passait sous le micro : il monte.
+   (:has ignoré par un vieux navigateur : la règle saute, rien ne casse.) */
+body:has(#annul-chip.show) .micp{bottom:148px}
 .micp.ecoute{background:#E11D48;color:#fff;animation:micEcoute 1.1s ease-in-out infinite}
 @keyframes micEcoute{0%,100%{box-shadow:0 0 0 0 rgba(225,29,72,.55),0 8px 22px rgba(0,0,0,.32)}50%{box-shadow:0 0 0 14px rgba(225,29,72,0),0 8px 22px rgba(0,0,0,.32)}}
 /* ── ⚠️ « AU MOMENT D'ENCAISSEMENT, ENTRE L'ARTICLE, SON PRIX TOTAL ET LE
@@ -7762,7 +7775,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.98'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.99'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -13256,10 +13269,52 @@ function _icoOnglet(cat){
   var col=(_RAYON[_rayonFamille(cat)]||_RAYON.gray).fg;
   return svgIcoArt(k,16).replace('<svg ','<svg class="tpil-ic" aria-hidden="true" style="color:'+col+'" ');
 }
+// ⭐ 23.99 — CE QUI SE VEND, compté sur les 7 derniers jours (quantités par
+// article). Sert aux rayons (classés par ventes) et à « ⭐ Le plus vendu ».
+function _ventesRecentes(jours){
+  var q={},V=DB.ventes||[],lim=Date.now()-(jours||7)*864e5;
+  for(var i=V.length-1,n=0;i>=0&&n<1500;i--,n++){
+    var x=V[i];if(!x||x.annulee)continue;
+    var t=0;try{t=_epochEvt(x)||0;}catch(e){}
+    if(t&&t<lim)break;
+    (x.lignes||[]).forEach(function(l){if(l&&l.pid!=null)q[l.pid]=(q[l.pid]||0)+1;});
+  }
+  return q;
+}
+function _lePlusVendu(){
+  var q=_ventesRecentes(7);
+  return (DB.articles||[]).filter(function(p){return (q[p.id]||0)>0;})
+    .sort(function(a,b){return (q[b.id]||0)-(q[a.id]||0);}).slice(0,12);
+}
+var _ICO_TOP='<path d="M12 3.5l2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.5l-5.1 2.7 1-5.7-4.1-4 5.7-.8z"/>';
+// La barre collée se pose SOUS l'en-tête (lui aussi collé, avec son store).
+function _poserHautHdr(){try{var h=document.querySelector('#s-caisse .mhdr');if(h&&h.offsetHeight)document.documentElement.style.setProperty('--hautHdr',(h.offsetHeight+12)+'px');}catch(e){}}
+try{window.addEventListener('resize',_poserHautHdr);}catch(e){}
 function initTabs(){
+  try{setTimeout(_poserHautHdr,50);}catch(e){}
   var tc=document.getElementById('tabs-c');tc.innerHTML='';
-  var all=['Tout'].concat(Array.from(new Set(DB.articles.map(function(p){return p.cat;}))));
+  // 23.99 — les rayons dans l'ordre de ce qui s'y vend (7 jours) ; à égalité,
+  // l'ordre d'avant. Calculé à l'ouverture seulement : rien ne bouge sous
+  // son doigt pendant la journée.
+  var _q=_ventesRecentes(7),_parCat={},_rang={};
+  DB.articles.forEach(function(p,i){_parCat[p.cat]=(_parCat[p.cat]||0)+(_q[p.id]||0);if(!(p.cat in _rang))_rang[p.cat]=i;});
+  var _cats=Array.from(new Set(DB.articles.map(function(p){return p.cat;})));
+  _cats.sort(function(a,b){return ((_parCat[b]||0)-(_parCat[a]||0))||(_rang[a]-_rang[b]);});
+  var all=['Tout'].concat(_cats);
+  // « ⭐ Le plus vendu » : dès qu'au moins 4 articles se sont vendus cette semaine.
+  var _top=_lePlusVendu();
+  if(_top.length>=4)all.splice(1,0,'__top');
   all.forEach(function(cat){
+    if(cat==='__top'){
+      var bt=document.createElement('button');bt.className='tpil tpil-top';bt.id='tab-top';
+      bt.innerHTML='<svg class="tpil-ic" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true">'+_ICO_TOP+'</svg><span>'+escH(lang==='fr'?'Le plus vendu':'Best sellers')+'</span>';
+      bt.onclick=function(){
+        document.querySelectorAll('.tpil').forEach(function(t){t.classList.remove('on');});bt.classList.add('on');
+        document.getElementById('sec-lbl').textContent=(lang==='fr'?'⭐ Le plus vendu cette semaine':'⭐ Best sellers this week');
+        renderProd(_lePlusVendu());
+      };
+      tc.appendChild(bt);return;
+    }
     var btn=document.createElement('button');btn.className='tpil'+(cat==='Tout'?' on':'');
     // 23.54 — chaque rayon porte son dessin, dans sa couleur : on le
     // reconnaît avant de le lire (le mot reste à côté).
@@ -18881,7 +18936,7 @@ function _sortesPlates(p){
     }
     var rang={};vis.forEach(function(v,i){rang[v.id]=i;});
     var tri=vis.slice().sort(function(a,b){return ((q[b.id]||0)-(q[a.id]||0))||(rang[a.id]-rang[b.id]);});
-    c=_famOrdre[p.id]={j:jour,ids:ids,ordre:tri.map(function(v){return String(v.id);})};
+    c=_famOrdre[p.id]={j:jour,ids:ids,ordre:tri.map(function(v){return String(v.id);}),q:q};
   }
   return c.ordre.map(function(id){return vis.find(function(v){return String(v.id)===id;});}).filter(Boolean);
 }
@@ -18894,9 +18949,34 @@ function _dessinerFamillePlate(p,g){
   // Une recherche qui vise une sorte (« pamplemousse ») ne montre qu'elle.
   try{var _q=txtNorm(_rechCaisse||'');if(_q&&txtNorm(p.nm).indexOf(_q)<0){
     var _m=sortes.filter(function(v){return txtNorm(v.nm||'').indexOf(_q)>=0||txtNorm(p.nm+' '+(v.nm||'')).indexOf(_q)>=0;});if(_m.length)sortes=_m;}}catch(e){}
-  var replie=(sortes.length>MAX+1&&!_famDepliees[p.id]);
-  var montre=replie?sortes.slice(0,MAX):sortes;
-  var n=montre.length+(replie?1:0);
+  // ⭐ 23.99 — LES PASTILLES INTELLIGENTES. Le patron, le 22/11 :
+  // « maintenant il faut beaucoup défiler ». Mesuré sur une boutique comme la
+  // sienne (7 familles, 21 articles) : l'étagère posait 50 tuiles, ≈ 7 écrans,
+  // contre 4,5 en « Fenêtre ». Devant : les sortes qui se VENDENT (vendues ces
+  // 30 jours et pas épuisées), 3 au plus, la plus vendue d'abord, plus celles
+  // déjà au panier. Derrière la pastille « +N » : les jamais vendues et les
+  // épuisées — une touche les déplie sur place, une autre les replie.
+  // Rien ne disparaît : la recherche et la voix les trouvent toujours, et une
+  // famille qui n'a encore rien vendu reste posée comme avant.
+  var cache=_famOrdre[p.id]||{},qv=cache.q||{},_cherche=false;
+  try{_cherche=!!txtNorm(_rechCaisse||'');}catch(e){}
+  var auPanier=function(v){return (panier[p.id+'-'+v.id]||0)>0;};
+  var epuisee=function(v){try{return !!_infoVar(p,v).out;}catch(e){return false;}};
+  var aVendu=sortes.some(function(v){return (qv[v.id]||0)>0;});
+  var devant=sortes,derriere=[];
+  if(aVendu&&!_cherche){
+    devant=[];
+    sortes.forEach(function(v){
+      var vit=(qv[v.id]||0)>0&&!epuisee(v);
+      if(auPanier(v)||(vit&&devant.length<3))devant.push(v);else derriere.push(v);
+    });
+    if(!devant.length){devant=sortes.slice(0,1);derriere=sortes.slice(1);}
+    if(derriere.length===1){devant=devant.concat(derriere);derriere=[];}   // « +1 » ne fait rien gagner
+  }else if(sortes.length>MAX+1){devant=sortes.slice(0,MAX);derriere=sortes.slice(MAX);}
+  var deplie=!!_famDepliees[p.id];
+  var replie=(derriere.length>0&&!deplie);
+  var montre=replie?devant:devant.concat(derriere);
+  var n=montre.length+(derriere.length?1:0);
   box.style.gridColumn=(n>=cols)?'1 / -1':('span '+n);
   var pq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
   if(pq>0)box.classList.add('sel');
@@ -18907,9 +18987,15 @@ function _dessinerFamillePlate(p,g){
   montre.forEach(function(v){gr.appendChild(_tuileSortePlate(p,v));});
   if(replie){
     var plus=document.createElement('button');plus.type='button';plus.className='pfam-plus';
-    plus.innerHTML='<b>+'+(sortes.length-montre.length)+'</b><span>'+escH(fr?'autres':'more')+'</span>';
+    plus.innerHTML='<b>+'+derriere.length+'</b><span>'+escH(fr?'autres':'more')+'</span>';
     plus.onclick=function(e){if(e)e.stopPropagation();_famDepliees[p.id]=1;_redessinerFamille(p);};
     gr.appendChild(plus);
+  }else if(derriere.length){
+    // 23.99 — dépliée : la même place la replie.
+    var moins=document.createElement('button');moins.type='button';moins.className='pfam-plus pfam-moins';
+    moins.innerHTML='<b>−</b><span>'+escH(fr?'replier':'less')+'</span>';
+    moins.onclick=function(e){if(e)e.stopPropagation();delete _famDepliees[p.id];_redessinerFamille(p);};
+    gr.appendChild(moins);
   }
   box.appendChild(gr);
   if(old&&old.parentNode)old.parentNode.replaceChild(box,old);else g.appendChild(box);
