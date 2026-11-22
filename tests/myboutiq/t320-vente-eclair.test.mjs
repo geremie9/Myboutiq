@@ -1,4 +1,4 @@
-// t317 — LA VENTE ÉCLAIR : UNE TOUCHE, OU DEUX AVEC LA MONNAIE (24.00).
+// t320 — LA VENTE ÉCLAIR : UNE TOUCHE, OU DEUX AVEC LA MONNAIE (24.03).
 // Le patron, le 22/11 : « la vente ultra rapide, c'est mon actif le plus
 // redoutable ». Mesuré en base le même jour sur 2 837 ventes : 98,3 % en
 // espèces, 68,6 % d'un seul article. Mesuré dans l'app en vrais clics :
@@ -9,7 +9,7 @@
 // la vente qui sort est relue dans DB, la caisse attendue comprise.
 import { chromium, serveur, compteur } from './lib.mjs';
 import { nouvelleBoutique, ouvrirCaisse, vendre, stock } from './caisse.mjs';
-const { t, fin } = compteur('t317');
+const { t, fin } = compteur('t320');
 const { s, port } = await serveur();
 const b = await chromium.launch();
 

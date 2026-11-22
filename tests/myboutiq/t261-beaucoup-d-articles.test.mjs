@@ -31,7 +31,13 @@ await p.setViewportSize({ width: 360, height: 740 }); await p.waitForTimeout(500
 const tuiles = () => p.evaluate(() => Array.from(document.querySelectorAll('#pgrid .pcard:not(.etg)')).map(c => Number(c.id.slice(3))));
 const o1 = await tuiles();
 t(o1[0] === 1900 && o1[1] === 1500 && o1[2] === 1000, `téléphone neuf : ce que la boutique vend le plus est devant (${o1.slice(0, 3).join(', ')})`);
-t(o1.length === 60, `seules les premières tuiles sont dessinées à l'ouverture (${o1.length} sur 1 000)`);
+// 24.02 — « Tout » montre les 30 qui comptent, puis une pastille par rayon ;
+// le rayon ouvert, lui, se dessine par morceaux comme avant.
+const pr = await p.evaluate(() => [...document.querySelectorAll('#pgrid .prayon')].map(x => x.innerText.replace(/\s+/g, ' ').trim()));
+t(o1.length === 30 && pr.length === 1 && /970 autres/.test(pr[0]), `« Tout » : 30 tuiles, puis la pastille « ${pr[0]} »`);
+await p.click('#pgrid .prayon'); await p.waitForTimeout(300);
+const o1b = await tuiles();
+t(o1b.length === 60 && o1b[0] === 1900, `le rayon ouvert : seules les premières tuiles sont dessinées (${o1b.length} sur 1 000), le plus vendu devant`);
 t(!(await p.evaluate(() => !!document.querySelector('#pgrid .pcard.etg'))), 'les cartes « Tu vends aussi » attendent la fin de la liste');
 
 // Il descend : la suite arrive toute seule, sans bouton.

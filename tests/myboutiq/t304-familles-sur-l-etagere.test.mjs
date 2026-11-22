@@ -15,6 +15,8 @@ d.articles.push({ id: 50, nm: 'Top', e: '', cat: 'Boissons', px: 0, pa: 0, stk0:
        { id: 502, nm: 'Pamplemousse', px: 700, pa: 550, stk0: 24 }] });
 d.articles.push({ id: 60, nm: 'Jus Foco', e: '', cat: 'Boissons', px: 0, pa: 0, stk0: 0, al: 0, vd: 0,
   vr: ['Mangue', 'Goyave', 'Orange', 'Ananas', 'Cocktail', 'Citron', 'Pomme', 'Passion'].map((n, i) => ({ id: 601 + i, nm: n, px: 300, pa: 200, stk0: 20 })) });
+// 24.01 — la tuile de famille est devenue le défaut ; ce banc garde l'étagère, choisie.
+d.cfg.varStyle = 'plat';
 const { ctx, p, errs } = await ouvrirCaisse(b, port, d);
 const etat = () => p.evaluate(() => ({ panier: JSON.parse(JSON.stringify(panier)), total: calcTotal(), ov: !!document.querySelector('.vinline'), flou: !!document.querySelector('.vinline-voile, .ov.show') }));
 
@@ -24,7 +26,7 @@ const vue = await p.evaluate(() => {
   return { fam: !!f && f.classList.contains('pfam'), ruban: f ? f.querySelector('.pfam-l').textContent : '', sortes: f ? [...f.querySelectorAll('.vtile')].map(x => x.querySelector('.vt-nm').textContent) : [],
     style: _styleVar(), plat: document.getElementById('pgrid').classList.contains('plat'), hauteur: f ? Math.round(f.querySelector('.vtile').getBoundingClientRect().height) : 0 };
 });
-t(vue.fam && vue.style === 'plat' && vue.plat, 'par défaut, la famille Top est posée sur l\'étagère (plus de tuile fermée « dès 700 »)');
+t(vue.fam && vue.style === 'plat' && vue.plat, 'l\'étagère choisie : la famille Top est posée, ses sortes en tuiles (plus de tuile fermée « dès 700 »)');
 t(/Top/.test(vue.ruban) && vue.sortes.join('|') === 'Ananas|Pamplemousse', `un ruban « ${vue.ruban} » et ses sortes en tuiles : ${vue.sortes.join(', ')}`);
 
 // ── 2. Une sorte se vend d'UNE touche, comme un article seul ──
