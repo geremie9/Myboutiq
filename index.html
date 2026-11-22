@@ -889,6 +889,12 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .pfam-plus{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:120px;border:2px dashed var(--ray,#B98A4E);background:rgba(255,255,255,.7);border-radius:10px;font-family:Outfit,sans-serif;cursor:pointer;color:#221F2B}
 .pfam-plus b{font-size:24px;font-weight:900}
 .pfam-moins{min-height:0;border-style:solid;opacity:.85}
+/* 24.02 — la pastille de rayon : « Boissons · 116 autres › ». */
+.prayon{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:112px;border:2px dashed #B98A4E;border-radius:12px;background:rgba(255,255,255,.78);font-family:Outfit,sans-serif;color:#1E1B2E;cursor:pointer;padding:8px 4px;text-align:center}
+.prayon b{font-size:14px;font-weight:900;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prayon span{font-size:12px;font-weight:800;color:#5C586B}
+.prayon .prayon-ic svg{width:26px;height:26px}
+.prayon:active{transform:scale(.96)}
 /* 24.01 — la tuile de famille : la sorte du moment, les autres en pastilles. */
 .pfam.ptuile{padding:19px 3px 3px}
 .pt-sortes{position:absolute;left:1px;right:1px;top:30px;z-index:4;display:flex;gap:2px;justify-content:center;pointer-events:none}
@@ -7786,7 +7792,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.01'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.02'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -13341,7 +13347,9 @@ function initTabs(){
       try{var _sc=btn.parentNode;while(_sc&&_sc!==document.body&&!(_sc.scrollWidth>_sc.clientWidth+2))_sc=_sc.parentNode;
         if(_sc&&_sc!==document.body){var _bx=btn.getBoundingClientRect(),_cx=_sc.getBoundingClientRect();_sc.scrollLeft+=(_bx.left+_bx.width/2)-(_cx.left+_cx.width/2);}}catch(e){}
       document.getElementById('sec-lbl').textContent=(cat==='Tout'?t('tousArticles'):cat);
-      renderProd(cat==='Tout'?DB.articles:DB.articles.filter(function(p){return p.cat===cat;}));
+      // 24.02 — un rayon se montre en entier (même s'il contient tout le catalogue).
+      if(cat==='Tout')renderProd(DB.articles);
+      else{_sansTronquer=true;try{renderProd(DB.articles.filter(function(p){return p.cat===cat;}));}finally{_sansTronquer=false;}}
     };
     tc.appendChild(btn);
   });
@@ -14596,6 +14604,26 @@ function renderProd(lst){
   var _tout=!!(lst&&DB&&DB.articles&&(lst===DB.articles||lst.length===DB.articles.length));
   lst=appliquerOrdrePrio(lst);
   lst=_plusVendusDabord(lst,_tout);
+  // ⭐ 24.02 — LA PASTILLE DE RAYON. Le patron, le 22/11 : « s'il y avait
+  // mille articles, combien de défilement ? » Mesuré au banc : 1 000
+  // articles = ≈ 60 écrans (100 avec ses photos). Dans « Tout », au-delà de
+  // 40 articles : les 30 qui comptent (ceux qu'il touche, puis les plus
+  // vendus — l'ordre d'avant), puis UNE pastille par rayon pour le reste
+  // (« Boissons · 116 autres › ») qui ouvre le rayon entier. Quelle que soit
+  // la taille du catalogue, « Tout » tient en quelques écrans. La recherche,
+  // la voix et chaque rayon montrent toujours tout.
+  _rayonsApres=null;
+  try{
+    // Seulement quand « Tout » est l'onglet choisi : une synchro qui redessine
+    // pendant qu'il est dans un rayon ne doit pas raccourcir sa page (t261).
+    var _ongOn=document.querySelector('#tabs-c .tpil.on'),_ongTout=!_ongOn||_ongOn===document.querySelector('#tabs-c .tpil');
+    if(_tout&&_ongTout&&!_sansTronquer&&!txtNorm(_rechCaisse||'')&&lst.length>40){
+      var _par={},_ord=[];
+      lst.slice(30).forEach(function(p){var c=p.cat||'';if(!(c in _par)){_par[c]=0;_ord.push(c);}_par[c]++;});
+      _rayonsApres=_ord.map(function(c){return {cat:c,n:_par[c]};});
+      lst=lst.slice(0,30);
+    }
+  }catch(e){_rayonsApres=null;}
   try{majBandeauSansPrix();}catch(e){}
   var g=document.getElementById('pgrid');var _vus=_tuilesVues(g);g.innerHTML='';
   if(!lst.length){
@@ -14858,6 +14886,21 @@ function _nomDeFichier(p){
 }
 var _rendusCaisse=0,_listeCaisse=[],_dessinerCaisse=null,_etagereApres=false,_obsCaisse=null;
 var _LOT_CAISSE=60;
+var _rayonsApres=null,_sansTronquer=false;
+function _pastillesRayonHtml(L){
+  var fr=(lang==='fr');
+  return L.map(function(r){
+    var nom=r.cat||(fr?'Autres':'Other');
+    return '<button type="button" class="prayon" data-cat="'+escH(r.cat)+'" onclick="ouvrirRayon(this.getAttribute(\'data-cat\'))">'
+      +'<span class="prayon-ic">'+_icoOnglet(r.cat||'Divers')+'</span>'
+      +'<b>'+escH(nom)+'</b><span>'+r.n+' '+(fr?(r.n>1?'autres':'autre'):'more')+' ›</span></button>';
+  }).join('');
+}
+function ouvrirRayon(cat){
+  var t=[].slice.call(document.querySelectorAll('#tabs-c .tpil')).filter(function(b){var sp=b.querySelector('span');return sp&&sp.textContent===cat;})[0];
+  if(t){t.click();}else{_sansTronquer=true;try{renderProd(DB.articles.filter(function(p){return (p.cat||'')===cat;}));}finally{_sansTronquer=false;}}
+  try{var bar=document.querySelector('#s-caisse .ssec');window.scrollTo(0,0);}catch(e){}
+}
 function _plusVendusDabord(lst,tout){
   try{
     if(!tout||!lst||lst.length<=30)return lst;
@@ -14881,6 +14924,11 @@ function _plusVendusDabord(lst,tout){
 function _tuileCaisse(id){
   var d=document.getElementById('pc-'+id),garde=0;
   while(!d&&_rendusCaisse<_listeCaisse.length&&garde++<200){_suiteCaisse();d=document.getElementById('pc-'+id);}
+  if(!d&&document.querySelector('#pgrid .prayon')){
+    _sansTronquer=true;try{renderProd(DB.articles);}finally{_sansTronquer=false;}
+    garde=0;d=document.getElementById('pc-'+id);
+    while(!d&&_rendusCaisse<_listeCaisse.length&&garde++<200){_suiteCaisse();d=document.getElementById('pc-'+id);}
+  }
   return d;
 }
 // Jusqu'où il était descendu : la dernière tuile à portée de son écran.
@@ -14916,6 +14964,7 @@ function _suiteCaisse(auMoins){
     _obsCaisse.observe(s);
     return;
   }
+  if(_rayonsApres&&_rayonsApres.length){var _rh=_pastillesRayonHtml(_rayonsApres);_rayonsApres=null;g.insertAdjacentHTML('beforeend',_rh);}
   if(_etagereApres){_etagereApres=false;g.insertAdjacentHTML('beforeend',_etagereHtml(false));}
   _cadrerPhotos();
 }
