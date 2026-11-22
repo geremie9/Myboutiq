@@ -1884,6 +1884,16 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 /* ── FLOAT CART ── */
 .fcart{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);width:calc(100% - 30px);max-width:400px;z-index:60;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
 .fcart.hide{transform:translateX(-50%) translateY(130px);opacity:0;pointer-events:none}
+/* 23.98 — la sorte sans photo : sa couleur et son mot. */
+.pmedia.pvar{position:relative}
+.pv-mot{position:absolute;left:4px;right:4px;bottom:3px;font:900 12.5px/1.15 Outfit,sans-serif;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:6px;padding:1px 3px;letter-spacing:.01em;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+/* 23.98 — la question du carton au prix d'une bouteille. */
+.gp-calc{background:#FFF7ED;border:1.5px solid #FDBA74;border-radius:12px;padding:12px 14px;font-size:15px;font-weight:700;color:#1E1B2E;line-height:1.55;margin-bottom:12px}
+.gp-calc .gp-mal{color:#C2410C;font-weight:900}
+.gp-calc small{font-size:12.5px;color:#5C586B;font-weight:700}
+.gp-b{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;border:2px solid var(--BD);background:#fff;border-radius:12px;padding:12px 14px;margin-top:8px;font-family:Outfit,sans-serif;font-size:15px;color:#1E1B2E;text-align:left;cursor:pointer}
+.gp-b span{font-size:13px;font-weight:800;color:#15803D}
+.gp-oui{border-color:#22C55E;background:#F0FDF4}
 /* 23.96 — le micro au pouce : en bas à droite, au-dessus du menu ; il monte
    au-dessus de la barre du panier quand elle est là. Seulement à la caisse. */
 .micp{position:fixed;right:14px;bottom:86px;z-index:59;width:66px;height:66px;border-radius:50%;border:3px solid #fff;background:#1E1B2E;color:#F59E0B;display:none;flex-direction:column;align-items:center;justify-content:center;gap:0;box-shadow:0 8px 22px rgba(0,0,0,.32);cursor:pointer;font:800 10.5px Outfit,sans-serif;-webkit-tap-highlight-color:transparent;transition:bottom .25s ease,transform .1s}
@@ -7752,7 +7762,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.97'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.98'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -15689,6 +15699,7 @@ function grEcrire(inp){
       if(champ==='px')journalAjouter('prix',(p.nm||'')+(v?(' — '+(v.nm||'')):''),fmt(avant),fmt(val));
       if(champ==='pxGros')journalAjouter('prix',(p.nm||'')+(v?(' — '+(v.nm||'')):'')+' ('+_grosDe(p,v).mot+')',fmt(avant),fmt(val));
       cible[champ]=val;
+      if(champ==='pxGros'||champ==='px'){var _gp=p,_gv=v;setTimeout(function(){try{_grosPiegeOuvrir(_gp,_gv,null);}catch(e){}},300);}
       // ⭐ 23.04 — IL ACHÈTE LE CARTON : le coût de la pièce s'en déduit, et
       // l'app fait la division devant lui (la ligne affiche « 12 000 ÷ 24 »).
       // Plus de calcul de tête, plus de coût à la pièce qui dirait autre
@@ -18473,7 +18484,44 @@ function _mediaVar(p,v){
     return '<div class="pmedia pmono" style="background:hsl('+h+',55%,93%);color:hsl('+h+',42%,36%)">'+initialeArticle(nm)+'</div>';
   }
   var m=mediaArtInner(p,32);
+  // ⭐ 23.98 — CHAQUE SORTE SANS PHOTO A SA COULEUR ET SON MOT. Sa capture
+  // du 22/11 et l'analyse reçue : « Savon bébé », « Savon ménage », « Savon
+  // noir » portaient la même icône, la même couleur — un nid à erreurs
+  // devant le client. La couleur se donne par RANG dans la famille (deux
+  // sœurs ne tombent jamais sur la même) ; le mot est celui qui la distingue
+  // (« bébé », « noir », « 1 L »), écrit en gros pour qui lit, la couleur
+  // pour qui ne lit pas. Une famille d'une seule sorte reste comme avant.
+  var vs=((p&&p.vr)||[]).filter(function(x){try{return x&&!_estGrosDeVariante(x);}catch(e){return !!x;}});
+  if(v&&vs.length>=2){
+    var i=Math.max(0,vs.indexOf(v)),h=Math.round((i*137.508+28)%360);
+    var mot=_motDistinctif(p,v,vs);
+    // La taille a déjà sa pastille (vt-fmt) quand la sorte n'est qu'une
+    // contenance : on ne l'écrit pas deux fois.
+    try{if(mot&&_formatDeVariante(p,v))mot=mot.replace(/\d+([.,]\d+)?\s*(cl|ml|l|kg|g)\b/i,'').trim();}catch(e){}
+    return '<div class="pmedia pvar" style="background:hsl('+h+',72%,90%);color:hsl('+h+',58%,32%)">'+m.svg
+      +(mot?('<b class="pv-mot" style="background:hsl('+h+',75%,86%);color:hsl('+h+',65%,22%)">'+escH(mot)+'</b>'):'')+'</div>';
+  }
   return '<div class="pmedia" style="background:'+m.bg+';color:'+m.fg+'">'+m.svg+'</div>';
+}
+// Le mot qui distingue une sorte de ses sœurs : sa taille s'il y en a une
+// (« 1,5 L », « 25cl »), sinon ce que son nom a que la famille et les autres
+// sortes n'ont pas (« Savon bébé » sous « Savon vaisselle en pâte » → « bébé »).
+function _motDistinctif(p,v,vs){
+  var nm=String((v&&v.nm)||'').trim();if(!nm)return '';
+  var t=nm.match(/\d+([.,]\d+)?\s*(cl|ml|l|kg|g)\b/i);
+  var n=function(x){return _ecNorm(x);};
+  var famille={};n(p.nm||'').split(' ').forEach(function(w){if(w)famille[w]=1;});
+  var compte={};(vs||[]).forEach(function(x){var vu={};n(x.nm||'').split(' ').forEach(function(w){if(w&&!vu[w]){vu[w]=1;compte[w]=(compte[w]||0)+1;}});});
+  var mots=nm.split(/\s+/).filter(function(w){var k=n(w);return k&&k.length>=2&&!famille[k]&&!(compte[k]>=(vs||[]).length)&&!_EC_VIDES[k];});
+  if(t){var autres=mots.filter(function(w){return !/\d/.test(w)&&!/^(cl|ml|l|kg|g)$/i.test(w);});
+    return (autres.length&&autres[0].length<=8?autres[0]+' ':'')+t[0].replace(/\s+/g,' ');}
+  if(!mots.length){
+    // « REAKTOR A » / « Reaktor B » : une seule lettre les sépare — c'est elle.
+    var der=(nm.split(/\s+/).pop()||'').replace(/[()\[\]]/g,''),kd=n(der);
+    return (kd&&!famille[kd]&&!(compte[kd]>=(vs||[]).length)&&der.length<=4)?der.toUpperCase():'';
+  }
+  var r=mots[0];if(mots[1]&&(r+' '+mots[1]).length<=11)r+=' '+mots[1];
+  return r.length>12?r.slice(0,11)+'…':r;
 }
 function _brancherVar(d,p,v){
   // 23.03 — en gros, la touche vend le carton qui a son prix (voir plus haut).
@@ -19332,6 +19380,7 @@ function vendreNiveau(e,pid,n,mot){
 function _ajouterLotVariante(p,v,n,mot,force,fois){
   var fr=(lang==='fr');
   if(!(n>1))return;
+  if(!force&&!_grosOkUneFois&&_grosDe(p,v).n===n&&_grosPiegeOuvrir(p,v,function(quand){_grosOkUneFois=!!quand;try{_ajouterLotVariante(p,v,n,mot,force,fois);}finally{_grosOkUneFois=false;}}))return;
   fois=Math.max(1,Math.floor(Number(fois)||1));        // 23.04 — le pavé (voir _ajouterLot)
   var tout=n*fois;
   // 23.03 — le prix du carton suffit à vendre le carton (comme dehors, 23.02).
@@ -20081,6 +20130,72 @@ function _prixDuLot(p,v,n){
   return {px:0,pa:0};
 }
 function _aPrixGros(p,v){var g=_grosDe(p,v);return g.px>0&&g.n>1;}
+// ══════════════════════════════════════════════════════════════════
+//  ⚠️⚠️ 23.98 — LE CARTON AU PRIX D'UNE BOUTEILLE
+//  Trouvé le 22/11 dans sa boutique, en vérifiant une analyse qu'on lui a
+//  envoyée (« dès 1 400 F carton vs 1 100 F l'unité, ça prête à
+//  confusion ») : « Mayor — carton de 14 » enregistré à 1 450 F, la
+//  bouteille à 1 100 F. Le champ veut le prix d'UN CARTON ; il y a mis le
+//  prix d'une bouteille vendue en gros. Toucher la pastille vendait 14
+//  bouteilles pour 1 450 F : ≈ 14 000 F perdus par carton, sans un mot.
+//  (Sur toute la base : sa boutique seule, trois entrées. Le piège, lui,
+//  attend tout le monde à la saisie.)
+//  Un carton vendu moins de la MOITIÉ de ses unités au détail n'est pas une
+//  remise de gros : c'est presque toujours ce prix-là. On le demande — à la
+//  saisie, et à la caisse avant de vendre le carton — d'une question qui
+//  répare d'une touche. Rien n'est changé sans lui ; sa réponse « oui, c'est
+//  bien le carton » est gardée (grosVu) tant que le prix ne bouge pas.
+// ══════════════════════════════════════════════════════════════════
+function _grosSuspect(p,v){
+  var c=v||p;if(!c)return null;
+  var g=_grosDe(p,v||null),u=Number(c.px)||0;
+  if(!(g.n>1&&g.px>0&&u>0))return null;
+  if(g.px>=u*g.n*0.5)return null;
+  if(Number(c.grosVu)===g.px)return null;
+  return g;
+}
+var _grosPiegeSuite=null,_grosPiegeCible=null,_grosOkUneFois=false;
+function _grosPiegeOuvrir(p,v,suite){
+  var g=_grosSuspect(p,v);if(!g)return false;
+  var fr=(lang!=='en'),c=v||p,nm=v?(v.nm||p.nm):p.nm,u=Number(c.px)||0;
+  var patron=(role==='patron'||hasPerm('produits'));
+  var juste=Math.round(g.px*g.n);
+  _grosPiegeSuite=suite||null;_grosPiegeCible={p:p,v:v||null,px:g.px,n:g.n};
+  var o=document.getElementById('ov-grospiege');
+  if(!o){o=document.createElement('div');o.className='ov';o.id='ov-grospiege';
+    o.onclick=function(e){if(e.target===o)_grosPiegeFermer();};document.body.appendChild(o);}
+  var b='<div class="bsht"><div class="shndl"></div>'
+    +'<div class="shhdr"><div class="shtit">⚠️ '+escH(fr?'Ce prix de carton paraît faux':'This carton price looks wrong')+'</div><button class="bcl" onclick="_grosPiegeFermer()">✕</button></div>'
+    +'<div style="padding:6px 19px 22px">'
+    +'<div class="gp-calc"><b>1 '+escH(g.mot)+' = '+g.n+'</b> × '+escH(nm)+'<br><span>'+escH(fr?'à ':'at ')+fmt(g.px)+'</span> → <span class="gp-mal">'+fmt(Math.round(g.px/g.n))+(fr?' l\'unité':' each')+'</span><br>'
+    +'<small>'+escH(fr?('Au détail tu la vends '+fmt(u)+'.'):('Retail price: '+fmt(u)+'.'))+'</small></div>';
+  if(patron){
+    b+='<button class="gp-b gp-oui" onclick="_grosPiegeRepondre(1)"><b>'+escH(fr?(fmt(g.px)+', c\'est le prix d\'UNE seule'):(fmt(g.px)+' is the price of ONE'))+'</b><span>'+escH(fr?('→ le '+g.mot+' à '+fmt(juste)):('→ '+g.mot+' at '+fmt(juste)))+'</span></button>'
+      +'<button class="gp-b" onclick="_grosPiegeRepondre(2)"><b>'+escH(fr?('Non, le '+g.mot+' est bien à '+fmt(g.px)):('No, the '+g.mot+' really is '+fmt(g.px)))+'</b></button>';
+  }else{
+    b+='<div style="font-size:13px;font-weight:700;color:var(--M);margin:4px 0 10px">'+escH(fr?'Dis-le au patron.':'Tell the owner.')+'</div>'
+      +(suite?'<button class="gp-b" onclick="_grosPiegeRepondre(3)"><b>'+escH(fr?('Vendre quand même à '+fmt(g.px)):('Sell anyway at '+fmt(g.px)))+'</b></button>':'');
+  }
+  b+='</div></div>';
+  o.innerHTML=b;o.classList.add('show');
+  try{parler(fr?('Attention. Un '+g.mot+' de '+g.n+' à '+_nombreParlable(g.px)+' francs ? Ça paraît faux.'):'Careful, this carton price looks wrong.');}catch(e){}
+  return true;
+}
+function _grosPiegeFermer(){_grosPiegeSuite=null;_grosPiegeCible=null;closeSheet('ov-grospiege');}
+function _grosPiegeRepondre(k){
+  var C=_grosPiegeCible,suite=_grosPiegeSuite;if(!C){_grosPiegeFermer();return;}
+  var c=C.v||C.p,fr=(lang!=='en'),nm=(C.p.nm||'')+(C.v?(' — '+(C.v.nm||'')):'');
+  if(k===1){
+    var juste=Math.round(C.px*C.n);
+    try{journalAjouter('prix',nm+' ('+_grosDe(C.p,C.v).mot+')',fmt(C.px),fmt(juste));}catch(e){}
+    c.pxGros=juste;delete c.grosVu;
+    try{save();}catch(e){}
+    showToast('✅ '+(fr?('Corrigé : le '+_grosDe(C.p,C.v).mot+' à '+fmt(juste)):('Fixed: '+fmt(juste))));
+  }else if(k===2){c.grosVu=C.px;try{save();}catch(e){}}
+  _grosPiegeSuite=null;_grosPiegeCible=null;closeSheet('ov-grospiege');
+  try{renderProd(DB.articles);}catch(e){}
+  if(typeof suite==='function')suite(k===3);
+}
 // Écrire le prix du gros — un seul endroit, pour que la taille et le prix
 // ne puissent jamais partir chacun de leur côté.
 function _poserPrixGros(p,v,n,mot,px,pa){
@@ -20657,6 +20772,8 @@ function _resumeContenants(){
 }
 function _ajouterLot(p,n,mot,force,fois){
   var fr=(lang==='fr');
+  // 23.98 — le carton au prix d'une bouteille : on demande avant de vendre.
+  if(!force&&!_grosOkUneFois&&_grosDe(p,null).n===n&&_grosPiegeOuvrir(p,null,function(quand){_grosOkUneFois=!!quand;try{_ajouterLot(p,n,mot,force,fois);}finally{_grosOkUneFois=false;}}))return;
   // ⭐ 23.04 — `fois` : le pavé « grosse commande » pose 10 cartons d'un
   // coup PAR CE CHEMIN-CI — le même marqueur, la même voix, le même reçu —
   // au lieu de dix appels qui redessineraient dix fois la caisse.
@@ -23064,6 +23181,8 @@ function saveR(){
       if(Number(_g.px||0)!==_pg){
         journalAjouter('vente en gros',artCours.nm,(_g.px>0?fmt(_g.px):''),(_pg>0?fmt(_pg):(lang==='fr'?'retiré':'removed')));
         artCours.pxGros=(_pg>0)?_pg:null;
+        // 23.98 — le carton au prix d'une bouteille : demandé dès la saisie.
+        var _ac=artCours;setTimeout(function(){try{var _p2=(DB.articles||[]).find(function(x){return x.id===_ac.id;})||_ac;_grosPiegeOuvrir(_p2,null,null);}catch(e){}},600);
       }
     }
     var _inm=document.getElementById('inp-npm');
