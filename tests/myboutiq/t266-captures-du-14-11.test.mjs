@@ -37,7 +37,12 @@ t(f.every(x => x.prixCoul === 'rgb(30, 27, 46)' && x.h <= 146), `le prix se lit 
 const dehors = await p.evaluate(() => Math.round(document.getElementById('pc-2').getBoundingClientRect().height));
 t(Math.abs(f[0].h - dehors) <= 6, `dedans comme dehors : ${f[0].h} px dedans, ${dehors} px dehors`);
 await p.locator('.vtile').nth(1).tap(); await p.waitForTimeout(300);
-t(await p.evaluate(() => Object.keys(panier).length === 1), 'toucher une sorte la vend toujours');
+// 24.00 — « Riz (kg) » est une famille AU KILO : toucher la sorte ouvre la
+// feuille des mesures (montant, ¼, ½, 1…) au lieu de poser 1 kg d'office ;
+// « 1 » la vend.
+const _f266 = await p.evaluate(() => document.getElementById('ov-qte').classList.contains('show'));
+if (_f266) { await p.evaluate(() => qteRapide(1)); await p.waitForTimeout(200); }
+t(await p.evaluate(() => Object.keys(panier).length === 1), 'toucher une sorte la vend toujours' + (_f266 ? ' (famille au kilo : par la feuille des mesures, « 1 »)' : ''));
 
 // ── 2. Les filtres du Stock ──
 await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); try { fermerVarInline(); } catch (e) { } viderPanier(); navTo('stock', document.querySelectorAll('.ni')[1]); }); await p.waitForTimeout(400);

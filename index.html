@@ -7775,7 +7775,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.99'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.00'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -16916,11 +16916,30 @@ function _proposerRattrapagePrixAchat(p){
 }
 // ── Vente au poids / à la mesure : sélecteur ½ · 1 · 2 · 5 ou quantité libre ──
 var _qteArt=null;
-function ouvrirQteMesure(p,remplacer){
-  _qteArt=p;_qteRemplace=remplacer?p.id:null;
+// ⚠️⚠️ 24.00 — LA SORTE D'UNE FAMILLE AU KILO. Le patron, le 22/11 :
+// « revoir toutes les boutiques : ceux en litres, en kg et autres mesures
+// doivent se vendre au montant ou à la quantité voulue ». Sur les 931
+// articles de la base, 5 familles mesurées (Riz, Farine, Huile…). Mesuré au
+// banc : toucher « Riz brisé » posait 1 kg, sans « pour 200 » ni ¼ ; et
+// « pour 200 de riz brisé » dit à la voix posait 50 KILOS (le 200 lu comme
+// une quantité, rabattu au stock) : 25 000 F au lieu de 200.
+// La feuille des mesures sert maintenant la sorte comme l'article : son
+// prix, son stock, ses habitudes, « pour un montant ». `_qteVar` est la
+// sorte en cours ; il n'a de sens que pour `_qteArt` (garde _qteV).
+var _qteVar=null;
+function _qteV(p){return (_qteVar&&_qteArt===p)?_qteVar:null;}
+function _qteCle(p){var v=_qteV(p);return p.id+'-'+(v?v.id:0);}
+function _qtePx(p){var v=_qteV(p);return Number((v||p).px)||0;}
+function _qteNom(p){var v=_qteV(p);return v?(v.nm||p.nm):p.nm;}
+function _qteDispo(p){var v=_qteV(p);try{return v?stockVarDispo(p,v):getStk(p);}catch(e){return 0;}}
+function _qteRt(p){var v=_qteV(p);return !!(p.rt||(v&&v.rt));}
+function _qteApres(p){var v=_qteV(p);if(v){try{varQtys[v.id]=panier[p.id+'-'+v.id]||0;varArtCours=p;}catch(e){}}updatePUI(p.id);
+  if(v){try{if(_varBox||(typeof _ovVarOuvert==='function'&&_ovVarOuvert()))renderVarLst(p);}catch(e){}}}
+function ouvrirQteMesure(p,remplacer,v){
+  _qteArt=p;_qteVar=v||null;_qteRemplace=remplacer?p.id:null;
   var u=uniteArt(p);
   document.getElementById('qte-tit').textContent='⚖️ '+(lang==='fr'?'Quantité en ':'Quantity in ')+u;
-  document.getElementById('qte-art').textContent=p.nm+' — '+fmt(p.px)+' / '+u;
+  document.getElementById('qte-art').textContent=(v?((v.nm||p.nm)):p.nm)+' — '+fmt(_qtePx(p))+' / '+u;
   document.getElementById('qte-lbl').textContent=(lang==='fr'?'Autre quantité':'Other quantity')+' ('+u+')';
   document.getElementById('qte-inp').value='';
   document.getElementById('qte-apercu').textContent='';
@@ -16956,13 +16975,15 @@ function _resteMesure(p,reste){
   showToast('⚠️ '+(fr?('Il ne reste que '+fmtQ(reste)+' '+uniteArt(p)+' de '+p.nm+((Number(p.px)>0)?(' (pour '+fmt(Math.floor(reste*p.px))+')'):''))
                     :('Only '+fmtQ(reste)+' '+uniteArt(p)+' of '+p.nm+' left')));
 }
-function _dosesDe(p){
+function _dosesDe(p,vs){
   if(!p||!DB||!Array.isArray(DB.ventes))return [];
+  if(vs===undefined)vs=_qteV(p);
   var cpt={},ordre=[],occ=[],V=DB.ventes,n=0,sac=Number(p.umSac)||0;
   for(var i=V.length-1;i>=0&&n<400;i--){
     var v=V[i];if(!v||v.annulee)continue;n++;
     (v.lignes||[]).forEach(function(l){
-      if(!l||String(l.pid)!==String(p.id)||l.vid||l.grosTxt)return;
+      if(!l||String(l.pid)!==String(p.id)||l.grosTxt)return;
+      if(vs?String(l.vid)!==String(vs.id):l.vid)return;
       var d=null,fois=1;
       if(l.gros&&Number(l.qBase)>0){
         var mot=String(l.gros.mot||'');
@@ -16982,7 +17003,7 @@ function _dosesDe(p){
     });
   }
   // Ce qui se vend encore aujourd'hui : une mesure supprimée ne revient pas.
-  var mes=_mesuresDe(p);
+  var mes=vs?[]:_mesuresDe(p);
   return ordre.map(function(c){var x=cpt[c];x.recent=occ.filter(function(o){return o===c;}).length;return x;})
     .filter(function(x){return x.d.k!=='mes'||mes.some(function(m){return txtNorm(m.nm)===txtNorm(x.d.nm);});})
     .sort(function(a,b){return (b.recent-a.recent)||(b.n-a.n);});
@@ -16993,35 +17014,36 @@ function _doseHabituelle(p){
   return (t.n>=3&&t.recent>=3&&t.recent*2>=tot)?t.d:null;
 }
 function _doseTexte(p,d){
-  var fr=(lang==='fr'),px=Number(p.px)||0;
+  var fr=(lang==='fr'),px=_qtePx(p);
   if(d.k==='q')return {b:fmtQ(d.q)+' '+uniteArt(p),i:fmt(Math.round(px*d.q))};
   if(d.k==='mt')return {b:(fr?'pour ':'for ')+fmt(d.M),i:fmtQ(Math.round(d.M/px*100)/100)+' '+uniteArt(p)};
   var m=_mesuresDe(p).find(function(x){return txtNorm(x.nm)===txtNorm(d.nm);});
   return {b:m?m.nm:d.nm,i:m?fmt(m.px):''};
 }
 function _vendreDose(p,d){
-  if(!p||!d||!(Number(p.px)>0||d.k==='mes'))return false;
+  if(_qteArt!==p)_qteVar=null;
   _qteArt=p;
+  if(!p||!d||!(_qtePx(p)>0||d.k==='mes'))return false;
   if(d.k==='q'){ajouterQteMesure(d.q);return true;}
-  if(d.k==='mt'){var px=Number(p.px)||0,q=Math.round(d.M/px*1000)/1000;if(!(q>0))return false;
+  if(d.k==='mt'){var px=_qtePx(p),q=Math.round(d.M/px*1000)/1000;if(!(q>0))return false;
     return _ajouterMesure(p,q,d.M,(lang==='fr'?'pour ':'for ')+fmt(d.M));}
   var m=_mesuresDe(p).find(function(x){return txtNorm(x.nm)===txtNorm(d.nm);});
   return m?_ajouterMesure(p,Number(m.q),Number(m.px),String(m.nm)):false;
 }
 // La tuile d'un article au kilo/litre : l'habitude d'une touche, sinon la feuille.
-function vendreMesureTuile(p){
-  _qteRemplace=null;
+function vendreMesureTuile(p,v){
+  _qteRemplace=null;_qteArt=p;_qteVar=v||null;
   var d=null;try{d=_doseHabituelle(p);}catch(e){}
   if(d&&_vendreDose(p,d))return;
-  ouvrirQteMesure(p);
+  ouvrirQteMesure(p,false,v||null);
 }
 // Le badge « 1 ⚖ » : la feuille, et ce qu'il choisit REMPLACE ce qui est au panier.
 function changerQteMesure(p){ouvrirQteMesure(p,true);}
 function retirerMesure(){
   var p=_qteArt;if(!p)return;
-  var key=p.id+'-0';delete panier[key];try{delete _grosPanier[key];}catch(e){}
-  _qteRemplace=null;updatePUI(p.id);closeSheet('ov-qte');
-  showToast('🗑 '+p.nm+(lang==='fr'?' retiré du panier':' removed'));
+  var key=_qteCle(p);delete panier[key];try{delete _grosPanier[key];}catch(e){}
+  _qteRemplace=null;_qteApres(p);closeSheet('ov-qte');
+  showToast('🗑 '+_qteNom(p)+(lang==='fr'?' retiré du panier':' removed'));
 }
 function _qteRendreHabitudes(p,remplacer){
   var z=document.getElementById('qte-hab');if(!z)return;
@@ -17032,7 +17054,7 @@ function _qteRendreHabitudes(p,remplacer){
       +L.map(function(x,i){var t=_doseTexte(p,x.d);return '<button type="button" class="qte-h" onclick="qteDose('+i+')"><b>'+escH(t.b)+'</b><span>'+escH(t.i)+'</span></button>';}).join('')+'</div>';
   }
   if(remplacer){
-    var key=p.id+'-0',q=panier[key]||0;
+    var key=_qteCle(p),q=panier[key]||0;
     if(q>0)h='<div class="qte-rempl"><span>'+(fr?'Au panier : ':'In basket: ')+'<b>'+escH(fmtQ(q)+' '+uniteArt(p))+'</b></span>'
       +'<button type="button" onclick="retirerMesure()">🗑 '+(fr?'Retirer':'Remove')+'</button></div>'+h;
   }
@@ -17058,7 +17080,7 @@ function _mesuresDe(p){
 }
 function _qteRendreMesures(p){
   var fr=(lang==='fr'),box=document.getElementById('qte-mes'),mt=document.getElementById('qte-mt');
-  var L=_mesuresDe(p);
+  var L=_qteV(p)?[]:_mesuresDe(p);
   if(box)box.innerHTML=L.map(function(m,i){
     return '<button type="button" class="qte-m" onclick="qteMesure('+i+')"><b>'+escH(m.nm)+'</b><span>'+fmt(m.px)+'</span></button>';
   }).join('');
@@ -17066,7 +17088,7 @@ function _qteRendreMesures(p){
   if(pl)pl.textContent=estMesure(p)?(fr?('Au poids ('+uniteArt(p)+')'):('By weight ('+uniteArt(p)+')'))
                                    :(fr?('En '+uniteArt(p)):('By '+uniteArt(p)));
   if(mt){
-    if(!(Number(p.px)>0)){mt.innerHTML='';return;}
+    if(!(_qtePx(p)>0)){mt.innerHTML='';return;}
     mt.innerHTML='<div class="pl">'+(fr?'Pour un montant':'For an amount')+'</div><div class="qte-mt-ch">'
       +[100,200,500,1000].map(function(v){return '<button type="button" onclick="qtePourMontant('+v+')">'+fmtQ(v).replace(/(\d)(?=(\d{3})+$)/g,'$1 ')+'</button>';}).join('')
       +'</div><div class="qte-mt-l"><input class="pi sm" type="number" inputmode="numeric" id="qte-mt-i" placeholder="'+(fr?'un autre montant':'another amount')+'"><button type="button" onclick="qtePourMontant()">OK</button></div>';
@@ -17075,23 +17097,24 @@ function _qteRendreMesures(p){
 function _ajouterMesure(p,q,px,mot){
   q=Math.round(q*1000)/1000;
   if(!(q>0)||!(px>0))return false;
-  var key=p.id+'-0';
+  if(_qteArt!==p){_qteArt=p;_qteVar=null;}
+  var key=_qteCle(p),_cv=_qteV(p);
   if(_qteRemplace===p.id){delete panier[key];try{delete _grosPanier[key];}catch(e){}_qteRemplace=null;}
-  var cur=panier[key]||0,ts=getStk(p);
-  if(cur+q>ts&&!p.rt){_resteMesure(p,ts-cur);return false;}
+  var cur=panier[key]||0,ts=_qteDispo(p);
+  if(cur+q>ts&&!_qteRt(p)){_resteMesure(p,ts-cur);return false;}
   panier[key]=Math.round((cur+q)*1000)/1000;
   // Le coût de la mesure : son poids au prix d'achat de l'unité.
-  var pa=(Number(p.pa)>0)?Math.round(Number(p.pa)*q*100)/100:0;
-  _grosPanier[key]=_empilerLot(_grosPanier[key],q,mot,{px:px,pa:pa},Number(p.px)||0,_umDe(p));
+  var _pa0=Number((_cv||p).pa)||0,pa=(_pa0>0)?Math.round(_pa0*q*100)/100:0;
+  _grosPanier[key]=_empilerLot(_grosPanier[key],q,mot,{px:px,pa:pa},_qtePx(p),_umDe(p));
   var l=_grosPanier[key].lots;l[l.length-1].mes=1;
-  updatePUI(p.id);
+  _qteApres(p);
   closeSheet('ov-qte');
-  showToast('🛒 '+mot+' — '+p.nm+' · '+fmt(px));
+  showToast('🛒 '+mot+' — '+_qteNom(p)+' · '+fmt(px));
   if(navigator.vibrate)navigator.vibrate(25);
   return true;
 }
 function qteMesure(i){
-  var p=_qteArt,m=p?_mesuresDe(p)[i]:null;if(!m)return;
+  var p=_qteArt,m=(p&&!_qteV(p))?_mesuresDe(p)[i]:null;if(!m)return;
   _ajouterMesure(p,Number(m.q),Number(m.px),String(m.nm));
 }
 function qtePourMontant(v){
@@ -17099,7 +17122,7 @@ function qtePourMontant(v){
   var fr=(lang==='fr');
   var M=(v>0)?v:(parseFloat(String((document.getElementById('qte-mt-i')||{}).value||'').replace(',','.'))||0);
   if(!(M>0)){showToast('⚠️ '+(fr?'Dis pour combien':'Enter an amount'));return;}
-  var px=Number(p.px)||0;if(!(px>0))return;
+  var px=_qtePx(p);if(!(px>0))return;
   // ⚠️ 23.90 — AU GRAMME PRÈS, PLUS AU DIX GRAMMES. 100 F de safran à
   // 40 000 F le kilo, c'est 2,5 g : arrondi à 0,01 kg, il tombait à 0 et
   // l'app répondait « Trop peu pour être pesé » (mesuré au banc).
@@ -17110,10 +17133,10 @@ function qtePourMontant(v){
 function apercuQte(){
   var p=_qteArt;if(!p)return;
   var q=parseFloat(String(document.getElementById('qte-inp').value||'').replace(',','.'))||0;
-  document.getElementById('qte-apercu').textContent=q>0?('= '+fmt(p.px*q)):'';
+  document.getElementById('qte-apercu').textContent=q>0?('= '+fmt(_qtePx(p)*q)):'';
 }
 function qteRapide(q){
-  var p=_qteArt,m=p?_mesuresDe(p).find(function(x){return Math.abs(Number(x.q)-q)<0.001;}):null;
+  var p=_qteArt,m=(p&&!_qteV(p))?_mesuresDe(p).find(function(x){return Math.abs(Number(x.q)-q)<0.001;}):null;
   if(m){_ajouterMesure(p,Number(m.q),Number(m.px),String(m.nm));return;}
   ajouterQteMesure(q);
 }
@@ -17125,14 +17148,15 @@ function validerQte(){
 function ajouterQteMesure(q){
   var p=_qteArt;if(!p)return;
   q=Math.round(q*100)/100;
-  var key=p.id+'-0';
+  var key=_qteCle(p);
   if(_qteRemplace===p.id){delete panier[key];try{delete _grosPanier[key];}catch(e){}_qteRemplace=null;}
-  var cur=panier[key]||0,ts=getStk(p);
-  if(cur+q>ts&&!p.rt){_resteMesure(p,ts-cur);return;}
+  var cur=panier[key]||0,ts=_qteDispo(p);
+  if(cur+q>ts&&!_qteRt(p)){_resteMesure(p,ts-cur);return;}
   panier[key]=Math.round((cur+q)*1000)/1000;
-  updatePUI(p.id);
+  _qteApres(p);
   closeSheet('ov-qte');
-  showToast('🛒 '+fmtQ(q)+' '+uniteArt(p)+' — '+p.nm+((Number(p.px)>0)?(' · '+fmt(Math.round(p.px*q))):''));
+  var _px=_qtePx(p);
+  showToast('🛒 '+fmtQ(q)+' '+uniteArt(p)+' — '+_qteNom(p)+((_px>0)?(' · '+fmt(Math.round(_px*q))):''));
   if(navigator.vibrate)navigator.vibrate(25);
 }
 // Modèle d'articles en OPTION (la boutique démarre vide) : chargé à la demande
@@ -18654,6 +18678,9 @@ function _brancherVar(d,p,v){
     }
     _astucePave('v'+p.id+'_'+v.id);
     if(_gvB){_ajouterLotVariante(p,v,_gvB.n,_gvB.mot);return;}
+    // 24.00 — une sorte d'une famille au kilo/litre se vend comme l'article :
+    // l'habitude d'une touche, sinon la feuille (montant, ¼, ½, autre).
+    if(seVendAuDetail(p)&&Number(v.px)>0){try{vendreMesureTuile(p,v);}catch(x){chgVQ(v.id,p.id,1,!!p.rt);}return;}
     chgVQ(v.id,p.id,1,!!p.rt);
   };
   // ⚠️ L'appui long ouvrait UNIQUEMENT « saisir une quantité ». C'était le
@@ -33517,6 +33544,15 @@ function _montantDit(seg){
   var r=tot+cur;
   return (vu&&r>=25)?r:0;
 }
+// 24.00 — « un demi kilo », « un quart de riz », « trois quarts de litre » :
+// la voix posait 1 kg (le « un » lu en premier). Pour ce qui se mesure.
+function _fractionDite(seg){
+  var x=' '+_ecNorm(seg)+' ';
+  if(/ trois quarts? /.test(x))return 0.75;
+  if(/ (demi|moitie) /.test(x))return 0.5;
+  if(/ quarts? /.test(x))return 0.25;
+  return 0;
+}
 function _qteDansMorceau(seg,nom){
   var x=_ecNorm(seg);
   // ⚠️ 23.97 — « jus ananas 75 cl » : 75 est la taille de la bouteille, pas
@@ -33572,12 +33608,14 @@ function _voixPanier(txt){
     var p=(DB.articles||[]).find(function(x){return x.id===ids[0];});if(!p)return;
     var s=_sorteDite(p,seg),q=_qteDansMorceau(seg,p.nm+' '+((s&&s.v&&s.v.nm)||''));
     if(s.choix){R.aChoisir.push(p);return;}
-    var v=s.v||null,avant=panier[v?p.id+'-'+v.id:p.id+'-0']||0;
+    var v=s.v||null,cleL=v?p.id+'-'+v.id:p.id+'-0',avant=panier[cleL]||0;
     // 23.91 — « pour 200 de riz » : un montant, pas 200 kilos.
-    var M=(!v&&seVendAuDetail(p))?_montantDit(seg):0;
-    if(M>0&&Number(p.px)>0){_qteRemplace=null;_ajouterMesure(p,Math.round(M/p.px*1000)/1000,M,(lang==='fr'?'pour ':'for ')+fmt(M));
-      if((panier[p.id+'-0']||0)>avant)R.ajoutes.push({p:p,v:null,q:(panier[p.id+'-0']||0)-avant,mt:M});return;}
-    if(!v&&seVendAuDetail(p)){_qteRemplace=null;_qteArt=p;ajouterQteMesure(q);}
+    // 24.00 — et « pour 200 de riz BRISÉ » aussi (une sorte d'une famille au kilo).
+    var mesure=seVendAuDetail(p),pxL=Number((v||p).px)||0;
+    var M=mesure?_montantDit(seg):0;
+    if(M>0&&pxL>0){_qteRemplace=null;_qteArt=p;_qteVar=v;_ajouterMesure(p,Math.round(M/pxL*1000)/1000,M,(lang==='fr'?'pour ':'for ')+fmt(M));
+      if((panier[cleL]||0)>avant)R.ajoutes.push({p:p,v:v,q:(panier[cleL]||0)-avant,mt:M});return;}
+    if(mesure){var fq=_fractionDite(seg);if(fq>0)q=fq;_qteRemplace=null;_qteArt=p;_qteVar=v;ajouterQteMesure(q);}
     else for(var i=0;i<q;i++)addPanier(p,v);
     var pris=(panier[v?p.id+'-'+v.id:p.id+'-0']||0)-avant;
     if(pris>0)R.ajoutes.push({p:p,v:v,q:Math.round(pris*1000)/1000});
@@ -33586,9 +33624,10 @@ function _voixPanier(txt){
 }
 function _voixNomLigne(x,dite){
   var fr=(lang==='fr'),nm=x.v?(x.p.nm+' '+x.v.nm):x.p.nm;
-  if(x.mt)return nm+(fr?' pour ':' for ')+(dite?(_nombreParlable(x.mt)+' francs'):fmt(x.mt));
+  if(x.mt)return (x.v?(x.v.nm||nm):nm)+(fr?' pour ':' for ')+(dite?(_nombreParlable(x.mt)+' francs'):fmt(x.mt));
   // 23.95 — à l'oreille : « un quart de kilo de riz », pas « 0,25 kg Riz ».
   if(dite&&!x.v)return _qteNomDit(x.p,x.q,nm);
+  if(dite&&x.v&&seVendAuDetail(x.p))return _qteNomDit(x.p,x.q,x.v.nm||nm);   // 24.00 — « 290 grammes de riz brisé »
   if(!x.v&&seVendAuDetail(x.p))return fmtQ(x.q)+' '+uniteArt(x.p)+' '+nm;
   return fmtQ(x.q)+' '+nm;
 }
