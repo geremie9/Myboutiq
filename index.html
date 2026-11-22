@@ -1884,6 +1884,16 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 /* ── FLOAT CART ── */
 .fcart{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);width:calc(100% - 30px);max-width:400px;z-index:60;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
 .fcart.hide{transform:translateX(-50%) translateY(130px);opacity:0;pointer-events:none}
+/* 23.96 — le micro au pouce : en bas à droite, au-dessus du menu ; il monte
+   au-dessus de la barre du panier quand elle est là. Seulement à la caisse. */
+.micp{position:fixed;right:14px;bottom:86px;z-index:59;width:66px;height:66px;border-radius:50%;border:3px solid #fff;background:#1E1B2E;color:#F59E0B;display:none;flex-direction:column;align-items:center;justify-content:center;gap:0;box-shadow:0 8px 22px rgba(0,0,0,.32);cursor:pointer;font:800 10.5px Outfit,sans-serif;-webkit-tap-highlight-color:transparent;transition:bottom .25s ease,transform .1s}
+.micp svg{stroke:currentColor;stroke-width:2.3;fill:none;stroke-linecap:round}
+.micp span{color:#fff;line-height:1;margin-top:1px}
+.micp:active{transform:scale(.93)}
+#s-caisse.on .micp{display:flex}
+#fcart:not(.hide)~.micp{bottom:152px}
+.micp.ecoute{background:#E11D48;color:#fff;animation:micEcoute 1.1s ease-in-out infinite}
+@keyframes micEcoute{0%,100%{box-shadow:0 0 0 0 rgba(225,29,72,.55),0 8px 22px rgba(0,0,0,.32)}50%{box-shadow:0 0 0 14px rgba(225,29,72,0),0 8px 22px rgba(0,0,0,.32)}}
 /* ── ⚠️ « AU MOMENT D'ENCAISSEMENT, ENTRE L'ARTICLE, SON PRIX TOTAL ET LE
    MOT ENCAISSÉ, IL Y A UNE LIGNE NOIRE QUI PEUT PERTURBER LA VENTE SI ON
    VEUT AJOUTER DES ARTICLES. » ────────────────────────────────────────
@@ -4828,6 +4838,11 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       <div class="benc" id="btn-enc" role="button" onclick="event.stopPropagation();procederPmt()">Encaisser</div>
     </button>
   </div>
+  <!-- ⭐ 23.96 — LE MICRO AU POUCE. Le patron, le 22/11 : « le tactile pour
+       les uns et le vocal pour les autres ». Le micro existait, petit, en
+       haut à droite de la recherche : loin du pouce, et rien ne disait qu'on
+       pouvait y dire toute une commande. -->
+  <button class="micp" id="mic-pouce" type="button" onclick="micPouce()" aria-label="Dire la commande"><svg class="ic" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/></svg><span id="mic-pouce-t">Parle</span></button>
   <div class="bnav">
     <button class="ni on" onclick="navTo('caisse',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.6l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.5L21.5 8H6"/></svg></span><span class="nl" id="n-caisse">Caisse</span></button>
     <button class="ni ni-stock" onclick="navTo('stock',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></span><span class="nl" id="n-stock">Stock</span></button>
@@ -7737,7 +7752,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.95'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.96'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -22385,7 +22400,13 @@ function _direBonjour(){
 // Au premier geste de la journée (et pas avant : le navigateur refuserait).
 (function(){
   var fait=false;
-  var go=function(){if(fait)return;fait=true;setTimeout(_direBonjour,400);
+  // ⚠️ 23.96 — PAS SUR UN MICRO. Mesuré au banc : la première tape du jour
+  // sur le micro au pouce lançait « Bonjour Marie ! » PENDANT la dictée —
+  // le micro l'entend, et le bonjour coupait la relecture de la commande.
+  // Le bonjour attend le geste suivant.
+  var go=function(ev){if(fait)return;
+    try{var c=ev&&ev.target;if(c&&c.closest&&c.closest('#mic-pouce,#btn-mic,#vpro-ov'))return;}catch(e){}
+    fait=true;setTimeout(_direBonjour,400);
     try{document.removeEventListener('pointerdown',go,true);}catch(e){}};
   try{document.addEventListener('pointerdown',go,true);}catch(e){}
 })();
@@ -33420,6 +33441,7 @@ function _voixAppliquer(lignes,R){
 // payante ou celle du téléphone) : le panier, « pour 200 », ce qui n'est pas
 // compris au serveur s'il y a internet, la relecture, sinon la recherche.
 function _voixTraiterTexte(q){
+    try{_micPouceFin();}catch(e){}
     if(!q)return;
     // 23.83 — « … » ou « Sous-titrage » : le service a entendu le silence.
     if(!/[a-z0-9à-ÿ]{2,}/i.test(q)||/sous-titr|amara\.org|merci d.avoir regard/i.test(q)){showToast('🎤 '+(lang==='fr'?'Je n\'ai rien entendu. Réessaie.':'Heard nothing. Try again.'));return;}
@@ -33447,7 +33469,7 @@ function voiceSearch(){
   // Le micro touché sans voix payante : on redemande en silence (le « non »
   // a peut-être changé depuis), sans faire attendre cette dictée-ci.
   if(!voixProDispo()){try{voixProEtat();}catch(e){}}
-  if(voixProDispo()){voixProEcouter().then(_voixTraiterTexte);return;}
+  if(voixProDispo()){voixProEcouter().then(_voixTraiterTexte,function(){try{_micPouceFin();}catch(e){}});return;}
   _voiceSearchGratuit();
 }
 // ══════════════════════════════════════════════════════════════════
@@ -33517,7 +33539,7 @@ function _phrasesBoutique(){
 }
 function _voiceSearchGratuit(){
   var SR=_SRclasse();
-  if(!SR){showToast(t('microIndispo'));return;}
+  if(!SR){try{_micPouceFin();}catch(e){}showToast(t('microIndispo'));return;}
   // La première tape sur le micro demande au téléphone ce qu'il sait faire
   // (et prépare la langue en wifi) ; les suivantes savent déjà.
   // Un téléphone qui ne sait pas (pas de SpeechRecognition.available) ou déjà
@@ -33531,6 +33553,7 @@ function _dicterTelephone(){
   if(!SR){showToast(t('microIndispo'));return;}
   var local=(_vLoc.etat==='available');
   if(!local&&navigator.onLine===false){
+    try{_micPouceFin();}catch(e){}
     // Pas d'internet, pas encore la voix du téléphone : on ne fait pas semblant.
     if(_vLoc.etat==='downloadable')voixLocaleInstaller();
     showToast('📶 '+(fr?'Pas d\'internet : touche les articles':'No internet: tap the items'));
@@ -33542,8 +33565,10 @@ function _dicterTelephone(){
     var ph=_phrasesBoutique();if(ph&&ph.length){try{r.phrases=ph;}catch(e){}}
   }
   r.onresult=function(e){var q='';try{q=e.results[0][0].transcript;}catch(x){}_voixTraiterTexte(q);};
-  r.onerror=function(){showToast('🎤');};
-  try{r.start();}catch(e){showToast('🎤');return;}
+  r.onerror=function(){try{_micPouceFin();}catch(x){}showToast('🎤');};
+  r.onend=function(){_srEnCours=null;try{_micPouceFin();}catch(x){}};
+  _srEnCours=r;
+  try{r.start();}catch(e){try{_micPouceFin();}catch(x){}showToast('🎤');return;}
   showToast(t('microParle'));
 }
 // ══════════════════════════════════════════════════════════════════
@@ -33578,12 +33603,44 @@ function micTape(){
     }
   }catch(e){}
 }
+// ⭐ 23.96 — LE MICRO AU POUCE : une tape, il dit la commande (« deux Top
+// et pour 500 de riz »), elle va au panier et l'app la relit. Pendant
+// l'écoute le bouton est rouge et bat ; une tape l'arrête. Il passe par
+// voiceSearch : la voix payante, celle du téléphone hors ligne, ou la dictée
+// de toujours — rien de nouveau à apprendre, rien de deviné.
+var _micPouceT=null,_srEnCours=null;
+function _micPouceBouton(){return document.getElementById('mic-pouce');}
+function _micPouceDebut(){
+  var b=_micPouceBouton();if(b)b.classList.add('ecoute');
+  var tx=document.getElementById('mic-pouce-t');if(tx)tx.textContent=(lang==='fr'?'Stop':'Stop');
+  try{if(navigator.vibrate)navigator.vibrate(30);}catch(e){}
+  clearTimeout(_micPouceT);_micPouceT=setTimeout(_micPouceFin,15000);   // filet : jamais rouge pour toujours
+}
+function _micPouceFin(){
+  clearTimeout(_micPouceT);_micPouceT=null;
+  var b=_micPouceBouton();if(b)b.classList.remove('ecoute');
+  var tx=document.getElementById('mic-pouce-t');if(tx)tx.textContent=(lang==='fr'?'Parle':'Speak');
+}
+function micPouce(){
+  var b=_micPouceBouton();
+  if(b&&b.classList.contains('ecoute')){
+    try{voixProArreter();}catch(e){}
+    try{if(_srEnCours)_srEnCours.stop();}catch(e){}
+    _micPouceFin();return;
+  }
+  if(ecouteContinue){try{arreterEcouteContinue();}catch(e){}}
+  // La voix qui parle encore (« Merci ! … ») serait entendue par le micro.
+  try{if(window.speechSynthesis&&window.speechSynthesis.speaking)window.speechSynthesis.cancel();}catch(e){}
+  _micPouceDebut();
+  voiceSearch();
+}
 function micLongPress(e){
   if(e&&e.preventDefault)e.preventDefault();
   _micLong=true;
   if(!ecouteContinue)toggleEcouteContinue();
 }
 function majBoutonMic(){
+  try{var _tp=document.getElementById('mic-pouce-t'),_bp=_micPouceBouton();if(_tp&&_bp&&!_bp.classList.contains('ecoute'))_tp.textContent=(lang==='fr'?'Parle':'Speak');}catch(e){}
   var b=document.getElementById('btn-mic');if(!b)return;
   var fr=(lang!=='en');
   b.innerHTML=window.ico(ecouteContinue?'ecoute':'micro',21);
