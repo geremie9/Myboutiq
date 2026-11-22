@@ -7752,7 +7752,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.96'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='23.97'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -33312,8 +33312,16 @@ function _montantDit(seg){
   var r=tot+cur;
   return (vu&&r>=25)?r:0;
 }
-function _qteDansMorceau(seg){
-  var w=_ecNorm(seg).split(' ');
+function _qteDansMorceau(seg,nom){
+  var x=_ecNorm(seg);
+  // ⚠️ 23.97 — « jus ananas 75 cl » : 75 est la taille de la bouteille, pas
+  // 75 bouteilles. Une taille écrite dans le nom de l'article est retirée
+  // avant de chercher combien.
+  if(nom){
+    var tailles=_ecNorm(nom).match(/\b\d+(?: \d+)?\s*(?:cl|l|kg|g|ml)\b/g)||[];
+    tailles.forEach(function(t){var re=new RegExp('\\b'+t.replace(/(\d)([a-z])/,'$1 $2').replace(/\s+/g,'\\s*')+'\\b','g');x=x.replace(re,' ');});
+  }
+  var w=x.split(' ');
   for(var i=0;i<w.length;i++){
     if(/^\d{1,3}$/.test(w[i]))return Math.min(200,parseInt(w[i],10));
     if(_NB_DITS[w[i]])return _NB_DITS[w[i]];
@@ -33327,18 +33335,37 @@ function _sorteDite(p,seg){
   if(!vs.length)return {aucune:true};
   var bons=vs.filter(function(v){var k=_ecMots(v.nm);return k.length&&k.every(function(m){return T.some(function(w){return _ecProche(w,m);});});});
   if(bons.length===1)return {v:bons[0]};
+  // ⚠️ 23.97 — « REAKTOR B », « COCA COLA 1 L » : les sortes ne diffèrent
+  // que par une lettre ou une taille, que _ecMots écarte. Mesuré sur sa
+  // boutique : « reaktor B » redemandait « quelle sorte ? », « coca cola
+  // 1 L » ne trouvait rien. On compte TOUS les mots du nom, tailles et
+  // lettres comprises (« 25cl » = « 25 cl ») ; celle qui colle le mieux
+  // gagne, s'il n'y a pas d'égalité.
+  if(bons.length>1){
+    var tok=function(x){return _ecNorm(x).replace(/(\d)([a-z])/g,'$1 $2').split(' ').filter(Boolean);};
+    var Tt=tok(seg),best=null,bs=-1e9,egal=false;
+    bons.forEach(function(v){
+      var k=tok(v.nm),ok=0,manque=0;
+      k.forEach(function(m){if(Tt.indexOf(m)>=0||(m.length>=4&&Tt.some(function(w){return _ecProche(w,m);})))ok++;else manque++;});
+      var sc=ok-manque*0.5;
+      if(sc>bs){bs=sc;best=v;egal=false;}else if(sc===bs)egal=true;
+    });
+    if(best&&!egal)return {v:best};
+  }
   if(vs.length===1)return {v:vs[0]};
   return {choix:true};
 }
 // Rend ce qui a été fait : {ajoutes:[{p,v,q}], aChoisir:[p], absents:[texte]}
 function _voixPanier(txt){
   var R={ajoutes:[],aChoisir:[],absents:[]};
-  var morceaux=String(txt||'').split(/\s*(?:,|;|\bet\b|\bpuis\b|\bplus\b|\bavec\b)\s*/i).map(function(x){return x.trim();}).filter(Boolean);
+  // ⚠️ 23.97 — « coca cola 1,5 L » : la virgule de 1,5 coupait la phrase en
+  // deux (« coca cola 1 » et « 5 L »). Le nombre à virgule est gardé entier.
+  var morceaux=String(txt||'').replace(/(\d),(\d)/g,'$1.$2').split(/\s*(?:,|;|\bet\b|\bpuis\b|\bplus\b|\bavec\b)\s*/i).map(function(x){return x.trim();}).filter(Boolean);
   morceaux.forEach(function(seg){
     var ids=_articlesEntendus(seg);
     if(!ids.length){if(/[a-zà-ÿ]{3,}/i.test(seg))R.absents.push(seg);return;}
     var p=(DB.articles||[]).find(function(x){return x.id===ids[0];});if(!p)return;
-    var q=_qteDansMorceau(seg),s=_sorteDite(p,seg);
+    var s=_sorteDite(p,seg),q=_qteDansMorceau(seg,p.nm+' '+((s&&s.v&&s.v.nm)||''));
     if(s.choix){R.aChoisir.push(p);return;}
     var v=s.v||null,avant=panier[v?p.id+'-'+v.id:p.id+'-0']||0;
     // 23.91 — « pour 200 de riz » : un montant, pas 200 kilos.
@@ -33440,9 +33467,23 @@ function _voixAppliquer(lignes,R){
 // 23.92 — UNE phrase entendue, UN traitement, d'où qu'elle vienne (la voix
 // payante ou celle du téléphone) : le panier, « pour 200 », ce qui n'est pas
 // compris au serveur s'il y a internet, la relecture, sinon la recherche.
+// ⚠️ 23.97 — « savon bebe savon bebe savon bebe » : sa capture du 22/11.
+// Certains Android rendent la phrase répétée. La même suite de mots dite
+// deux fois ou plus d'affilée, d'un bout à l'autre, compte une fois.
+function _sansRepetition(q){
+  var w=String(q||'').trim().split(/\s+/),n=w.length;
+  for(var L=1;L<=n/2;L++){
+    if(n%L)continue;
+    var u=w.slice(0,L).join(' ').toLowerCase(),ok=true;
+    for(var i=L;i<n&&ok;i+=L)if(w.slice(i,i+L).join(' ').toLowerCase()!==u)ok=false;
+    if(ok)return w.slice(0,L).join(' ');
+  }
+  return String(q||'');
+}
 function _voixTraiterTexte(q){
     try{_micPouceFin();}catch(e){}
     if(!q)return;
+    q=_sansRepetition(q);
     // 23.83 — « … » ou « Sous-titrage » : le service a entendu le silence.
     if(!/[a-z0-9à-ÿ]{2,}/i.test(q)||/sous-titr|amara\.org|merci d.avoir regard/i.test(q)){showToast('🎤 '+(lang==='fr'?'Je n\'ai rien entendu. Réessaie.':'Heard nothing. Try again.'));return;}
     // 23.83 — les articles dits vont dans le panier ; sinon, c'est une recherche.
@@ -33725,6 +33766,15 @@ function _ecIndex(){
       if(!v||!v.nm)return;
       try{if(_estGrosDeVariante(v))return;}catch(e){}
       noms.push(p.nm+' '+v.nm);
+      // ⚠️ 23.97 — LA SORTE SE DIT SANS SA FAMILLE. Sa capture du 22/11 :
+      // « savon bébé » dicté, rien au panier. La sorte « Savon bébé » vit
+      // sous « Savon vaisselle en pâte » ; la voix n'acceptait que le nom
+      // complet (« savon vaisselle pâte savon bébé »), que personne ne dit.
+      // Pareil pour « coca cola 1 L » (sous « Top ananas »). Le nom de la
+      // sorte seul entre donc à l'index — sauf un mot passe-partout tout
+      // seul (« Grand », « Rouge ») qui attraperait n'importe quelle phrase.
+      var kv=_ecMots(v.nm);
+      if(kv.length>=2||(kv.length===1&&kv[0].length>=4&&!_EC_GENERIQUES[kv[0]]))noms.push(v.nm);
     });
     noms.forEach(function(nm){
       var k=_ecMots(nm);
