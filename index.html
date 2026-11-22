@@ -1912,6 +1912,16 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .micp:active{transform:scale(.93)}
 #s-caisse.on .micp{display:flex}
 #fcart:not(.hide)~.micp{bottom:152px}
+/* 24.00 — la vente éclair : le vert se remplit tout seul, la vente se ferme
+   quand il est plein (eclairArmer). Les billets montent au-dessus de la
+   barre ; le micro monte avec eux pour ne pas les couvrir. */
+.benc.eclair{background-image:linear-gradient(rgba(255,255,255,.42),rgba(255,255,255,.42));background-repeat:no-repeat;background-size:0 100%;animation:eclairJauge var(--eclair-ms,3000ms) linear forwards}
+@keyframes eclairJauge{to{background-size:100% 100%}}
+.fbil{display:none;gap:7px;margin:0 0 8px}
+.fbil.show{display:flex}
+.fbil .bil{flex:0 1 92px;height:46px;font-size:18px;border-radius:10px;box-shadow:inset 0 0 0 3px rgba(255,255,255,.2),0 6px 16px rgba(26,26,46,.18)}
+#fcart.avec-bil:not(.hide)~.micp{bottom:206px}
+body.avec-bil .mcont{padding-bottom:214px}
 /* 23.99 — « Annuler la vente » (15 s) passait sous le micro : il monte.
    (:has ignoré par un vieux navigateur : la règle saute, rien ne casse.) */
 body:has(#annul-chip.show) .micp{bottom:148px}
@@ -3052,6 +3062,7 @@ body:not(.fidelite) .lv-badge,body:not(.fidelite) .lv-bar,body:not(.fidelite) .l
 #btn-autre-pmt{display:none}
 #ov-calc.pmt-simple #pmnt-grid,#ov-calc.pmt-simple #btn-split-toggle,#ov-calc.pmt-simple #btn-rem-toggle{display:none!important}
 #ov-calc.pmt-simple #btn-autre-pmt{display:flex}
+#ov-calc.pmt-simple .calc-wrap{padding-top:4px} /* 24.00 — le haut vide de la feuille simple rendait la monnaie aux billets */
 .autre-pmt{width:100%;align-items:center;justify-content:space-between;gap:8px;min-height:44px;margin:0 0 9px;padding:8px 13px;background:#fff;border:1.5px solid var(--BG);border-radius:12px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:var(--T);cursor:pointer}
 .autre-pmt-s{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--M)}.autre-pmt-s .pm-pt{width:9px;height:9px}
 .etg-snack{position:fixed;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:900;display:none;align-items:center;gap:10px;padding:10px 10px 10px 14px;background:#1F2937;color:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13px;font-weight:800}
@@ -4855,7 +4866,14 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
        client d'un crédit s'y choisit déjà. Le reste de la barre (le nombre
        et le total, avec sa flèche) ouvre toujours le panier, pour corriger
        une quantité ou un prix négocié. -->
+  <!-- ⭐ 24.00 — LA VENTE ÉCLAIR. Mesuré en base le 22/11 : 98,3 % des ventes
+       en espèces, 68,6 % d'un seul article. Il fallait trois touches (la
+       tuile, « Encaisser », « Confirmer ») et une feuille à faire défiler.
+       Maintenant le vert se remplit tout seul (`eclairArmer`) : la vente se
+       ferme au compte juste sans autre touche. Les billets au-dessus de la
+       barre (#fbil) ferment la vente avec la monnaie : deux touches. -->
   <div class="fcart hide" id="fcart">
+    <div class="fbil" id="fbil"></div>
     <button class="cpill" onclick="ouvrirPanier()">
       <div style="display:flex;align-items:center"><div class="cbub" id="cc">0</div><div class="csum"><div class="csub" id="csb">articles</div><div class="ctot" id="ctot">0</div></div><span class="cvoir" aria-hidden="true">›</span></div>
       <div class="benc" id="btn-enc" role="button" onclick="event.stopPropagation();procederPmt()">Encaisser</div>
@@ -5091,6 +5109,13 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
           <div class="stico" style="background:#E8F5E9">🧾</div>
           <div class="stii"><div class="stitl" id="st-recuauto">Ouvrir le reçu après chaque vente</div><div class="stisub" id="st-recuauto-s">Désactivé = vente plus rapide. Le reçu reste accessible en un tap.</div></div>
           <button class="tog off" id="tog-recuauto" onclick="toggleRecuAuto()"></button>
+        </div>
+      </div>
+      <div class="stcd">
+        <div class="stit2" style="cursor:default">
+          <div class="stico" style="background:#E8F5E9">⚡</div>
+          <div class="stii"><div class="stitl" id="st-eclair">Vente éclair</div><div class="stisub" id="st-eclair-s">La vente se ferme seule 3 secondes après la dernière tuile. Les billets sont sur la barre.</div></div>
+          <button class="tog on" id="tog-eclair" onclick="toggleEclair()"></button>
         </div>
       </div>
 
@@ -5419,8 +5444,9 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       <!-- 23.26 — 93 % des ventes de la base sont en espèces : l'écran
            s'ouvre sur l'essentiel (total, reçu, monnaie, valider). Les
            autres moyens, la remise et le paiement en deux parties sont à
-           un toucher, derrière « Autre paiement ». Voir _pmtSimple. -->
-      <button type="button" id="btn-autre-pmt" class="autre-pmt" onclick="autrePaiement()"><span id="autre-pmt-t">Autre paiement</span><span class="autre-pmt-s"><i class="pm-pt" style="background:#FF7900"></i><i class="pm-pt" style="background:#FFCC00"></i><i class="pm-pt" style="background:#0F6CBD"></i><span id="autre-pmt-s">Crédit · Remise</span></span></button>
+           un toucher, derrière « Autre paiement ». Voir _pmtSimple.
+           24.00 — « Autre paiement » est descendu SOUS les billets (voir
+           plus bas) : il passait avant le total. -->
       <div class="pmnt-grid" id="pmnt-grid" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:9px">
         <div class="pmnt-btn on" id="pmv-especes" onclick="selPmntVente('especes')"><span class="pmnt-emo"><svg class="ic" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/></svg></span><div class="pmnt-nm">Espèces</div></div>
         <div class="pmnt-btn" id="pmv-orange" onclick="selPmntVente('orange')"><span class="pmnt-emo"><i class="pm-pt" style="background:#FF7900"></i></span><div class="pmnt-nm">Orange</div></div>
@@ -5477,15 +5503,22 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
                seulement après avoir tapé un montant : on ne pouvait ni la
                couper ni l'allumer avant qu'elle ait parlé. Toujours là. -->
           <button id="btn-voix" onclick="basculerVoix()" aria-label="Voix" data-on="0" style="flex:none;display:flex;align-items:center;justify-content:center;background:var(--BG);border:1.5px solid var(--B);color:var(--T);border-radius:12px;width:46px;height:42px;cursor:pointer;margin-bottom:14px"></button></div>
-        <div class="calc-lbl" id="calc-lbl-recu">Montant reçu</div>
-        <input class="calc-inp" type="number" id="calc-recu" placeholder="0" oninput="calcMonnaie()" inputmode="numeric">
+        <!-- ⚠️ 24.00 — LES BILLETS SOUS LE BOUTON. Mesuré au banc sur un écran
+             de 360×640 (un petit Android courant) : 2 000, 1 000, 500 et « Le
+             compte juste » étaient CACHÉS sous « Confirmer la vente » — ceux
+             qu'on touche pour une vente à 600 F. Le champ à taper passait
+             avant eux. Maintenant : le total, les billets, la monnaie, et le
+             champ pour qui préfère taper. -->
         <div class="calc-shcts" id="calc-shcts"></div>
         <div class="calc-res" id="calc-res" style="display:none">
           <div class="calc-res-lbl" id="calc-res-lbl">Monnaie à rendre</div>
           <div class="calc-res-amt" id="calc-res-amt">0</div>
         </div>
+        <div class="calc-lbl" id="calc-lbl-recu">Montant reçu</div>
+        <input class="calc-inp" type="number" id="calc-recu" placeholder="0" oninput="calcMonnaie()" inputmode="numeric">
       </div>
     </div>
+    <div style="padding:0 19px"><button type="button" id="btn-autre-pmt" class="autre-pmt" onclick="autrePaiement()"><span id="autre-pmt-t">Autre paiement</span><span class="autre-pmt-s"><i class="pm-pt" style="background:#FF7900"></i><i class="pm-pt" style="background:#FFCC00"></i><i class="pm-pt" style="background:#0F6CBD"></i><span id="autre-pmt-s">Crédit · Remise</span></span></button></div>
     <div id="calc-wrap-mobile" style="display:none;padding:0 19px">
       <div class="calc-card">
         <div class="calc-lbl">Total de la vente</div>
@@ -7441,7 +7474,10 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
      d'utile au comptoir. La coche est dessinée, et la ligne du dessous dit
      ce qu'il doit faire maintenant : « Rends 700 », « Awa doit 2 500 »,
      « Orange Money ». -->
-<div class="succ" id="succ">
+<!-- 24.00 — l'écran vert se ferme d'une touche n'importe où (pas seulement
+     « Vente suivante ») : c'est le client suivant qui attend. La question des
+     notifications, elle, reste tant qu'il n'a pas répondu. -->
+<div class="succ" id="succ" onclick="var t=event.target;if(!(t.closest&&t.closest('button,#succ-push')))fermerSucces()">
   <div class="succ-ico"><svg viewBox="0 0 64 64" width="84" height="84" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="rgba(255,255,255,.18)"/><circle cx="32" cy="32" r="23" fill="#fff"/><path d="M21 33l7.5 7.5L44 25" fill="none" stroke="var(--G)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
   <div class="succ-tit" id="succ-tit">Vente enregistrée !</div>
   <div class="succ-amt" id="succ-amt">0</div>
@@ -7775,7 +7811,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='23.99'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.00'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -11584,6 +11620,8 @@ function appliquerLang(){
   document.getElementById('tog-veille').className='tog '+(DB.cfg.veille?'on':'off');
   var _tne2=document.getElementById('tog-noemoji');if(_tne2)_tne2.className='tog '+(DB.cfg.noEmoji?'on':'off');
   var _tra=document.getElementById('tog-recuauto');if(_tra)_tra.className='tog '+(DB.cfg.recuAuto?'on':'off');
+  try{var _tec=document.getElementById('tog-eclair');if(_tec)_tec.className='tog '+(DB.cfg.eclair===false?'off':'on');
+    if(lang==='en'){document.getElementById('st-eclair').textContent='Flash sale';document.getElementById('st-eclair-s').textContent='The sale closes by itself 3 seconds after the last tile. Banknotes are on the bar.';}}catch(e){}
   try{majExpert();}catch(e){}
   var _sne=document.getElementById('st-noemoji');if(_sne)_sne.textContent=lang==='fr'?'Masquer les emojis':'Hide emojis';
   var _sne2=document.getElementById('st-noemoji-s');if(_sne2)_sne2.textContent=lang==='fr'?'Remplace les emojis par une pastille sobre (initiale)':'Replace emojis with a plain tile (initial)';
@@ -21966,6 +22004,7 @@ function updatePUI(pid){
       :(nb+' '+(lang==='fr'?'article'+(nb>1?'s':''):'item'+(nb>1?'s':'')));
     document.getElementById('ctot').textContent=fmt(total);}
   else fc.classList.add('hide');
+  try{_barreMaj(nb,total);}catch(e){}   // 24.00 — billets de la barre, jauge éclair
   try{majFabAjout();}catch(e){}
 }
 function calcTotal(){return Object.entries(panier).reduce(function(s,e){var l=_ligneDe(e[0],e[1]);return s+(l?l.m.total:0);},0);}
@@ -22737,6 +22776,12 @@ function calcMonnaie(immediat){
   // La monnaie se calcule sur ce qu'il DOIT payer, consigne comprise.
   var total=calcAPayer(),recu=parseFloat(document.getElementById('calc-recu').value)||0;
   var res=document.getElementById('calc-res');res.style.display='block';
+  // ⚠️ 24.00 — LA MONNAIE SOUS LE BOUTON. Mesuré au banc sur 360×640 : le
+  // billet touché, « Monnaie à rendre » s'affichait SOUS « Confirmer la
+  // vente » (le pied reste collé en bas). On fait remonter la feuille juste
+  // ce qu'il faut pour la lire.
+  try{var _bs=res.closest('.bsht'),_pd=_bs&&_bs.querySelector('.calc-pied');
+    if(_pd){var _dep=res.getBoundingClientRect().bottom-(_pd.getBoundingClientRect().top+8);if(_dep>0)_bs.scrollTop+=_dep;}}catch(e){}
   var monnaie=recu-total;
   document.getElementById('calc-res-amt').textContent=monnaie>=0?fmt(monnaie):fmt(0);
   if(monnaie<0){res.className='calc-res err';document.getElementById('calc-res-lbl').textContent=t('insuffisant');}
@@ -22750,6 +22795,135 @@ function calcMonnaie(immediat){
   if(recu>0)_direMonnaieT=setTimeout(direMonnaie,immediat?0:200);
 }
 var _direMonnaieT=null;
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 24.00 — LA VENTE ÉCLAIR : UNE TOUCHE, OU DEUX AVEC LA MONNAIE
+//  Le patron, le 22/11 : « la vente ultra rapide, c'est mon actif le plus
+//  redoutable ». Mesuré en base le même jour sur 2 837 ventes : 98,3 % en
+//  espèces, 68,6 % d'un seul article, 84 % de deux au plus. Mesuré dans
+//  l'app en vrais clics : trois touches (la tuile, « Encaisser »,
+//  « Confirmer la vente ») et une feuille où, sur un écran de 360×640, les
+//  billets de 2 000 et 1 000 étaient sous le bouton.
+//
+//  • La tuile touchée remplit le vert « Encaisser » en 3 secondes. Plein, la
+//    vente se ferme : espèces, compte juste, par le VRAI chemin
+//    (procederPmt → encaisser), rien de construit à côté.
+//  • Une autre tuile pendant ce temps : l'article s'ajoute, le vert repart.
+//  • Toucher la barre (le total ou « Encaisser ») : le vert s'arrête et la
+//    feuille habituelle s'ouvre — crédit, mobile money, remise.
+//  • Le ✕ de la tuile retire l'article avant que rien ne soit écrit ; après,
+//    « Annuler la vente » (23.85) reste à l'écran comme avant.
+//  • Un billet au-dessus de la barre ferme la vente avec ce billet reçu :
+//    l'écran dit « rends 400 », la voix aussi. Deux touches.
+//
+//  ⚠️ Elle ne se ferme JAMAIS seule quand une question reste ouverte :
+//  un client choisi (crédit), des emballages consignés à compter, une
+//  boutique où le mobile money ou le crédit pèsent (_pmtSimple), une feuille
+//  ouverte, un champ où il tape, l'app passée en arrière-plan. Ni pendant
+//  les trois premières ventes de la boutique : on apprend d'abord le geste
+//  entier (voir t211, la première vente guidée), l'app le raccourcit ensuite.
+//  Le patron la coupe dans Réglages (DB.cfg.eclair=false).
+// ══════════════════════════════════════════════════════════════════
+var _ECLAIR_MS=3000,_eclairT=null;
+function _eclairActif(){return !(DB&&DB.cfg&&DB.cfg.eclair===false);}
+// La vente peut se fermer en espèces sans rien demander de plus.
+function _venteSansQuestion(){
+  try{
+    if(!_eclairActif()||panierVide()||clientVente)return false;
+    if(role!=='patron'&&!hasPerm('vente'))return false;
+    if(consigneUnitPanier()>0)return false;
+    if(!_pmtSimple())return false;
+    if(venteSansStockInterdite()&&_panierSansStock().length)return false;
+    return true;
+  }catch(e){return false;}
+}
+function _eclairAppris(){
+  var n=0,v=(DB&&DB.ventes)||[];
+  for(var i=v.length-1;i>=0;i--){if(v[i]&&!v[i].annulee&&++n>=3)return true;}
+  return false;
+}
+function eclairStop(){
+  clearTimeout(_eclairT);_eclairT=null;
+  var b=document.getElementById('btn-enc');if(b)b.classList.remove('eclair');
+}
+function eclairArmer(){
+  eclairStop();
+  if(!_eclairAppris()||!_venteSansQuestion())return;
+  var b=document.getElementById('btn-enc');
+  if(b){b.style.setProperty('--eclair-ms',_ECLAIR_MS+'ms');void b.offsetWidth;b.classList.add('eclair');}
+  _eclairT=setTimeout(_eclairFin,_ECLAIR_MS);
+}
+function _eclairFin(){
+  _eclairT=null;
+  // Il fait autre chose : on ne ferme rien sous son doigt.
+  var ae=document.activeElement;
+  if(document.querySelector('.ov.show')||(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))
+     ||document.visibilityState==='hidden'||!_venteSansQuestion()){eclairStop();return;}
+  eclairStop();
+  if(_venteDirecte(0)){
+    _parcoursCompter('eclair');
+    // La vente s'est faite sans qu'il touche : il doit le VOIR (le téléphone
+    // vibre déjà, la voix remercie quand elle est allumée).
+    try{var _vd=DB.ventes[DB.ventes.length-1];showToast('✅ '+fmt(_vd.total)+' — '+(lang==='fr'?'vendu':'sold'));}catch(e){}
+    // Au compte juste, rien à lire : l'écran vert ne bloque pas la vente
+    // suivante. Le « ✓ » et « Annuler la vente » restent en bas.
+    if(!(DB.cfg&&DB.cfg.recuAuto)){try{fermerSucces();}catch(e){}}
+  }
+}
+// La vente fermée par le vrai chemin de la caisse ; `recu` = le billet reçu.
+function _venteDirecte(recu){
+  procederPmt();
+  var oc=document.getElementById('ov-calc');
+  if(!oc||!oc.classList.contains('show'))return false;   // refusée (stock, panier vide) : il a lu pourquoi
+  _billetsPris={};
+  var i=document.getElementById('calc-recu');if(i)i.value=recu>0?String(recu):'';
+  var avant=(DB.ventes||[]).length;
+  encaisser();
+  return (DB.ventes||[]).length>avant;
+}
+function barreBillet(v){
+  eclairStop();
+  if(!_venteSansQuestion())return;
+  if(_venteDirecte(v))_parcoursCompter('billet');
+}
+// Les billets qui dépassent le total : ceux qu'un client tend pour cette vente.
+function _billetsBarre(total){
+  var B=_billetsDe();if(!B||!(total>0))return [];
+  return B.b.filter(function(x){return x[0]>total;}).reverse().slice(0,3);
+}
+function _barreMaj(nb,total){
+  var box=document.getElementById('fbil'),fc=document.getElementById('fcart');if(!box||!fc)return;
+  if(!(nb>0))eclairStop();
+  var L=(nb>0&&_venteSansQuestion())?_billetsBarre(calcAPayer()):[];
+  var fr=(lang!=='en');
+  box.innerHTML=L.map(function(x){
+    return '<button type="button" class="bil" data-v="'+x[0]+'" style="background:'+x[1]+'" onclick="barreBillet('+x[0]+')" aria-label="'+(fr?'Le client donne ':'Customer gives ')+x[0]+'">'+fmtQ(x[0]).replace(/(\d)(?=(\d{3})+$)/g,'$1 ')+'</button>';
+  }).join('');
+  box.classList.toggle('show',L.length>0);
+  fc.classList.toggle('avec-bil',L.length>0);
+  document.body.classList.toggle('avec-bil',L.length>0&&nb>0);
+}
+// La tuile touchée arme la jauge ; toucher la barre l'arrête. Écouté en
+// capture, au niveau du document : aucune des tuiles (étagère, familles,
+// cartons, ventes rapides) n'a à le savoir. Seul compte ce que la touche a
+// changé au panier. La voix, elle, remplit le panier plus tard et relit la
+// commande : elle n'arme rien.
+function _panierSig(){try{return JSON.stringify([panier,panierLibre.length,_grosPanier]);}catch(e){return '';}}
+document.addEventListener('click',function(e){
+  var t=e.target;if(!t||!t.closest)return;
+  if(t.closest('#fcart')){if(!t.closest('#fbil'))eclairStop();return;}
+  if(!t.closest('#s-caisse'))return;
+  var avant=_panierSig();
+  setTimeout(function(){if(_panierSig()!==avant&&!panierVide())eclairArmer();},0);
+},true);
+function toggleEclair(){
+  if(!DB||!DB.cfg)return;
+  DB.cfg.eclair=(DB.cfg.eclair===false);
+  var b=document.getElementById('tog-eclair');if(b)b.className='tog '+(_eclairActif()?'on':'off');
+  if(!_eclairActif())eclairStop();
+  save();
+  showToast(_eclairActif()?('⚡ '+(lang==='fr'?'Vente éclair : la vente se ferme seule':'Flash sale: the sale closes by itself'))
+                         :('✋ '+(lang==='fr'?'Chaque vente attend « Encaisser »':'Each sale waits for “Checkout”')));
+}
 function encaisser(){
   var total=calcTotal(),ben=calcBenTotal(),lignes=[];
   Object.entries(panier).forEach(function(e){var key=e[0],qty=e[1];var parts=key.split('-');var pid=parts[0],vid=parts[1];var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;var v=vid&&vid!=='0'?p.vr.find(function(x){return x.id==vid;}):null;var qBase=v?getQBase(v):1;if(v){if(utiliseStockBase(p))p.stk-=qty*qBase;else v.stk-=qty;}else{p.stk-=qty;}p.vd+=qty;lignes.push({nm:p.nm+(v?' — '+v.nm:'')+' ×'+qty,px:(v?v.px:p.px)*qty,pid:p.id,vid:vid&&vid!=='0'?vid:null,qty:qty,qBase:qBase});});
