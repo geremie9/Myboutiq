@@ -897,23 +897,23 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .prayon:active{transform:scale(.96)}
 /* 24.01 — la tuile de famille : la sorte du moment, les autres en pastilles. */
 .pfam.ptuile{padding:19px 3px 3px}
-/* 24.05 — la tuile en étages (voir _dessinerFamilleTuile) */
-.pfam.petg{display:flex;flex-direction:column}
-.pfam.petg.haute{grid-row:span 2}
-.etgs{flex:1;display:flex;flex-direction:column;gap:4px;min-height:0}
-.etg-s{flex:1 1 0;min-height:56px;position:relative;display:flex;align-items:center;gap:5px;width:100%;border:0;border-left:6px solid;border-radius:9px;padding:4px 5px;font-family:Outfit,sans-serif;text-align:left;cursor:pointer;box-shadow:0 1px 2px rgba(60,35,5,.2);-webkit-tap-highlight-color:transparent}
-.etg-s img{flex:none;width:30px;height:30px;object-fit:contain;background:#fff;border-radius:7px}
-.etg-t{display:flex;flex-direction:column;min-width:0;line-height:1.08}
-.etg-px{font-size:17px;font-weight:900;white-space:nowrap}
-.etg-px u.dv{text-decoration:none;font-size:.68em;font-weight:800;opacity:.85;margin-left:1px}
-.etg-u{font-size:.62em;font-weight:800;margin-left:1px}
-.etg-nm{font-size:11.5px;font-weight:800;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
-.etg-s.sel{box-shadow:inset 0 0 0 3px var(--G,#00C853)}
-.etg-s.out{opacity:.5;filter:grayscale(.6)}
-.etg-s:active,.etg-pied:active{transform:scale(.97)}
-.etg-q{position:absolute;top:3px;right:3px;min-width:22px;height:22px;border-radius:11px;padding:0 5px;background:#E53935;color:#fff;font:900 12px/22px Outfit,sans-serif;font-style:normal;text-align:center;pointer-events:none}
-.etg-pied{flex:none;position:relative;min-height:44px;width:100%;border:0;border-radius:9px;background:rgba(255,255,255,.9);color:#3D3A4A;font:900 15px Outfit,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 1px 2px rgba(60,35,5,.2)}
-#s-caisse #pgrid.serre .etg-s img{display:none}
+/* 24.08 — la famille en une case : la bande des autres sortes (voir _dessinerFamilleTuile) */
+.pfam1 .vtile{position:relative}
+/* Une case comme un article : pas d'étiquette au-dessus (19 px de plus par
+   rangée) ; le bord de couleur, la bande aux petites photos et le nom de la
+   sorte disent « famille ». */
+.pfam.pfam1{padding:0}
+.pfam1 .pfam-l{display:none}
+.pfam1 .vtile .vt-gros{display:none!important}   /* le carton vit dans la bande (ou la famille) */
+.fam-band{position:absolute;left:0;right:0;top:0;height:34px;z-index:8;display:flex;align-items:center;gap:0;padding:0 0 0 8px;border-radius:9px 9px 0 0;background:rgba(61,42,92,.93);color:#fff;font:900 15px/1 Outfit,sans-serif;cursor:pointer;overflow:hidden}
+.fam-band .fb-m{flex:none;width:26px;height:26px;border-radius:50%;background:#fff;object-fit:contain;border:2px solid #fff;margin-right:-6px;box-sizing:border-box}
+.pfam1 .vtile .fam-band img.fb-m{position:static!important;inset:auto!important;width:26px!important;height:26px!important;max-width:26px!important;min-height:0!important;object-fit:cover!important;border-radius:50%!important;padding:0!important;opacity:1!important;transform:none!important;filter:none!important}
+.fam-band .fb-d{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:900;border-color:rgba(255,255,255,.85)}
+.fam-band b{margin-left:12px;white-space:nowrap}
+.fam-band .fb-q{margin-left:5px;min-width:20px;height:20px;border-radius:10px;padding:0 5px;background:#E53935;color:#fff;font:900 11px/20px Outfit,sans-serif;font-style:normal;text-align:center}
+.fam-band .fb-c{margin-left:auto;align-self:stretch;flex:none;width:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:#00695C;font-size:16px}
+.fam-band .fb-c small{font-size:9.5px;font-weight:900;white-space:nowrap}
+.fam-band:active{filter:brightness(1.1)}
 .pt-sortes{position:absolute;left:1px;right:1px;top:30px;z-index:4;display:flex;gap:2px;justify-content:center;pointer-events:none}
 .pt-s{pointer-events:auto;position:relative;flex:1 1 0;min-width:30px;max-width:60px;height:30px;border:2px solid #fff;border-radius:15px;padding:0 3px;display:flex;align-items:center;justify-content:center;font:900 11px/1 Outfit,sans-serif;letter-spacing:-.02em;box-shadow:0 2px 5px rgba(0,0,0,.22);cursor:pointer;-webkit-tap-highlight-color:transparent}
 .pt-s b{white-space:nowrap;overflow:hidden;text-overflow:clip;max-width:100%}
@@ -1959,8 +1959,8 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 /* 24.07 — le carton SUR la photo (choix A du patron, 23.42), mais à la
    taille du doigt : toute la largeur, en haut de la photo. Le milieu de la
    photo reste la pièce ; une seule étiquette sous la planche. */
-#s-caisse #pgrid .pcard.abande:not(.etg) .pbas{position:absolute;left:0;right:0;top:0;bottom:auto;width:auto;height:40px;margin:0;padding:0;z-index:3;display:flex}
-#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pbarre,#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pgros{width:100%;height:40px;min-height:40px;margin:0;padding:0 6px;border-radius:10px 10px 0 0;flex-direction:row;justify-content:center;align-items:center;gap:5px;background:rgba(0,105,92,.94);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18);opacity:1}
+#s-caisse #pgrid .pcard.abande:not(.etg) .pbas{position:absolute;left:0;right:0;top:0;bottom:auto;width:auto;height:34px;margin:0;padding:0;z-index:3;display:flex}
+#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pbarre,#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pgros{width:100%;height:34px;min-height:34px;margin:0;padding:0 6px;border-radius:10px 10px 0 0;flex-direction:row;justify-content:center;align-items:center;gap:5px;background:rgba(0,105,92,.94);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18);opacity:1}
 #s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pbarre.vide,#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pgros.vide{background:rgba(236,234,228,.95);color:#4A4636}
 #s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pbarre:not(.vide) b{font-size:15px;color:inherit;white-space:nowrap}
 #s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pbarre.vide b{color:inherit;white-space:nowrap}
@@ -1971,17 +1971,12 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 /* Une invitation sans prix (la puce d'une famille, « vendre en gros ») garde
    sa forme et sa cible (t243, t285) ; son bas s'aligne sur celui des bandes :
    les barres du gros d'une rangée tombent au même endroit (t222). */
-#s-caisse #pgrid .pcard:not(.abande):not(.etg) .pbas{top:auto;bottom:calc(100% - 40px)}
-#s-caisse #pgrid.serre .pcard:not(.abande):not(.etg) .pbas{bottom:calc(100% - 32px)}
-#s-caisse #pgrid .pcard.abande:not(.etg) .qbdg,#s-caisse #pgrid .pcard.abande:not(.etg) .pedit{top:43px}
-#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pbas,#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pbas .pbarre,#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pbas .pgros{height:32px;min-height:32px}
+#s-caisse #pgrid .pcard:not(.abande):not(.etg) .pbas{top:auto;bottom:calc(100% - 34px)}
+#s-caisse #pgrid.serre .pcard:not(.abande):not(.etg) .pbas{bottom:calc(100% - 30px)}
+#s-caisse #pgrid .pcard.abande:not(.etg) .qbdg,#s-caisse #pgrid .pcard.abande:not(.etg) .pedit{top:37px}
+#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pbas,#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pbas .pbarre,#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pbas .pgros{height:30px;min-height:30px}
 #s-caisse #pgrid.serre .pcard.abande:not(.etg) .pbas .pbarre b{font-size:12px}
-#s-caisse #pgrid.serre .pcard.abande:not(.etg) .qbdg,#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pedit{top:35px}
-.etg-ct{flex:none;align-self:stretch;width:44px;margin:-4px -5px -4px auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:#00695C;color:#fff;border-radius:0 9px 9px 0;font:900 18px/1 Outfit,sans-serif}
-.etg-ct small{font-size:9.5px;font-weight:900;white-space:nowrap}
-.etg-s.etg-c img{display:none}
-.etg-s.etg-c .etg-px{font-size:14px}
-.etg-s.etg-c .etg-t{min-width:0;overflow:hidden}
+#s-caisse #pgrid.serre .pcard.abande:not(.etg) .qbdg,#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pedit{top:33px}
 .fbil .bil{flex:0 1 92px;height:46px;font-size:18px;border-radius:10px;box-shadow:inset 0 0 0 3px rgba(255,255,255,.2),0 6px 16px rgba(26,26,46,.18)}
 #fcart.avec-bil:not(.hide)~.micp{bottom:206px}
 body.avec-bil .mcont{padding-bottom:214px}
@@ -7889,7 +7884,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.07'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.08'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -14202,6 +14197,11 @@ function prixPadValider(){
 // Un article qu'on peut vendre tout de suite : un nom, un prix. Stock jamais
 // compté (`rt` + stk0 0) : ni « épuisé » ni « -3 » tant qu'il ne l'a pas
 // compté, comme pour « créer en vendant ».
+// « le kilo » → kg, « le litre » → L : l'unité que l'étagère de départ annonce.
+function _uniteEtagere(nom){
+  try{var x=_ETAGERE_PRIX[nom];if(!x)return '';var l=String(x[3]||'');
+    return /kilo/.test(l)?'kg':(/litre/.test(l)?'L':'');}catch(e){return '';}
+}
 function _creerArticleRapide(nom,px,o){
   o=o||{};
   var fr=(lang==='fr'),e=o.src||null;
@@ -14216,8 +14216,13 @@ function _creerArticleRapide(nom,px,o){
       if(!art.um||!art.umSac){try{appliquerConditionnementCatalogue([art],true);}catch(x){}}
     }
     // ⚠️ Depuis l'étagère, ni photo ni conditionnement du catalogue : « Riz »
-    // deviendrait « au kilo, sac de 25 », et la première touche ouvrirait
-    // la pesée au lieu de vendre. Il le dira s'il vend autrement.
+    // deviendrait « sac de 25 ». Il le dira s'il vend autrement.
+    // ⭐ 24.08 — MAIS L'UNITÉ QUE L'ÉTAGÈRE ANNONCE, OUI. Elle affichait
+    // « Riz + 600 F · le kilo », « Huile + 1 300 F · le litre » et créait des
+    // articles SANS unité : vendus à la pièce, sans la feuille des mesures.
+    // Le patron, le 23/11 : tout ce qui se mesure se vend par la feuille,
+    // « que ce soit pendant la configuration ou ceux qui existent déjà ».
+    if(o.etagere&&!art.um){var _ue=_uniteEtagere(nom);if(_ue)art.um=_ue;}
     // 23.32 — sauf la vraie photo certifiée qu'il a vue sur la tuile.
     if(o.img&&!art.img&&srcSure(o.img))art.img=String(o.img);
     DB.articles.push(art);
@@ -14682,7 +14687,11 @@ function _marquerGrosTuiles(){
     // elle défaisait le choix A du patron (23.42, t222 : le carton SUR la
     // photo, une seule étiquette sous la planche). Elle est donc sur la photo,
     // en HAUT, toute la largeur : le milieu reste la pièce.
-    c.classList.toggle('abande',!!(b&&b.querySelector('.pbarre,.pgros:not(.vide)'))&&!c.classList.contains('etg'));
+    // 24.08 — seul un carton qui SE VEND (son prix) prend la bande : le carton
+    // sans prix (« prix ? ») redevient une puce. Captures du patron, 23/11 : la
+    // bande grise « carton » couvrait le haut de la photo de presque toutes les
+    // tuiles, et « les images sont très petites ».
+    c.classList.toggle('abande',!!(b&&b.querySelector('.pbarre:not(.vide),.pgros:not(.vide)'))&&!c.classList.contains('etg'));
   });}catch(e){}
 }
 var _renderProdBase=renderProd;
@@ -15523,6 +15532,8 @@ function _direPourquoiVide(p){
 function venteRapideSorte(pid,vid){
   var p=DB.articles.find(function(x){return x.id==pid;});if(!p)return;
   var v=(p.vr||[]).find(function(x){return String(x.id)===String(vid);});if(!v)return;
+  // 24.08 — une sorte au kilo posait 1 kg d'office : la feuille, comme partout.
+  if(seVendAuDetail(p)&&Number(v.px)>0){ouvrirQteMesure(p,false,v);return;}
   varArtCours=p;
   (p.vr||[]).forEach(function(x){varQtys[x.id]=panier[p.id+'-'+x.id]||0;});
   chgVQ(v.id,p.id,1,!!p.rt);
@@ -17205,7 +17216,12 @@ function _vendreDose(p,d){
   var m=_mesuresDe(p).find(function(x){return txtNorm(x.nm)===txtNorm(d.nm);});
   return m?_ajouterMesure(p,Number(m.q),Number(m.px),String(m.nm)):false;
 }
-// La tuile d'un article au kilo/litre : l'habitude d'une touche, sinon la feuille.
+// La tuile d'un article au kilo/litre : l'habitude d'une touche (23.88, « le
+// riz aussi vite qu'une bouteille »), sinon la feuille.
+// 24.08 — « tout ce qui se mesure se comporte comme la feuille » : posé la
+// question des deux demandes, le patron a tranché le 23/11 : « une touche =
+// l'habitude ». Le badge « 1 ⚖ » de la tuile ouvre la feuille pour changer ;
+// tous les autres chemins (appui long, panier, vente rapide) l'ouvrent.
 function vendreMesureTuile(p,v){
   _qteRemplace=null;_qteArt=p;_qteVar=v||null;
   var d=null;try{d=_doseHabituelle(p);}catch(e){}
@@ -19232,111 +19248,92 @@ function _vendreSorteTuile(p,v){
   venteRapideSorte(p.id,v.id);
 }
 // ══════════════════════════════════════════════════════════════════
-//  ⭐⭐ 24.05 — LA TUILE EN ÉTAGES : UNE SORTE, UN ÉTAGE, UNE TOUCHE
-//  Le patron, le 23/11 : « la tuile des articles en famille, de façon
-//  intelligente, facile, minimisant les erreurs de touche et réduisant au
-//  maximum la navigation inutile ».
-//  Mesuré au banc sur un écran de 360 px : les pastilles des autres sortes
-//  faisaient 36×30 px, « +N » 26×30 — moins de la moitié des 48 dp qu'il
-//  faut à un doigt. Les mots coupés (« Mayo », « Loca », « Palm »), aucun
-//  prix. Et posées SUR la tuile : un doigt qui rate la pastille vend la
-//  sorte de la tuile — l'erreur de touche devenait une erreur de vente.
-//  Mesuré en base le 23/11 (18 familles qui vendent, 308 lignes) : la sorte
-//  de la tuile ne fait que 54,5 % des ventes ; les deux suivantes 41 % de
-//  plus — 95,8 % pour les trois premières.
-//  · La tuile se coupe en ÉTAGES, un par sorte, toute la largeur, au moins
-//    56 px de haut : le prix en grand, son mot, sa couleur, sa photo. Une
-//    touche vend la sorte. Plus rien de petit posé sur une autre cible.
-//  · Les trois sortes du jour (les plus vendues ces 30 jours, pas épuisées ;
-//    ordre gardé pour la journée : rien ne bouge sous le doigt).
-//  · Trois étages ou plus de choses à dire : la tuile prend deux rangées.
-//    La bande du bas (« +N », 📦 cartons, ✎ en mode Modifier) ouvre la
-//    famille entière ; toute la largeur elle aussi.
-//  · Le nombre au panier s'affiche sur l'étage, sans « ✕ » : sur un étage,
-//    toucher AJOUTE toujours. On retire depuis le panier (la barre).
-//  · Une famille au kilo garde la feuille des mesures (24.00).
+//  ⭐⭐ 24.08 — LA FAMILLE REDEVIENT UN ARTICLE : UNE CASE, UNE GRANDE PHOTO
+//  La 24.05 coupait la tuile en ÉTAGES (une sorte, un étage, son prix) sur
+//  deux rangées. Le patron, le 23/11, captures à l'appui : « les articles en
+//  famille prennent beaucoup plus d'espace, ce qui ralentit la navigation et
+//  peut causer les erreurs ou le retard ; l'œil a du mal à identifier
+//  directement les articles ; et les images sont très petites — l'image
+//  devrait être un élément crucial pour les non-lettrés ». Mesuré : 2 cases
+//  au lieu d'une, des photos de 30 px dans les étages.
+//  · Une case, comme un article : la GRANDE photo de la sorte du moment (la
+//    plus vendue ces 30 jours, pas épuisée ; ordre gardé pour la journée),
+//    son prix et son nom dessous. Une touche la vend (54,5 % des ventes de
+//    famille, mesuré en base) ; une famille au kilo ouvre la feuille.
+//  · Une bande sur le haut de la photo, toute la largeur (34 px) : les
+//    PETITES PHOTOS des autres sortes et « +N ». Une touche ouvre la famille,
+//    où chaque sorte a sa grande tuile avec sa photo — on reconnaît par
+//    l'image, pas par le mot. La 24.01 posait des pastilles de 36×30 au mot
+//    coupé : c'est la bande entière qui est la cible.
+//  · Le carton de la sorte du moment, s'il a son prix : le bout droit de la
+//    bande (44 px), une touche — comme la bande du carton d'un article.
 // ══════════════════════════════════════════════════════════════════
+var _famChoix=null;
 function _dessinerFamilleTuile(p,g){
   var fr=(lang==='fr'),old=document.getElementById('pc-'+p.id);
   var box=document.createElement('div');
-  box.className='pfam ptuile petg';box.id='pc-'+p.id;
+  box.className='pfam ptuile pfam1';box.id='pc-'+p.id;
   _poserCouleurRayon(box,p.cat);
   var tout=_sortesPlates(p),sortes=tout.slice();
   try{var _q=txtNorm(_rechCaisse||'');if(_q&&txtNorm(p.nm).indexOf(_q)<0){
     var _m=sortes.filter(function(v){return txtNorm(v.nm||'').indexOf(_q)>=0||txtNorm(p.nm+' '+(v.nm||'')).indexOf(_q)>=0;});if(_m.length)sortes=_m.concat(sortes.filter(function(v){return _m.indexOf(v)<0;}));}}catch(e){}
   var epuisee=function(v){try{return !!_infoVar(p,v).out;}catch(e){return false;}};
-  // Les vivantes d'abord, dans l'ordre du jour ; les épuisées derrière.
   var rang=sortes.filter(function(v){return !epuisee(v);}).concat(sortes.filter(epuisee));
-  if(!rang.length)return null;
+  var main=rang[0];if(!main)return null;
+  var autres=rang.slice(1);
   var pq=Object.keys(panier).filter(function(k){return k.split('-')[0]==p.id;}).reduce(function(s,k){return s+panier[k];},0);
   if(pq>0)box.classList.add('sel');
   box.innerHTML='<div class="pfam-l">'+escH(p.nm)+'</div>';
-  var vus=rang.slice(0,3),cache=rang.slice(3);
-  // Un carton qui se VEND (son prix connu, ou un ancien lot en sorte) — pas la
-  // puce « gros » vide qui sert à en créer un : elle s'ouvre dans la famille.
-  var cartons=(p.vr||[]).some(function(v){try{
-    if(_estGrosDeVariante(v))return true;
-    if(vus.indexOf(v)>=0&&!epuisee(v))return false;     // 24.07 — son carton est sur son étage
-    var gv=_grosDe(p,v);if(gv&&gv.px>0&&gv.n>1)return true;
-    return _etagesGros(p,v).length>1;
-  }catch(e){return false;}});
-  var modif=false;try{modif=(role==='patron'||hasPerm('produits'))&&!(venteVerrouillee&&venteVerrouillee());}catch(e){}
-  var pied=cache.length>0||cartons||modif;
-  var haute=vus.length>=3||pied;
-  var col=document.createElement('div');col.className='etgs';
-  var vsTous=(p.vr||[]).filter(function(x){try{return x&&!_estGrosDeVariante(x);}catch(e){return !!x;}});
-  vus.forEach(function(v){col.appendChild(_etageSorte(p,v,vsTous,epuisee(v)));});
-  if(pied){
-    var qc=cache.reduce(function(s,v){return s+(panier[p.id+'-'+v.id]||0);},0);
-    var bp=document.createElement('button');bp.type='button';bp.className='etg-pied';
-    var mots=[];
-    if(cache.length)mots.push('<b>+'+cache.length+'</b>');
-    if(cartons)mots.push('<span aria-hidden="true">📦</span>');
-    if(modif)mots.push('<span aria-hidden="true">✎</span>');
-    bp.innerHTML=mots.join(' ')+(qc>0?'<i class="etg-q">'+escH(fmtQ(qc))+'</i>':'');
-    bp.setAttribute('aria-label',fr?('Toutes les sortes de '+(p.nm||'')):('All kinds of '+(p.nm||'')));
-    bp.onclick=function(e){if(e){e.stopPropagation();e.preventDefault();}try{ouvrirVar(p);}catch(x){}};
-    col.appendChild(bp);
+  var gr=document.createElement('div');
+  gr.className='vgrid pfam-g';gr.style.gridTemplateColumns='minmax(0,1fr)';
+  var tuile=_tuileSortePlate(p,main);
+  // La sorte du moment au kilo : la feuille des mesures (24.08), pas 1 kg d'office.
+  var orig=tuile.onclick;
+  tuile.onclick=function(ev){
+    var t=ev&&ev.target;
+    if(t&&t.closest&&t.closest('.fam-band'))return;
+    if(seVendAuDetail(p)&&Number(main.px)>0&&!(t&&t.getAttribute&&(t.getAttribute('data-moins')||t.getAttribute('data-grosdet')||t.getAttribute('data-etage')))){_vendreSorteTuile(p,main);return;}
+    if(orig)orig.call(tuile,ev);
+  };
+  var gm=null;try{gm=_grosDe(p,main);}catch(e){}
+  var carton=!!(gm&&gm.px>0&&gm.n>1&&!epuisee(main));
+  if(autres.length||carton){
+    tuile.classList.add('avec-fband');
+    var vsTous=(p.vr||[]).filter(function(x){try{return x&&!_estGrosDeVariante(x);}catch(e){return !!x;}});
+    var band=document.createElement('div');band.className='fam-band';band.setAttribute('role','button');
+    var h='';
+    // Avec le carton au bout de la bande, la place d'une photo de moins (111 px).
+    autres.slice(0,carton?1:3).forEach(function(v,i){
+      var im='';try{im=_imgVar(p,v)||'';}catch(e){}
+      var src=im?srcSure(im):'';
+      var k=Math.max(0,vsTous.indexOf(v)),hu=Math.round((k*137.508+28)%360);
+      h+=src?('<img class="fb-m" src="'+src+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">')
+             :('<span class="fb-m fb-d" style="background:hsl('+hu+',60%,42%)">'+escH(String(v.nm||'?').trim().charAt(0).toUpperCase())+'</span>');
+    });
+    if(autres.length)h+='<b>+'+autres.length+'</b>';
+    var qc=autres.reduce(function(s,v){return s+(panier[p.id+'-'+v.id]||0);},0);
+    if(qc>0)h+='<i class="fb-q">'+escH(fmtQ(qc))+'</i>';
+    if(carton)h+='<span class="fb-c" data-carton="1" aria-label="'+escH((gm.mot||'carton')+' '+fmt(gm.px))+'">'+(function(){try{return _iconeCont(gm.mot);}catch(e){return '📦';}})()+'<small>'+_fmtBillet(Math.round(gm.px))+'</small></span>';
+    band.innerHTML=h;
+    band.setAttribute('aria-label',fr?('Les '+(autres.length+1)+' sortes de '+(p.nm||'')):('All kinds of '+(p.nm||'')));
+    band.onclick=function(e){
+      if(e){e.stopPropagation();e.preventDefault();}
+      if(carton&&e&&e.target&&e.target.closest&&e.target.closest('.fb-c')){
+        _dernierCarton={pid:p.id,vid:main.id};_cartonAjouter({p:p,v:main,g:gm},1);return;
+      }
+      // La famille s'ouvre en « choix » : la sorte touchée va au panier et la
+      // fenêtre se referme (voir le gestionnaire plus bas) — deux touches, pas
+      // trois (la bande, la sorte, « Valider »).
+      _famChoix={id:p.id,t:Date.now()};
+      try{ouvrirVar(p);}catch(x){}
+    };
+    tuile.appendChild(band);
   }
-  box.appendChild(col);
-  box.classList.toggle('haute',haute);
+  gr.appendChild(tuile);
+  box.appendChild(gr);
   box.style.gridColumn='span 1';
   if(old&&old.parentNode)old.parentNode.replaceChild(box,old);else g.appendChild(box);
   return box;
-}
-function _etageSorte(p,v,vsTous,out){
-  var fr=(lang==='fr');
-  var i=Math.max(0,vsTous.indexOf(v)),h=Math.round((i*137.508+28)%360);   // la couleur de la sorte (23.98)
-  var mot='';try{mot=_motDistinctif(p,v,vsTous);}catch(e){}
-  if(!mot)mot=String(v.nm||'?');
-  var q=panier[p.id+'-'+v.id]||0,px=Number(v.px)||0;
-  var im='';try{im=_imgVar(p,v)||'';}catch(e){}
-  var src=im?srcSure(im):'';
-  // 24.07 — le carton de la sorte, s'il a son prix : une zone à droite de
-  // l'étage (44 px × toute sa hauteur), une touche, comme avant la 24.05.
-  var g=null;try{g=_grosDe(p,v);}catch(e){}
-  var carton=!!(g&&g.px>0&&g.n>1&&!out);
-  var b=document.createElement('button');b.type='button';
-  b.className='etg-s'+(q>0?' sel':'')+(out?' out':'')+(carton?' etg-c':'');
-  b.id='pe-'+p.id+'-'+v.id;
-  b.style.background='hsl('+h+',75%,90%)';b.style.color='hsl('+h+',65%,18%)';b.style.borderLeftColor='hsl('+h+',60%,42%)';
-  var unite='';try{if(seVendAuDetail(p))unite='<span class="etg-u">/'+escH(uniteArt(p))+'</span>';}catch(e){}
-  b.innerHTML=(src?'<img src="'+src+'" alt="" loading="lazy" onerror="this.remove()">':'')
-    +'<span class="etg-t"><b class="etg-px">'+(px>0?_deviseCourte(_montantCarte(px)):(fr?'Prix ?':'Price?'))+unite+'</b>'
-    +'<span class="etg-nm">'+escH(mot)+'</span></span>'
-    +(q>0?'<i class="etg-q">'+escH(fmtQ(q))+'</i>':'')
-    +(carton?('<span class="etg-ct" data-carton="1" aria-label="'+escH((g.mot||'carton')+' '+fmt(g.px))+'">'+(function(){try{return _iconeCont(g.mot);}catch(e){return '📦';}})()+'<small>'+_fmtBillet(Math.round(g.px))+'</small></span>'):'');
-  b.setAttribute('aria-label',(v.nm||'')+' '+fmt(px));
-  b.onclick=function(e){
-    if(e){e.stopPropagation();e.preventDefault();}
-    if(carton&&e&&e.target&&e.target.closest&&e.target.closest('.etg-ct')){
-      _dernierCarton={pid:p.id,vid:v.id};
-      _cartonAjouter({p:p,v:v,g:g},1);
-      return;
-    }
-    _vendreSorteTuile(p,v);
-  };
-  return b;
 }
 // La tuile d'une sorte sur l'étagère : la tuile de la fenêtre, et ses gestes.
 // Les gestes de la fenêtre travaillent sur `varQtys` (la famille ouverte) :
@@ -20049,9 +20046,22 @@ function _paveInfo(p,v){
   return {n:n,mot:(g&&g.mot)||_motContenant(p,v||null),lotPx:Number(lot.px)||0,pxU:Number(v?v.px:p.px)||0,
           um:um,deja:deja,reste:reste,rt:rt,jamais:jamais};
 }
-function ouvrirPave(p,v){
+function ouvrirPave(p,v,carton){
   if(!p)return;
   var fr=(lang==='fr');
+  // ⭐ 24.08 — « Tous les articles en kg, en litres ou autres mesures doivent
+  // se comporter comme la feuille » (le patron, 23/11, sa capture de la
+  // feuille du sucre). L'appui long ouvrait le pavé « Combien ? », sans
+  // « pour un montant » ni ¼ · ½. Il ouvre la feuille ; le pavé reste pour
+  // compter des SACS (« Combien ? » de la barre des cartons, `carton`).
+  // Un article au kilo qui a un SAC garde le pavé, ouvert sur les sacs : un
+  // sac se compte entier, il ne se pèse pas (t218).
+  if(!carton&&seVendAuDetail(p)&&(!v||Number(v.px)>0)){
+    var _sac=null;try{_sac=_grosDe(p,v||null);}catch(e){}
+    if(!(_sac&&_sac.n>1&&(_sac.px>0||Number((v||p).px)>0)))
+      {ouvrirQteMesure(p,false,v||null);return;}
+    carton=true;
+  }
   try{document.getElementById('ctxm').classList.remove('show');}catch(e){}
   try{_fermerCtxVar();}catch(e){}
   if(!v){
@@ -20073,7 +20083,7 @@ function ouvrirPave(p,v){
   // Il s'ouvre sur ce que la tuile vend d'une touche : le carton chez un
   // grossiste (ou quand la pièce n'a pas de prix), la pièce sinon.
   var tuileC=v?!!_grosDeVarTuile(p,v):!!_grosDeTuile(p);
-  _pv={p:p,v:v||null,mode:(i.n&&(tuileC||!(i.pxU>0)))?'c':'p',s:''};
+  _pv={p:p,v:v||null,mode:(i.n&&(carton||tuileC||!(i.pxU>0)))?'c':'p',s:''};
   document.getElementById('pv-tit').textContent='🔢 '+(fr?'Combien ?':'How many?');
   document.getElementById('pv-nm').textContent=v?((v.nm||'')+' · '+p.nm):p.nm;
   var vg=document.getElementById('pv-vig');
@@ -20138,6 +20148,9 @@ function _paveRendre(){
 }
 function paveUnite(m){
   if(!_pv)return;
+  // 24.08 — « Au kilo » dans le pavé d'un sac : la feuille des mesures, avec
+  // « pour un montant » et ¼ · ½ (le patron, 23/11 : tout ce qui se mesure).
+  if(m!=='c'&&seVendAuDetail(_pv.p)){var _p=_pv.p,_v=_pv.v;_pv=null;closeSheet('ov-pave');ouvrirQteMesure(_p,false,_v||null);return;}
   _pv.mode=(m==='c')?'c':'p';
   if(_pv.mode==='c'||!(_umDe(_pv.p)==='kg'||_umDe(_pv.p)==='L'))_pv.s=String(_pv.s||'').split(',')[0];
   _paveRendre();
@@ -22508,7 +22521,16 @@ function _pasLigne(key,qty){
 function chgQLot(key,sens){
   var qty=panier[key]||0;if(!(qty>0))return;
   var info=_pasLigne(key,qty);
-  if(!info.lot){chgQ(key,sens*info.pas);return;}
+  // 24.08 — une ligne au kilo / au litre : + et − retiraient ou ajoutaient
+  // UN kilo. La feuille, en « remplacer » (« Au panier : 1,5 kg · Retirer »).
+  if(!info.lot){
+    try{
+      var _k=String(key).split('-'),_p=DB.articles.find(function(x){return String(x.id)===_k[0];});
+      var _v=(_p&&_k[1]&&_k[1]!=='0')?(_p.vr||[]).find(function(x){return String(x.id)===_k[1];}):null;
+      if(_p&&seVendAuDetail(_p)&&(!_v||Number(_v.px)>0)){ouvrirQteMesure(_p,true,_v||null);return;}
+    }catch(e){}
+    chgQ(key,sens*info.pas);return;
+  }
   var n=info.lot.n;
   if(sens>0){
     // Une variante passe par son propre chemin (varQtys) : on ne s'en mêle
@@ -23230,7 +23252,7 @@ function _cartonAjouter(c,fois){
 function cartonPlus(fois){var c=_cartonCible();if(c)_cartonAjouter(c,fois);}
 function cartonCombien(){
   var c=_cartonCible();if(!c)return;
-  ouvrirPave(c.p,c.v);
+  ouvrirPave(c.p,c.v,true);
   try{if(_pv&&_pv.p===c.p){_pv.mode='c';_paveRendre();}}catch(e){}
 }
 function _barreMaj(nb,total){
@@ -23263,6 +23285,28 @@ function _panierSig(){try{return JSON.stringify([panier,panierLibre.length,_gros
 document.addEventListener('click',function(e){
   var t=e.target;if(!t||!t.closest)return;
   if(t.closest('#fcart')){if(!t.closest('#fbil'))eclairStop();return;}
+  // 24.08 — la famille ouverte depuis sa bande : la sorte touchée va au panier,
+  // la fenêtre se referme, la vente est aussi simple qu'une tuile.
+  if(_famChoix&&t.closest('#var-lst .vtile')){
+    var fc=_famChoix,avV=JSON.stringify(varQtys||{});
+    setTimeout(function(){
+      var o=document.getElementById('ov-var');
+      if(!o||!o.classList.contains('show')||!varArtCours||varArtCours.id!==fc.id||Date.now()-fc.t>120000){_famChoix=null;return;}
+      if(JSON.stringify(varQtys||{})===avV)return;          // rien d'ajouté (une feuille des mesures s'est ouverte, un « − »…)
+      _famChoix=null;
+      try{confirmerVar();}catch(e){}
+      if(!panierVide())eclairArmer();
+    },0);
+    return;
+  }
+  // 24.08 — la feuille des mesures : sa réponse donnée (la feuille fermée,
+  // le panier changé), la vente est aussi simple qu'une tuile.
+  if(t.closest('#ov-qte')){
+    var av=_panierSig();
+    setTimeout(function(){var o=document.getElementById('ov-qte');
+      if(_panierSig()!==av&&!panierVide()&&!(o&&o.classList.contains('show'))&&!_qteRemplace)eclairArmer();},0);
+    return;
+  }
   if(!t.closest('#s-caisse'))return;
   var avant=_panierSig();
   setTimeout(function(){if(_panierSig()!==avant&&!panierVide())eclairArmer();},0);
@@ -36167,6 +36211,24 @@ function migrateDBData(d){
   if(!d)return d;
   d.cfg=d.cfg||{};
   try{_neutraliserTextes(d);}catch(e){}
+  // ⭐ 24.08 — LES ARTICLES DE L'ÉTAGÈRE DÉJÀ CRÉÉS SANS UNITÉ. Mesuré en base
+  // le 23/11 : Riz (7), Sucre (4), Huile (4) sans unité, vendus à la pièce
+  // alors que l'étagère disait « le kilo », « le litre ». Seulement ceux que
+  // l'ÉTAGÈRE a créés (son journal « créé depuis l'étagère », ou la marque de
+  // « Tout mettre ») : un « Riz » créé à la main peut être un paquet vendu à
+  // la pièce (vu au banc : t320). Une unité jamais choisie, une seule sorte,
+  // et un prix de kilo ou de litre (au plus deux fois le haut de l'étagère).
+  // Un « à la pièce » choisi n'est jamais touché.
+  try{
+    var _jE={};(d.journal||[]).forEach(function(j){if(j&&j.act==='creation'&&/étagère|starter shelf/.test(String(j.ap||'')))_jE[String(j.art)]=1;});
+    (d.articles||[]).forEach(function(a){
+      if(!a||a.um||(a.vr&&a.vr.length))return;
+      if(!(a._sugg||_jE[String(a.nm)]))return;
+      var u=_uniteEtagere(a.nm);if(!u)return;
+      var x=_ETAGERE_PRIX[a.nm],px=Number(a.px)||0;
+      if(px>0&&px<=2*Number(x[2]))a.um=u;
+    });
+  }catch(e){}
   // 23.61 — les arrivées viennent du téléphone d'un vendeur : on n'en garde
   // que la forme attendue (identifiant propre, nom court sans balise).
   if(d.arrivees!=null){

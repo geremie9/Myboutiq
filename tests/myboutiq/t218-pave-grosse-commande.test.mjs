@@ -107,11 +107,13 @@ const nombre = x => Number(String(x).replace(/[^\d]/g, ''));
   await appuiLong(p, '#pc-41'); await p.waitForTimeout(300);
   v = await pave(p);
   t(v && /Sacs/.test(v.mode) && !v.virgule, 'les sacs se comptent entiers : pas de virgule');
-  await p.evaluate(() => { try { paveUnite('p'); } catch (e) {} }); await p.waitForTimeout(100);
-  await taper(p, ['1', '2', ',', '5']);
-  v = await pave(p);
-  t(v && v.virgule && v.n === '12,5' && v.mot === 'kg' && nombre(v.tot) === 8750, `au kilo : 12,5 kg = 8 750 (« ${v && v.tot} »)`);
-  await valider(p); await p.waitForTimeout(300);
+  // 24.08 — « Au kilo » ouvre la feuille des mesures (le patron, 23/11 : tout ce
+  // qui se mesure se vend par elle) : « pour un montant », ¼ · ½, et la quantité libre.
+  await p.evaluate(() => { try { paveUnite('p'); } catch (e) {} }); await p.waitForTimeout(150);
+  const fe = await p.evaluate(() => { const i = document.getElementById('qte-inp'); i.value = '12.5'; apercuQte();
+    return { ouverte: document.getElementById('ov-qte').classList.contains('show') && !document.getElementById('ov-pave').classList.contains('show'), ap: document.getElementById('qte-apercu').textContent }; });
+  t(fe.ouverte && nombre(fe.ap) === 8750 || (fe.ouverte && /8\s?750/.test(fe.ap.replace(/[\u202f\u00a0]/g, ' '))), `au kilo : la feuille des mesures, 12,5 kg = 8 750 (« ${fe.ap} »)`);
+  await p.evaluate(() => validerQte()); await p.waitForTimeout(300);
   t((await ligne(p, '41-0')).q === 12.5, '12,5 kg au panier');
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();

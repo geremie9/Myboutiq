@@ -38,8 +38,9 @@ const m = await p.evaluate(() => {
   return { w: Math.round(bb.width), tw: Math.round(r.width), h: Math.round(bb.height), part: Math.round(100 * carton / tot), haut: Math.abs(bb.top - r.top) < 2, photo: bb.bottom <= c.querySelector('.pmedia').getBoundingClientRect().bottom, sousPrix: bb.bottom <= c.querySelector('.ppr-ov').getBoundingClientRect().top,
     centre: !!mil && c.contains(mil) && !mil.closest('.pbas'), th: Math.round(r.height), voisin: Math.round(document.getElementById('pc-4').getBoundingClientRect().height), prix: (c.querySelector('.pbarre b') || {}).textContent || '' };
 });
-t(m.w >= m.tw - 2 && m.h >= 40, `la bande carton prend toute la largeur : ${m.w}×${m.h} (tuile ${m.tw} ; avant : 64×22)`);
-t(m.part >= 25, `elle fait ${m.part} % de la tuile (avant : 9 %)`);
+// 24.08 — 34 px (la 24.07 : 40) : la photo est l'élément crucial pour les non-lettrés (le patron, 23/11).
+t(m.w >= m.tw - 2 && m.h >= 34, `la bande carton prend toute la largeur : ${m.w}×${m.h} (tuile ${m.tw} ; avant : 64×22)`);
+t(m.part >= 22, `elle fait ${m.part} % de la tuile (avant : 9 %)`);
 t(m.haut && m.photo && m.sousPrix && /13\s?000/.test(m.prix.replace(/[\u202f\u00a0]/g, ' ')), `sur la photo, en haut, au-dessus de l'étiquette de la pièce (« ${m.prix} ») : une seule étiquette sous la planche`);
 // Vu au banc (t214) dans une première version qui posait la bande en BAS de la
 // photo : elle couvrait le milieu de la tuile, là où le doigt vise l'article.
@@ -70,17 +71,18 @@ t(await p.evaluate(() => panier['6-0'] === 45 * 24), '« +10 » : 45 cartons');
 const r = await p.evaluate(async () => { procederPmt(); selPmntVente('especes'); await encaisser(); return JSON.parse(JSON.stringify(DB.ventes[DB.ventes.length - 1])); });
 t(r.total === 45 * 13000 && r.lignes.some(l => l.gros && l.qte === 45), `encaissé : ${r.total} F, une ligne « 45 cartons » (${r.lignes.map(l => l.nm + ' ×' + l.qte).join(' ; ')})`);
 
-// ── 3) LE CARTON D'UNE SORTE DE FAMILLE : UNE TOUCHE SUR SON ÉTAGE ─────
+// ── 3) LE CARTON DE LA SORTE DU MOMENT : UNE TOUCHE, AU BOUT DE LA BANDE ─
+// 24.08 — la famille tient une case (t326) : le carton de la sorte du moment vit au
+// bout de la bande des autres sortes ; ceux des autres sortes, dans la famille.
 await p.evaluate(() => { fermerSucces(); document.getElementById('pc-30').scrollIntoView({ block: 'center' }); }); await p.waitForTimeout(200);
-const z = await p.evaluate(() => { const e = document.querySelector('#pe-30-1 .etg-ct'), r = e && e.getBoundingClientRect(); return e ? { w: Math.round(r.width), h: Math.round(r.height), txt: e.textContent.replace(/[  \s]/g, '') } : null; });
-t(z && z.w >= 44 && z.h >= 56 && /10000/.test(z.txt), `l'étage « 1 L » porte son carton : ${z && z.w + '×' + z.h} avec son prix (${z && z.txt})`);
-t(await p.evaluate(() => !document.querySelector('#pe-30-3 .etg-ct')), 'la sorte « 5 L », sans carton, n\'a pas de zone carton');
-await p.tap('#pe-30-1 .etg-ct'); await p.waitForTimeout(150);
+const z = await p.evaluate(() => { const e = document.querySelector('#pc-30 .fam-band .fb-c'), r = e && e.getBoundingClientRect(); return e ? { w: Math.round(r.width), h: Math.round(r.height), txt: e.textContent.replace(/[\u202f\u00a0\s]/g, '') } : null; });
+t(z && z.w >= 44 && z.h >= 30 && /10000/.test(z.txt), `le carton du « 1 L » au bout de la bande : ${z && z.w + '×' + z.h} avec son prix (${z && z.txt})`);
+await p.tap('#pc-30 .fam-band .fb-c'); await p.waitForTimeout(150);
 t(await p.evaluate(() => panier['30-1'] === 12 && (((_grosPanier['30-1'] || {}).lots) || []).length === 1), 'une touche sur la zone : 1 carton de 12');
 await p.tap('#fbil .qct >> nth=0'); await p.waitForTimeout(150);
 t(await p.evaluate(() => panier['30-1'] === 72), '« +5 » sur la barre : 6 cartons de la même sorte');
-await p.tap('#pe-30-2'); await p.waitForTimeout(150);
-t(await p.evaluate(() => panier['30-2'] === 1 && panier['30-1'] === 72), 'le reste de l\'étage vend toujours la pièce (1 « 2 L »)');
+await p.tap('#pc-30 .vtile', { position: { x: 55, y: 80 } }); await p.waitForTimeout(150);
+t(await p.evaluate(() => panier['30-1'] === 73), 'la photo vend toujours la pièce (1 « 1 L » de plus)');
 await p.evaluate(() => viderPanier());
 
 // ── 4) SANS CARTON, RIEN NE CHANGE ──────────────────────────────────────

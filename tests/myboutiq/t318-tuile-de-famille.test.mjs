@@ -1,4 +1,4 @@
-// t318 — LA TUILE DE FAMILLE INTELLIGENTE (24.01 ; en étages depuis 24.05, voir t322).
+// t318 — LA TUILE DE FAMILLE INTELLIGENTE (24.01 ; une case et sa bande depuis 24.08, voir t326).
 // Le patron, le 22/11/2026 : « regroupe les variantes sur une seule tuile,
 // mais de façon intelligente, rapide ». Une case par famille : la tuile est la
 // sorte du moment (une touche la vend), les autres en pastilles (une touche),
@@ -20,47 +20,53 @@ const { ctx, p, errs } = await ouvrirCaisse(b, port, Object.assign(d, { cfg: Obj
 await p.evaluate(() => { DB.cfg.varStyle = 'plat'; delete DB.cfg._tuileVu; lancerApp(); });
 await p.waitForTimeout(300);
 t(await p.evaluate(() => _styleVar() === 'tuile' && DB.cfg._tuileVu === 1), 'un réglage « étagère » d\'avant devient la tuile, une fois (sa demande)');
-// 24.05 — la tuile en étages : un étage par sorte (voir t322), plus de pastilles.
-const tuile = id => p.evaluate(id => { const c = document.getElementById('pc-' + id); return { cases: c ? getComputedStyle(c).gridColumnStart + '/' + getComputedStyle(c).gridColumnEnd : '', tuiles: c ? 1 : 0, noms: c ? [...c.querySelectorAll('.etg-s')].map(x => (x.getAttribute('aria-label') || '').replace(/\s+[\d\s\u202f\u00a0]+\S*$/, '').trim()) : [], pied: ((c && c.querySelector('.etg-pied')) || {}).textContent || '' }; }, id);
+// 24.08 — la famille en UNE case, comme un article : la grande photo de la sorte du
+// moment, et une bande aux petites photos des autres sortes (voir t326). La 24.05
+// (étages, deux rangées) prenait trop de place et rapetissait les photos.
+const tuile = id => p.evaluate(id => { const c = document.getElementById('pc-' + id); if (!c) return null;
+  return { cases: getComputedStyle(c).gridColumnStart + '/' + getComputedStyle(c).gridColumnEnd, tuiles: c.querySelectorAll('.vtile').length,
+    nom: ((c.querySelector('.vtile .vt-nm') || {}).textContent || '').trim(), bande: ((c.querySelector('.fam-band') || {}).textContent || '').trim(),
+    h: Math.round(c.getBoundingClientRect().height) }; }, id);
 
-// ── 1. Une case par famille, les trois sortes du jour en étages ──
+// ── 1. Une case par famille : la sorte du moment, la bande des autres ──
 let h = await tuile(105);
-t(h.tuiles === 1 && /span 1|auto/.test(h.cases), `Huile : UNE case (avant, sur l'étagère : 4)`);
-t(h.noms.join(',') === 'Diamaor,Mayor,Locale' && /\+1/.test(h.pied), `les étages : ${h.noms.join(', ')} ; la bande du bas : « ${h.pied.trim()} »`);
+const hArt = await p.evaluate(() => Math.round(document.getElementById('pc-1').getBoundingClientRect().height));
+t(h.tuiles === 1 && /span 1|auto/.test(h.cases) && Math.abs(h.h - hArt) <= 3, `Huile : UNE case, de la taille d'un article (${h.h} / ${hArt} px)`);
+t(h.nom === 'Diamaor' && /\+3/.test(h.bande), `la tuile : « ${h.nom} » ; la bande : « ${h.bande} »`);
 const haut = await p.evaluate(() => document.getElementById('pgrid').scrollHeight);
 await p.evaluate(() => { DB.cfg.varStyle = 'plat'; renderProd(DB.articles); });
 const hautEt = await p.evaluate(() => document.getElementById('pgrid').scrollHeight);
 await p.evaluate(() => { DB.cfg.varStyle = 'tuile'; renderProd(DB.articles); });
 t(haut < hautEt, `moins à défiler qu'avec l'étagère : ${hautEt} → ${haut} px (sur sa boutique : 7 écrans → 2,6)`);
 
-// ── 2. Une touche vend chaque sorte du jour ──
+// ── 2. Une touche vend la sorte du moment ; la bande ouvre les autres ──
 await p.evaluate(() => { viderPanier(); varQtys = {}; });
-await p.click('#pe-105-1');
-t(await p.evaluate(() => panier['105-1'] === 1), 'toucher l\'étage Diamaor : 1 Diamaor au panier, sans fenêtre');
-await p.click('#pe-105-2');
+await p.click('#pc-105 .vtile', { position: { x: 55, y: 80 } });
+t(await p.evaluate(() => panier['105-1'] === 1), 'toucher la photo : 1 Diamaor au panier, sans fenêtre');
+await p.click('#pc-105 .fam-band');
+t(await p.evaluate(() => document.getElementById('ov-var') && document.getElementById('ov-var').classList.contains('show') && document.querySelectorAll('#var-lst .vtile').length === 4), 'la bande ouvre la famille entière (4 sortes, chacune sa grande tuile)');
+await p.evaluate(() => { const t = [...document.querySelectorAll('#var-lst .vtile')].find(x => /Mayor/.test(x.textContent)); t.click(); });
+await p.waitForTimeout(200);    // ouverte depuis la bande : la sorte touchée va au panier, la fenêtre se referme
 let pn = await p.evaluate(() => JSON.parse(JSON.stringify(panier)));
-t(pn['105-2'] === 1 && pn['105-1'] === 1, `toucher l'étage « Mayor » : 1 Mayor en plus (${JSON.stringify(pn)})`);
-t(await p.evaluate(() => /1/.test((document.querySelector('#pe-105-2 .etg-q') || {}).textContent || '')), 'l\'étage porte son nombre');
-// La bande du bas ouvre la famille entière.
-await p.click('#pc-105 .etg-pied');
-t(await p.evaluate(() => document.getElementById('ov-var') && document.getElementById('ov-var').classList.contains('show') && document.querySelectorAll('#var-lst .vtile').length === 4), 'la bande « +1 » ouvre la famille entière (4 sortes)');
+t(pn['105-2'] === 1 && pn['105-1'] === 1, `dans la famille, « Mayor » : 1 Mayor en plus (${JSON.stringify(pn)})`);
+t(await p.evaluate(() => /1/.test((document.querySelector('#pc-105 .fam-band .fb-q') || {}).textContent || '')), 'la bande compte ce que les autres sortes ont au panier');
 await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); viderPanier(); varQtys = {}; });
 
-// ── 3. Une famille au kilo : l'étage ouvre la feuille des mesures ──
-await p.click('#pe-202-2');
+// ── 3. Une famille au kilo : la photo ouvre la feuille des mesures ──
+await p.click('#pc-202 .vtile', { position: { x: 55, y: 80 } });
 const f = await p.evaluate(() => ({ ouverte: document.getElementById('ov-qte').classList.contains('show'), art: document.getElementById('qte-art').textContent }));
-t(f.ouverte && /Riz brisé/.test(f.art), `Riz (au kilo) : l'étage « brisé » ouvre la feuille de la sorte — « ${f.art} »`);
+t(f.ouverte && /Riz parfumé/.test(f.art), `Riz (au kilo) : la sorte du moment ouvre sa feuille — « ${f.art} »`);
 await p.evaluate(() => { qtePourMontant(200); });
-t(await p.evaluate(() => panier['202-2'] === 0.4), 'pour 200 : 0,4 kg de riz brisé');
+t(await p.evaluate(() => panier['202-1'] === 0.25), 'pour 200 : 0,25 kg de riz parfumé (800 le kilo)');
 await p.evaluate(() => { viderPanier(); varQtys = {}; });
 
-// ── 4. La sorte épuisée passe derrière ──
+// ── 4. La sorte épuisée ne fait pas la tuile ──
 h = await tuile(106);
-t(h.noms[0] === 'Bouteille 6 kg' && h.noms[1] === 'Bouteille 12 kg' && await p.evaluate(() => document.getElementById('pe-106-1').classList.contains('out')), `la « 12 kg » est épuisée : la « 6 kg » d'abord, la 12 kg grisée derrière (${h.noms.join(', ')})`);
-// ── 5. Une recherche qui vise une sorte la met au premier étage ──
+t(h.nom === 'Bouteille 6 kg' && /\+1/.test(h.bande), `la « 12 kg » est épuisée : la tuile montre « ${h.nom} », la 12 kg est dans la bande (« ${h.bande} »)`);
+// ── 5. Une recherche qui vise une sorte la met en tuile ──
 await p.evaluate(() => { const c = document.getElementById('src-c'); c.value = 'coco'; filtrC('coco'); });
 h = await tuile(105);
-t(h.noms[0] === 'Huile coco', `chercher « coco » : le premier étage est « ${h.noms[0]} »`);
+t(h.nom === 'Huile coco', `chercher « coco » : la tuile montre « ${h.nom} »`);
 await p.evaluate(() => { const c = document.getElementById('src-c'); c.value = ''; filtrC(''); });
 // ── 6. Réglages : les trois façons ──
 t(await p.evaluate(() => !!document.getElementById('fs-tuile') && !!document.getElementById('fs-plat') && !!document.getElementById('fs-carre')), 'Réglages : Tuile · Étagère · Fenêtre');
