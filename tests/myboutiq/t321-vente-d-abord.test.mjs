@@ -137,10 +137,22 @@ const encaisserEtRegarder = (p, o) => p.evaluate((o) => {
   t(r.lu, 'relire la boutique juste après une vente (l\'exemple, un changement de boutique) la trouve avec la vente');
   const r2 = await p.evaluate(() => {
     viderPanier(); addPanier(DB.articles.find(a => a.id === 2), 0); procederPmt(); encaisser();
-    localStorage.removeItem('myboutiq_v6');                                                   // ex. : déconnexion
+    // Le vrai changement de boutique (DB=null, puis effacement). Un effacement brut,
+    // la boutique restée en mémoire, se faisait réécrire par la pose des photos
+    // (une fois sur six) : la vraie appli ne laisse jamais la boutique en mémoire.
+    purgerSessionBoutique(true);
     return new Promise(ok => setTimeout(() => ok(localStorage['myboutiq_v6'] === undefined || localStorage['myboutiq_v6'] === null), 400));
   });
   t(r2, 'une boutique effacée juste après une vente n\'est pas réécrite par le ménage en retard');
+  // « Boutique d'un autre commerçant » efface le téléphone puis recharge 0,9 s plus tard, la boutique
+  // encore en mémoire : une sauvegarde en retard (la pose des photos) ne la réécrit plus.
+  const r3 = await p.evaluate(() => {
+    DB = migrateDBData(JSON.parse(JSON.stringify(Object.assign({}, window.__dbBanc || {}, { cfg: { code: 'MARI0001', nom: 'Ets Marie' }, articles: [], ventes: [] }))));
+    _boutiqueEffacee = true; localStorage.removeItem('myboutiq_v6');
+    try { save(); } catch (e) {}
+    const ok = localStorage['myboutiq_v6'] == null; _boutiqueEffacee = false; return ok;
+  });
+  t(r3, 'une boutique effacée (« boutique d\'un autre commerçant ») n\'est pas réécrite par une sauvegarde en retard');
   t(errs.length === 0, 'aucune erreur JavaScript' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }

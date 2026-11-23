@@ -1953,6 +1953,35 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 @keyframes eclairJauge{to{background-size:100% 100%}}
 .fbil{display:none;gap:7px;margin:0 0 8px}
 .fbil.show{display:flex}
+.fbil .qct{flex:1 1 0;height:46px;border:0;border-radius:10px;background:#00695C;color:#fff;font:900 17px Outfit,sans-serif;display:flex;align-items:center;justify-content:center;gap:5px;box-shadow:0 6px 16px rgba(26,26,46,.18);cursor:pointer}
+.fbil .qct.qct-n{background:#1E1B2E;font-size:14.5px;white-space:nowrap;padding:0 4px}
+.fbil .qct:active{transform:scale(.96)}
+/* 24.07 — le carton SUR la photo (choix A du patron, 23.42), mais à la
+   taille du doigt : toute la largeur, en haut de la photo. Le milieu de la
+   photo reste la pièce ; une seule étiquette sous la planche. */
+#s-caisse #pgrid .pcard.abande:not(.etg) .pbas{position:absolute;left:0;right:0;top:0;bottom:auto;width:auto;height:40px;margin:0;padding:0;z-index:3;display:flex}
+#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pbarre,#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pgros{width:100%;height:40px;min-height:40px;margin:0;padding:0 6px;border-radius:10px 10px 0 0;flex-direction:row;justify-content:center;align-items:center;gap:5px;background:rgba(0,105,92,.94);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18);opacity:1}
+#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pbarre.vide,#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pgros.vide{background:rgba(236,234,228,.95);color:#4A4636}
+#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pbarre:not(.vide) b{font-size:15px;color:inherit;white-space:nowrap}
+#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pbarre.vide b{color:inherit;white-space:nowrap}
+#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pbarre i{display:flex;font-size:0;line-height:0}
+#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pbarre i svg{width:17px;height:17px;stroke:currentColor}
+#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pgros{font-size:13px;font-weight:900}
+#s-caisse #pgrid .pcard.abande:not(.etg) .pbas .pgros::after{display:none}
+/* Une invitation sans prix (la puce d'une famille, « vendre en gros ») garde
+   sa forme et sa cible (t243, t285) ; son bas s'aligne sur celui des bandes :
+   les barres du gros d'une rangée tombent au même endroit (t222). */
+#s-caisse #pgrid .pcard:not(.abande):not(.etg) .pbas{top:auto;bottom:calc(100% - 40px)}
+#s-caisse #pgrid.serre .pcard:not(.abande):not(.etg) .pbas{bottom:calc(100% - 32px)}
+#s-caisse #pgrid .pcard.abande:not(.etg) .qbdg,#s-caisse #pgrid .pcard.abande:not(.etg) .pedit{top:43px}
+#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pbas,#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pbas .pbarre,#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pbas .pgros{height:32px;min-height:32px}
+#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pbas .pbarre b{font-size:12px}
+#s-caisse #pgrid.serre .pcard.abande:not(.etg) .qbdg,#s-caisse #pgrid.serre .pcard.abande:not(.etg) .pedit{top:35px}
+.etg-ct{flex:none;align-self:stretch;width:44px;margin:-4px -5px -4px auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:#00695C;color:#fff;border-radius:0 9px 9px 0;font:900 18px/1 Outfit,sans-serif}
+.etg-ct small{font-size:9.5px;font-weight:900;white-space:nowrap}
+.etg-s.etg-c img{display:none}
+.etg-s.etg-c .etg-px{font-size:14px}
+.etg-s.etg-c .etg-t{min-width:0;overflow:hidden}
 .fbil .bil{flex:0 1 92px;height:46px;font-size:18px;border-radius:10px;box-shadow:inset 0 0 0 3px rgba(255,255,255,.2),0 6px 16px rgba(26,26,46,.18)}
 #fcart.avec-bil:not(.hide)~.micp{bottom:206px}
 body.avec-bil .mcont{padding-bottom:214px}
@@ -7860,7 +7889,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.06'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.07'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -9833,6 +9862,7 @@ function _proposerQuitterBoutiqueEtrangere(nom){
   if(!confirm(msg))return;
   // Copie de secours AVANT d'effacer — la règle de la 21.0 vaut ici aussi.
   try{if(typeof sauvegarderAvant==='function')sauvegarderAvant('boutique d\'un autre commerçant');}catch(e){}
+  _boutiqueEffacee=true;   // 24.07 — rien ne la réécrit avant le rechargement (voir persistDB)
   try{localStorage.removeItem('myboutiq_v6');}catch(e){}
   try{localStorage.removeItem('myboutiq_entree');}catch(e){}
   showToast('🧹 '+(fr?'Téléphone vidé — reconnecte-toi':'Phone cleared — sign in again'));
@@ -14643,6 +14673,16 @@ function _marquerGrosTuiles(){
     var b=c.querySelector('.pbas');
     c.classList.toggle('agros',!!(b&&b.querySelector('.pbarre')));
     c.classList.toggle('ainv',!!(b&&!b.querySelector('.pbarre')&&b.children.length));
+    // ⭐ 24.07 — LE CARTON À LA TAILLE DU DOIGT, AU MÊME ENDROIT SUR TOUTES
+    // LES TUILES. La pastille du carton faisait 64×22 dans le coin — mesuré au banc : 9 % de la tuile ; un
+    // doigt qui la ratait vendait une pièce à 600 au lieu d'un carton à 13 000.
+    // ⚠️ Deux premières versions, attrapées par le banc : la bande sur le BAS
+    // de la photo couvrait le milieu de la tuile, là où le doigt vise
+    // l'article (t214 : « tuile = 1 pièce » vendait un carton) ; sous le nom,
+    // elle défaisait le choix A du patron (23.42, t222 : le carton SUR la
+    // photo, une seule étiquette sous la planche). Elle est donc sur la photo,
+    // en HAUT, toute la largeur : le milieu reste la pièce.
+    c.classList.toggle('abande',!!(b&&b.querySelector('.pbarre,.pgros:not(.vide)'))&&!c.classList.contains('etg'));
   });}catch(e){}
 }
 var _renderProdBase=renderProd;
@@ -19236,6 +19276,7 @@ function _dessinerFamilleTuile(p,g){
   // puce « gros » vide qui sert à en créer un : elle s'ouvre dans la famille.
   var cartons=(p.vr||[]).some(function(v){try{
     if(_estGrosDeVariante(v))return true;
+    if(vus.indexOf(v)>=0&&!epuisee(v))return false;     // 24.07 — son carton est sur son étage
     var gv=_grosDe(p,v);if(gv&&gv.px>0&&gv.n>1)return true;
     return _etagesGros(p,v).length>1;
   }catch(e){return false;}});
@@ -19271,17 +19312,30 @@ function _etageSorte(p,v,vsTous,out){
   var q=panier[p.id+'-'+v.id]||0,px=Number(v.px)||0;
   var im='';try{im=_imgVar(p,v)||'';}catch(e){}
   var src=im?srcSure(im):'';
+  // 24.07 — le carton de la sorte, s'il a son prix : une zone à droite de
+  // l'étage (44 px × toute sa hauteur), une touche, comme avant la 24.05.
+  var g=null;try{g=_grosDe(p,v);}catch(e){}
+  var carton=!!(g&&g.px>0&&g.n>1&&!out);
   var b=document.createElement('button');b.type='button';
-  b.className='etg-s'+(q>0?' sel':'')+(out?' out':'');
+  b.className='etg-s'+(q>0?' sel':'')+(out?' out':'')+(carton?' etg-c':'');
   b.id='pe-'+p.id+'-'+v.id;
   b.style.background='hsl('+h+',75%,90%)';b.style.color='hsl('+h+',65%,18%)';b.style.borderLeftColor='hsl('+h+',60%,42%)';
   var unite='';try{if(seVendAuDetail(p))unite='<span class="etg-u">/'+escH(uniteArt(p))+'</span>';}catch(e){}
   b.innerHTML=(src?'<img src="'+src+'" alt="" loading="lazy" onerror="this.remove()">':'')
     +'<span class="etg-t"><b class="etg-px">'+(px>0?_deviseCourte(_montantCarte(px)):(fr?'Prix ?':'Price?'))+unite+'</b>'
     +'<span class="etg-nm">'+escH(mot)+'</span></span>'
-    +(q>0?'<i class="etg-q">'+escH(fmtQ(q))+'</i>':'');
+    +(q>0?'<i class="etg-q">'+escH(fmtQ(q))+'</i>':'')
+    +(carton?('<span class="etg-ct" data-carton="1" aria-label="'+escH((g.mot||'carton')+' '+fmt(g.px))+'">'+(function(){try{return _iconeCont(g.mot);}catch(e){return '📦';}})()+'<small>'+_fmtBillet(Math.round(g.px))+'</small></span>'):'');
   b.setAttribute('aria-label',(v.nm||'')+' '+fmt(px));
-  b.onclick=function(e){if(e){e.stopPropagation();e.preventDefault();}_vendreSorteTuile(p,v);};
+  b.onclick=function(e){
+    if(e){e.stopPropagation();e.preventDefault();}
+    if(carton&&e&&e.target&&e.target.closest&&e.target.closest('.etg-ct')){
+      _dernierCarton={pid:p.id,vid:v.id};
+      _cartonAjouter({p:p,v:v,g:g},1);
+      return;
+    }
+    _vendreSorteTuile(p,v);
+  };
   return b;
 }
 // La tuile d'une sorte sur l'étagère : la tuile de la fenêtre, et ses gestes.
@@ -21387,6 +21441,7 @@ function vendreGros(e,pid){
   var _g0=_grosDe(p,null);
   if(_g0.px>0&&_g0.n>1){
     _astucePave('a'+p.id);       // 23.07 — trois cartons à la barre : même astuce que la tuile
+    _dernierCarton={pid:p.id,vid:null};   // 24.07 — la barre montre « +5 · +10 · Combien ? »
     _ajouterLot(p,_g0.n,_g0.mot);
     return;
   }
@@ -23075,6 +23130,10 @@ function _venteSansQuestion(){
     if(!_eclairActif()||panierVide()||clientVente)return false;
     if(role!=='patron'&&!hasPerm('vente'))return false;
     if(consigneUnitPanier()>0)return false;
+    // 24.07 — un carton au panier : il compte encore (34,7 cartons par ligne
+    // de gros en moyenne, mesuré en base). Ni fermeture seule, ni billets :
+    // la barre montre les quantités.
+    if(_cartonAuPanier())return false;
     if(!_pmtSimple())return false;
     if(venteSansStockInterdite()&&_panierSansStock().length)return false;
     return true;
@@ -23134,9 +23193,58 @@ function _billetsBarre(total){
   var B=_billetsDe();if(!B||!(total>0))return [];
   return B.b.filter(function(x){return x[0]>total;}).reverse().slice(0,3);
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 24.07 — LES CARTONS SE COMPTENT SUR LA BARRE
+//  Mesuré en base le 23/11 : 190 lignes vendues en gros dans 5 boutiques,
+//  34,7 cartons par ligne en moyenne. Pour 35 cartons il fallait 35 touches,
+//  ou l'appui long sur la tuile — caché, dit une seule fois dans la vie de
+//  l'app après trois cartons de suite. Dès qu'un carton est touché, la barre
+//  montre « +5 », « +10 » et « Combien ? » (le pavé, ouvert en cartons) :
+//  là où le geste vient d'avoir lieu. 35 cartons : quatre touches.
+// ══════════════════════════════════════════════════════════════════
+var _dernierCarton=null;
+function _cartonAuPanier(){
+  try{var gp=_grosPanier||{};for(var k in gp){var x=gp[k];if(x&&(x.length||x.nb||x.n))return true;}}catch(e){}
+  return false;
+}
+function _cartonCible(){
+  var d=_dernierCarton;if(!d)return null;
+  var p=(DB.articles||[]).find(function(a){return String(a.id)===String(d.pid);});if(!p)return null;
+  var v=d.vid!=null?(p.vr||[]).find(function(x){return String(x.id)===String(d.vid);}):null;
+  if(d.vid!=null&&!v)return null;
+  var key=p.id+'-'+(v?v.id:0),x=(_grosPanier||{})[key];
+  if(!(x&&(x.length||x.nb||x.n)))return null;
+  var g=null;try{g=_grosDe(p,v);}catch(e){}
+  if(!g||!(g.n>1))return null;
+  return {p:p,v:v,g:g};
+}
+function _cartonAjouter(c,fois){
+  var p=c.p,v=c.v,g=c.g;
+  if(v){
+    varArtCours=p;
+    (p.vr||[]).forEach(function(x){varQtys[x.id]=panier[p.id+'-'+x.id]||0;});
+    _ajouterLotVariante(p,v,g.n,g.mot,false,fois);
+    if(varArtCours===p&&!_varBox&&!_varCercle)_varVersPanier(p);
+  }else _ajouterLot(p,g.n,g.mot,false,fois);
+}
+function cartonPlus(fois){var c=_cartonCible();if(c)_cartonAjouter(c,fois);}
+function cartonCombien(){
+  var c=_cartonCible();if(!c)return;
+  ouvrirPave(c.p,c.v);
+  try{if(_pv&&_pv.p===c.p){_pv.mode='c';_paveRendre();}}catch(e){}
+}
 function _barreMaj(nb,total){
   var box=document.getElementById('fbil'),fc=document.getElementById('fcart');if(!box||!fc)return;
   if(!(nb>0))eclairStop();
+  var cc=(nb>0)?_cartonCible():null;
+  if(cc){
+    var fr=(lang!=='en'),ic=(function(){try{return _iconeCont(cc.g.mot);}catch(e){return '📦';}})();
+    box.innerHTML='<button type="button" class="qct" onclick="cartonPlus(5)" aria-label="'+(fr?'5 de plus':'5 more')+'">'+ic+' +5</button>'
+      +'<button type="button" class="qct" onclick="cartonPlus(10)" aria-label="'+(fr?'10 de plus':'10 more')+'">'+ic+' +10</button>'
+      +'<button type="button" class="qct qct-n" onclick="cartonCombien()">🔢 '+escH(fr?'Combien ?':'How many?')+'</button>';
+    box.classList.add('show');fc.classList.add('avec-bil');document.body.classList.add('avec-bil');
+    return;
+  }
   var L=(nb>0&&_venteSansQuestion())?_billetsBarre(calcAPayer()):[];
   var fr=(lang!=='en');
   box.innerHTML=L.map(function(x){
@@ -35558,6 +35666,7 @@ async function confirmerSupprBoutique(){
   }
   if(res.data!==true){showToast('❌ '+(fr?'Suppression refusée (PIN patron requis)':'Refused (owner PIN required)'));return;}
   // 3) Le téléphone : on ne garde aucune trace
+  _boutiqueEffacee=true;   // 24.07 — rien ne la réécrit avant le rechargement (voir persistDB)
   try{
     localStorage.removeItem('myboutiq_v6');
     localStorage.removeItem('myboutiq_entree');
@@ -37240,7 +37349,14 @@ function _parcoursOuverture(){
   }catch(e){}
 }
 document.addEventListener('visibilitychange',function(){if(!document.hidden)_parcoursOuverture();});
+// ⚠️ 24.07 — UNE BOUTIQUE EFFACÉE NE REVIENT PAS. Vu au banc (t321, une fois
+// sur six) : la pose des photos du catalogue arrive en retard, quand le réseau
+// a répondu, et sauvegarde la boutique ENCORE EN MÉMOIRE. « Boutique d'un
+// autre commerçant » efface le téléphone puis recharge 0,9 s plus tard :
+// dans cet intervalle, la boutique effacée pouvait se réécrire et revenir.
+var _boutiqueEffacee=false;
 function persistDB(delaiMs){
+  if(_boutiqueEffacee)return;
   _sauvJour();
   try{_parcoursMaj();}catch(e){}
   try{
@@ -37301,6 +37417,9 @@ function _venteVite(v){
   // stock et « le stock tombe à 0 » se lisait encore 7. Seule l'ÉCRITURE de
   // la boutique entière attend l'image.
   DB=migrateDBData(DB);
+  // Le parcours (« première vente ») se note tout de suite, comme le stock :
+  // vu au banc (t245, une fois en quatre passages complets), il attendait l'image.
+  try{_parcoursMaj();}catch(e){}
   try{
     var L=_carnetLire();L.push({c:String(DB.cfg.code),v:v});
     localStorage.setItem(_CLE_CARNET,JSON.stringify(L));
