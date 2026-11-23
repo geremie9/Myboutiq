@@ -56,7 +56,7 @@ const nombre = x => Number(String(x).replace(/[^\d]/g, ''));
 {
   const { ctx, p, errs } = await ouvrirCaisse(b, port, boutique('gros'));
   // La référence : trois touches sur la barre du carton (23.07 : le gros est en bas).
-  for (let i = 0; i < 3; i++) { await p.locator('#pc-6 .pbas .pbarre').click(); await p.waitForTimeout(120); }
+  for (let i = 0; i < 3; i++) { await p.evaluate(() => vendreGros(null, 6));   /* 24.09 : en vente, le carton n'est plus une puce sur la photo — le même geste qu'elle */ await p.waitForTimeout(120); }
   const ref = await ligne(p, '6-0');
   await p.evaluate(() => { viderPanier(); window.__toasts = []; });
   await appuiLong(p, '#pc-6'); await p.waitForTimeout(300);
@@ -192,7 +192,7 @@ const nombre = x => Number(String(x).replace(/[^\d]/g, ''));
 {
   const { ctx, p, errs } = await ouvrirCaisse(b, port, boutique('gros'));
   await p.evaluate(() => { window.__toasts = []; });
-  for (let i = 0; i < 3; i++) { await p.locator('#pc-6 .pbas .pbarre').click(); await p.waitForTimeout(150); }
+  for (let i = 0; i < 3; i++) { await p.evaluate(() => vendreGros(null, 6));   /* 24.09 : en vente, le carton n'est plus une puce sur la photo — le même geste qu'elle */ await p.waitForTimeout(150); }
   await p.waitForTimeout(1900);
   let dit = await p.evaluate(() => window.__toasts.join(' | '));
   t(/Appui long sur la tuile/.test(dit), `au troisième carton touché, après la pause : l'astuce (« ${dit.slice(-90)} »)`);

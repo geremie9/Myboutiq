@@ -18,7 +18,8 @@ const d = nouvelleBoutique(); d.cfg.venteDeverrouillee = false;
 d.articles.find(a => a.id === 3).umSac = 24; d.articles.find(a => a.id === 3).umCont = 'carton';    // un carton connu, SANS prix
 d.articles.push(
   { id: 105, nm: 'Huile', e: '', cat: 'Alimentation', px: 0, pa: 0, stk0: 0, al: 0, vr: [V(1, 'Diamaor', 1500, ph[1], { umSac: 12, umCont: 'carton', pxGros: 17000 }), V(2, 'Mayor', 1100, ph[2]), V(3, 'Locale', 900, ph[3]), V(4, 'Huile coco', 600, null)] },
-  { id: 27, nm: 'Reaktor', e: '', cat: 'Boissons', px: 0, pa: 0, stk0: 0, al: 0, vr: [V(1, 'Reaktor citron', 300, ph[4]), V(2, 'Reaktor orange', 500, ph[5])] });
+  { id: 27, nm: 'Reaktor', e: '', cat: 'Boissons', px: 0, pa: 0, stk0: 0, al: 0, vr: [V(1, 'Reaktor citron', 300, ph[4]), V(2, 'Reaktor orange', 500, ph[5])] },
+  { id: 22, nm: 'Bougie', e: '📦', cat: 'Divers', px: 0, pa: 0, stk0: 200, al: 0, vd: 0, vr: [], umSac: 50, umCont: 'carton', pxGros: 4500 });
 const { ctx, p, errs } = await ouvrirCaisse(b, port, d, { tactile: true });
 await p.setViewportSize({ width: 360, height: 640 });
 for (let i = 0; i < 3; i++) await vendre(p, { lignes: [[2, 1]] });   // boutique rodée : la vente éclair est active
@@ -57,20 +58,28 @@ await p.waitForTimeout(3500);
 t(await p.evaluate(n => DB.ventes.length === n + 1, n1), 'et la vente éclair la ferme seule');
 await p.evaluate(() => { fermerSucces(); closeSheet('ov-var'); viderPanier(); varQtys = {}; renderProd(DB.articles); document.getElementById('pc-105').scrollIntoView({ block: 'center' }); });
 
-// ── 3) LE CARTON DE LA SORTE DU MOMENT, AU BOUT DE LA BANDE ────────────
-const c = await p.evaluate(() => { const e = document.querySelector('#pc-105 .fam-band .fb-c'), r = e && e.getBoundingClientRect(); return e ? { w: Math.round(r.width), h: Math.round(r.height), t: e.textContent.replace(/[  \s]/g, '') } : null; });
-t(c && c.w >= 44 && c.h >= 30 && /17000/.test(c.t), `le carton de Diamaor au bout de la bande : ${c && c.w + '×' + c.h}, son prix (${c && c.t})`);
-await p.tap('#pc-105 .fam-band .fb-c'); await p.waitForTimeout(150);
-t(await p.evaluate(() => panier['105-1'] === 12 && ((_grosPanier['105-1'] || {}).lots || []).length === 1), 'une touche : 1 carton de 12 Diamaor');
+// ── 3) LE CARTON DE LA SORTE DU MOMENT : PROPOSÉ PAR LA BARRE (24.09) ──
+// La bande ne porte plus de carton : rien du gros ne se pose sur une photo.
+t(await p.evaluate(() => !document.querySelector('#pc-105 .fam-band .fb-c')), 'la bande ne garde que les autres sortes (le carton n\'y est plus)');
+await p.tap('#pc-105 .vtile', { position: { x: 55, y: 80 } }); await p.waitForTimeout(150);
+const o = await p.evaluate(() => ((document.querySelector('#fbil .qct-o') || {}).textContent || '').replace(/[  \s]/g, ''));
+t(/carton17000/.test(o), `la photo de Diamaor touchée : la barre propose son carton (« ${o} »)`);
+await p.tap('#fbil .qct-o'); await p.waitForTimeout(150);
+t(await p.evaluate(() => panier['105-1'] === 12 && ((_grosPanier['105-1'] || {}).lots || []).length === 1), 'une touche : la pièce devient 1 carton de 12 Diamaor');
 t(await p.evaluate(() => /\+5/.test(document.getElementById('fbil').textContent)), 'et la barre propose « +5 · +10 · Combien ? »');
 await p.evaluate(() => viderPanier());
 
-// ── 4) LE CARTON SANS PRIX NE COUVRE PLUS LA PHOTO ─────────────────────
-const sv = await p.evaluate(() => { const c = document.getElementById('pc-3'), b = c.querySelector('.pbas .pbarre'), r = b && b.getBoundingClientRect(), cr = c.getBoundingClientRect();
-  return { abande: c.classList.contains('abande'), w: r ? Math.round(r.width) : 0, cw: Math.round(cr.width), vide: !!(b && b.classList.contains('vide')) }; });
-t(sv.vide && !sv.abande && sv.w < sv.cw * 0.75, `un carton sans prix (« prix ? ») reste une petite puce (${sv.w} px sur ${sv.cw}) : plus de bande grise sur la photo`);
-const pv = await p.evaluate(() => { const b = document.querySelector('#pc-6 .pbas .pbarre').getBoundingClientRect(); return Math.round(b.height); });
-t(pv <= 34, `la bande d'un carton qui a son prix fait ${pv} px (la 24.07 : 40)`);
+// ── 4) EN VENTE, AUCUN CARTON SUR LES PHOTOS ───────────────────────────
+const sv = await p.evaluate(() => [3, 6].map(id => { const c = document.getElementById('pc-' + id), b = c.querySelector('.pbas'); return !b || getComputedStyle(b).display === 'none'; }));
+t(sv[0] && sv[1], 'ni le carton sans prix (« prix ? ») ni celui qui a son prix ne se posent sur la photo');
+// Vendu au carton seul (la pièce sans prix) : la tuile vend ce qui a un prix, le carton.
+await p.evaluate(() => { viderPanier(); document.getElementById('pc-22').scrollIntoView({ block: 'center' }); });
+await p.tap('#pc-22'); await p.waitForTimeout(200);
+t(await p.evaluate(() => panier['22-0'] === 50 && ((_grosPanier['22-0'] || {}).lots || []).length === 1), 'la bougie vendue au carton seul : une touche sur la tuile vend le carton de 50');
+await p.evaluate(() => viderPanier());
+await p.evaluate(() => { DB.cfg.venteDeverrouillee = true; renderProd(DB.articles); });
+t(await p.evaluate(() => { const b = document.querySelector('#pc-3 .pbas'); return !!b && getComputedStyle(b).display !== 'none'; }), 'en « Modifier », les puces reviennent : c\'est là qu\'il règle les prix');
+await p.evaluate(() => { DB.cfg.venteDeverrouillee = false; renderProd(DB.articles); });
 
 t(errs.length === 0, 'aucune erreur JavaScript' + (errs.length ? ' : ' + errs.join(' | ') : ''));
 await ctx.close(); await b.close(); s.close();

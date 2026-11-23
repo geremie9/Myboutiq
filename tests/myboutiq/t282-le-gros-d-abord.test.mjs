@@ -9,7 +9,9 @@ const { t, fin } = compteur('t282');
 const { s, port } = await serveur();
 const b = await chromium.launch();
 const db = nouvelleBoutique(); db.cfg.facon = 'detail';
-db.articles.push({ id: 50, nm: 'Huile de palme', e: '🛢️', cat: 'Alimentation', px: 1200, pa: 900, stk0: 30, al: 5, vd: 0 });
+// 24.09 — « Huile de palme » se vend au litre (le patron, 23/11) : l'huile à la pièce du banc
+// est une huile en bouteille, « Huile Mayor ».
+db.articles.push({ id: 50, nm: 'Huile Mayor', e: '🛢️', cat: 'Alimentation', px: 1200, pa: 900, stk0: 30, al: 5, vd: 0 });
 db.articles.push({ id: 51, nm: 'Bonbon', e: '🍬', cat: 'Divers', px: 25, pa: 15, stk0: 100, al: 5, vd: 0 });
 const { ctx, p, errs } = await ouvrirCaisse(b, port, db, { tactile: true });
 await p.setViewportSize({ width: 360, height: 760 });

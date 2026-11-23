@@ -19,7 +19,8 @@ const PHOTO = 'https://bbncilovxzkcvlxvoqtg.supabase.co/storage/v1/object/public
 function boutique(facon) {
   const d = nouvelleBoutique();
   if (facon) d.cfg.facon = facon;
-  d.cfg.venteDeverrouillee = false;          // la caisse de tous les jours : modifications fermées
+  d.cfg.venteDeverrouillee = true;           // la caisse de tous les jours : modifications fermées
+   // 24.09 — en vente (« Bloqué »), le gros ne se pose plus sur la photo (t324, t326) : ses puces se vérifient en « Modifier »
   const A = (id, nm, px, x) => Object.assign({ id, nm, e: '📦', cat: 'Divers', px, pa: Math.round(px * .8), stk0: 60, al: 0, vd: 0, vr: [] }, x);
   d.articles.push(
     A(20, 'Sucre (kg)', 700, { e: '🍬', um: 'kg', umSac: 50, umCont: 'sac' }),            // un sac connu, sans prix

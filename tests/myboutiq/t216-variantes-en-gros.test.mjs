@@ -22,7 +22,8 @@ const HUILE = () => ({ id: 30, nm: 'Huile', e: '🫗', cat: 'Alimentation', px: 
        { id: 3, nm: '5 L', px: 4000, pa: 3400, stk: 0, stk0: 8, umSac: 4, umCont: 'carton' }] });
 function boutique(facon, extra) {
   const d = nouvelleBoutiqueCarres();
-  d.cfg.facon = facon; d.cfg.venteDeverrouillee = false;   // la caisse de tous les jours
+  d.cfg.facon = facon; d.cfg.venteDeverrouillee = true;    // la caisse de tous les jours
+   // 24.09 — en vente (« Bloqué »), le gros ne se pose plus sur la photo (t324, t326) : ses puces se vérifient en « Modifier »
   d.articles.push(HUILE());
   if (extra) d.articles.push(extra);
   return d;
