@@ -2495,6 +2495,19 @@ body:has(#annul-chip.show) .micp{bottom:148px}
 .bil-box{display:block}
 .bil-q{display:flex;align-items:center;gap:7px;color:#fff;font-size:12.5px;font-weight:800;margin:2px 0 8px;opacity:.92}
 .bil-g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* 24.06 — la caisse du soir avec les billets */
+.clot-bil{margin:-4px 0 12px}
+.cb-q{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:800;color:var(--M);margin:0 0 8px}
+.cb-l{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.cb-m{flex:none;width:48px;height:48px;border-radius:12px;border:1.5px solid var(--BD);background:var(--C);color:var(--T);font:900 24px/1 Outfit,sans-serif;cursor:pointer}
+.cb-b{flex:1;min-width:0;height:48px;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 14px;border-radius:10px;border:2px solid rgba(0,0,0,.18);box-shadow:inset 0 0 0 3px rgba(255,255,255,.2);color:#fff;font-family:Outfit,sans-serif;cursor:pointer}
+.cb-b.cb-p{background:#D9D6C8;color:#4A4636;border-color:#BDB9A6;border-radius:24px}
+.cb-v{font-size:19px;font-weight:900}
+.cb-n{font-size:17px;font-weight:900;background:rgba(0,0,0,.22);border-radius:10px;padding:1px 8px}
+.cb-n:empty{display:none}
+.cb-t{flex:none;width:84px;text-align:right;font-size:14px;font-weight:900;color:var(--T)}
+.cb-l.pris .cb-b{outline:3px solid var(--G,#00C853);outline-offset:1px}
+.cb-m:active,.cb-b:active{transform:scale(.96)}
 .bil{position:relative;height:52px;border-radius:9px;border:2px solid rgba(0,0,0,.18);box-shadow:inset 0 0 0 3px rgba(255,255,255,.2);color:#fff;font-size:20px;font-weight:900;font-family:'Outfit',sans-serif;cursor:pointer}
 .bil:active,.pce:active{transform:scale(.96)}
 .bil-juste{background:none;border:2px dashed rgba(255,255,255,.35);box-shadow:none;font-size:13.5px;font-weight:800}
@@ -6672,6 +6685,8 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       <div class="fonds-card"><div style="font-size:11px;color:rgba(255,255,255,.45);font-weight:700;margin-bottom:5px" id="lbl-fonds">FONDS DE DÉPART</div><div style="font-size:26px;font-weight:900;color:var(--A)" id="clot-fonds">0</div></div>
       <div class="rcd"><div class="rctit" id="lbl-resume-j">📊 Résumé</div><div id="clot-det"></div></div>
       <div class="pig"><label class="pl" id="lbl-especes">Espèces comptées</label><input class="pi" type="number" id="inp-compt" oninput="calcEcart()" inputmode="numeric" placeholder="💵 Compte tes billets, tape le total" style="font-size:20px;font-weight:800"></div>
+      <!-- ⭐ 24.06 — LA CAISSE DU SOIR AVEC LES BILLETS (voir _clotBilletsRendre) -->
+      <div id="clot-bil" class="clot-bil" style="display:none"></div>
       <div class="bcard bon" id="ecart-cd" style="display:none"><div><div class="blbl" id="ecart-lbl">✅ Équilibrée</div></div><div class="bamt" id="ecart-amt">0</div></div>
       <button class="bnxt" onclick="validerClot()" id="btn-val-clot">✅ <span id="lbl-val-clot">Valider</span></button>
     </div>
@@ -7845,7 +7860,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.05'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.06'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -23342,7 +23357,9 @@ function _montrerAnnulRapide(total){
     var c=document.getElementById('annul-chip'),sc=document.getElementById('succ');
     // Il a commencé la vente suivante : l'ancienne ne s'annule plus d'ici.
     if(!_annulRapideOuverte()||!panierVide()){_dernVente=null;_cacherAnnulRapide();return;}
-    c.classList.toggle('show',!(sc&&sc.classList.contains('show')));
+    // 24.06 — elle se cachait derrière l'écran vert, pas derrière une feuille :
+    // vu au banc, elle couvrait les billets de 500 à la clôture du soir.
+    c.classList.toggle('show',!(sc&&sc.classList.contains('show'))&&!document.querySelector('.ov.show'));
   },300);
 }
 function annulerDerniereVente(){
@@ -33201,7 +33218,48 @@ function _rptDetailCaisse(esp){
     +(d?' − '+(fr?'dépenses payées de la caisse ':'expenses paid from the till ')+fmt(d):'')
     +(fo?' − '+(fr?'fournisseurs payés de la caisse ':'suppliers paid from the till ')+fmt(fo):'')+'</div>';
 }
-function ouvrirClot(){var att=caisseAttendue(),_dc=totalDepCaisseJour(),_dh=totalDepJour()-_dc;document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div>'+((totalRembEspecesJour()>0)?('<div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Remboursements de crédit (espèces)':'Credit repayments (cash)')+'</span><span class="rval g">'+fmt(totalRembEspecesJour())+'</span></div>'):'')+((totalRembMobileJour()>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'remboursements mobile money (hors caisse)':'mobile money repayments (not in drawer)')+'</span><span class="rval" style="color:var(--M)">'+fmt(totalRembMobileJour())+'</span></div>'):'')+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+((_dc>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Dépenses payées de la caisse':'Expenses paid from till')+'</span><span class="rval r">-'+fmt(_dc)+'</span></div>'):'')+((_dh>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'dépenses hors caisse (le tiroir n\'y touche pas)':'expenses not from till')+'</span><span class="rval" style="color:var(--M)">-'+fmt(_dh)+'</span></div>'):'')+((totalFournCaisseJour()>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Fournisseurs payés de la caisse':'Suppliers paid from till')+'</span><span class="rval r">-'+fmt(totalFournCaisseJour())+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+(totalDepJour()>0?(lang==='fr'?' NET (dépenses déduites)':' NET'):'')+'</span><span class="rval '+((totalB-totalDepJour())<0?'r':'g')+'">'+fmt(totalB-totalDepJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';document.getElementById('ov-clot').classList.add('show');}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 24.06 — LA CAISSE DU SOIR AVEC LES BILLETS
+//  « Servir une communauté non lettrée, moins à l'aise avec les outils. »
+//  La clôture demandait « Compte tes billets, tape le total » : additionner
+//  de tête toute la caisse, puis taper un grand nombre au clavier. À la
+//  vente, la monnaie se dit déjà avec les billets (23.40) ; le soir, la même
+//  chose : une ligne par billet et par pièce, 48 px de haut. Il pose ses
+//  piles, touche le billet une fois par billet compté ; le « − » corrige. Le
+//  sous-total de chaque ligne, le total et l'écart se font seuls. Le champ
+//  reste pour qui préfère taper. Francs CFA seulement (XAF, XOF), comme à la
+//  vente ; ailleurs, le champ comme avant.
+// ══════════════════════════════════════════════════════════════════
+var _clotPris={};
+function _fmtBillet(v){return String(fmtQ(v)).replace(/(\d)(?=(\d{3})+$)/g,'$1 ');}
+function _clotBilletsRendre(){
+  var box=document.getElementById('clot-bil');if(!box)return;
+  var B=_billetsDe();_clotPris={};
+  if(!B){box.innerHTML='';box.style.display='none';return;}
+  var fr=(lang!=='en'),L=B.b.map(function(x){return [x[0],x[1]];}).concat(B.p.map(function(v){return [v,null];}));
+  var h='<div class="cb-q">'+ico('doigt',16)+'<span>'+escH(fr?'Pose tes piles. Touche un billet pour chaque billet compté.':'Make your piles. Tap a note for each note counted.')+'</span></div>';
+  L.forEach(function(x){
+    var v=x[0],piece=!x[1];
+    h+='<div class="cb-l" data-v="'+v+'">'
+      +'<button type="button" class="cb-m" onclick="clotBillet('+v+',-1)" aria-label="'+(fr?'Un de moins':'One less')+'">−</button>'
+      +'<button type="button" class="cb-b'+(piece?' cb-p':'')+'"'+(x[1]?' style="background:'+x[1]+'"':'')+' onclick="clotBillet('+v+',1)" aria-label="'+(fr?'Un ':'One ')+v+'">'
+      +'<span class="cb-v">'+_fmtBillet(v)+'</span><span class="cb-n"></span></button>'
+      +'<span class="cb-t"></span></div>';
+  });
+  box.innerHTML=h;box.style.display='block';
+}
+function clotBillet(v,d){
+  var n=Math.max(0,(_clotPris[v]||0)+d);
+  if(n)_clotPris[v]=n;else delete _clotPris[v];
+  var l=document.querySelector('#clot-bil .cb-l[data-v="'+v+'"]');
+  if(l){l.querySelector('.cb-n').textContent=n?('×'+n):'';l.querySelector('.cb-t').textContent=n?fmt(n*v):'';l.classList.toggle('pris',n>0);}
+  var tot=0;Object.keys(_clotPris).forEach(function(k){tot+=Number(k)*_clotPris[k];});
+  var i=document.getElementById('inp-compt');if(i)i.value=tot?String(tot):'';
+  try{calcEcart();}catch(e){}
+  if(!tot){var ec=document.getElementById('ecart-cd');if(ec)ec.style.display='none';}
+  try{if(d>0&&navigator.vibrate)navigator.vibrate(15);}catch(e){}
+}
+function ouvrirClot(){var att=caisseAttendue(),_dc=totalDepCaisseJour(),_dh=totalDepJour()-_dc;document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div>'+((totalRembEspecesJour()>0)?('<div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Remboursements de crédit (espèces)':'Credit repayments (cash)')+'</span><span class="rval g">'+fmt(totalRembEspecesJour())+'</span></div>'):'')+((totalRembMobileJour()>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'remboursements mobile money (hors caisse)':'mobile money repayments (not in drawer)')+'</span><span class="rval" style="color:var(--M)">'+fmt(totalRembMobileJour())+'</span></div>'):'')+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+((_dc>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Dépenses payées de la caisse':'Expenses paid from till')+'</span><span class="rval r">-'+fmt(_dc)+'</span></div>'):'')+((_dh>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'dépenses hors caisse (le tiroir n\'y touche pas)':'expenses not from till')+'</span><span class="rval" style="color:var(--M)">-'+fmt(_dh)+'</span></div>'):'')+((totalFournCaisseJour()>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Fournisseurs payés de la caisse':'Suppliers paid from till')+'</span><span class="rval r">-'+fmt(totalFournCaisseJour())+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+(totalDepJour()>0?(lang==='fr'?' NET (dépenses déduites)':' NET'):'')+'</span><span class="rval '+((totalB-totalDepJour())<0?'r':'g')+'">'+fmt(totalB-totalDepJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';try{_clotBilletsRendre();}catch(e){}document.getElementById('ov-clot').classList.add('show');}
 function calcEcart(){var compt=parseFloat(document.getElementById('inp-compt').value)||0,att=caisseAttendue(),ec=compt-att,el=document.getElementById('ecart-cd');el.style.display='flex';el.className='bcard '+(Math.abs(ec)<100?'bon':'bad');document.getElementById('ecart-lbl').textContent=ec===0?'✅ '+(lang==='fr'?'Équilibrée':'Balanced'):ec>0?'📈 '+(lang==='fr'?'Excédent':'Surplus'):'⚠️ '+(lang==='fr'?'Déficit':'Deficit');document.getElementById('ecart-amt').textContent=(ec>=0?'+':'')+fmt(ec);}
 function validerClot(){
   closeSheet('ov-clot');
