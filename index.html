@@ -7828,7 +7828,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.03'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.04'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -9377,6 +9377,7 @@ function _demarrerApp(){
     _jsPret();
     if(_demarre)return; _demarre=true;
     DB=loadDB();_reancrerFiches();
+    try{_rejouerCarnet();}catch(e){}   // 24.04 — une vente écrite au carnet, téléphone éteint avant la boutique entière
     // ⚠️ La boutique peut revenir du serveur sans son PIN (voir `_pinGarde`).
     // Sans cette ligne, ni le code court ni le PIN à six n'ouvrent hors ligne.
     try{ if(DB&&DB.cfg&&!DB.cfg.pin){var _pg=_pinGarde(); if(_pg)DB.cfg.pin=_pg;} }catch(e){}
@@ -34784,7 +34785,20 @@ function getSaleCAInconnu(v){
 }
 function getSaleDateObj(v){var d=parseDateFR(v.date)||new Date();var h=getSaleHeure(v).split(':');d.setHours(parseInt(h[0],10)||0,parseInt(h[1],10)||0,0,0);return d;}
 function isSaleToday(v){return isoJour(getSaleDateObj(v))===isoJour(new Date());}
-function getTodaySales(){return (DB.ventes||[]).filter(function(v){return !v.annulee&&isSaleToday(v);});}
+// ⚠️ 24.04 — CHAQUE VENTE RELISAIT SA DATE. Mesuré au banc (processeur ÷6) :
+// 18 ms par appel à 5 000 ventes, et une vente l'appelle quatre fois (la
+// voix, les totaux, la caisse attendue). Toutes les ventes d'un jour portent
+// la même date : on la décode une fois par appel. Même règle qu'isSaleToday
+// (une vente sans date compte pour aujourd'hui).
+function getTodaySales(){
+  var j=isoJour(new Date()),m={};
+  return (DB.ventes||[]).filter(function(v){
+    if(!v||v.annulee)return false;
+    var k=String(v.date||''),r=m[k];
+    if(r===undefined)r=m[k]=(isoJour(parseDateFR(v.date)||new Date())===j);
+    return r;
+  });
+}
 function getCaisseSales(){return getTodaySales().filter(function(v){return !v.cloturee;});}
 function recalcTotaux(){
   var s=getCaisseSales();
@@ -37115,8 +37129,9 @@ function persistDB(delaiMs){
   try{_parcoursMaj();}catch(e){}
   try{
     localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
+    _persistOk=true;
     _marquerHabitue();
-  }catch(e){ _telephonePlein(); }
+  }catch(e){ _persistOk=false; _telephonePlein(); }
   if(delaiMs===false)return;
   if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){
     clearTimeout(syncTimeout);
@@ -37126,6 +37141,95 @@ function persistDB(delaiMs){
 // Une VENTE ne doit pas attendre : c'est l'évènement que l'autre téléphone
 // guette. Les 800 ms de regroupement servent aux retouches en rafale (prix,
 // stock), pas à l'encaissement.
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 24.04 — LA VENTE D'ABORD, LE MÉNAGE APRÈS L'IMAGE
+//  Mesuré au banc (processeur ralenti 6 fois, comme un petit Android) :
+//  encaisser coûtait 50 ms dans une boutique neuve, 120 ms à 800 ventes,
+//  210 ms à 2 000 — et grandissait à chaque vente. Sur 185 ms à 2 000
+//  ventes : 66 ms pour réécrire TOUTE la boutique dans le téléphone
+//  (persistDB), 28 ms pour redessiner l'écran Stock que personne ne
+//  regarde pendant une vente, 22 ms de mise en page forcée derrière.
+//
+//  La vente seule (quelques centaines d'octets) part d'abord au CARNET
+//  (`mb_ventes_carnet`), écrit tout de suite : elle est à l'abri avant même
+//  que l'écran réponde. La boutique entière, la synchro et les écrans
+//  cachés suivent juste après l'image (`_apresImage`), pendant que le
+//  doigt va vers la tuile suivante. Le carnet se vide quand la boutique
+//  entière est écrite ; s'il reste quelque chose (téléphone éteint,
+//  batterie, app tuée entre les deux), `_rejouerCarnet` le remet au
+//  démarrage, par son id : jamais deux fois.
+//
+//  ⚠️ Une vente avec un client (crédit, points) écrit tout, tout de suite :
+//  sa fiche change aussi, et le carnet ne porte que la vente.
+// ══════════════════════════════════════════════════════════════════
+var _CLE_CARNET='mb_ventes_carnet',_persistOk=false,_fileImage=[],_fileImageT=null;
+function _carnetLire(){try{var L=JSON.parse(localStorage.getItem(_CLE_CARNET)||'[]');return Array.isArray(L)?L:[];}catch(e){return [];}}
+function _apresImage(fn){
+  _fileImage.push(fn);
+  if(_fileImageT)return;
+  var lancer=function(){if(!_fileImageT)return;clearTimeout(_fileImageT);_fileImageT=null;_viderFileImage();};
+  _fileImageT=setTimeout(lancer,250);                     // onglet caché : pas d'image, on n'attend pas
+  try{requestAnimationFrame(function(){setTimeout(lancer,0);});}catch(e){}
+}
+function _viderFileImage(){
+  clearTimeout(_fileImageT);_fileImageT=null;
+  var F=_fileImage;_fileImage=[];
+  F.forEach(function(f){try{f();}catch(e){}});
+}
+function _venteVite(v){
+  var demo=false;try{demo=estDemo();}catch(e){}
+  if(!v||v.clientId||demo||!DB||!DB.cfg){sauverEtEnvoyerVite();return;}
+  // ⚠️ LE STOCK SE RECALCULE TOUT DE SUITE (migrateDBData → recomputeStock,
+  // ~5 ms à 5 000 ventes). Vu au banc (t233) dans une première version qui
+  // repoussait aussi ce calcul : pendant une image, la tuile gardait l'ancien
+  // stock et « le stock tombe à 0 » se lisait encore 7. Seule l'ÉCRITURE de
+  // la boutique entière attend l'image.
+  DB=migrateDBData(DB);
+  try{
+    var L=_carnetLire();L.push({c:String(DB.cfg.code),v:v});
+    localStorage.setItem(_CLE_CARNET,JSON.stringify(L));
+  }catch(e){sauverEtEnvoyerVite();return;}              // carnet impossible : tout, tout de suite, comme avant
+  _apresImage(_menageVente);
+}
+function _menageVente(){
+  _persistOk=false;
+  persistDB(0);
+  try{checkNotifications(true);}catch(e){}
+  try{if(typeof updateNotifBadge==='function')updateNotifBadge();}catch(e){}
+  if(_persistOk){try{localStorage.removeItem(_CLE_CARNET);}catch(e){}}
+}
+function _rejouerCarnet(){
+  var L=_carnetLire();if(!L.length||!DB||!DB.cfg)return;
+  var code=String(DB.cfg.code),ids={},n=0;
+  if(!Array.isArray(DB.ventes))DB.ventes=[];
+  DB.ventes.forEach(function(x){if(x&&x.id)ids[x.id]=1;});
+  L.forEach(function(e){
+    if(e&&e.v&&e.v.id&&String(e.c)===code&&!ids[e.v.id]){DB.ventes.push(e.v);ids[e.v.id]=1;n++;}
+  });
+  var reste=L.filter(function(e){return e&&String(e.c)!==code;});   // une autre boutique de ce téléphone : on garde
+  if(n){DB=migrateDBData(DB);try{localStorage.setItem('myboutiq_v6',JSON.stringify(DB));}catch(e){return;}}
+  try{if(reste.length)localStorage.setItem(_CLE_CARNET,JSON.stringify(reste));else localStorage.removeItem(_CLE_CARNET);}catch(e){}
+}
+// ⚠️ UNE SEULE RÈGLE : PERSONNE NE LIT, NE REMPLACE NI N'EFFACE LA
+// BOUTIQUE DU TÉLÉPHONE PENDANT QU'UNE VENTE ATTEND D'Y ÊTRE ÉCRITE.
+// Vu au banc (t205, un passage sur deux) : entrer dans la boutique
+// d'exemple juste après une vente mettait de côté la vraie boutique en la
+// RELISANT dans le téléphone — sans la vente encore en attente. Quatorze
+// endroits lisent, remplacent ou effacent `myboutiq_v6` (l'exemple, sa
+// sortie, la déconnexion, le changement de boutique…). Plutôt que d'en
+// oublier un, le stockage lui-même range d'abord ce qui attend.
+(function(){
+  try{
+    var P=Storage.prototype,g=P.getItem,st=P.setItem,rm=P.removeItem;
+    var ranger=function(k){if(k==='myboutiq_v6'&&_fileImage.length)_viderFileImage();};
+    P.getItem=function(k){ranger(k);return g.apply(this,arguments);};
+    P.setItem=function(k){ranger(k);return st.apply(this,arguments);};
+    P.removeItem=function(k){ranger(k);return rm.apply(this,arguments);};
+  }catch(e){}
+})();
+// L'app passe en arrière-plan ou se ferme : le ménage se fait maintenant.
+window.addEventListener('pagehide',function(){if(_fileImage.length)_viderFileImage();});
+document.addEventListener('visibilitychange',function(){if(document.hidden&&_fileImage.length)_viderFileImage();});
 function sauverEtEnvoyerVite(){
   DB=migrateDBData(DB);
   persistDB(0);
@@ -38156,7 +38260,8 @@ encaisser=function(){
     arrondi:_arr,num:_num,
     consigne:_consNet,consignePrises:consignePrises,consigneRendues:consigneRendues,consigneUnit:_consU});
   _grosPanier={};_negoLigne={};
-  sauverEtEnvoyerVite();dernierRecu={boutique:DB.cfg.nom,lignes:lignes.map(function(l){var _p=DB.articles.find(function(x){return x.id==l.pid;});var _u=(_p&&estMesure(_p)&&!l.vid)?(' '+uniteArt(_p)):'';
+  _venteVite(DB.ventes[DB.ventes.length-1]);   // 24.04 — le carnet tout de suite, la boutique entière après l'image
+  dernierRecu={boutique:DB.cfg.nom,lignes:lignes.map(function(l){var _p=DB.articles.find(function(x){return x.id==l.pid;});var _u=(_p&&estMesure(_p)&&!l.vid)?(' '+uniteArt(_p)):'';
     // ⭐ « UN CARTON SEULEMENT SUR LA FACTURE. » Le contenu reste écrit
     // entre parenthèses : le client doit pouvoir compter ce qu'il emporte.
     // ⚠️ LE CONTENU, PAS LE NOMBRE DE CARTONS. `l.qte` compte les
@@ -38169,7 +38274,7 @@ encaisser=function(){
                             :(l.nm+' ×'+fmtQ(l.qte)+_u));
     return {nm:_n,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:(remiseVente||0)+_negoV,client:clientNm,arrondi:_arr,num:_num};
   panier={};panierLibre=[];remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
-  renderProd(DB.articles);renderStock(DB.articles);renderClients();recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
+  renderProd(DB.articles);_apresImage(function(){renderStock(DB.articles);renderClients();});recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
   document.getElementById('succ-amt').textContent=fmt(total);
   var _rendu=0;try{_rendu=_succDetail(paiement,total,clientNm);}catch(e){}
   var sc=document.getElementById('succ');sc.classList.add('show');if(navigator.vibrate)navigator.vibrate([50,30,50]);
