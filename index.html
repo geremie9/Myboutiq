@@ -7914,7 +7914,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.15'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.16'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -16808,8 +16808,20 @@ function cmpDetachVar(vid){
   // effacement : la même porte, fermée pareil.
   if(_bloqueParUnCarton(p,v,(lang==='fr'?'sortir':'detach')))return;
   if(!confirm('"'+(v.nm||'?')+(lang==='fr'?'" devient un article indépendant ?':'" becomes its own item?')))return;
-  
-  var na={id:_prochainIdArticle(),nm:v.nm||p.nm,e:p.e,cat:p.cat,px:v.px||0,pa:v.pa||0,stk:v.stk||0,stk0:v.stk||0,al:5,vd:0,vr:[],rt:true};
+  var na=_sortirSorte(p,v);if(!na)return;
+  showToast('↗ '+na.nm+' — '+(lang==='fr'?'article indépendant':'own item'));
+  save();cmpRenderFamRows();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();
+}
+// 24.16 — sortir une sorte de sa famille, sans la fiche : la feuille de la
+// pièce et du carton s'en sert (« seulement Locale, au litre »). Le même
+// geste que ↗, et un oubli réparé au passage : le prix du carton de la
+// sorte (pxGros, paGros) restait derrière.
+function _sortirSorte(p,v,o){
+  o=o||{};
+  if(!p||!v)return null;
+  var nm=v.nm||p.nm;
+  if(o.nomComplet&&v.nm&&txtNorm(v.nm).indexOf(txtNorm(p.nm))<0)nm=(p.nm+' '+v.nm).replace(/\s+/g,' ').trim();
+  var na={id:_prochainIdArticle(),nm:nm,e:p.e,cat:p.cat,px:v.px||0,pa:v.pa||0,stk:v.stk||0,stk0:v.stk||0,al:5,vd:0,vr:[],rt:true};
   if(v.img||v._img)na.img=v.img||v._img;
   // ⚠️ MESURÉ AU BANC : l'article détaché ressortait sans sa MESURE et sans
   // son conditionnement — une huile au litre en bidon de 20 redevenait un
@@ -16818,13 +16830,18 @@ function cmpDetachVar(vid){
   // à la forme, et les deux le suivent dehors.
   var _cdn=_condDe(p,v);
   if(p.um)na.um=p.um;
-  if(_cdn.n>0){na.umSac=_cdn.n;na.umCont=_cdn.mot;}
+  // `sienSeul` : seulement le carton que LA SORTE dit d'elle-même — pas celui
+  // hérité de sa famille (« comme la famille », souvent faux pour elle).
+  if(_cdn.n>0&&(!o.sienSeul||Number(v.umSac)>1)){na.umSac=_cdn.n;na.umCont=_cdn.mot;}
+  if(Number(v.pxGros)>0)na.pxGros=Number(v.pxGros);
+  if(Number(v.paGros)>0)na.paGros=Number(v.paGros);
+  var vid=v.id;
   DB.articles.push(na);
   p.vr=p.vr.filter(function(x){return x.id!=vid;});
   if(p._pendingVariantSetup)p._pendingVariantSetup=p._pendingVariantSetup.filter(function(id){return id!=vid;});
-  showToast('↗ '+na.nm+' — '+(lang==='fr'?'article indépendant':'own item'));
+  journalAjouter('famille',na.nm,(lang==='fr'?'sorte de ':'kind of ')+p.nm,lang==='fr'?'article seul':'own item');
   _replierSiUneVariante(p);            // celle qui reste toute seule sort aussi de sa famille
-  save();cmpRenderFamRows();renderProd(DB.articles);renderStock(DB.articles);renderAgpx();renderAgstk();
+  return na;
 }
 function cmpUm(u){
   _cmpUmVal=u;
@@ -23447,10 +23464,24 @@ function _pcRendre(){
       h+='<button type="button" class="pcf-b'+(c.mes===x[0]?' on':'')+'" data-mesure="'+x[0]+'" onclick="pcMesure(this.getAttribute(\'data-mesure\'))">'+escH(x[1])+'<small>'+escH(x[2])+'</small></button>';
     });
     h+='</div><div class="pcf-note">'+escH(fr?'Tu peux changer quand tu veux : les prix et le stock ne bougent pas.':'You can change it any time: prices and stock stay.')+'</div>';
+    // 24.16 — « Locale » (l'huile en vrac) au litre, les bouteilles à la pièce :
+    // une famille n'a qu'une unité. La sorte qui se vend autrement sort de sa
+    // famille — le geste ↗ de la fiche, ici, avec sa photo, son prix et son stock.
+    if(v){
+      if(!c.seuleOuvert&&c.seule==null)
+        h+='<button type="button" class="pcf-sans" style="margin-top:6px" onclick="pcSeuleOuvrir()">'+escH(fr?('Seulement « '+(v.nm||'')+' » se vend autrement ›'):('Only '+(v.nm||'')+' sells differently ›'))+'</button>';
+      else{
+        h+='<div class="pcf-q">'+escH(fr?('Seulement « '+(v.nm||'')+' » se vend…'):('Only '+(v.nm||'')+' sells…'))+'</div><div class="pcf-ch" style="grid-template-columns:repeat(3,minmax(0,1fr))">';
+        [['',fr?'1 pièce':'1 piece',fr?'à la pièce':'per piece'],['kg','1 kg',fr?'au kilo':'per kilo'],['L','1 L',fr?'au litre':'per litre']].forEach(function(x){
+          h+='<button type="button" class="pcf-b'+(c.seule===x[0]?' on':'')+'" data-seule="'+x[0]+'" onclick="pcSeule(this.getAttribute(\'data-seule\'))">'+escH(x[1])+'<small>'+escH(x[2])+'</small></button>';
+        });
+        h+='</div><div class="pcf-note">'+escH(fr?('Elle sort de la famille « '+p.nm+' » et devient un article à elle : sa photo, son prix et son stock la suivent.'):('It leaves the family and becomes its own item.'))+'</div>';
+      }
+    }
   }
   // 1) La pièce. Un article au kilo ou au litre n'a pas de « pièce » : sa
   // mesure est son unité, on passe directement au sac.
-  if(!c.mes&&!c.fiche){
+  if(!_pcMes(c)&&!c.fiche){
     var L=(_pcLiquide(p,v)?_PC_LIQ:_PC_POIDS).slice();
     if(c.taille&&L.indexOf(c.taille)<0)L[L.length-1]=c.taille;
     h+='<div class="pcf-q">'+(fr?'Une pièce, c\'est…':'One piece is…')+'</div><div class="pcf-ch">';
@@ -23487,7 +23518,7 @@ function _pcMaj(){
   var c=_pc;if(!c)return;
   var fr=(lang!=='en'),cible=c.v||c.p,pu=Number(cible.px)||0;
   var nmEl=document.getElementById('pc-nm');
-  if(nmEl){var tg=c.v||c.p,av=c.v?(c.v.nm||''):(c.p.nm||''),ap=c.mes?av:_nomAvecTaille(av,c.taille);
+  if(nmEl){var tg=c.v||c.p,av=c.v?(c.v.nm||''):(c.p.nm||''),ap=_pcMes(c)?av:_nomAvecTaille(av,c.taille);
     nmEl.textContent=c.v?(c.p.nm+' — '+ap):ap;}
   var pi=document.getElementById('pc-px');
   if(pi)pi.placeholder=(pu>0&&c.n>1)?((fr?'au détail : ':'retail: ')+fmt(pu*c.n)):(fr?'facultatif':'optional');
@@ -23505,12 +23536,12 @@ function _pcMaj(){
   var r=document.getElementById('pc-res');if(!r)return;
   if(!(c.n>1)){r.textContent='';r.style.display='none';return;}
   r.style.display='block';
-  var t=(fr?'1 ':'1 ')+c.mot+' = '+fmtQ(c.n)+' '+_pcUnite(c)+(c.taille&&!c.mes?(' de '+c.taille):'');
-  var m=c.taille&&!c.mes&&String(c.taille).match(/^(\d+(?:,\d+)?) (L|cl|ml|kg|g)$/);
+  var t=(fr?'1 ':'1 ')+c.mot+' = '+fmtQ(c.n)+' '+_pcUnite(c)+(c.taille&&!_pcMes(c)?(' de '+c.taille):'');
+  var m=c.taille&&!_pcMes(c)&&String(c.taille).match(/^(\d+(?:,\d+)?) (L|cl|ml|kg|g)$/);
   if(m){var q=parseFloat(m[1].replace(',','.'))*c.n,uu=m[2];
     if(uu==='cl'&&q>=100){q=q/100;uu='L';}else if(uu==='ml'&&q>=1000){q=q/1000;uu='L';}else if(uu==='g'&&q>=1000){q=q/1000;uu='kg';}
     t+=' ('+fmtQ(Math.round(q*100)/100)+' '+uu+')';}
-  if(c.px>0)t+=' · '+(fr?'soit ':'that is ')+fmt(Math.round(c.px/c.n))+' '+(c.mes==='kg'?(fr?'le kilo':'per kg'):c.mes==='L'?(fr?'le litre':'per litre'):(fr?'la pièce':'each'))+(pu>0?(fr?(' (au détail '+fmt(pu)+')'):(' (retail '+fmt(pu)+')')):'');
+  if(c.px>0)t+=' · '+(fr?'soit ':'that is ')+fmt(Math.round(c.px/c.n))+' '+(_pcMes(c)==='kg'?(fr?'le kilo':'per kg'):_pcMes(c)==='L'?(fr?'le litre':'per litre'):(fr?'la pièce':'each'))+(pu>0?(fr?(' (au détail '+fmt(pu)+')'):(' (retail '+fmt(pu)+')')):'');
   r.textContent=t;
 }
 function pcTaille(t){if(!_pc)return;_pc.taille=t||'';_pcRendre();}
@@ -23523,12 +23554,23 @@ function pcTailleAutre(){
   _pc.taille=t;_pcRendre();
 }
 function pcMot(m){if(!_pc)return;_pc.mot=m;_pc.motAuto=false;_pcRendre();}
+// 24.16 — l'unité qui compte pour la suite de la feuille : celle de la sorte
+// seule si elle va sortir de sa famille, sinon celle de la famille.
+function _pcMes(c){return (c.seule!=null)?c.seule:c.mes;}
+function pcSeuleOuvrir(){if(!_pc)return;_pc.seuleOuvert=true;_pcRendre();}
+function pcSeule(k){
+  var c=_pc;if(!c)return;
+  c.seule=(c.seule===k)?null:(k||'');
+  if(c.motAuto){var m=_pcMes(c);c.mot=(m==='kg')?(lang!=='en'?'sac':'bag'):(m==='L')?(lang!=='en'?'bidon':'can'):(lang!=='en'?'carton':'box');}
+  _pcRendre();
+}
 // L'unité affichée pendant qu'il choisit : celle qu'il vient de toucher,
 // pas encore celle de l'article.
 function _pcUnite(c){
-  if(c.mes==='kg')return 'kg';
-  if(c.mes==='L')return lang!=='en'?'litres':'litres';
-  if(c.mes0&&!c.mes)return lang!=='en'?'pièces':'pieces';
+  var m=_pcMes(c);
+  if(m==='kg')return 'kg';
+  if(m==='L')return lang!=='en'?'litres':'litres';
+  if((c.mes0||c.seule!=null)&&!m)return lang!=='en'?'pièces':'pieces';
   return _uniteMot(c.p);
 }
 function pcMesure(k){
@@ -23554,10 +23596,20 @@ function pcPxFois(){
 }
 function pcEnregistrer(){
   var c=_pc;if(!c)return;
-  var fr=(lang!=='en'),p=c.p,v=c.v,cible=v||p;
+  var fr=(lang!=='en'),p=c.p,v=c.v,cible=v||p,sortie=false;
+  // 24.16 — la sorte sort de sa famille, avec son unité à elle ; la suite
+  // (taille, carton) s'écrit sur l'article qu'elle devient. L'unité de la
+  // famille, elle, ne change pas.
+  if(c.seule!=null&&v){
+    if(_bloqueParUnCarton(p,v,(fr?'sortir':'detach')))return;
+    var na=_sortirSorte(p,v,{nomComplet:true,sienSeul:true});if(!na)return;
+    na.um=c.seule||'pc';
+    journalAjouter('unite',na.nm,c.mes0?(c.mes0==='kg'?'kg':'litre'):(fr?'pièce':'unit'),c.seule?(c.seule==='kg'?'kg':'litre'):(fr?'pièce':'unit'));
+    p=na;v=null;cible=na;c.p=na;c.v=null;c.mes=c.mes0=(c.seule||'');c.seule=null;c.t0=_tailleDuNom(na.nm);sortie=true;
+  }
   // Sans nombre : on enregistre quand même l'unité ou la taille qu'il a
   // changée (« au kilo », sans sac) ; sinon il n'a rien dit, on demande.
-  var seulUnite=!(c.n>1)&&((c.mes!==c.mes0)||(!c.mes&&c.taille!==c.t0));
+  var seulUnite=!(c.n>1)&&(sortie||(c.mes!==c.mes0)||(!c.mes&&c.taille!==c.t0));
   if(!(c.n>1)&&!seulUnite){
     showToast('📦 '+(fr?('Combien de '+_pcUnite(c)+' dans '+_unGros(c.mot)+' ?'):'How many inside?'));
     try{document.getElementById('pc-n').focus();}catch(e){}
@@ -23586,7 +23638,8 @@ function pcEnregistrer(){
   closeSheet('ov-pc');
   try{DB=recomputeStock(DB);}catch(e){}
   try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
-  if(seulUnite)showToast('⚖️ '+(fr?(c.mes==='kg'?'Se vend au kilo':c.mes==='L'?'Se vend au litre':'Se vend à la pièce'):'Saved'));
+  if(sortie&&seulUnite)showToast('↗ '+p.nm+' — '+(fr?(c.mes==='kg'?'au kilo':c.mes==='L'?'au litre':'à la pièce')+', article à lui':'own item'));
+  else if(seulUnite)showToast('⚖️ '+(fr?(c.mes==='kg'?'Se vend au kilo':c.mes==='L'?'Se vend au litre':'Se vend à la pièce'):'Saved'));
   else showToast(_emojiCont(c.mot)+' '+(fr?('1 '+c.mot+' = '+fmtQ(c.n)+' '+_pcUnite(c)):('1 '+c.mot+' = '+fmtQ(c.n))));
   // Venu d'une vente en gros (« tout produit est vendable en gros ») : la
   // vente reprend, le carton qu'il vient de dire part au panier.
