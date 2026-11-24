@@ -31,13 +31,20 @@ const m = await p.evaluate(() => {
   const r = id => document.getElementById('pc-' + id).getBoundingClientRect();
   const f = document.getElementById('pc-105'), im = f.querySelector('.vtile img:not(.fb-m)'), bd = f.querySelector('.fam-band');
   const br = bd.getBoundingClientRect(), mil = document.elementFromPoint(br.left + br.width / 2, br.top + br.height / 2);
+  // 24.10 — la zone où la photo se dessine (sa boîte moins ses marges) : la bande n'y touche pas.
+  const ir = im.getBoundingClientRect(), cs = getComputedStyle(im), x0 = ir.left + parseFloat(cs.paddingLeft), x1 = ir.right - parseFloat(cs.paddingRight);
+  let couvert = 0;
+  for (let x = Math.ceil(x0) + 1; x < x1 - 1; x += 2) for (let y = Math.ceil(ir.top) + 1; y < ir.bottom - 1; y += 2) { const e = document.elementFromPoint(x, y); if (e && bd.contains(e)) couvert++; }
   return { hf: Math.round(r(105).height), ha: Math.round(r(1).height), wf: Math.round(r(105).width), wa: Math.round(r(1).width),
-    rangs: getComputedStyle(f).gridRowEnd, img: im ? Math.round(im.getBoundingClientRect().width) : 0,
-    bw: Math.round(br.width), bh: Math.round(br.height), bandeCible: !!mil && bd.contains(mil), minis: bd.querySelectorAll('.fb-m').length, txt: bd.textContent.replace(/[  \s]/g, '') };
+    rangs: getComputedStyle(f).gridRowEnd, img: im ? Math.round(x1 - x0) : 0,
+    ih: Math.round(ir.height), couvert, bw: Math.round(br.width), bh: Math.round(br.height), bandeCible: !!mil && bd.contains(mil), minis: bd.querySelectorAll('.fb-m').length, txt: bd.textContent.replace(/[  \s]/g, '') };
 });
 t(Math.abs(m.hf - m.ha) <= 3 && Math.abs(m.wf - m.wa) <= 3 && !/span 2/.test(m.rangs), `Huile tient UNE case, la taille d'un article : ${m.wf}×${m.hf} (article ${m.wa}×${m.ha} ; la 24.05 : deux rangées)`);
-t(m.img >= 90, `la photo de la sorte du moment est grande : ${m.img} px de large (les étages : 30 px)`);
-t(m.bw >= m.wf - 4 && m.bh >= 30 && m.bandeCible, `la bande des autres sortes prend toute la largeur : ${m.bw}×${m.bh}, rien par-dessus`);
+t(m.img >= 70 && m.ih >= 85, `la photo de la sorte du moment est grande : ${m.img}×${m.ih} px (les étages : 30 px)`);
+// 24.10 — « certaines images ne se voient pas très bien à cause du bouton » (le patron, 23/11) :
+// la bande du haut (24.08) couvrait 34 px sur 88 de la photo. Elle passe sur le côté.
+t(m.couvert === 0, `la bande des autres sortes ne touche pas la photo : elle reste entière (${m.couvert} points couverts)`);
+t(m.bw >= 26 && m.bh >= 80 && m.bandeCible, `la bande est une colonne à la taille du doigt, sur le côté : ${m.bw}×${m.bh}, rien par-dessus`);
 t(m.minis >= 1 && /\+3/.test(m.txt), `elle montre les autres sortes en petites photos (${m.minis}) et « +3 »`);
 
 // ── 2) UNE TOUCHE SUR LA PHOTO VEND, LA BANDE OUVRE LA FAMILLE ─────────
