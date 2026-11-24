@@ -52,6 +52,11 @@ t(v.total === 100 && /pour 100/.test(v.lignes[0].nm) && v.lignes[0].qBase === 0.
 // ── 3) LES HUILES : EN « MODIFIER », LE CARTON SE CORRIGE ───────────────
 await p.evaluate(() => { DB.cfg.venteDeverrouillee = true; save(); ouvrirVar(DB.articles.find(a => a.id === 5)); }); await p.waitForTimeout(350);
 await p.tap('#var-lst .vtile [data-grosv="1"]'); await p.waitForTimeout(450);
+// 24.15 — la boutique relue répare seule ce carton (t332) : la feuille montre déjà 21 000.
+const deja = await p.evaluate(() => document.getElementById('pc-px').value);
+t(deja === '21000', `relue, la boutique a déjà réparé le bidon : « ${deja} » (il était à 1 400)`);
+// Et s'il retape le prix d'UNE bouteille, la feuille le voit encore.
+await p.fill('#pc-px', '1400'); await p.waitForTimeout(150);
 const h = await p.evaluate(() => ({ pc: document.getElementById('ov-pc').classList.contains('show'), panier: JSON.stringify(panier), nm: (document.getElementById('pc-nm') || {}).textContent,
   al: ((document.querySelector('#pc-alerte .pcf-al') || {}).textContent || '').replace(/[  ]/g, ' ') }));
 t(h.pc && h.panier === '{}' && /Diamaor/.test(h.nm), `le prix de carton de Diamaor, touché en « Modifier », ouvre la feuille (rien vendu) : « ${h.nm} »`);

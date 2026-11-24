@@ -7914,7 +7914,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.14'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.15'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -21874,6 +21874,17 @@ function corrigerConditionnement(pid,vid){
   // l'unité et le prix d'achat restent dans la fiche (elle les réécrirait).
   var v=(vid!=null)?((p.vr||[]).find(function(x){return String(x.id)===String(vid);})||null):null;
   var _fiche=!!(_cmpRevenirApresGros||_cmpRevenirApresGrosVar!=null);
+  // 24.15 — « Ce n'est pas ça » de la fiche ouvrait l'ancienne feuille (sa
+  // capture : « Au litre · un carton = 15 litres · 1 400 », sans rien dire du
+  // prix). Un seul étage : la feuille de la pièce et du carton, celle de la
+  // tuile, qui voit un carton au prix d'une pièce. L'unité et le nom restent
+  // à la fiche (elle les réécrirait en enregistrant) : la feuille ne les
+  // montre pas. Deux étages : la feuille complète, comme avant.
+  var _etC=[];try{_etC=_etagesGros(p,v);}catch(e){}
+  if(_fiche&&_etC.length<=1){
+    ouvrirPieceCarton(p.id,v?v.id:null,{fiche:true,apres:function(){try{_cmpMajLigneGros();}catch(e){}}});
+    return;
+  }
   ouvrirConditionnement({p:p,v:v,avecPrix:!_fiche&&!(p.vr&&p.vr.length&&!v),apres:function(){try{_cmpMajLigneGros();}catch(e){}}});
 }
 function direTailleGros(e,pid,edition,vid){
@@ -23406,7 +23417,8 @@ function ouvrirPieceCarton(pid,vid,o){
        // Le mot que LUI a dit ; sinon « carton » (« sac » au kilo) — pas la
        // devinette du catalogue : « bidon » pour toute huile, c'était le
        // générique qu'il montrait du doigt.
-       mot:(cible.umCont||(v&&p.umCont)||(_umDe(p)?(lang!=='en'?'sac':'bag'):(lang!=='en'?'carton':'box'))),n:n>1?n:0,px:Number(cible.pxGros)||0,dejaLa:n>1,vendre:!!o.vendre};
+       mot:(cible.umCont||(v&&p.umCont)||(_umDe(p)?(lang!=='en'?'sac':'bag'):(lang!=='en'?'carton':'box'))),n:n>1?n:0,px:Number(cible.pxGros)||0,dejaLa:n>1,vendre:!!o.vendre,
+       fiche:!!o.fiche,apres:o.apres||null};
   document.getElementById('pc-tit').textContent=fr?'La pièce et le carton':'Piece and box';
   _pcRendre();
   document.getElementById('ov-pc').classList.add('show');
@@ -23428,7 +23440,7 @@ function _pcRendre(){
   // un article seul : la famille devait repasser par sa fiche. Une sorte suit
   // l'unité de sa famille : la question porte alors sur TOUTE la famille, et
   // le dit. Changer ne touche ni aux prix ni au stock — il peut revenir.
-  {
+  if(!c.fiche){
     var _famU=!!(v||(p.vr&&p.vr.length));
     h+='<div class="pcf-q">'+escH(_famU?(fr?('Toute la famille « '+p.nm+' » se vend…'):('The whole '+p.nm+' family sells…')):(fr?'Il se vend…':'Sold…'))+'</div><div class="pcf-ch" style="grid-template-columns:repeat(3,minmax(0,1fr))">';
     [['',fr?'1 pièce':'1 piece',fr?'à la pièce':'per piece'],['kg','1 kg',fr?'au kilo':'per kilo'],['L','1 L',fr?'au litre':'per litre']].forEach(function(x){
@@ -23438,7 +23450,7 @@ function _pcRendre(){
   }
   // 1) La pièce. Un article au kilo ou au litre n'a pas de « pièce » : sa
   // mesure est son unité, on passe directement au sac.
-  if(!c.mes){
+  if(!c.mes&&!c.fiche){
     var L=(_pcLiquide(p,v)?_PC_LIQ:_PC_POIDS).slice();
     if(c.taille&&L.indexOf(c.taille)<0)L[L.length-1]=c.taille;
     h+='<div class="pcf-q">'+(fr?'Une pièce, c\'est…':'One piece is…')+'</div><div class="pcf-ch">';
@@ -23583,6 +23595,7 @@ function pcEnregistrer(){
     var vv=v?((pp.vr||[]).find(function(x){return x.id===v.id;})||null):null;
     try{if(vv)_ajouterLotVariante(pp,vv,c.n,c.mot);else _ajouterLot(pp,c.n,c.mot);}catch(e){}
   }
+  if(c.apres){try{c.apres();}catch(e){}}
   _pc=null;
 }
 function pcSansCarton(){
@@ -23592,6 +23605,7 @@ function pcSansCarton(){
   journalAjouter('vente en gros',c.p.nm+(c.v?(' — '+(c.v.nm||'')):''),avant,fr?'à la pièce seulement':'units only');
   save();closeSheet('ov-pc');
   try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
+  if(c.apres){try{c.apres();}catch(e){}}
   _pc=null;
 }
 // La puce du bas d'une tuile, sans prix ou sans taille : la feuille.
@@ -36684,6 +36698,34 @@ function migrateDBData(d){
       var x=_ETAGERE_PRIX[a.nm],px=Number(a.px)||0;
       if(px>0&&px<=2*Number(x[2]))a.um=u;
     });
+  }catch(e){}
+  // ⭐ 24.15 — LES CARTONS ENREGISTRÉS AU PRIX D'UNE PIÈCE SE RÉPARENT SEULS.
+  // Le patron, le 24/11, captures de ses huiles : « ceux qu'il faut rectifier,
+  // ou mettre une bonne formule pour arranger les articles déjà enregistrés ».
+  // Les siens : « 1 400 F le bidon de 15 » (la bouteille est à 1 500), « 1 450 F
+  // le carton de 14 » — le prix de gros d'UNE bouteille, tapé là où l'app
+  // attend le carton entier. Mesuré en base : 2 sorties sur 18 cartons qui ont
+  // un prix, toutes deux chez lui. Un carton d'au moins 3 pièces vendu moins
+  // cher qu'une pièce et demie, c'est ce cas-là, jamais une vraie promotion :
+  // on multiplie par le nombre de pièces (1 400 × 15 = 21 000), et le journal
+  // le dit, une fois (son identifiant ne change pas : relire la boutique ne
+  // le réécrit pas). Idempotent : réparé, il dépasse une pièce et demie.
+  try{
+    if(!Array.isArray(d.journal))d.journal=d.journal?[]:[];
+    var _jIds={};d.journal.forEach(function(j){if(j&&j.id)_jIds[j.id]=1;});
+    var _rep=function(a,o,nm){
+      var n=Number(o.umSac)||0,px=Number(o.px)||0,pg=Number(o.pxGros)||0;
+      if(!(n>=3&&px>0&&pg>0&&pg<px*1.5))return;
+      var nv=Math.round(pg*n);o.pxGros=nv;
+      var id='repar-carton-'+a.id+'-'+(o===a?'0':o.id);
+      if(!_jIds[id]){_jIds[id]=1;d.journal.unshift({id:id,ts:new Date().toISOString(),dev:'app',who:'MyBoutiQ',role:'patron',act:'prix',art:nm+' ('+(o.umCont||'carton')+' de '+n+')',av:String(pg)+' F',ap:String(nv)+' F'});}
+    };
+    (d.articles||[]).forEach(function(a){
+      if(!a)return;
+      _rep(a,a,a.nm||'');
+      (a.vr||[]).forEach(function(v){if(v)_rep(a,v,(a.nm||'')+' — '+(v.nm||''));});
+    });
+    if(d.journal.length>300)d.journal=d.journal.slice(0,300);
   }catch(e){}
   // 23.61 — les arrivées viennent du téléphone d'un vendeur : on n'en garde
   // que la forme attendue (identifiant propre, nom court sans balise).

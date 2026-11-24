@@ -29,11 +29,11 @@ t(/prix et le stock ne bougent pas/.test(f.note), `et rassure : « ${f.note} »`
 
 // ── 2) REMETTRE À LA PIÈCE, EN UNE TOUCHE (et corriger le bidon) ──────────
 await p.tap('#pc-cont [data-mesure=""]'); await p.waitForTimeout(150);
-await p.tap('#pc-alerte .pcf-b'); await p.waitForTimeout(100);
+/* 24.15 — le bidon à 1 400 est déjà réparé à la lecture de la boutique (t332) */
 await p.tap('#pc-ok'); await p.waitForTimeout(300);
 const e1 = await etat();
 t(e1.um === 'pc' && e1.px === e0.px && e1.stk === e0.stk, `« 1 pièce » : toute la famille repasse à la pièce ; prix (${e1.px}) et stock (${e1.stk}) n'ont pas bougé`);
-t(/^21000\//.test(e1.gros), `et le bidon de 15 vaut 21 000 F (${e1.gros})`);
+t(/^21000\//.test(e1.gros), `et le bidon de 15 vaut 21 000 F, réparé à la lecture (${e1.gros})`);
 t(await p.evaluate(() => (DB.journal || []).some(j => j.act === 'unite' && j.art === 'Huile' && /litre/.test(j.av) && /pièce/.test(j.ap))), 'le journal garde « litre → pièce »');
 
 // ── 3) ALLER-RETOUR : AU LITRE, PUIS À LA PIÈCE ─────────────────────────
