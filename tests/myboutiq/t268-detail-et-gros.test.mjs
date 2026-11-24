@@ -20,7 +20,10 @@ await d.p.setViewportSize({ width: 360, height: 740 }); await d.p.waitForTimeout
 t(/13\s?000/.test(await pbas(d.p, 1)), 'au détail, un carton qui a son prix se vend toujours depuis la tuile');
 const riz = await pbas(d.p, 2);
 t(/vide/.test(riz) && /sac/.test(riz) && /prix \?/.test(riz), `au détail, un sac connu sans prix le dit au patron : « ${riz} » (avant : rien)`);
-t((await pbas(d.p, 3)) === '', 'au détail, un article dont on ne connaît pas le contenant ne montre rien : pas de cubes partout');
+// 24.11 — en « Modifier », le patron voit « 📦 ? » (la feuille de la pièce et du carton, t328) ;
+// toujours pas de « carton » deviné, et rien du tout en vente (la photo reste entière, 24.09).
+{ const r3 = await pbas(d.p, 3);
+  t(r3 === '' || (/pq/.test(r3) && !/carton|sac|palette/.test(r3.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/title="[^"]*"/g, ''))), `au détail, un article dont on ne connaît pas le contenant ne montre aucun mot deviné : pas de cubes partout (${r3.replace(/<svg[\s\S]*?<\/svg>/g, '').slice(0, 90)})`); }
 const n = await d.p.evaluate(() => { navTo('stock', document.querySelectorAll('.ni')[1]); majBandeauSansGros(); const z = document.getElementById('caisse-sansgros'); return { n: _articlesSansPrixGros().length, vu: z && z.style.display !== 'none', txt: z ? z.textContent : '' }; });
 t(n.n === 1 && n.vu && /1 article sans prix de gros/.test(n.txt), `au détail, le bandeau « ${n.txt} » apparaît aussi`);
 await d.p.evaluate(() => navTo('caisse', document.querySelectorAll('.ni')[0])); await d.p.waitForTimeout(300);
