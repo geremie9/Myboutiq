@@ -81,6 +81,38 @@ await p.waitForTimeout(150);
 t(await p.evaluate(() => !document.getElementById('ov-pc').classList.contains('show')), 'un vendeur ne règle pas le carton (réservé au patron)');
 await p.evaluate(() => { role = 'patron'; });
 
+// ── 6) « MÊME LES PRODUITS EN KG » (le patron, 24/11) ───────────────────
+await p.evaluate(() => { DB.articles.push({ id: 60, nm: 'Sucre', e: '', cat: 'Alimentation', px: 700, pa: 600, stk0: 200, al: 0, vd: 0, vr: [] },
+  { id: 61, nm: 'Farine', e: '', cat: 'Alimentation', px: 600, pa: 500, stk0: 100, al: 0, vd: 0, vr: [] },
+  { id: 62, nm: 'Riz', e: '', cat: 'Alimentation', px: 650, pa: 550, stk0: 500, al: 0, vd: 0, vr: [], um: 'kg' }); save(); });
+await voir(60); await p.waitForTimeout(150);
+await p.tap('#pc-60 .pbas .pq'); await p.waitForTimeout(250);
+const k0 = await p.evaluate(() => ({ mes: [...document.querySelectorAll('#pc-cont [data-mesure]')].map(x => x.textContent), on: (document.querySelector('#pc-cont [data-mesure].on') || {}).textContent }));
+t(k0.mes.length === 3 && /pièce/.test(k0.on), `la feuille demande d'abord comment il se vend : ${k0.mes.join(' · ')} (le sucre : « ${k0.on} »)`);
+await p.tap('#pc-cont [data-mesure="kg"]'); await p.waitForTimeout(150);
+const k1 = await p.evaluate(() => ({ tailles: document.querySelectorAll('#pc-cont [data-taille]').length, mot: (document.querySelector('#pc-cont .pcf-mot.on') || {}).textContent,
+  q: [...document.querySelectorAll('#pc-cont .pcf-q')].map(x => x.textContent).join(' | '), nb: [...document.querySelectorAll('#pc-cont .pcf-b[onclick^="pcNb("]')].map(x => x.textContent) }));
+t(k1.tailles === 0 && k1.mot === 'sac' && /Combien de kg dans un sac/.test(k1.q) && k1.nb.includes('50'), `« au kilo » : plus de taille de pièce, le sac et ses nombres (« ${k1.q.split(' | ')[1]} » ${k1.nb.join(' · ')})`);
+await p.tap('#pc-cont .pcf-b[onclick="pcNb(50)"]'); await p.fill('#pc-px', '32000'); await p.waitForTimeout(100);
+const kr = await p.evaluate(() => document.getElementById('pc-res').textContent.replace(/[  ]/g, ' '));
+t(/1 sac = 50 kg/.test(kr) && /640\s?F(CFA)? le kilo/.test(kr), `le calcul parle en kilos : « ${kr} »`);
+await p.tap('#pc-ok'); await p.waitForTimeout(250);
+const su = await p.evaluate(() => { const x = DB.articles.find(a => a.id === 60); return { um: x.um, n: x.umSac, mot: x.umCont, px: x.pxGros, nm: x.nm }; });
+t(su.um === 'kg' && su.n === 50 && su.mot === 'sac' && su.px === 32000 && su.nm === 'Sucre', `le sucre se vend au kilo, sac de 50 kg à 32 000 (${JSON.stringify(su)})`);
+await p.evaluate(() => { DB.cfg.venteDeverrouillee = false; save(); });
+await voir(60); await p.waitForTimeout(150); await p.tap('#pc-60'); await p.waitForTimeout(200);
+t(await p.evaluate(() => document.getElementById('ov-qte').classList.contains('show') && panier['60-0'] === undefined), 'en vente, sa tuile ouvre la feuille des mesures (24.08), comme tout ce qui se pèse');
+await p.evaluate(() => { document.querySelectorAll('.ov.show').forEach(o => o.classList.remove('show')); viderPanier(); DB.cfg.venteDeverrouillee = true; save(); });
+// L'unité seule, sans sac : elle s'enregistre.
+await p.evaluate(() => ouvrirPieceCarton(61)); await p.waitForTimeout(150);
+await p.tap('#pc-cont [data-mesure="kg"]'); await p.tap('#pc-ok'); await p.waitForTimeout(250);
+t(await p.evaluate(() => { const x = DB.articles.find(a => a.id === 61); return x.um === 'kg' && !(x.umSac > 1) && !document.getElementById('ov-pc').classList.contains('show'); }), '« au kilo » sans sac : la farine passe au kilo, sans carton inventé');
+// Un riz déjà au kilo : la feuille le dit, et « à la pièce » choisi s'écrit.
+await p.evaluate(() => ouvrirPieceCarton(62)); await p.waitForTimeout(150);
+t(await p.evaluate(() => (document.querySelector('#pc-cont [data-mesure].on') || {}).getAttribute('data-mesure') === 'kg'), 'le riz déjà au kilo : « 1 kg » est déjà choisi');
+await p.tap('#pc-cont [data-mesure=""]'); await p.tap('#pc-ok'); await p.waitForTimeout(250);
+t(await p.evaluate(() => DB.articles.find(a => a.id === 62).um === 'pc' && !_umDe(DB.articles.find(a => a.id === 62))), '« à la pièce » choisi : il s\'écrit, et ne repasse plus au kilo');
+
 t(errs.length === 0, 'aucune erreur JavaScript' + (errs.length ? ' : ' + errs.join(' | ') : ''));
 await ctx.close(); await b.close(); s.close();
 fin();

@@ -23345,8 +23345,8 @@ function cartonOffre(){
 var _pc=null;
 var _PC_LIQ=['25 cl','33 cl','50 cl','1 L','1,5 L','5 L'];
 var _PC_POIDS=['100 g','250 g','500 g','1 kg','5 kg','25 kg'];
-var _PC_NB={carton:[6,12,15,20,24,48],sac:[10,25,50,100,5,20],casier:[12,20,24,30,6,15],bidon:[5,10,20,25,4,6],
-            paquet:[5,10,12,20,6,24],palette:[48,60,96,120,24,72],lot:[3,6,10,12,2,4]};
+var _PC_NB={carton:[6,12,15,20,24,48],sac:[5,10,20,25,50,100],casier:[6,12,15,20,24,30],bidon:[4,5,6,10,20,25],
+            paquet:[5,6,10,12,20,24],palette:[24,48,60,72,96,120],lot:[2,3,4,6,10,12]};
 var _PC_MOTS=['carton','sac','casier','bidon','paquet','palette','lot'];
 var _RE_TAILLE=/\s*\b(\d+(?:[.,]\d+)?)\s?(cl|ml|l|kg|g)\b\.?/i;
 function _tailleDuNom(nm){
@@ -23377,7 +23377,7 @@ function ouvrirPieceCarton(pid,vid,o){
   }
   var nmc=v?(v.nm||''):(p.nm||'');
   var n=Number(cible.umSac)||0;
-  _pc={p:p,v:v,mes:_umDe(p),taille:_tailleDuNom(nmc),t0:_tailleDuNom(nmc),
+  _pc={p:p,v:v,mes:_umDe(p)||'',mes0:_umDe(p)||'',motAuto:!(cible.umCont||(v&&p.umCont)),taille:_tailleDuNom(nmc),t0:_tailleDuNom(nmc),
        // Le mot que LUI a dit ; sinon « carton » (« sac » au kilo) — pas la
        // devinette du catalogue : « bidon » pour toute huile, c'était le
        // générique qu'il montrait du doigt.
@@ -23394,6 +23394,17 @@ function _pcRendre(){
   var im='';try{im=srcSure(v?_imgVar(p,v):(p.img||''))||'';}catch(e){}
   var ic=_iconeCont(c.mot);
   var h='<div class="pcf-art">'+(im?('<img src="'+im+'" alt="">'):('<span class="pcf-ph">'+ic+'</span>'))+'<b id="pc-nm">'+escH(nm)+'</b></div>';
+  // 0) Comment il se vend — « même les produits en kg » (le patron, 24/11) :
+  // le sucre, le riz se règlent ici aussi, « au kilo, sac de 50 kg ». Une
+  // sorte de famille suit l'unité de sa famille : la question n'est posée
+  // qu'à un article seul.
+  if(!v&&!(p.vr&&p.vr.length)){
+    h+='<div class="pcf-q">'+(fr?'Il se vend…':'Sold…')+'</div><div class="pcf-ch" style="grid-template-columns:repeat(3,minmax(0,1fr))">';
+    [['',fr?'1 pièce':'1 piece',fr?'à la pièce':'per piece'],['kg','1 kg',fr?'au kilo':'per kilo'],['L','1 L',fr?'au litre':'per litre']].forEach(function(x){
+      h+='<button type="button" class="pcf-b'+(c.mes===x[0]?' on':'')+'" data-mesure="'+x[0]+'" onclick="pcMesure(this.getAttribute(\'data-mesure\'))">'+escH(x[1])+'<small>'+escH(x[2])+'</small></button>';
+    });
+    h+='</div>';
+  }
   // 1) La pièce. Un article au kilo ou au litre n'a pas de « pièce » : sa
   // mesure est son unité, on passe directement au sac.
   if(!c.mes){
@@ -23408,7 +23419,7 @@ function _pcRendre(){
   }
   // 2) Le carton : son mot, puis combien dedans.
   var mots=_PC_MOTS.slice();if(c.mot&&mots.indexOf(c.mot)<0)mots.unshift(c.mot);
-  h+='<div class="pcf-q">'+ic+escH(fr?('Combien de '+_uniteMot(p)+' dans '+_unGros(c.mot)+' ?'):('How many in one '+c.mot+'?'))+'</div>'
+  h+='<div class="pcf-q">'+ic+escH(fr?('Combien de '+_pcUnite(c)+' dans '+_unGros(c.mot)+' ?'):('How many in one '+c.mot+'?'))+'</div>'
     +'<div class="pcf-mots">'+mots.map(function(m){
       return '<button type="button" class="pcf-mot'+(m===c.mot?' on':'')+'" data-mot="'+escH(m)+'" onclick="pcMot(this.getAttribute(\'data-mot\'))">'+_iconeCont(m)+escH(m)+'</button>';
     }).join('')+'</div>';
@@ -23440,12 +23451,12 @@ function _pcMaj(){
   var r=document.getElementById('pc-res');if(!r)return;
   if(!(c.n>1)){r.textContent='';r.style.display='none';return;}
   r.style.display='block';
-  var t=(fr?'1 ':'1 ')+c.mot+' = '+fmtQ(c.n)+' '+_uniteMot(c.p)+(c.taille&&!c.mes?(' de '+c.taille):'');
+  var t=(fr?'1 ':'1 ')+c.mot+' = '+fmtQ(c.n)+' '+_pcUnite(c)+(c.taille&&!c.mes?(' de '+c.taille):'');
   var m=c.taille&&!c.mes&&String(c.taille).match(/^(\d+(?:,\d+)?) (L|cl|ml|kg|g)$/);
   if(m){var q=parseFloat(m[1].replace(',','.'))*c.n,uu=m[2];
     if(uu==='cl'&&q>=100){q=q/100;uu='L';}else if(uu==='ml'&&q>=1000){q=q/1000;uu='L';}else if(uu==='g'&&q>=1000){q=q/1000;uu='kg';}
     t+=' ('+fmtQ(Math.round(q*100)/100)+' '+uu+')';}
-  if(c.px>0)t+=' · '+(fr?'soit ':'that is ')+fmt(Math.round(c.px/c.n))+' '+(fr?'la pièce':'each')+(pu>0?(fr?(' (au détail '+fmt(pu)+')'):(' (retail '+fmt(pu)+')')):'');
+  if(c.px>0)t+=' · '+(fr?'soit ':'that is ')+fmt(Math.round(c.px/c.n))+' '+(c.mes==='kg'?(fr?'le kilo':'per kg'):c.mes==='L'?(fr?'le litre':'per litre'):(fr?'la pièce':'each'))+(pu>0?(fr?(' (au détail '+fmt(pu)+')'):(' (retail '+fmt(pu)+')')):'');
   r.textContent=t;
 }
 function pcTaille(t){if(!_pc)return;_pc.taille=t||'';_pcRendre();}
@@ -23457,7 +23468,23 @@ function pcTailleAutre(){
   if(!t){showToast(lang!=='en'?'Écris un nombre et L, cl, kg ou g':'Type a number and L, cl, kg or g');return;}
   _pc.taille=t;_pcRendre();
 }
-function pcMot(m){if(!_pc)return;_pc.mot=m;_pcRendre();}
+function pcMot(m){if(!_pc)return;_pc.mot=m;_pc.motAuto=false;_pcRendre();}
+// L'unité affichée pendant qu'il choisit : celle qu'il vient de toucher,
+// pas encore celle de l'article.
+function _pcUnite(c){
+  if(c.mes==='kg')return 'kg';
+  if(c.mes==='L')return lang!=='en'?'litres':'litres';
+  if(c.mes0&&!c.mes)return lang!=='en'?'pièces':'pieces';
+  return _uniteMot(c.p);
+}
+function pcMesure(k){
+  var c=_pc;if(!c)return;
+  c.mes=k||'';
+  // Le mot qu'il n'a pas dit suit l'unité : le sac pour le kilo, le bidon
+  // pour le litre, le carton pour la pièce.
+  if(c.motAuto)c.mot=(c.mes==='kg')?(lang!=='en'?'sac':'bag'):(c.mes==='L')?(lang!=='en'?'bidon':'can'):(lang!=='en'?'carton':'box');
+  _pcRendre();
+}
 function pcNb(n){if(!_pc)return;_pc.n=n;_pcRendre();}
 function pcNbLibre(v){
   if(!_pc)return;var n=parseFloat(String(v||'').replace(',','.'))||0;_pc.n=n>1?Math.round(n*100)/100:0;
@@ -23468,30 +23495,42 @@ function pcPx(v){if(!_pc)return;_pc.px=parseFloat(String(v||'').replace(',','.')
 function pcEnregistrer(){
   var c=_pc;if(!c)return;
   var fr=(lang!=='en'),p=c.p,v=c.v,cible=v||p;
-  if(!(c.n>1)){
-    showToast('📦 '+(fr?('Combien de '+_uniteMot(p)+' dans '+_unGros(c.mot)+' ?'):'How many inside?'));
+  // Sans nombre : on enregistre quand même l'unité ou la taille qu'il a
+  // changée (« au kilo », sans sac) ; sinon il n'a rien dit, on demande.
+  var seulUnite=!(c.n>1)&&((!v&&c.mes!==c.mes0)||(!c.mes&&c.taille!==c.t0));
+  if(!(c.n>1)&&!seulUnite){
+    showToast('📦 '+(fr?('Combien de '+_pcUnite(c)+' dans '+_unGros(c.mot)+' ?'):'How many inside?'));
     try{document.getElementById('pc-n').focus();}catch(e){}
     return;
+  }
+  // L'unité : « à la pièce » choisi s'écrit 'pc' (il ne bouge plus, même si
+  // le nom dit « (kg) » ou « Huile de palme » — la règle de la 24.08).
+  if(!v&&c.mes!==c.mes0){
+    journalAjouter('unite',p.nm,c.mes0?(c.mes0==='kg'?'kg':'litre'):(fr?'pièce':'unit'),c.mes?(c.mes==='kg'?'kg':'litre'):(fr?'pièce':'unit'));
+    p.um=c.mes||'pc';
   }
   // La taille, dans le nom : c'est là que la tuile et le reçu la lisent.
   if(!c.mes&&c.taille!==c.t0){
     var av=v?(v.nm||''):(p.nm||''),ap=_nomAvecTaille(av,c.taille);
     if(ap&&ap!==av){journalAjouter('nom',p.nm+(v?(' — '+av):''),av,ap);if(v)v.nm=ap;else p.nm=ap;}
   }
-  var avant='';try{avant=_libelleCond(p,v);}catch(e){}
-  _poserCond(cible,c.n,c.mot,0,null,0);
-  var pxAv=Number(cible.pxGros)||0;
-  cible.pxGros=c.px>0?Math.round(c.px):null;
-  journalAjouter('vente en gros',p.nm+(v?(' — '+(v.nm||'')):''),avant||(pxAv>0?fmt(pxAv):''),
-                 c.mot+' de '+fmtQ(c.n)+(c.px>0?(' — '+fmt(c.px)):''));
+  if(!seulUnite){
+    var avant='';try{avant=_libelleCond(p,v);}catch(e){}
+    _poserCond(cible,c.n,c.mot,0,null,0);
+    var pxAv=Number(cible.pxGros)||0;
+    cible.pxGros=c.px>0?Math.round(c.px):null;
+    journalAjouter('vente en gros',p.nm+(v?(' — '+(v.nm||'')):''),avant||(pxAv>0?fmt(pxAv):''),
+                   c.mot+' de '+fmtQ(c.n)+(c.px>0?(' — '+fmt(c.px)):''));
+  }
   save();
   closeSheet('ov-pc');
   try{DB=recomputeStock(DB);}catch(e){}
   try{renderProd(DB.articles);renderStock(DB.articles);}catch(e){}
-  showToast(_emojiCont(c.mot)+' '+(fr?('1 '+c.mot+' = '+fmtQ(c.n)+' '+_uniteMot(p)):('1 '+c.mot+' = '+fmtQ(c.n))));
+  if(seulUnite)showToast('⚖️ '+(fr?(c.mes==='kg'?'Se vend au kilo':c.mes==='L'?'Se vend au litre':'Se vend à la pièce'):'Saved'));
+  else showToast(_emojiCont(c.mot)+' '+(fr?('1 '+c.mot+' = '+fmtQ(c.n)+' '+_pcUnite(c)):('1 '+c.mot+' = '+fmtQ(c.n))));
   // Venu d'une vente en gros (« tout produit est vendable en gros ») : la
   // vente reprend, le carton qu'il vient de dire part au panier.
-  if(c.vendre){
+  if(c.vendre&&!seulUnite){
     var pp=DB.articles.find(function(x){return x.id===p.id;})||p;
     var vv=v?((pp.vr||[]).find(function(x){return x.id===v.id;})||null):null;
     try{if(vv)_ajouterLotVariante(pp,vv,c.n,c.mot);else _ajouterLot(pp,c.n,c.mot);}catch(e){}
