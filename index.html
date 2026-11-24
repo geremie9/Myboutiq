@@ -14981,7 +14981,9 @@ function renderProd(lst){
         // tuile vend forcément la pièce — 14 px de moins par rangée. « le
         // kilo », « le litre », eux, disent toujours quelque chose.
         var _bas=_barreGros(p),_lib=hasV?'':_libPiece(p);
-        if(_lib&&!_bas&&_lib===(lang==='fr'?'la pièce':'each'))_lib='';
+        // 24.11 — « 📦 ? » (la feuille de la pièce et du carton) n'est pas un
+        // second prix : il ne fait pas revenir « la pièce » (t243).
+        if(_lib&&(!_bas||/pgros vide pq/.test(_bas))&&_lib===(lang==='fr'?'la pièce':'each'))_lib='';
         // 23.56 — un nom de fichier ne s'affiche pas : l'étiquette ne garde plus
         // une bande blanche vide sous « Prix ? » (sa capture), le prix la prend.
         return '<div class="pcard-overlay"><div class="pnm-ov'+(_nomDeFichier(p)?' pnm-vide">&nbsp;':('">'+escH(p.nm)))+'</div>'
