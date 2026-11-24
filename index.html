@@ -941,6 +941,7 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .pcf-res{margin:12px 0 4px;padding:10px 12px;border-radius:12px;background:rgba(0,105,92,.09);color:#00695C;font:800 14px/1.35 Outfit,sans-serif;min-height:20px}
 .pcf-al{margin:8px 0 2px;padding:10px 12px;border-radius:12px;background:#FFF4E5;color:#9A3412;font:800 14px/1.35 Outfit,sans-serif;display:flex;flex-direction:column;gap:8px}
 .pcf-al .pcf-b{min-height:44px;background:#fff;border-color:#F59E0B}
+.pcf-note{font:700 12.5px/1.3 Outfit,sans-serif;color:var(--M);margin-top:6px}
 .pcf-sans{background:none;border:none;color:var(--M);font:800 13.5px/1 Outfit,sans-serif;text-decoration:underline;margin:14px auto 0;display:block;cursor:pointer;padding:8px}
 .pt-sortes{position:absolute;left:1px;right:1px;top:30px;z-index:4;display:flex;gap:2px;justify-content:center;pointer-events:none}
 .pt-s{pointer-events:auto;position:relative;flex:1 1 0;min-width:30px;max-width:60px;height:30px;border:2px solid #fff;border-radius:15px;padding:0 3px;display:flex;align-items:center;justify-content:center;font:900 11px/1 Outfit,sans-serif;letter-spacing:-.02em;box-shadow:0 2px 5px rgba(0,0,0,.22);cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -7913,7 +7914,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.13'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.14'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -23419,15 +23420,21 @@ function _pcRendre(){
   var ic=_iconeCont(c.mot);
   var h='<div class="pcf-art">'+(im?('<img src="'+im+'" alt="">'):('<span class="pcf-ph">'+ic+'</span>'))+'<b id="pc-nm">'+escH(nm)+'</b></div>';
   // 0) Comment il se vend — « même les produits en kg » (le patron, 24/11) :
-  // le sucre, le riz se règlent ici aussi, « au kilo, sac de 50 kg ». Une
-  // sorte de famille suit l'unité de sa famille : la question n'est posée
-  // qu'à un article seul.
-  if(!v&&!(p.vr&&p.vr.length)){
-    h+='<div class="pcf-q">'+(fr?'Il se vend…':'Sold…')+'</div><div class="pcf-ch" style="grid-template-columns:repeat(3,minmax(0,1fr))">';
+  // le sucre, le riz se règlent ici aussi, « au kilo, sac de 50 kg ».
+  // 24.14 — « tous les articles en kg doivent s'harmoniser, en litres aussi,
+  // et si je me trompe je peux revenir remettre mon article en kg ou en
+  // litres sans casse-tête » (le patron, 24/11). Sa famille « Huile » était
+  // passée au litre par erreur, et cette feuille ne posait la question qu'à
+  // un article seul : la famille devait repasser par sa fiche. Une sorte suit
+  // l'unité de sa famille : la question porte alors sur TOUTE la famille, et
+  // le dit. Changer ne touche ni aux prix ni au stock — il peut revenir.
+  {
+    var _famU=!!(v||(p.vr&&p.vr.length));
+    h+='<div class="pcf-q">'+escH(_famU?(fr?('Toute la famille « '+p.nm+' » se vend…'):('The whole '+p.nm+' family sells…')):(fr?'Il se vend…':'Sold…'))+'</div><div class="pcf-ch" style="grid-template-columns:repeat(3,minmax(0,1fr))">';
     [['',fr?'1 pièce':'1 piece',fr?'à la pièce':'per piece'],['kg','1 kg',fr?'au kilo':'per kilo'],['L','1 L',fr?'au litre':'per litre']].forEach(function(x){
       h+='<button type="button" class="pcf-b'+(c.mes===x[0]?' on':'')+'" data-mesure="'+x[0]+'" onclick="pcMesure(this.getAttribute(\'data-mesure\'))">'+escH(x[1])+'<small>'+escH(x[2])+'</small></button>';
     });
-    h+='</div>';
+    h+='</div><div class="pcf-note">'+escH(fr?'Tu peux changer quand tu veux : les prix et le stock ne bougent pas.':'You can change it any time: prices and stock stay.')+'</div>';
   }
   // 1) La pièce. Un article au kilo ou au litre n'a pas de « pièce » : sa
   // mesure est son unité, on passe directement au sac.
@@ -23538,7 +23545,7 @@ function pcEnregistrer(){
   var fr=(lang!=='en'),p=c.p,v=c.v,cible=v||p;
   // Sans nombre : on enregistre quand même l'unité ou la taille qu'il a
   // changée (« au kilo », sans sac) ; sinon il n'a rien dit, on demande.
-  var seulUnite=!(c.n>1)&&((!v&&c.mes!==c.mes0)||(!c.mes&&c.taille!==c.t0));
+  var seulUnite=!(c.n>1)&&((c.mes!==c.mes0)||(!c.mes&&c.taille!==c.t0));
   if(!(c.n>1)&&!seulUnite){
     showToast('📦 '+(fr?('Combien de '+_pcUnite(c)+' dans '+_unGros(c.mot)+' ?'):'How many inside?'));
     try{document.getElementById('pc-n').focus();}catch(e){}
@@ -23546,7 +23553,7 @@ function pcEnregistrer(){
   }
   // L'unité : « à la pièce » choisi s'écrit 'pc' (il ne bouge plus, même si
   // le nom dit « (kg) » ou « Huile de palme » — la règle de la 24.08).
-  if(!v&&c.mes!==c.mes0){
+  if(c.mes!==c.mes0){   /* 24.14 : une sorte change l'unité de sa famille */
     journalAjouter('unite',p.nm,c.mes0?(c.mes0==='kg'?'kg':'litre'):(fr?'pièce':'unit'),c.mes?(c.mes==='kg'?'kg':'litre'):(fr?'pièce':'unit'));
     p.um=c.mes||'pc';
   }
