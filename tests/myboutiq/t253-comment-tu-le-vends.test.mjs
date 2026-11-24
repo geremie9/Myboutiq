@@ -79,8 +79,11 @@ const tape = async (p, sel, txt) => { await p.locator(sel).fill(''); await p.loc
   // Depuis la fiche article : le prix à l'unité et l'achat restent dans la fiche (elle les réécrirait).
   await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); ouvrirCompleterArticle(DB.articles.find(a => a.id === 8)); }); await p.waitForTimeout(400);
   await p.evaluate(() => cmpChangerMesure()); await p.waitForTimeout(300);
-  const fi = await p.evaluate(() => ({ vue: document.getElementById('ov-cond').classList.contains('show'), px: !!document.getElementById('cond-px-0'), ach: !!document.getElementById('cond-ach-i') }));
-  t(fi.vue && !fi.px && !fi.ach, 'depuis la fiche : la même feuille, sans le prix à l\'unité ni l\'achat (la fiche les garde)');
+  // 24.15 — un seul étage : la fiche ouvre la feuille de la pièce et du carton (celle de la tuile),
+  // sans l'unité ni la taille ; elle n'a jamais eu ni prix à l'unité ni achat.
+  const fi = await p.evaluate(() => ({ vue: document.getElementById('ov-cond').classList.contains('show') || document.getElementById('ov-pc').classList.contains('show'),
+    px: !!document.querySelector('#ov-cond.show #cond-px-0'), ach: !!document.querySelector('#ov-cond.show #cond-ach-i'), unite: document.querySelectorAll('#ov-pc.show [data-mesure], #ov-pc.show [data-taille]').length }));
+  t(fi.vue && !fi.px && !fi.ach && fi.unite === 0, 'depuis la fiche : la feuille du carton, sans le prix à l\'unité, ni l\'achat, ni l\'unité (la fiche les garde)');
   t(errs.length === 0, 'aucune erreur JS (allumettes)' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }

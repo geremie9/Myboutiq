@@ -36716,6 +36716,9 @@ function migrateDBData(d){
     var _rep=function(a,o,nm){
       var n=Number(o.umSac)||0,px=Number(o.px)||0,pg=Number(o.pxGros)||0;
       if(!(n>=3&&px>0&&pg>0&&pg<px*1.5))return;
+      // Il a répondu « non, le carton est bien à ce prix » (la question de la
+      // 23.98, gardée dans grosVu) : sa réponse passe avant la formule.
+      if(Number(o.grosVu)===pg)return;
       var nv=Math.round(pg*n);o.pxGros=nv;
       var id='repar-carton-'+a.id+'-'+(o===a?'0':o.id);
       if(!_jIds[id]){_jIds[id]=1;d.journal.unshift({id:id,ts:new Date().toISOString(),dev:'app',who:'MyBoutiQ',role:'patron',act:'prix',art:nm+' ('+(o.umCont||'carton')+' de '+n+')',av:String(pg)+' F',ap:String(nv)+' F'});}
