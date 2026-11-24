@@ -1675,6 +1675,13 @@ body.impr-releve #ov-releve{position:static!important;display:block!important;ba
 #s-caisse #annonce-banner:not(.ouvert) #annonce-msg,#s-caisse #annonce-banner:not(.ouvert) #annonce-dis{display:none}
 #s-caisse #annonce-banner.ouvert #annonce-titre{white-space:normal}
 body.stk-a-faire .bnav .ni.ni-stock .ne{position:relative}
+/* 24.12 — les chiffres de SA boutique sur la barre du bas (voir _navChiffres). */
+.bnav .ni .ne{position:relative}
+.bnav .ni .nnum{position:absolute;left:50%;top:-9px;transform:translateX(-50%);z-index:2;min-width:20px;height:19px;padding:0 6px;border-radius:10px;box-sizing:border-box;
+  font:900 11.5px/19px Outfit,sans-serif;font-style:normal;white-space:nowrap;color:#fff;box-shadow:0 0 0 2px #fff;pointer-events:none}
+.bnav .ni .nnum.vert{background:#15803D}
+.bnav .ni .nnum.rouge{background:var(--R)}
+body.nnum-stk .bnav .ni.ni-stock .ne::after{display:none}
 body.stk-a-faire .bnav .ni.ni-stock .ne::after{content:'';position:absolute;top:-1px;right:-4px;width:9px;height:9px;border-radius:50%;background:var(--R);box-shadow:0 0 0 2px #fff}
 .stit{font-size:11px;font-weight:800;color:var(--M);text-transform:uppercase;letter-spacing:.8px}
 .sact{font-size:11px;font-weight:700;color:var(--B);background:none;border:none;cursor:pointer;font-family:'Outfit',sans-serif}
@@ -7904,7 +7911,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.11'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.12'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -24656,6 +24663,59 @@ function _navAjout(){
     b.innerHTML='<i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></i><span>'+(fr?'Ajouter':'Add')+'</span>';
   });
   ['fab-add','btn-dep'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.add('nav-ok');});
+  try{_navChiffres();}catch(e){}   /* 24.12 */
+}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 24.12 — LA BARRE DU BAS PARLE EN CHIFFRES
+//  Le patron, le 24/11 (sa capture de la barre du bas) : « les
+//  fonctionnalités sont aussi génériques ». Vendre, Stock, Ma journée,
+//  Dettes : les mêmes mots et les mêmes dessins dans toutes les boutiques,
+//  et un point rouge qui ne dit pas combien. Ce que chaque bouton ouvre,
+//  il fallait l'ouvrir pour le savoir.
+//  Chaque bouton porte maintenant LE chiffre de sa boutique, lisible sans
+//  lire (des chiffres avant les mots, la règle du 13/11) :
+//   · Stock : combien d'articles sont vides ou presque (`_alertesStock`) ;
+//   · Ma journée : ce qu'il a vendu aujourd'hui, en vert ;
+//   · Dettes : ce qu'on lui doit, en rouge.
+//  Rien quand c'est zéro. Le vendeur ne voit que ce que ses droits lui
+//  montrent déjà (les ventes et les dettes restent au patron).
+//  ⚠️ Recalculé APRÈS l'enregistrement, regroupé (1,2 s) : la 24.04 a
+//  sorti de la vente tout ce qui n'est pas la vente.
+// ══════════════════════════════════════════════════════════════════
+var _navChiffresT=null;
+function _navCourt(n){
+  n=Math.round(Number(n)||0);
+  if(n>=1000000){var m=Math.round(n/100000)/10;return String(m).replace('.',',')+' M';}
+  return _nbFr(n);
+}
+// ⚠️ Mesuré au banc : la boutique s'enregistre plusieurs fois par seconde
+// après une vente ; un délai RELANCÉ à chaque fois ne partait jamais. Le
+// premier délai tient, les suivants s'y joignent.
+function _navChiffresPlus(){if(_navChiffresT)return;_navChiffresT=setTimeout(function(){_navChiffresT=null;try{_navChiffres();}catch(e){}},1200);}
+function _navChiffres(){
+  if(!DB||!document.querySelector('.bnav'))return;
+  var pat=(role==='patron');
+  var stk=0,jour=0,dettes=0;
+  try{stk=_alertesStock().tout.length;}catch(e){}
+  if(pat||hasPerm('rapports')){try{getTodaySales().forEach(function(v){jour+=Number(v.total)||0;});}catch(e){}}
+  if(pat||hasPerm('clients')){try{(DB.clients||[]).forEach(function(c){var x=Number(c&&c.credit)||0;if(x>0)dettes+=x;});}catch(e){}}
+  var poser=function(tab,txt,cls,titre){
+    document.querySelectorAll('.bnav .ni').forEach(function(b){
+      if((b.getAttribute('onclick')||'').indexOf("navTo('"+tab+"'")<0)return;
+      var ne=b.querySelector('.ne');if(!ne)return;
+      var x=ne.querySelector('.nnum');
+      if(!txt){if(x)x.remove();return;}
+      if(!x){x=document.createElement('i');ne.appendChild(x);}
+      x.className='nnum '+cls;x.textContent=txt;
+      b.setAttribute('aria-description',titre);
+    });
+  };
+  var fr=(lang!=='en');
+  poser('stock',stk>0?String(stk):'','rouge',fr?(stk+' article'+(stk>1?'s':'')+' à racheter'):(stk+' to restock'));
+  poser('rapports',jour>0?_navCourt(jour):'','vert',fr?('Vendu aujourd\'hui : '+fmt(jour)):('Sold today: '+fmt(jour)));
+  poser('clients',dettes>0?_navCourt(dettes):'','rouge',fr?('On te doit '+fmt(dettes)):('Owed to you: '+fmt(dettes)));
+  // Le chiffre du stock remplace son point rouge (qui ne disait pas combien).
+  document.body.classList.toggle('nnum-stk',stk>0);
 }
 function _debloquerIci(apres){
   var fr=(lang==='fr'),s=document.getElementById('snack-ph');
@@ -37735,6 +37795,7 @@ var _boutiqueEffacee=false;
 function persistDB(delaiMs){
   if(_boutiqueEffacee)return;
   _sauvJour();
+  try{_navChiffresPlus();}catch(e){}
   try{_parcoursMaj();}catch(e){}
   try{
     localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
