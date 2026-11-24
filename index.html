@@ -939,6 +939,8 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .pcf-px input{flex:1;min-width:0;min-height:52px;border:2px solid var(--BD);border-radius:13px;padding:0 14px;font:900 22px/1 Outfit,sans-serif;background:#fff;color:inherit}
 .pcf-px i{font:900 18px/1 Outfit,sans-serif;font-style:normal}
 .pcf-res{margin:12px 0 4px;padding:10px 12px;border-radius:12px;background:rgba(0,105,92,.09);color:#00695C;font:800 14px/1.35 Outfit,sans-serif;min-height:20px}
+.pcf-al{margin:8px 0 2px;padding:10px 12px;border-radius:12px;background:#FFF4E5;color:#9A3412;font:800 14px/1.35 Outfit,sans-serif;display:flex;flex-direction:column;gap:8px}
+.pcf-al .pcf-b{min-height:44px;background:#fff;border-color:#F59E0B}
 .pcf-sans{background:none;border:none;color:var(--M);font:800 13.5px/1 Outfit,sans-serif;text-decoration:underline;margin:14px auto 0;display:block;cursor:pointer;padding:8px}
 .pt-sortes{position:absolute;left:1px;right:1px;top:30px;z-index:4;display:flex;gap:2px;justify-content:center;pointer-events:none}
 .pt-s{pointer-events:auto;position:relative;flex:1 1 0;min-width:30px;max-width:60px;height:30px;border:2px solid #fff;border-radius:15px;padding:0 3px;display:flex;align-items:center;justify-content:center;font:900 11px/1 Outfit,sans-serif;letter-spacing:-.02em;box-shadow:0 2px 5px rgba(0,0,0,.22);cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -7911,7 +7913,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.12'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.13'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -18896,6 +18898,17 @@ function _brancherVar(d,p,v){
     var gv=ev&&ev.target&&ev.target.getAttribute&&ev.target.getAttribute('data-grosv');
     if(gv){
       ev.stopPropagation();
+      // 24.13 — « les huiles, je n'arrive pas à les modifier » (le patron,
+      // 24/11) : un carton qui a déjà son prix ne faisait que se vendre, même
+      // en « Modifier » — sa boutique avait « 1 400 F le bidon de 15 » (le
+      // prix d'UNE bouteille) et aucun chemin pour le corriger. En
+      // « Modifier », la puce ouvre la feuille de la pièce et du carton ; en
+      // vente (« Bloqué »), elle vend, comme avant.
+      if((role==='patron'||hasPerm('produits'))&&!(venteVerrouillee&&venteVerrouillee())){
+        fermerVarInline();
+        setTimeout(function(){try{ouvrirPieceCarton(p.id,v.id);}catch(x){}},160);
+        return;
+      }
       var _gd=_grosDe(p,v);
       if(_gd.n>1){_ajouterLotVariante(p,v,_gd.n,_gd.mot);return;}
     }
@@ -23224,7 +23237,7 @@ function eclairArmer(){
   if(!_eclairAppris()||!_venteSansQuestion())return;
   var b=document.getElementById('btn-enc');
   // 24.09 — la barre propose un carton : 5 s pour choisir, pas 3.
-  var ms=_ECLAIR_MS;try{if(_offreCarton())ms=5000;}catch(e){}
+  var ms=_ECLAIR_MS;try{if(_offreCartonBarre()||_offreMesureBarre())ms=5000;}catch(e){}
   if(b){b.style.setProperty('--eclair-ms',ms+'ms');void b.offsetWidth;b.classList.add('eclair');}
   _eclairT=setTimeout(_eclairFin,ms);
 }
@@ -23306,9 +23319,11 @@ function cartonPlus(fois){var c=_cartonCible();if(c)_cartonAjouter(c,fois);}
 // ou en boutique de gros sa taille), la barre propose « 📦 carton » : la pièce
 // qu'il vient de poser devient le carton. Deux touches pour un carton, mais
 // la photo n'est plus jamais cachée (le patron, 23/11).
-var _dernierTouche=null;
-function _offreCarton(){
-  var d=_dernierTouche;if(!d)return null;
+// ⚠️ 24.13 — s'appelait `_dernierTouche` (24.09) : le même nom que l'ordre des
+// articles les plus touchés (`mettreEnAvant`, plus haut), qu'il remettait à null.
+var _toucheBarre=null;
+function _offreCartonBarre(){
+  var d=_toucheBarre;if(!d)return null;
   var p=(DB.articles||[]).find(function(a){return String(a.id)===String(d.pid);});if(!p)return null;
   var v=d.vid!=null?(p.vr||[]).find(function(x){return String(x.id)===String(d.vid);}):null;
   if(d.vid!=null&&!v)return null;
@@ -23319,7 +23334,7 @@ function _offreCarton(){
   return {p:p,v:v,g:g,key:key};
 }
 function cartonOffre(){
-  var c=_offreCarton();if(!c)return;
+  var c=_offreCartonBarre();if(!c)return;
   eclairStop();
   if(!seVendAuDetail(c.p)){
     // La pièce posée devient le carton (s'il en reste une hors des cartons déjà là).
@@ -23328,7 +23343,7 @@ function cartonOffre(){
     if(vrac>=1){panier[c.key]=Math.round((panier[c.key]-1)*100)/100;if(!(panier[c.key]>0))delete panier[c.key];}
   }
   _dernierCarton={pid:c.p.id,vid:c.v?c.v.id:null};
-  _dernierTouche=null;
+  _toucheBarre=null;
   _cartonAjouter({p:c.p,v:c.v,g:c.g},1);
 }
 // ══════════════════════════════════════════════════════════════════
@@ -23441,7 +23456,7 @@ function _pcRendre(){
   // au prix de la pièce (la règle de la 21.40).
   h+='<div class="pcf-q">'+ic+escH(fr?(_femGros(c.mot)?'La ':'Le ')+c.mot+', tu le vends ?':('The '+c.mot+', you sell it at?'))+'</div>'
     +'<div class="pcf-px"><input id="pc-px" type="number" inputmode="numeric" value="'+(c.px>0?c.px:'')+'" oninput="pcPx(this.value)"><i>'+u+'</i></div>'
-    +'<div class="pcf-res" id="pc-res"></div>'
+    +'<div class="pcf-res" id="pc-res"></div><div id="pc-alerte"></div>'
     +'<div class="pied-collant"><button type="button" class="bnxt" id="pc-ok" onclick="pcEnregistrer()">'+(fr?'Enregistrer':'Save')+'</button></div>';
   if(c.dejaLa)h+='<button type="button" class="pcf-sans" onclick="pcSansCarton()">'+escH(fr?('Il ne vient pas en '+c.mot):('No '+c.mot))+'</button>';
   document.getElementById('pc-cont').innerHTML=h;
@@ -23457,6 +23472,17 @@ function _pcMaj(){
     nmEl.textContent=c.v?(c.p.nm+' — '+ap):ap;}
   var pi=document.getElementById('pc-px');
   if(pi)pi.placeholder=(pu>0&&c.n>1)?((fr?'au détail : ':'retail: ')+fmt(pu*c.n)):(fr?'facultatif':'optional');
+  // 24.13 — un carton moins cher que deux pièces : c'est presque toujours le
+  // prix d'UNE pièce en gros (sa boutique : « 1 400 F le bidon de 15 »). On
+  // le dit, et une touche le multiplie.
+  var al=document.getElementById('pc-alerte');
+  if(al){
+    if(c.n>1&&c.px>0&&pu>0&&c.px<pu*2){
+      var tot=Math.round(c.px*c.n);
+      al.innerHTML='<div class="pcf-al">⚠️ '+escH(fr?(fmt(c.px)+' pour '+_unGros(c.mot)+' entier, moins cher que 2 pièces ?'):('Cheaper than 2 pieces?'))
+        +'<button type="button" class="pcf-b pcf-l" onclick="pcPxFois()">'+escH(fmt(c.px)+' × '+fmtQ(c.n)+' = '+fmt(tot))+'</button></div>';
+    }else al.innerHTML='';
+  }
   var r=document.getElementById('pc-res');if(!r)return;
   if(!(c.n>1)){r.textContent='';r.style.display='none';return;}
   r.style.display='block';
@@ -23501,6 +23527,12 @@ function pcNbLibre(v){
   _pcMaj();
 }
 function pcPx(v){if(!_pc)return;_pc.px=parseFloat(String(v||'').replace(',','.'))||0;_pcMaj();}
+function pcPxFois(){
+  var c=_pc;if(!c||!(c.n>1))return;
+  c.px=Math.round(c.px*c.n);
+  var i=document.getElementById('pc-px');if(i)i.value=String(c.px);
+  _pcMaj();
+}
 function pcEnregistrer(){
   var c=_pc;if(!c)return;
   var fr=(lang!=='en'),p=c.p,v=c.v,cible=v||p;
@@ -23560,6 +23592,42 @@ function pcPuce(e,pid,vid){
   if(e){e.stopPropagation();e.preventDefault&&e.preventDefault();}
   ouvrirPieceCarton(pid,vid,{vendre:_venteEnGros()});
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 24.13 — LE RIZ SE VEND COMME IL VEUT, SUR LA BARRE
+//  Le patron, le 24/11 : « j'ai les riz que je n'arrive pas à vendre de
+//  façon détail, en kg, ou 100, ou le montant ou les kg que je veux ».
+//  Mesuré dans sa boutique : toutes ses ventes de riz font 1 kg, jamais
+//  ½ kg ni un montant. La 24.08 vend la dose habituelle d'une touche (son
+//  choix, « une touche = l'habitude ») et range la feuille derrière le
+//  petit badge « ⚖ » : personne ne le trouve.
+//  L'habitude garde sa touche ; la barre du bas montre AUSSITÔT les autres
+//  quantités — là où le geste vient d'avoir lieu : « ½ kg », « 2 kg »,
+//  et « ⚖ Autre » (la feuille : pour un montant, ¼, autre quantité), qui
+//  REMPLACENT ce qui vient d'être posé. La vente éclair attend 5 s.
+// ══════════════════════════════════════════════════════════════════
+function _offreMesureBarre(){
+  var d=_toucheBarre;if(!d)return null;
+  var k=d.pid+'-'+(d.vid!=null?d.vid:0);if(!(panier[k]>0))return null;
+  var m=[String(d.pid),d.vid!=null?String(d.vid):'0'],p=(DB.articles||[]).find(function(x){return String(x.id)===m[0];});
+  if(!p)return null;
+  try{if(!seVendAuDetail(p))return null;}catch(e){return null;}
+  var v=(m[1]&&m[1]!=='0')?((p.vr||[]).find(function(x){return String(x.id)===m[1];})||null):null;
+  // Un sac ou une mesure de la boutique posés en lot : ce n'est plus une
+  // pesée, on n'y touche pas d'ici.
+  try{var g=_grosPanier[k];if(g&&((g.lots&&g.lots.length)||Number(g.n)>1))return null;}catch(e){}
+  var q=panier[k],alt=[0.5,2,1,5].filter(function(x){return Math.abs(x-q)>1e-9;}).slice(0,2);
+  return {p:p,v:v,key:k,q:q,alt:alt};
+}
+function _qteCourt(q){return q===0.25?'¼':q===0.5?'½':q===0.75?'¾':fmtQ(q);}
+function mesureBarre(q){
+  var o=_offreMesureBarre();if(!o)return;
+  eclairStop();
+  _qteArt=o.p;_qteVar=o.v;
+  if(q==null){ouvrirQteMesure(o.p,true,o.v);return;}
+  _qteRemplace=o.p.id;
+  ajouterQteMesure(q);
+  try{eclairArmer();}catch(e){}
+}
 function cartonCombien(){
   var c=_cartonCible();if(!c)return;
   ouvrirPave(c.p,c.v,true);
@@ -23577,16 +23645,22 @@ function _barreMaj(nb,total){
     box.classList.add('show');fc.classList.add('avec-bil');document.body.classList.add('avec-bil');
     return;
   }
-  var oc=(nb>0)?_offreCarton():null;
+  var oc=(nb>0)?_offreCartonBarre():null;
+  var om=(nb>0)?_offreMesureBarre():null;
   var L=(nb>0&&_venteSansQuestion())?_billetsBarre(calcAPayer()):[];
   var fr=(lang!=='en');
   if(oc)L=L.slice(0,2);
-  box.innerHTML=(oc?('<button type="button" class="qct qct-o" onclick="cartonOffre()">'+(function(){try{return _iconeCont(oc.g.mot);}catch(e){return '📦';}})()
+  if(om)L=L.slice(0,oc?0:1);
+  var _u=om?(function(){try{return uniteArt(om.p);}catch(e){return 'kg';}})():'';
+  box.innerHTML=(om?(om.alt.map(function(x){
+      return '<button type="button" class="qct qct-m" onclick="mesureBarre('+x+')">⚖ '+escH(_qteCourt(x))+' <small>'+escH(_u)+'</small></button>';
+    }).join('')+'<button type="button" class="qct qct-m qct-n" onclick="mesureBarre()">⚖ '+escH(fr?'Autre':'Other')+'</button>'):'')
+    +(oc?('<button type="button" class="qct qct-o" onclick="cartonOffre()">'+(function(){try{return _iconeCont(oc.g.mot);}catch(e){return '📦';}})()
       +' '+escH(oc.g.mot||'carton')+(oc.g.px>0?(' <small>'+escH(_fmtBillet(Math.round(oc.g.px)))+'</small>'):(' <small>'+escH((fr?'de ':'of ')+oc.g.n)+'</small>'))+'</button>'):'')
     +L.map(function(x){
     return '<button type="button" class="bil" data-v="'+x[0]+'" style="background:'+x[1]+'" onclick="barreBillet('+x[0]+')" aria-label="'+(fr?'Le client donne ':'Customer gives ')+x[0]+'">'+fmtQ(x[0]).replace(/(\d)(?=(\d{3})+$)/g,'$1 ')+'</button>';
   }).join('');
-  var vu=L.length>0||!!oc;
+  var vu=L.length>0||!!oc||!!om;
   box.classList.toggle('show',vu);
   fc.classList.toggle('avec-bil',vu);
   document.body.classList.toggle('avec-bil',vu&&nb>0);
@@ -23627,8 +23701,8 @@ document.addEventListener('click',function(e){
   setTimeout(function(){
     if(_panierSig()===avant||panierVide())return;
     // 24.09 — l'article que la touche vient de poser : la barre peut proposer son carton.
-    _dernierTouche=null;
-    try{for(var k in panier){if((panier[k]||0)>(pav[k]||0)){var pr=k.split('-');_dernierTouche={pid:pr[0],vid:pr[1]&&pr[1]!=='0'?pr[1]:null};}}}catch(e){}
+    _toucheBarre=null;
+    try{for(var k in panier){if((panier[k]||0)>(pav[k]||0)){var pr=k.split('-');_toucheBarre={pid:pr[0],vid:pr[1]&&pr[1]!=='0'?pr[1]:null};}}}catch(e){}
     try{var _nb=Object.keys(panier).reduce(function(s,k){return s+panier[k];},0)+panierLibre.length;_barreMaj(_nb,calcTotal());}catch(e){}
     eclairArmer();
   },0);
