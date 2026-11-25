@@ -1024,6 +1024,16 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .vinline .vgrid:not(.v-liste) .vtile.hq .vt-gros,.pfam .pfam-g.vgrid:not(.v-liste) .vtile.hq .vt-gros{right:31px}
 .vinline .vgrid:not(.v-liste) .vtile .vt-gros i,.pfam .pfam-g.vgrid:not(.v-liste) .vtile .vt-gros i{font-size:0;line-height:0;display:flex}
 .vinline .vgrid:not(.v-liste) .vtile .vt-gros i svg,.pfam .pfam-g.vgrid:not(.v-liste) .vtile .vt-gros i svg{width:12px;height:12px}
+/* 24.17 — dans la famille ouverte, la puce du carton passe SOUS le prix, plus
+   sur la photo. Ses captures du 24/11 : « 📦 21 000 F », « = 50 kg » posés sur
+   le haut des bouteilles et du riz. La même règle que la grille depuis la 24.09
+   (« certaines images ne se voient pas très bien à cause du bouton ») ; ici la
+   puce reste, d'une touche : elle vend le carton de CETTE sorte. */
+/* ⚠️ relative, pas static : sa zone de doigt (::after, 44 px) se centre sur la
+   puce ; « static » l'accrochait à la tuile entière, et le bas de la photo
+   vendait le carton (vu au banc, t334 : 252 points de la photo). */
+.vinline .vgrid:not(.v-liste) .vtile .vt-gros{position:relative!important;top:auto!important;right:auto!important;align-self:center;justify-content:center;margin:5px auto 1px;max-width:calc(100% - 6px);box-sizing:border-box}
+.vinline .vgrid:not(.v-liste) .vtile.hq .vt-gros{right:auto}
 /* ⭐⭐ 23.45 — L'ÉTAGÈRE, SIGNATURE DE MYBOUTIQ. « Je veux que ce soit
    économique à l'écran, et que la superposition soit un élément marketing :
    comme si tu es dans ta boutique. » La 23.44 avait rendu la photo lisible
@@ -7914,7 +7924,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.16'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.17'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -18900,6 +18910,15 @@ function _brancherVar(d,p,v){
         setTimeout(function(){try{ouvrirPieceCarton(p.id,v.id,{vendre:_venteEnGros()});}catch(x){}},160);
         return;
       }
+      // 24.17 — un sac SANS prix d'un article qui se pèse : une touche vendait
+      // 50 kg au prix du kilo (sa vente de 40 000 F du 24/11, sur « = 50 kg »).
+      // On le demande d'abord, avec le poids et le montant.
+      try{
+        if(seVendAuDetail(p)&&!(_grosDe(p,v).px>0)){
+          var _frS=(lang!=='en'),_totS=Math.round((Number(v.px)||0)*_cd.n);
+          if(!confirm(_frS?('Vendre 1 '+_cd.mot+' de '+fmtQ(_cd.n)+' '+uniteArt(p)+' ('+fmt(_totS)+') ?'):('Sell 1 '+_cd.mot+' of '+fmtQ(_cd.n)+' ('+fmt(_totS)+')?')))return;
+        }
+      }catch(x){}
       _ajouterLotVariante(p,v,_cd.n,_cd.mot);
       return;
     }
