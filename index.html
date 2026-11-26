@@ -7950,7 +7950,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.22'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.23'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -9467,6 +9467,7 @@ function _ouvrirLaPorte(){
   catch(e){_connu=true;_stockageMuet=true;}
   try{initPaysLogin();}catch(e){}
   // Le code d'invitation doit être lu AVANT le démarrage, il décide de l'écran.
+  try{_noterOrigine();}catch(e){}
   try{
     var _p=new URLSearchParams(location.search);
     var _c=_p.get('code');
@@ -9485,6 +9486,40 @@ function _ouvrirLaPorte(){
   }catch(e){}
   if(_connu){try{_demarrerApp();}catch(e){}}
   else setTimeout(_demarrerApp,1150);
+}
+// ⭐ 24.23 — D'OÙ VIENT CHAQUE BOUTIQUE. Le patron (26/11) veut un numéro
+// WhatsApp officiel pour faire venir des boutiquiers ; pour savoir s'il
+// marche, il faut compter : les boutiques venues de WhatsApp restent-elles
+// plus que celles venues du site ? Au PREMIER passage on note la source
+// (« ?src=wa » sur le lien du numéro, une invitation, le site d'où l'on
+// arrive, l'app Android), et elle est gravée dans la boutique à sa création
+// (cfg.origine). Premier contact seulement : revenir plus tard par Google
+// ne réécrit pas qu'il est venu par WhatsApp. Rien d'autre n'est gardé :
+// ni l'adresse complète, ni de quoi reconnaître la personne.
+function _sourceDuLien(){
+  var q={};try{new URLSearchParams(location.search).forEach(function(v,k){q[k]=v;});}catch(e){}
+  var s=String(q.src||q.utm_source||q.ref||'').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,20);
+  if(s)return s;
+  if(q.code||/^\/join\//.test(location.pathname||''))return 'invitation';
+  var rf='';try{rf=document.referrer||'';}catch(e){}
+  if(/^android-app:\/\/online\.myboutiq/.test(rf))return 'android';
+  var h='';try{h=rf?new URL(rf).hostname.toLowerCase():'';}catch(e){}
+  if(!h||h===location.hostname)return '';
+  if(/whatsapp|wa\.me/.test(h))return 'wa';
+  if(/facebook|fb\.|messenger|instagram/.test(h))return 'facebook';
+  if(/tiktok/.test(h))return 'tiktok';
+  if(/google|bing|duckduckgo|yahoo|ecosia/.test(h))return 'recherche';
+  return h.replace(/^www\./,'').slice(0,40);
+}
+function _noterOrigine(){
+  try{if(localStorage.getItem('mb_origine'))return;}catch(e){return;}
+  var s=_sourceDuLien();
+  try{localStorage.setItem('mb_origine',JSON.stringify({s:s||'direct',p:(location.pathname||'/').slice(0,40),ts:Date.now()}));}catch(e){}
+}
+function _origineBoutique(){
+  var o=null;try{o=JSON.parse(localStorage.getItem('mb_origine')||'null');}catch(e){}
+  if(!o||!o.s)o={s:'direct',ts:Date.now()};
+  return {s:String(o.s).slice(0,40),p:String(o.p||'').slice(0,40),vu:Number(o.ts)||0,cree:Date.now()};
 }
 function _brancherServeur(){
   if(_serveurBranche)return; _serveurBranche=true;
@@ -11636,7 +11671,7 @@ async function _finaliserObSuite(nm,tel,pin,_relacher){
   // (Le modèle d'articles reste disponible en OPTION, depuis le guide de la caisse vide.)
   DB={
     cfg:{lang:obLang,pays:p,secteur:obSecteur,nom:nm,tel,pin,s:p.s,d:p.d,code,region:reg,veille:false,idFiscal:'',plan:'gratuit',biometrie:false,paramAvances:false,ownerEmail:authEmailFromPhone(tel),ownerId:authUser?authUser.id:null,
-         compteEnAttente:horsReseau?1:0},
+         compteEnAttente:horsReseau?1:0,origine:_origineBoutique()},
     articles:[],
     boutiques:[{id:1,nm,code,secteur:obSecteur,actif:true,ventes:0}],
     boutiqueCourante:0,
