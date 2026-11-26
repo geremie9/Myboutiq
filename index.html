@@ -7797,7 +7797,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.03'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.04'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -8015,6 +8015,7 @@ function _applyRemoteDB(data,silent){
   if(typeof applyRolePerms==='function')applyRolePerms();
   if(!silent)showSync();
   try{_fermerSiRetire();}catch(e){}   // 23.86 — son patron vient de le retirer
+  try{_verifierCodesEnAttente();}catch(e){}   // 24.04 — le vendeur parti a rendu ses ventes
 }
 // ═══ Connexion au serveur : elle DOIT pouvoir se rétablir ═══
 // Avant, initSupa() n'était appelé qu'une fois au démarrage. Si la bibliothèque
@@ -8493,6 +8494,7 @@ async function syncToSupa(){
     // La boutique dit maintenant d'où elle écrit — ça ne coûte rien et ça
     // permet de prévenir les bons téléphones le jour d'un défaut grave.
     try{DB.cfg.build=APP_BUILD;}catch(e){}
+    var _dernierConflit=false;
     for(var attempt=0;attempt<3;attempt++){
       DB.cfg.code=formatShopCode(DB.cfg.code||genCode());
       // Chaque écriture porte une version neuve. C'est elle que l'autre
@@ -8540,7 +8542,7 @@ async function syncToSupa(){
             // Zéro ligne touchée = quelqu'un a écrit entre notre lecture et
             // maintenant. On ne force pas : on relit, on refusionne, on refait.
             if(!(await _relire()))return _refusEcrasement();
-            _fusionOk=true;continue;
+            _fusionOk=true;_dernierConflit=true;continue;
           }
           if(!updExact.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv1=document.getElementById('code-val');if(cv1)cv1.textContent=DB.cfg.code;return true;}
           if(String(updExact.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
@@ -8565,7 +8567,7 @@ async function syncToSupa(){
         var _rep=rpcSave&&rpcSave.data;
         if(!rpcSave.error&&_rep&&_rep.motif==='conflit'){
           if(!(await _relire()))return _refusEcrasement();
-          _fusionOk=true;continue;
+          _fusionOk=true;_dernierConflit=true;continue;
         }
         if(!rpcSave.error&&_rep&&_rep.ok===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
         // Serveur temporairement fermé (trop de PIN faux) : les ventes restent
@@ -8591,7 +8593,7 @@ async function syncToSupa(){
           var updCode=await _qc.select('id');
           if(!updCode.error&&(!updCode.data||!updCode.data.length)){
             if(!(await _relire()))return _refusEcrasement();
-            _fusionOk=true;continue;
+            _fusionOk=true;_dernierConflit=true;continue;
           }
           if(!updCode.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
           if(String(updCode.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
@@ -8638,6 +8640,13 @@ async function syncToSupa(){
       if(String(ins.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
       throw ins.error;
     }
+    // ⚠️ 24.04 — TROIS CONFLITS DE VERSION D'AFFILÉE (quelques ventes rapides :
+    // les envois du même téléphone se croisent) tombaient ici, sur l'erreur
+    // prévue pour un code en double : « ❌ Impossible de générer un code
+    // boutique unique », 4 fois sur 4 chez le patron (agent « patron +
+    // vendeur ») — alors que tout arrivait. Un conflit n'est pas une panne :
+    // on se tait et on renvoie un peu plus tard.
+    if(_dernierConflit){_offlinePending=true;clearTimeout(syncTimeout);syncTimeout=setTimeout(syncToSupa,1500+Math.floor(Math.random()*1500));return false;}
     throw new Error(lang==='fr'?'❌ Impossible de générer un code boutique unique':'❌ Unable to generate a unique store code');
   }catch(e){
     console.warn('Sync:',e);
@@ -13123,7 +13132,23 @@ async function loginV(){
   // Autre boutique demandée ? -> purge du cache local (évite d'afficher l'ancienne)
   assurerBoutiqueLocale(code);
   // Même boutique déjà en cache -> connexion hors-ligne possible (le PIN sera vérifié au retour du réseau)
-  if(DB&&DB.cfg&&normalizeShopCode(code)===normalizeShopCode(DB.cfg.code)){_shopPin=pin;_finishLoginV(nm,DB.cfg.code);return;}
+  // ⚠️⚠️ 24.04 — EN LIGNE, LE SERVEUR D'ABORD. Mesuré par l'agent « patron +
+  // vendeur » (25/11) : retiré « pour de bon », le code équipe changé, le
+  // vendeur se déconnectait, retapait l'ANCIEN code… et la caisse s'ouvrait
+  // (la boutique était dans le cache, on ne demandait rien au serveur) — une
+  // vente de 600 F enregistrée qui ne partirait jamais. Avec du réseau, le
+  // serveur répond ; seul un serveur injoignable laisse passer par le cache.
+  if(DB&&DB.cfg&&normalizeShopCode(code)===normalizeShopCode(DB.cfg.code)){
+    if(supa&&navigator.onLine!==false){
+      var _vd=await _verdictPorteVendeur(code,pin);
+      if(_vd.refuse){
+        showToast(lang==='fr'?'❌ Ce code équipe ne marche plus. Demande le nouveau à ton patron.':'❌ This team code no longer works. Ask your manager for the new one.');
+        return;
+      }
+      if(_vd.data){_shopPin=pin;DB=migrateDBData(mergeDB(_vd.data,DB));try{_artSnapApresFusion();}catch(e){}save();_finishLoginV(nm,code);return;}
+    }
+    _shopPin=pin;_finishLoginV(nm,DB.cfg.code);return;
+  }
   // Essayer Supabase
   if(!supa){showToast(lang==='fr'?'❌ Connexion réseau requise':'❌ Internet connection required');return;}
   showToast('🔄 '+(lang==='fr'?'Recherche boutique...':'Looking up store...'));
@@ -13138,6 +13163,18 @@ async function loginV(){
   DB=migrateDBData(mergeDB(remoteDB,DB));_artSnapApresFusion();
   save();
   _finishLoginV(nm,code);
+}
+// La porte du serveur, avec un verdict net : ouverte (data), refusée (le code
+// n'est pas bon), ou injoignable (erreur réseau, 6 s au plus).
+async function _verdictPorteVendeur(code,pin){
+  try{
+    var att=new Promise(function(r){setTimeout(function(){r({timeout:true});},6000);});
+    var res=await Promise.race([supa.rpc('boutique_lire',{p_code:formatShopCode(code),p_pin:String(pin)}),att]);
+    if(!res||res.timeout)return {};
+    if(res.error){var m=String((res.error&&res.error.message)||res.error);if(/PIN_BLOQUE/.test(m)){try{_signalerBlocagePin(res.error);}catch(e){}return {refuse:true};}return {};}
+    if(!res.data)return {refuse:true};
+    return {data:res.data};
+  }catch(e){return {};}
 }
 function _finishLoginV(nm,code){
   // Entré : la série d'erreurs n'a plus de sens (même règle que le patron).
@@ -22477,7 +22514,9 @@ function selPmntVente(mode){
   }else{
     document.getElementById('calc-wrap-normal').style.display='none';
     document.getElementById('calc-wrap-mobile').style.display='block';
-    document.getElementById('calc-tot-mobile').textContent=fmt(calcTotal());
+    // 24.04 — avec la consigne : le total affiché et le code USSD disaient deux
+    // montants (« 1 950 F » au-dessus de « *126*4*…*2250# », agent « dépôt »).
+    document.getElementById('calc-tot-mobile').textContent=fmt(calcAPayer());
   }
   try{majUssdBox();}catch(e){}
 }
@@ -22551,7 +22590,15 @@ function majCredClientBox(){
 function calcCreditVente(){
   var total=calcTotal(),av=Math.min(total,Math.max(0,parseFloat((document.getElementById('cred-avance')||{}).value)||0));
   var el=document.getElementById('cred-reste');
-  if(el)el.textContent=(lang==='fr'?'Restera dû : ':'Will owe: ')+fmt(Math.max(0,total-av));
+  // ⚠️ 24.04 — LA CONSIGNE D'UNE VENTE À CRÉDIT. Mesuré (agent « dépôt ») :
+  // 48 bouteilles consignées (4 800 F) sur un crédit, avance 5 000 — l'écran
+  // ne parlait que de l'avance ; la caisse attendue comptait 9 800 en espèces
+  // (avance + consigne, comme totalEspecesJour). Le soir : 4 800 F manquants,
+  // sans explication. La consigne se paie MAINTENANT : on le dit, et combien
+  // prendre en tout.
+  var _cons=0;try{_cons=consigneNette();}catch(e){}
+  if(el)el.textContent=(lang==='fr'?'Restera dû : ':'Will owe: ')+fmt(Math.max(0,total-av))
+    +(_cons>0?(lang==='fr'?(' · + consigne '+fmt(_cons)+' à prendre maintenant → reçois '+fmt(av+_cons)+' en espèces'):(' · + deposit '+fmt(_cons)+' now → take '+fmt(av+_cons)+' cash')):'');
 }
 // ── Remise encadrée : enregistrée dans la vente, bénéfice recalculé ──
 // ⚠️ Une permission qui n'est vérifiée NULLE PART est un mensonge : le patron
@@ -32320,9 +32367,54 @@ function togV(i){
   var parti=!!(DB.cfg&&DB.cfg.pvPose)&&confirm(fr
     ?(v.nm+' a quitté la boutique pour de bon ?\n\nOK : je change aussi le code équipe. Il ne pourra plus rien voir, même avec un autre téléphone. Tu diras le nouveau code à tes autres vendeurs.\n\nAnnuler : c\'est juste une pause.')
     :(v.nm+' has left for good?\n\nOK: I also change the team code.\n\nCancel: just a pause.'));
-  if(parti)_remplacerCodeEquipe();
+  // ⚠️⚠️ 24.04 — LE CODE NE CHANGE PLUS TOUT DE SUITE. Mesuré par l'agent
+  // « patron + vendeur » (25/11) : Junior vend hors ligne 1 300 + 800 en
+  // espèces et 600 à crédit ; le patron le retire « pour de bon » et le code
+  // équipe change ; Junior retrouve le réseau… et l'ancien code est refusé :
+  // ses 3 ventes ne montaient JAMAIS (2 100 F de moins dans la caisse
+  // attendue du patron, la dette d'Awa à 0), et sa caisse restait ouverte
+  // (_fermerSiRetire ne tourne qu'à la réception d'une synchro, qui ne venait
+  // plus). Avec la « pause », tout marchait. Le code change donc APRÈS : dès
+  // que son téléphone a rendu ses ventes et accusé le retrait
+  // (DB.accuseRetrait), ou au bout de 24 h, ou d'un geste du patron.
+  if(parti){
+    v.codeAChanger=1;v.partiLe=new Date().toISOString();
+    try{sauverEtEnvoyerVite();}catch(e){save();}
+    renderEquipe();
+    showToast('⏳ '+(fr?(v.nm+' : son téléphone rend ses ventes puis se ferme. Le code équipe changera juste après (demain au plus tard). Pressé ? Équipe → « Changer le code maintenant ».')
+                      :(v.nm+': their phone hands back its sales, then closes. The team code changes right after (within a day).')),6000);
+    try{_verifierCodesEnAttente();}catch(e){}
+  }
   else showToast('⏸ '+v.nm+(fr?' est en pause : sa caisse se ferme':' is paused: their till closes'));
 }
+// Le patron : un vendeur parti attend le changement de code. Son téléphone a
+// accusé le retrait (ses ventes sont donc arrivées avec), ou 24 h ont passé.
+var _DELAI_CODE_PARTI=24*3600e3;
+function _verifierCodesEnAttente(force){
+  if(typeof role==='undefined'||role!=='patron'||!DB||!Array.isArray(DB.equipe))return false;
+  var att=DB.equipe.filter(function(x){return x&&x.codeAChanger;});if(!att.length)return false;
+  var acc=DB.accuseRetrait||{},now=Date.now();
+  var pret=force||att.some(function(x){
+    var a=acc[txtNorm(x.nm||'')],t0=Date.parse(x.partiLe||'')||0;
+    return (a&&a>=String(x.partiLe||''))||(t0&&now-t0>_DELAI_CODE_PARTI);
+  });
+  if(!pret)return false;
+  att.forEach(function(x){delete x.codeAChanger;});
+  _remplacerCodeEquipe();
+  try{renderEquipe();}catch(e){}
+  return true;
+}
+// La ligne « Changer le code maintenant », sous la liste de l'équipe, tant qu'un vendeur parti l'attend.
+try{(function(){var _base=renderEquipe;renderEquipe=function(){var r=_base.apply(this,arguments);try{
+  var c=document.getElementById('equipe-lst');if(!c||role!=='patron')return r;
+  var att=(DB.equipe||[]).filter(function(x){return x&&x.codeAChanger;});
+  if(att.length){var fr=(lang!=='en');c.insertAdjacentHTML('beforeend','<div class="code-attente" style="margin-top:8px;padding:10px 12px;background:#FFF7ED;border:1.5px solid #FDBA74;border-radius:12px;font-size:12.5px;font-weight:700;color:#7C2D12">⏳ '+escH(fr?('Le code équipe changera quand le téléphone de '+att.map(function(x){return x.nm;}).join(', ')+' aura rendu ses ventes (demain au plus tard).'):'The team code will change once the phone hands back its sales.')+'<br><button type="button" onclick="changerCodeMaintenant()" style="margin-top:7px;background:#C2410C;color:#fff;border:none;border-radius:9px;padding:9px 12px;font:800 12.5px Outfit,sans-serif;cursor:pointer">🔑 '+escH(fr?'Changer le code maintenant':'Change the code now')+'</button></div>');}
+}catch(e){}return r;};})();}catch(e){}
+function changerCodeMaintenant(){
+  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Patron only'));return;}
+  _verifierCodesEnAttente(true);
+}
+try{setInterval(function(){try{_verifierCodesEnAttente();}catch(e){}},10*60e3);}catch(e){}
 // Le vendeur éteint par son patron : la caisse se ferme sur son téléphone.
 function _vendeurRetire(){
   if(typeof role==='undefined'||role!=='vendeur'||!nomVendeur||!DB||!Array.isArray(DB.equipe))return false;
@@ -32334,8 +32426,16 @@ function _fermerSiRetire(){
   if(!_vendeurRetire())return false;
   var fr=(lang!=='en');
   try{_panierOublier();}catch(e){}
-  logout();
-  showToast('🔒 '+(fr?'Ton patron t\'a retiré de l\'équipe : la caisse est fermée sur ce téléphone. Parle-lui.':'Your owner removed you from the team: the till is closed on this phone.'));
+  // 24.04 — avant de fermer : ses ventes partent, avec l'accusé du retrait —
+  // c'est ce qui permet au patron de changer le code sans les perdre.
+  try{if(!DB.accuseRetrait||typeof DB.accuseRetrait!=='object')DB.accuseRetrait={};DB.accuseRetrait[txtNorm(nomVendeur||'')]=new Date().toISOString();persistDB(false);}catch(e){}
+  var fini=false,fermer=function(){
+    if(fini)return;fini=true;
+    logout();
+    showToast('🔒 '+(fr?'Ton patron t\'a retiré de l\'équipe : la caisse est fermée sur ce téléphone. Parle-lui.':'Your owner removed you from the team: the till is closed on this phone.'));
+  };
+  try{Promise.resolve(syncToSupa()).then(fermer,fermer);}catch(e){fermer();}
+  setTimeout(fermer,5000);
   return true;
 }
 // Combien de vendeurs le patron accepte. 0 = pas de limite (comportement
@@ -35012,6 +35112,11 @@ function majConsigneUI(){
   }
   var l=document.getElementById('cons-lbl');
   if(l)l.textContent=(fr?'Consigne ':'Deposit ')+fmt(u)+(fr?' / emballage — ce n\'est pas ton bénéfice':' each — not your profit');
+  // 24.04 — la consigne touchée après avoir choisi MTN/Orange : le code USSD et
+  // le total mobile suivent (mesuré : le code gardait l'ancien montant).
+  try{var _tm=document.getElementById('calc-tot-mobile');if(_tm&&pmntModeVente&&pmntModeVente!=='especes'&&pmntModeVente!=='credit')_tm.textContent=fmt(calcAPayer());}catch(e){}
+  try{majUssdBox();}catch(e){}
+  try{if(pmntModeVente==='credit')calcCreditVente();}catch(e){}
 }
 calcBenTotal=function(){return calcBenBrut()-remisePoints-(remiseVente||0)-_negoTotal();};
 function pointsGagnesPour(total){return Math.floor((total||0)/100);}
@@ -35585,6 +35690,8 @@ function mergeDB(base,other){
     base.cfg.venteDeverrouillee=_monDB.cfg.venteDeverrouillee;
   // S3 : archivage. La borne = la plus avancée des deux. L'autorité sur les
   // articles (stk0/vd0 rebasés) revient au téléphone qui a archivé le plus loin.
+  // 24.04 — l'accusé de retrait d'un vendeur : par nom, le plus récent.
+  try{var _ra=base.accuseRetrait,_rb=other.accuseRetrait;if(_rb&&typeof _rb==='object'){if(!_ra||typeof _ra!=='object')_ra=base.accuseRetrait={};Object.keys(_rb).forEach(function(k){if(!_ra[k]||String(_rb[k])>String(_ra[k]))_ra[k]=_rb[k];});}}catch(e){}
   // 24.03 — la monnaie du matin : la plus récente des deux téléphones.
   try{var _fa=base.fonds,_fb=other.fonds;if(_fb&&(!_fa||(Number(_fb.ts)||0)>(Number(_fa.ts)||0)))base.fonds=_fb;}catch(e){}
   var baseUp=(base.arch&&base.arch.upTo)||0, otherUp=(other.arch&&other.arch.upTo)||0;
@@ -35996,7 +36103,7 @@ function migrateDBData(d){
 // ⚠️ C'EST CETTE LIGNE-CI QUI TOURNE, pas la `function loadDB` du haut.
 // Elle n'ajoute que la migration : la lecture protégée reste dans
 // _lireDBBrute(), une seule fois, pour les deux.
-loadDB=function(){var d=_lireDBBrute();return d?migrateDBData(d):null;};
+loadDB=function(){var d=_lireDBBrute();if(d){try{d=_fusionnerSecours(d);}catch(e){}}return d?migrateDBData(d):null;};
 // ⚠️ CET ENROBAGE TARDIF DOIT REPASSER TOUS LES ARGUMENTS.
 // Il n'en prenait que deux et jetait le troisième (`discret`) : la synchro
 // de fond redevenait bruyante sans qu'aucun appel ne le montre, et la voix
@@ -36951,13 +37058,15 @@ function _sauvJour(){
 // sans un mot. Maintenant on le DIT, et on envoie quand même au serveur :
 // c'est lui qui garde la vente quand le téléphone ne peut plus.
 var _pleinDit=0;
-function _telephonePlein(){
+function _telephonePlein(secoursOk){
   try{
+    var fr=(lang==='fr'),enLigne=(navigator.onLine!==false);
+    // Le message, à CHAQUE fois (une vente qui ne s'écrit pas doit se voir) ;
+    // la voix, une fois par minute.
+    showToast('📵 '+(fr?('Téléphone plein ! '+(secoursOk?'Ta vente est gardée de côté. ':'')+(enLigne?'Elle part au serveur. ':'Ne ferme pas l\'appli. ')+'Libère de la place (photos, vidéos).')
+                       :'Phone storage full! Free some space (photos, videos).'));
     if(Date.now()-_pleinDit<60000)return; _pleinDit=Date.now();
-    var fr=(lang==='fr');
-    showToast('📵 '+(fr?'Téléphone plein — gardé en ligne seulement'
-                       :'Phone storage full — kept online only'));
-    try{parler(fr?'Le téléphone est plein. Libère de la place.'
+    try{parler(fr?('Le téléphone est plein. '+(enLigne?'':'Ne ferme pas l\'application. ')+'Libère de la place.')
                  :'The phone is full. Free some space.');}catch(e){}
   }catch(e){}
 }
@@ -37019,13 +37128,52 @@ function _parcoursOuverture(){
   }catch(e){}
 }
 document.addEventListener('visibilitychange',function(){if(!document.hidden)_parcoursOuverture();});
+// ⚠️⚠️ 24.04 — TÉLÉPHONE PLEIN : DES VENTES PERDUES SANS UN MOT. Mesuré par
+// l'agent « marché » (25/11), hors ligne, mémoire presque pleine : 7 ventes
+// faites, 5 écrites ; au redémarrage, 2 ventes (600 F) disparues, le stock
+// faux — et le message disait « gardé en ligne seulement » sans réseau, une
+// seule fois par minute. Maintenant : on libère d'abord la place que l'app
+// occupe elle-même (ses copies de secours d'avant-hier), on réessaie ; si
+// c'est encore plein, les ventes du jour vont dans une petite clé à part
+// (myboutiq_secours), relue au démarrage ; et le message dit la vérité.
+var _CLE_SECOURS='myboutiq_secours';
+function _ecrireSecours(){
+  try{
+    var q=function(l,n){return Array.isArray(l)?l.slice(-n):[];};
+    localStorage.setItem(_CLE_SECOURS,JSON.stringify({code:normalizeShopCode(DB.cfg.code),ts:Date.now(),
+      ventes:q(DB.ventes,80),encaissements:q(DB.encaissements,60),depenses:q(DB.depenses,40),appros:q(DB.appros,40),clients:DB.clients||[]}));
+    return true;
+  }catch(e){return false;}
+}
+function _fusionnerSecours(d){
+  var raw=null;try{raw=localStorage.getItem(_CLE_SECOURS);}catch(e){}
+  if(!raw||!d||!d.cfg)return d;
+  var sc=null;try{sc=JSON.parse(raw);}catch(e){return d;}
+  if(!sc||sc.code!==normalizeShopCode(d.cfg.code))return d;
+  ['ventes','encaissements','depenses','appros'].forEach(function(k){
+    if(!Array.isArray(sc[k]))return;
+    if(!Array.isArray(d[k]))d[k]=[];
+    var vus={};d[k].forEach(function(x){if(x&&x.id!=null)vus[x.id]=1;});
+    sc[k].forEach(function(x){if(x&&x.id!=null&&!vus[x.id]){d[k].push(x);vus[x.id]=1;}});
+  });
+  // Les dettes du jour (une vente à crédit touche le client) : la copie de
+  // secours est plus récente que la boutique gardée.
+  if(Array.isArray(sc.clients)&&sc.clients.length)d.clients=sc.clients;
+  return d;
+}
 function persistDB(delaiMs){
   _sauvJour();
   try{_parcoursMaj();}catch(e){}
   try{
     localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
     _marquerHabitue();
-  }catch(e){ _telephonePlein(); }
+    try{if(localStorage.getItem(_CLE_SECOURS))localStorage.removeItem(_CLE_SECOURS);}catch(e){}
+  }catch(e){
+    var ok=false;
+    try{localStorage.removeItem('myboutiq_sauv');localStorage.removeItem('myboutiq_sauv_jour');localStorage.setItem('myboutiq_v6',JSON.stringify(DB));ok=true;
+      try{localStorage.removeItem(_CLE_SECOURS);}catch(e3){}}catch(e2){}
+    if(!ok){var sec=_ecrireSecours();_telephonePlein(sec);}
+  }
   if(delaiMs===false)return;
   if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){
     clearTimeout(syncTimeout);
