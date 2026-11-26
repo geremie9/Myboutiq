@@ -2004,6 +2004,20 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .gp-oui{border-color:#22C55E;background:#F0FDF4}
 /* 23.96 — le micro au pouce : en bas à droite, au-dessus du menu ; il monte
    au-dessus de la barre du panier quand elle est là. Seulement à la caisse. */
+.vidc{position:fixed;left:14px;bottom:86px;z-index:59;height:52px;padding:0 16px 0 12px;border-radius:26px;border:3px solid #fff;background:#B45309;color:#fff;display:none;align-items:center;gap:6px;box-shadow:0 8px 22px rgba(0,0,0,.22);font:900 15px Outfit,sans-serif;cursor:pointer}
+.vidc svg{stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+#s-caisse.on.a-consigne .vidc{display:flex}
+#fcart:not(.hide)~.vidc{display:none!important}
+body:has(#annul-chip.show) .vidc{bottom:148px}
+.vid-pas{display:flex;align-items:center;justify-content:center;gap:14px;margin:6px 0 10px}
+.vid-pas button{width:62px;height:62px;border-radius:18px;border:2px solid var(--BD);background:var(--C);font:900 26px Outfit,sans-serif;color:var(--T);cursor:pointer}
+.vid-n{min-width:96px;text-align:center;font:900 44px Outfit,sans-serif;color:var(--T)}
+.vid-vite{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
+.vid-vite button{flex:1;max-width:120px;min-height:46px;border-radius:12px;border:2px solid #FFD79A;background:#FFF8E1;font:900 15px Outfit,sans-serif;color:#B45309;cursor:pointer}
+.vid-rend{text-align:center;font:900 26px Outfit,sans-serif;color:#B45309;margin:4px 0 12px}
+.vid-u{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:10px}
+.vid-u button{min-height:40px;padding:0 12px;border-radius:10px;border:2px solid var(--BD);background:var(--BG);font:800 13px Outfit,sans-serif;cursor:pointer}
+.vid-u button.on{border-color:#B45309;background:#FFF8E1;color:#B45309}
 .micp{position:fixed;right:14px;bottom:86px;z-index:59;width:66px;height:66px;border-radius:50%;border:3px solid #fff;background:#1E1B2E;color:#F59E0B;display:none;flex-direction:column;align-items:center;justify-content:center;gap:0;box-shadow:0 8px 22px rgba(0,0,0,.32);cursor:pointer;font:800 10.5px Outfit,sans-serif;-webkit-tap-highlight-color:transparent;transition:bottom .25s ease,transform .1s}
 .micp svg{stroke:currentColor;stroke-width:2.3;fill:none;stroke-linecap:round}
 .micp span{color:#fff;line-height:1;margin-top:1px}
@@ -5011,6 +5025,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
        les uns et le vocal pour les autres ». Le micro existait, petit, en
        haut à droite de la recherche : loin du pouce, et rien ne disait qu'on
        pouvait y dire toute une commande. -->
+  <button class="vidc" id="vides-chip" type="button" onclick="ouvrirVides()" aria-label="Bouteilles vides rendues"><svg class="ic" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 0 10h-3"/></svg><span>Vides</span></button>
   <button class="micp" id="mic-pouce" type="button" onclick="micPouce()" aria-label="Dire la commande"><svg class="ic" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/></svg><span id="mic-pouce-t">Parle</span></button>
   <div class="bnav">
     <button class="ni on" onclick="navTo('caisse',this)"><span class="ne"><svg class="ic" viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.6l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.5L21.5 8H6"/></svg></span><span class="nl" id="n-caisse">Caisse</span></button>
@@ -7355,6 +7370,13 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   </div>
 </div>
 
+<!-- ⭐ 24.24 — LES VIDES RENDUS SANS RIEN ACHETER -->
+<div class="ov" id="ov-vides" onclick="closeOv(event,'ov-vides')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit" id="vid-tit">Bouteilles vides rendues</div><button class="bcl" onclick="closeSheet('ov-vides')" aria-label="Fermer">✕</button></div>
+    <div style="padding:6px 19px 18px" id="vid-corps"></div>
+  </div>
+</div>
 <!-- ⭐ 23.13 — CE QUE VAUT MA BOUTIQUE -->
 <div class="ov" id="ov-valeur" onclick="closeOv(event,'ov-valeur')">
   <div class="bsht" style="max-height:90vh"><div class="shndl"></div>
@@ -7950,7 +7972,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.23'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.24'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -9521,6 +9543,65 @@ function _origineBoutique(){
   if(!o||!o.s)o={s:'direct',ts:Date.now()};
   return {s:String(o.s).slice(0,40),p:String(o.p||'').slice(0,40),vu:Number(o.ts)||0,cree:Date.now()};
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 24.24 — RENDRE DES BOUTEILLES VIDES SANS RIEN ACHETER
+//  L'agent « dépôt » (25/11) : un client rapporte 12 vides et repart avec
+//  son argent. Impossible : la consigne ne vivait que dans la feuille de
+//  paiement, qui demande un panier. Le patron sortait 1 200 F du tiroir sans
+//  trace — et le soir, la caisse « manquait » de 1 200 F.
+//  C'est une opération de caisse, gardée avec les ventes (elle se fusionne,
+//  se clôture, s'archive comme elles — `vides:true`, aucune ligne, total 0,
+//  consigne négative), mais ce n'est PAS une vente : elle ne compte ni dans
+//  le nombre de ventes, ni dans le chiffre d'affaires, ni dans le bénéfice.
+//  Le tiroir, lui, la voit : totalEspecesJour additionne déjà la consigne.
+// ══════════════════════════════════════════════════════════════════
+var _vid={n:0,u:0};
+function _tarifsConsigne(){
+  var vu={},L=[];
+  ((DB&&DB.articles)||[]).forEach(function(p){var c=Number(p.consigne)||0;if(c>0&&!vu[c]){vu[c]=1;L.push({u:c,nm:p.nm});}});
+  return L.sort(function(a,b){return a.u-b.u;});
+}
+function majBoutonVides(){
+  var sc=document.getElementById('s-caisse');if(!sc)return;
+  var ok=false;try{ok=_tarifsConsigne().length>0&&(role==='patron'||hasPerm('vente'));}catch(e){}
+  sc.classList.toggle('a-consigne',ok);
+}
+function ouvrirVides(){
+  var L=_tarifsConsigne();if(!L.length)return;
+  _vid={n:0,u:(_vid.u&&L.some(function(x){return x.u===_vid.u;}))?_vid.u:L[L.length-1].u};
+  _rendreVides();
+  document.getElementById('ov-vides').classList.add('show');
+}
+function _rendreVides(){
+  var z=document.getElementById('vid-corps');if(!z)return;
+  var fr=(lang!=='en'),L=_tarifsConsigne();
+  var h='';
+  if(L.length>1)h+='<div class="vid-u">'+L.map(function(x){return '<button type="button" class="'+(x.u===_vid.u?'on':'')+'" onclick="videsTarif('+x.u+')">'+escH(x.nm)+' · '+_fmtBillet(x.u)+'</button>';}).join('')+'</div>';
+  h+='<div class="vid-pas"><button type="button" onclick="videsPas(-1)" aria-label="'+(fr?'Un de moins':'One less')+'">−</button><div class="vid-n">'+_vid.n+'</div><button type="button" onclick="videsPas(1)" aria-label="'+(fr?'Un de plus':'One more')+'">+</button></div>'
+    +'<div class="vid-vite"><button type="button" onclick="videsPas(6)">+6</button><button type="button" onclick="videsPas(12)">+12</button><button type="button" onclick="videsPas(24)">+24</button></div>'
+    +'<div class="vid-rend">'+(_vid.n>0?((fr?'Rends ':'Give back ')+fmt(_vid.n*_vid.u)):'&nbsp;')+'</div>'
+    +'<button type="button" class="bnxt" id="vid-ok" onclick="validerVides()"'+(_vid.n>0?'':' disabled style="opacity:.45"')+'>'+(fr?('Rendre '+(_vid.n>0?fmt(_vid.n*_vid.u):'')):('Give back '+(_vid.n>0?fmt(_vid.n*_vid.u):'')))+'</button>';
+  z.innerHTML=h;
+  var t=document.getElementById('vid-tit');if(t)t.textContent=fr?'Bouteilles vides rendues':'Empties returned';
+}
+function videsPas(d){_vid.n=Math.max(0,Math.min(999,_vid.n+d));_rendreVides();try{if(d>0&&navigator.vibrate)navigator.vibrate(12);}catch(e){}}
+function videsTarif(u){_vid.u=u;_rendreVides();}
+function validerVides(){
+  var n=_vid.n,u=_vid.u;if(!(n>0&&u>0))return;
+  if(!(role==='patron'||hasPerm('vente'))){showToast('🔒 '+(lang==='fr'?'Réservé':'Not allowed'));return;}
+  var fr=(lang!=='en'),now=new Date(),h=now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  if(!Array.isArray(DB.ventes))DB.ventes=[];
+  DB.ventes.push({id:genVenteId(),vides:true,total:0,totalBrut:0,benefice:0,ben:0,lignes:[],h:h,heure:h,date:now.toLocaleDateString('fr-FR'),
+    vendeur:_nomOperateur(),paiement:{mode:'especes'},annulee:false,
+    consigne:-(n*u),consignePrises:0,consigneRendues:n,consigneUnit:u});
+  try{journalAjouter('consigne',(fr?'Vides rendus':'Empties returned'),'',n+' × '+fmt(u));}catch(e){}
+  try{sauverEtEnvoyerVite();}catch(e){save();}
+  try{recalcTotaux();}catch(e){}
+  closeSheet('ov-vides');
+  showToast('↩ '+(fr?(n+' vide'+(n>1?'s':'')+' — rends '+fmt(n*u)):(n+' empties — give back '+fmt(n*u))));
+  try{parler(fr?('Rends '+_nombreParlable(n*u)+' francs pour '+n+' bouteille'+(n>1?'s':'')+' vide'+(n>1?'s':'')):('Give back '+_nombreParlable(n*u)));}catch(e){}
+}
+function _estVides(v){return !!(v&&v.vides);}
 function _brancherServeur(){
   if(_serveurBranche)return; _serveurBranche=true;
   // Le reste (connexion serveur, icônes, version) se fait APRÈS l'affichage :
@@ -14872,6 +14953,7 @@ renderProd=function(lst){
 };
 function renderProd(lst){
   try{majDemarrage();}catch(e){}
+  try{majBoutonVides();}catch(e){}   // 24.24 — « ↩ Vides » seulement là où il y a des consignes
   // La grille est reconstruite : le panneau des variantes n'y survivrait pas,
   // on le referme proprement plutôt que d'en garder une référence morte.
   try{fermerVarInline();}catch(e){}
@@ -23249,7 +23331,7 @@ function _direBonjour(){
     localStorage.setItem(cle,j);
     var fr=(lang==='fr'),h=new Date().getHours(),pn=_prenomOperateur();
     var salut=fr?(h>=18?'Bonsoir':'Bonjour'):(h>=18?'Good evening':'Hello');
-    var nb=0;try{nb=getCaisseSales().length;}catch(e){}
+    var nb=0;try{nb=getCaisseSales().filter(function(v){return !_estVides(v);}).length;}catch(e){}
     parler(salut+(pn?(' '+pn):'')+' ! '+(fr
       ?(nb?('Déjà '+nb+' vente'+(nb>1?'s':'')+' aujourd\'hui. On continue !'):'Bonne journée de vente.')
       :(nb?(nb+' sales today already. Keep going!'):'Have a good day of sales.')));
@@ -23273,7 +23355,7 @@ function _direApresVente(total,rendu,lignes,totalAvant){
   try{
     if(!voixActive())return;
     var fr=(lang==='fr'),dit=[];
-    var nb=0;try{nb=getCaisseSales().length;}catch(e){}
+    var nb=0;try{nb=getCaisseSales().filter(function(v){return !_estVides(v);}).length;}catch(e){}
     if(nb===1)dit.push(fr?'Première vente de la journée !':'First sale of the day!');
     dit.push((fr?'Merci ! ':'Thank you! ')+_nombreParlable(total)+(fr?' francs.':' francs.'));
     if(rendu>0)dit.push((fr?'Rends ':'Give back ')+_nombreParlable(rendu)+(fr?' francs.':' francs.'));
@@ -32496,7 +32578,7 @@ function renderRpt(){
   var _vueVendeur=(role==='vendeur'&&!hasPerm('rapports')),_mesVentes=null;
   if(_vueVendeur){
     var _moi=_nomOperateur();
-    _mesVentes=getCaisseSales().filter(function(v){return v&&!v.annulee&&v.vendeur===_moi;});
+    _mesVentes=getCaisseSales().filter(function(v){return v&&!v.annulee&&!_estVides(v)&&v.vendeur===_moi;});
     qteJour={};
     _mesVentes.forEach(function(v){(v.lignes||[]).forEach(function(l){if(l&&l.pid!=null)qteJour[l.pid]=(qteJour[l.pid]||0)+(Number(l.qte||l.qty)||0)*(Number(l.qBase)||1);});});
   }
@@ -32538,7 +32620,7 @@ function renderRpt(){
   // d'aujourd'hui à côté des ventes du mois — deux périodes sur une carte.
   var _V=_vp.reduce(function(a2,v){return a2+Number(v.total||0);},0);
   var _B=_vp.reduce(function(a2,v){return a2+getSaleBenef(v);},0);
-  var _N=_vp.length;
+  var _N=_vp.filter(function(v){return !_estVides(v);}).length;
   var m=_V>0?Math.round(_B/_V*100):0;
   // DU JOUR, et non depuis toujours. Avant, ça ne se voyait pas parce que la
   // clôture vidait la liste ; maintenant qu'on garde l'historique, additionner
@@ -35999,7 +36081,7 @@ function recalcTotaux(){
   var s=getCaisseSales();
   totalV=s.reduce(function(a,v){return a+Number(v.total||0);},0);
   totalB=s.reduce(function(a,v){return a+getSaleBenef(v);},0);
-  nbT=s.length;
+  nbT=s.filter(function(v){return !_estVides(v);}).length;   // 24.24 — des vides rendus ne sont pas une vente
   updateStats();
 }
 function getVisibleSales(){return (DB.ventes||[]).filter(function(v){return !v.annulee;});}
@@ -36027,7 +36109,7 @@ function qteVendueParArticle(jours){
   });
   return map;
 }
-function saleLinesLabel(v){return (v.lignes||[]).map(function(l){return l.nm||'Article';}).join(', ');}
+function saleLinesLabel(v){if(_estVides(v))return '↩ '+(Number(v.consigneRendues)||0)+(lang==='fr'?' vides rendus':' empties returned');return (v.lignes||[]).map(function(l){return l.nm||'Article';}).join(', ');}
 function saleArticleBaseName(nm){return String(nm||'').replace(/\s×\d+$/,'').split(' — ')[0].trim();}
 function findArticleByLineName(nm){var base=saleArticleBaseName(nm);return (DB.articles||[]).find(function(a){return a.nm===base||String(nm||'').indexOf(a.nm)===0;})||null;}
 // ══════════════════════════════════════════════════════════════════
