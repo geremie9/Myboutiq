@@ -13,7 +13,7 @@ const { p, errs } = await ouvrirCaisse(b, port, d);
 await p.evaluate(() => { viderPanier(); const a = DB.articles.find(x => x.id === 1); _ajouterLot(a, 12); procederPmt(); });
 await p.waitForTimeout(500);
 const v0 = await p.evaluate(() => ({ html: document.getElementById('cons-vite').innerText.replace(/\s+/g, ' '), vu: getComputedStyle(document.getElementById('cons-vite')).display !== 'none', ap: calcAPayer() }));
-t(v0.vu && /↩ 12/.test(v0.html) && /\+ 1[   ]?200 il emporte les 12/.test(v0.html), `un casier de 12 au panier : « ${v0.html} »`);
+t(v0.vu && /(^|\s)12 il rend ses vides/.test(v0.html) && /\+ 1[   ]?200 il emporte les 12/.test(v0.html), `un casier de 12 au panier : « ${v0.html} »`);
 t(v0.ap === 7800, `rien n'est compté tant qu'il n'a pas touché : à payer ${v0.ap}`);
 
 await p.locator('#cons-vite button').nth(1).click(); await p.waitForTimeout(200);
