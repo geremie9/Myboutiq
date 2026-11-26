@@ -50,8 +50,10 @@ t(/Il te reste 2 sacs \+ 25 kg/.test(cmd) && /\(100 kg\)/.test(cmd), `« À comm
 await p.evaluate(() => { DB.articles.find(a => a.id === 2).al = 0; DB.cfg.facon = 'gros'; renderProd(DB.articles); }); await p.waitForTimeout(300);
 const rep = await p.evaluate(() => { const g = document.querySelector('#pc-20 .pgros.vide'); if (!g) return null; const sp = g.querySelector('span'); return { txt: sp ? sp.textContent : '', vis: sp ? getComputedStyle(sp).display !== 'none' : false }; });
 t(rep && rep.vis && /sac/.test(rep.txt), `la tuile de sa famille « Riz » (boutique en gros) : le repère dit « ${rep && rep.txt} » au lieu d'un carton muet`);
-const neutre = await p.evaluate(() => { const g = Array.from(document.querySelectorAll('#pgrid .pgros.vide')).find(x => !x.classList.contains('pfam-g')); if (!g) return 'aucun'; const sp = g.querySelector('span'); return sp ? getComputedStyle(sp).display : 'sans'; });
-t(neutre === 'none' || neutre === 'aucun', `l'invitation « vendre en gros » d'un article sans conditionnement reste muette (${neutre})`);
+// 24.11 — l'invitation d'un article sans conditionnement ne dit plus un mot deviné : « 📦 ? »,
+// la question en image, qui ouvre la feuille de la pièce et du carton (t328).
+const neutre = await p.evaluate(() => { const g = Array.from(document.querySelectorAll('#pgrid .pgros.vide')).find(x => !x.classList.contains('pfam-g')); if (!g) return 'aucun'; const sp = g.querySelector('span'); return sp ? sp.textContent.trim() : 'sans'; });
+t(neutre === '?' || neutre === 'aucun', `l'invitation « vendre en gros » d'un article sans conditionnement ne devine aucun mot : « ${neutre} »`);
 await p.evaluate(() => { DB.cfg.facon = 'detail'; renderProd(DB.articles); });
 
 // 6. La photo encadrée tient en entier.

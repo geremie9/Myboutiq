@@ -41,7 +41,8 @@ const bd = await p.evaluate(() => { const t2 = document.getElementById('pv-50-50
 t(/2/.test(bd.txt) && /✕/.test(bd.txt) && bd.q === 1, `la pastille « ${bd.txt} » retire une Pamplemousse, comme le ✕ d'un article seul`);
 
 // ── 3. Le casier d'une sorte : la barre de sa tuile ──
-const cs = await p.evaluate(() => { viderPanier(); const ch = document.querySelector('#pv-50-501 [data-grosv]'); const txt = ch ? ch.innerText.replace(/\s+/g, ' ') : ''; if (ch) ch.click(); return { txt, q: panier['50-501'] || 0, total: calcTotal() }; });
+// 24.13 — en vente (« Bloqué ») : en « Modifier », la puce ouvre la feuille qui la corrige (t330).
+const cs = await p.evaluate(() => { DB.cfg.venteDeverrouillee = false; viderPanier(); const ch = document.querySelector('#pv-50-501 [data-grosv]'); const txt = ch ? ch.innerText.replace(/\s+/g, ' ') : ''; if (ch) ch.click(); return { txt, q: panier['50-501'] || 0, total: calcTotal() }; });
 t(cs.q === 12 && cs.total === 7800 && /7\s?800/.test(cs.txt), `le casier d'Ananas se vend depuis sa tuile : 12 pour 7 800 F (« ${cs.txt} »)`);
 
 // ── 4. Une grande famille : 5 sortes et « +3 », qui déplie sur place ──

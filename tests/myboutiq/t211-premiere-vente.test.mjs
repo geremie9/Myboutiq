@@ -60,8 +60,10 @@ const prixPad = async (p, prix, nom) => {
   t(!(await ouvert(p, 'ov-prixpad')) && await p.evaluate(() => DB.articles.length === 1),
     'toucher « Riz » le met dans la caisse, sans fenêtre à remplir');
   const riz = await p.evaluate(() => { const a = DB.articles.find(x => x.nm === 'Riz'); return a && { id: a.id, px: a.px, rt: a.rt, stk0: a.stk0, um: a.um || null }; });
-  t(riz && riz.px === 600 && riz.rt === true && riz.stk0 === 0 && !riz.um,
-    `Riz est dans la caisse à 600, stock jamais compté, vendu à la pièce (${JSON.stringify(riz)})`);
+  // 24.08 — l'étagère annonce « Riz · le kilo » : il est créé AU KILO et se vend par la
+  // feuille des mesures (le patron, 23/11 : « que ce soit pendant la configuration… »).
+  t(riz && riz.px === 600 && riz.rt === true && riz.stk0 === 0 && riz.um === 'kg',
+    `Riz est dans la caisse à 600 le kilo, stock jamais compté (${JSON.stringify(riz)})`);
   t(!(await ouvert(p, 'ov-prixpad')) && await p.evaluate(() => panierVide()),
     'ajouter n\'est pas vendre : le panier reste vide (pas de vente fantôme au premier « Encaisser »)');
   t(await p.evaluate(id => { const c = document.getElementById('pc-' + id); return !!c && /600/.test(c.textContent) && !c.classList.contains('etg'); }, riz.id),
@@ -93,6 +95,10 @@ const prixPad = async (p, prix, nom) => {
   // ── 4) LA PREMIÈRE VENTE, EN VRAIS CLICS ──
   await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); window.__toasts = []; });
   await p.locator('#pc-' + riz.id).click(); await p.waitForTimeout(300);
+  // 24.08 — Riz se vend au kilo : la feuille des mesures s'ouvre (¼ · ½ · 1 · 2 · 5,
+  // « pour un montant »). Il touche « 1 ».
+  t(await ouvert(p, 'ov-qte'), 'toucher « Riz » ouvre la feuille des mesures (il est au kilo)');
+  await p.locator('#ov-qte [onclick="qteRapide(1)"]').click(); await p.waitForTimeout(300);
   // 22.98 : le nombre et le total ouvrent toujours le panier (corriger une
   // quantité, un prix négocié)…
   await p.locator('#fcart .csum').click(); await p.waitForTimeout(400);

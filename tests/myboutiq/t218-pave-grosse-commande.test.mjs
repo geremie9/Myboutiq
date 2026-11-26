@@ -56,7 +56,7 @@ const nombre = x => Number(String(x).replace(/[^\d]/g, ''));
 {
   const { ctx, p, errs } = await ouvrirCaisse(b, port, boutique('gros'));
   // La référence : trois touches sur la barre du carton (23.07 : le gros est en bas).
-  for (let i = 0; i < 3; i++) { await p.locator('#pc-6 .pbas .pbarre').click(); await p.waitForTimeout(120); }
+  for (let i = 0; i < 3; i++) { await p.evaluate(() => vendreGros(null, 6));   /* 24.09 : en vente, le carton n'est plus une puce sur la photo — le même geste qu'elle */ await p.waitForTimeout(120); }
   const ref = await ligne(p, '6-0');
   await p.evaluate(() => { viderPanier(); window.__toasts = []; });
   await appuiLong(p, '#pc-6'); await p.waitForTimeout(300);
@@ -107,11 +107,13 @@ const nombre = x => Number(String(x).replace(/[^\d]/g, ''));
   await appuiLong(p, '#pc-41'); await p.waitForTimeout(300);
   v = await pave(p);
   t(v && /Sacs/.test(v.mode) && !v.virgule, 'les sacs se comptent entiers : pas de virgule');
-  await p.evaluate(() => { try { paveUnite('p'); } catch (e) {} }); await p.waitForTimeout(100);
-  await taper(p, ['1', '2', ',', '5']);
-  v = await pave(p);
-  t(v && v.virgule && v.n === '12,5' && v.mot === 'kg' && nombre(v.tot) === 8750, `au kilo : 12,5 kg = 8 750 (« ${v && v.tot} »)`);
-  await valider(p); await p.waitForTimeout(300);
+  // 24.08 — « Au kilo » ouvre la feuille des mesures (le patron, 23/11 : tout ce
+  // qui se mesure se vend par elle) : « pour un montant », ¼ · ½, et la quantité libre.
+  await p.evaluate(() => { try { paveUnite('p'); } catch (e) {} }); await p.waitForTimeout(150);
+  const fe = await p.evaluate(() => { const i = document.getElementById('qte-inp'); i.value = '12.5'; apercuQte();
+    return { ouverte: document.getElementById('ov-qte').classList.contains('show') && !document.getElementById('ov-pave').classList.contains('show'), ap: document.getElementById('qte-apercu').textContent }; });
+  t(fe.ouverte && nombre(fe.ap) === 8750 || (fe.ouverte && /8\s?750/.test(fe.ap.replace(/[\u202f\u00a0]/g, ' '))), `au kilo : la feuille des mesures, 12,5 kg = 8 750 (« ${fe.ap} »)`);
+  await p.evaluate(() => validerQte()); await p.waitForTimeout(300);
   t((await ligne(p, '41-0')).q === 12.5, '12,5 kg au panier');
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
@@ -190,7 +192,7 @@ const nombre = x => Number(String(x).replace(/[^\d]/g, ''));
 {
   const { ctx, p, errs } = await ouvrirCaisse(b, port, boutique('gros'));
   await p.evaluate(() => { window.__toasts = []; });
-  for (let i = 0; i < 3; i++) { await p.locator('#pc-6 .pbas .pbarre').click(); await p.waitForTimeout(150); }
+  for (let i = 0; i < 3; i++) { await p.evaluate(() => vendreGros(null, 6));   /* 24.09 : en vente, le carton n'est plus une puce sur la photo — le même geste qu'elle */ await p.waitForTimeout(150); }
   await p.waitForTimeout(1900);
   let dit = await p.evaluate(() => window.__toasts.join(' | '));
   t(/Appui long sur la tuile/.test(dit), `au troisième carton touché, après la pause : l'astuce (« ${dit.slice(-90)} »)`);

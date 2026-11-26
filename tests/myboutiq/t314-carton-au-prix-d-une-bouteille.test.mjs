@@ -14,6 +14,9 @@ d.articles.push({ id: 105, nm: 'Huile', e: '', cat: 'Alimentation', px: 0, pa: 0
        { id: 3, nm: 'Palmida', px: 1000, pa: 800, stk0: 60, qBase: 1, umSac: 12, umCont: 'carton', pxGros: 11000, rt: true }] });
 d.articles.push({ id: 117, nm: 'Diamaor', e: '', cat: 'Alimentation', px: 1500, pa: 1250, stk0: 60, al: 0, rt: true, umSac: 15, umCont: 'carton', pxGros: 1400 });
 const { ctx, p, errs } = await ouvrirCaisse(b, port, d);
+// 24.15 — la boutique relue répare seule ces deux cartons (t332). La question
+// reste pour un prix TAPÉ maintenant : on les remet, comme s'il venait de les saisir.
+await p.evaluate(() => { DB.articles.find(x => x.id === 105).vr[0].pxGros = 1450; DB.articles.find(x => x.id === 117).pxGros = 1400; });
 const A = id => `DB.articles.find(x => x.id === ${id})`;
 const feuille = () => p.evaluate(() => { const o = document.getElementById('ov-grospiege'); return o && o.classList.contains('show') ? o.innerText.replace(/\s+/g, ' ') : ''; });
 const total = () => p.evaluate(() => calcTotal());
@@ -38,6 +41,8 @@ await p.evaluate(`viderPanier(); varQtys = {}; _ajouterLotVariante(${A(105)}, ${
 t(!(await feuille()) && await total() === 11000, 'Palmida : carton de 12 à 11 000 F (1 000 F au détail) — une vraie remise, vendu sans question');
 
 // ── 3. « Non, c'est bien le prix » : gardé, plus jamais redemandé (tant que le prix ne bouge pas) ──
+// 24.15 — l'enregistrement d'avant a réparé ce carton (la formule) : il retape 1 400.
+await p.evaluate(`${A(117)}.pxGros = 1400`);
 await p.evaluate(`viderPanier(); _ajouterLot(${A(117)}, 15, 'carton')`);
 t(/paraît faux/.test(await feuille()), 'Diamaor hors famille : la même question');
 await p.evaluate(() => _grosPiegeRepondre(2));
@@ -45,6 +50,8 @@ await p.waitForTimeout(200);
 t(await total() === 1400, `il confirme 1 400 F le carton : vendu à ce prix (${await total()} F)`);
 await p.evaluate(`viderPanier(); _ajouterLot(${A(117)}, 15, 'carton')`);
 t(!(await feuille()) && await total() === 1400, 'le carton suivant : plus de question');
+// 24.15 — et la formule respecte sa réponse : relire la boutique ne remet pas 21 000.
+t(await p.evaluate(`(function(){ DB = migrateDBData(DB); return ${A(117)}.pxGros; })()`) === 1400, 'il a dit « c\'est bien le prix » : la réparation automatique n\'y touche plus');
 await p.evaluate(`${A(117)}.pxGros = 1300; viderPanier(); _ajouterLot(${A(117)}, 15, 'carton')`);
 t(/paraît faux/.test(await feuille()), 'le prix change (1 300 F) : il redemande');
 await p.evaluate(() => _grosPiegeFermer());

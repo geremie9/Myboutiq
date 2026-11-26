@@ -22,7 +22,8 @@ const HUILE = () => ({ id: 30, nm: 'Huile', e: '🫗', cat: 'Alimentation', px: 
        { id: 3, nm: '5 L', px: 4000, pa: 3400, stk: 0, stk0: 8, umSac: 4, umCont: 'carton' }] });
 function boutique(facon, extra) {
   const d = nouvelleBoutiqueCarres();
-  d.cfg.facon = facon; d.cfg.venteDeverrouillee = false;   // la caisse de tous les jours
+  d.cfg.facon = facon; d.cfg.venteDeverrouillee = true;    // la caisse de tous les jours
+   // 24.09 — en vente (« Bloqué »), le gros ne se pose plus sur la photo (t324, t326) : ses puces se vérifient en « Modifier »
   d.articles.push(HUILE());
   if (extra) d.articles.push(extra);
   return d;
@@ -59,6 +60,7 @@ const ligne = (p, k) => p.evaluate(k => {
     `en gros, la famille : la bouteille en haut, son carton le moins cher en bas (« ${f.prix} » · « ${f.barre.replace(/\s+/g, ' ')} »)`);
   await p.locator('#pc-30 .pbas .pbarre').click(); await p.waitForTimeout(500);
   t(await p.evaluate(() => document.querySelectorAll('#vinline-lst .vtile').length === 3), 'la barre ouvre les sortes, comme la tuile');
+  await p.evaluate(() => { DB.cfg.venteDeverrouillee = false; });   /* 24.13 — en vente (« Bloqué ») : en « Modifier », la puce d'un carton qui a son prix ouvre la feuille qui le corrige (t330) */
 
   // ── 2) DEDANS (carrés) : LE CORPS = UNE BOUTEILLE, LA PUCE = UN CARTON ──
   const l1 = await sorte(p, '1 L'), l5 = await sorte(p, '5 L');
@@ -97,6 +99,7 @@ const ligne = (p, k) => p.evaluate(k => {
 {
   const d = boutique('gros'); d.cfg.varStyle = 'cercle';
   const { ctx, p, errs } = await ouvrirCaisse(b, port, d);
+  await p.evaluate(() => { DB.cfg.venteDeverrouillee = false; });   /* 24.13 — en vente (« Bloqué ») : en « Modifier », la puce d'un carton qui a son prix ouvre la feuille qui le corrige (t330) */
   await p.locator('#pc-30 .pnm-ov').click(); await p.waitForTimeout(900);
   const un = sel => p.evaluate(sel => { const x = Array.from(document.querySelectorAll('#vcirc-sat .vsat')).find(e => /(^|\s)1 L(\s|$)/.test(e.innerText));
     const c = x && (sel ? x.querySelector(sel) : x); if (c) c.click(); return !!c; }, sel);
@@ -118,6 +121,7 @@ const ligne = (p, k) => p.evaluate(k => {
 // ── 4) AU DÉTAIL : RIEN NE CHANGE ─────────────────────────────────────
 {
   const { ctx, p, errs } = await ouvrirCaisse(b, port, boutique('detail'));
+  await p.evaluate(() => { DB.cfg.venteDeverrouillee = false; });   /* 24.13 — en vente (« Bloqué ») : en « Modifier », la puce d'un carton qui a son prix ouvre la feuille qui le corrige (t330) */
   const f = await p.evaluate(() => document.getElementById('pc-30').querySelector('.ppr-ov').innerText);
   t(/dès 900/.test(f), `au détail, la famille garde « ${f} »`);
   await p.locator('#pc-30').click(); await p.waitForTimeout(500);
@@ -137,6 +141,7 @@ const ligne = (p, k) => p.evaluate(k => {
 // ── 5) LE BANDEAU, ET « TOUT CONFIGURER » QUI RÈGLE ENFIN LE CARTON ──
 {
   const { ctx, p, errs } = await ouvrirCaisse(b, port, boutique('gros'));
+  await p.evaluate(() => { DB.cfg.venteDeverrouillee = false; });   /* 24.13 — en vente (« Bloqué ») : en « Modifier », la puce d'un carton qui a son prix ouvre la feuille qui le corrige (t330) */
   const band = await p.evaluate(() => { const z = document.getElementById('caisse-sansgros');
     return { vu: z.style.display !== 'none', txt: z.textContent, liste: _articlesSansPrixGros().map(x => x.nm) }; });
   t(band.vu && /1 article sans prix de gros/.test(band.txt) && band.liste.join() === 'Huile — 5 L',
@@ -179,6 +184,7 @@ const ligne = (p, k) => p.evaluate(k => {
     vr: [{ id: 1, nm: 'Parfumé', px: 0, pa: 0, stk: 0, stk0: 100, umSac: 25, umCont: 'sac', pxGros: 15000 },
          { id: 2, nm: 'Ordinaire', px: 0, pa: 0, stk: 0, stk0: 100, umSac: 25, umCont: 'sac', pxGros: 12500 }] };   // deux sortes : une seule serait aplatie en article
   const { ctx, p, errs } = await ouvrirCaisse(b, port, boutique('gros', RIZ));
+  await p.evaluate(() => { DB.cfg.venteDeverrouillee = false; });   /* 24.13 — en vente (« Bloqué ») : en « Modifier », la puce d'un carton qui a son prix ouvre la feuille qui le corrige (t330) */
   t(await p.evaluate(() => !document.getElementById('pc-40').classList.contains('incomplete')), 'en gros, la famille aux seuls prix de sac n\'est pas « à compléter »');
   await p.locator('#pc-40').click(); await p.waitForTimeout(500);
   const r = await sorte(p, 'Parfumé');

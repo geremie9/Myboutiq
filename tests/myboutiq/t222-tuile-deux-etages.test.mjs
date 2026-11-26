@@ -19,7 +19,8 @@ const b = await chromium.launch();
 const A = (id, nm, px, stk, extra) => Object.assign({ id, nm, e: '📦', cat: 'Divers', px, pa: 0, stk0: stk, al: 0, vd: 0, vr: [] }, extra || {});
 function boutique(facon) {
   const d = nouvelleBoutique();
-  d.cfg.facon = facon; d.cfg.venteDeverrouillee = false;      // la caisse de tous les jours
+  d.cfg.facon = facon; d.cfg.venteDeverrouillee = true;       // la caisse de tous les jours
+   // 24.09 — en vente (« Bloqué »), le gros ne se pose plus sur la photo (t324, t326) : ses puces se vérifient en « Modifier »
   d.cfg.varStyle = 'carre';   // 23.89 — la tuile FERMÉE d'une famille n'existe que dans la fenêtre ; l'étagère : t304
   d.articles.push(
     A(20, 'Sucre', 700, 200, { um: 'kg', umSac: 50, umCont: 'sac', pxGros: 25000 }),

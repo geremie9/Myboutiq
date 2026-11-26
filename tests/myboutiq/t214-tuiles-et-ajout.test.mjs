@@ -19,7 +19,8 @@ const PHOTO = 'https://bbncilovxzkcvlxvoqtg.supabase.co/storage/v1/object/public
 function boutique(facon) {
   const d = nouvelleBoutique();
   if (facon) d.cfg.facon = facon;
-  d.cfg.venteDeverrouillee = false;          // la caisse de tous les jours : modifications fermées
+  d.cfg.venteDeverrouillee = true;           // la caisse de tous les jours : modifications fermées
+   // 24.09 — en vente (« Bloqué »), le gros ne se pose plus sur la photo (t324, t326) : ses puces se vérifient en « Modifier »
   const A = (id, nm, px, x) => Object.assign({ id, nm, e: '📦', cat: 'Divers', px, pa: Math.round(px * .8), stk0: 60, al: 0, vd: 0, vr: [] }, x);
   d.articles.push(
     A(20, 'Sucre (kg)', 700, { e: '🍬', um: 'kg', umSac: 50, umCont: 'sac' }),            // un sac connu, sans prix
@@ -65,7 +66,9 @@ const panier6 = p => p.evaluate(() => ({ q: panier['6-0'] || 0, lots: ((_grosPan
 {
   const { ctx, p, errs } = await caisse(boutique(null));
   await p.waitForTimeout(600);
-  const g = await p.evaluate(() => ({ plein: document.querySelectorAll('#pgrid .pcard.has-photo').length, puces: document.querySelectorAll('#pgrid .pbas .pbarre, #pgrid .pbas .pgros').length }));
+  const g = await p.evaluate(() => ({ plein: document.querySelectorAll('#pgrid .pcard.has-photo').length, puces: document.querySelectorAll('#pgrid .pbas .pbarre, #pgrid .pbas .pgros:not(.pq)').length, pq: document.querySelectorAll('#pgrid .pbas .pq').length }));
+  // 24.11 — en « Modifier », un article sans carton montre aussi « 📦 ? » au patron (la
+  // feuille de la pièce et du carton, t328) : la règle de la 21.10 vaut pour les puces de VENTE.
   const huile = await tuile(p, 21), sucre = await tuile(p, 20), savon = await tuile(p, 6), biere = await tuile(p, 22);
   t(g.plein === 0 && huile.photo, `la photo se range dans la vignette, plus aucune carte à photo pleine page (${g.plein})`);
   // 23.42 — décision du patron (choix A, 13/11) : la photo prend la tuile et le

@@ -9,8 +9,18 @@ const b = await chromium.launch();
 const { ctx, p, errs } = await ouvrirCaisse(b, port, nouvelleBoutique());
 {
   const r = await vendre(p, { lignes: [[2, 2]] });
-  const disque = await p.evaluate(id => { const x = JSON.parse(localStorage.getItem('myboutiq_v6')); return x.ventes.some(v => v.id === id); }, r.v.id);
-  t(disque, 'la vente est écrite dans le téléphone à l\'instant de l\'encaissement');
+  r.disque = await p.evaluate(id => {
+    const x = JSON.parse(localStorage.getItem('myboutiq_v6') || '{}'), c = JSON.parse(localStorage.getItem('mb_ventes_carnet') || '[]');
+    return (x.ventes || []).some(v => v.id === id) || c.some(e => e.v && e.v.id === id);
+  }, r.v.id);
+  // 24.04 — à l'instant de l'encaissement, la vente est écrite dans le CARNET
+  // (`mb_ventes_carnet`, quelques centaines d'octets) ; la boutique entière
+  // suit juste après l'image. L'exigence reste la même : écrite tout de suite.
+  const disque = r.disque;
+  t(disque, 'la vente est écrite dans le téléphone à l\'instant de l\'encaissement (carnet ou boutique)');
+  await p.waitForTimeout(400);
+  const entiere = await p.evaluate(id => { const x = JSON.parse(localStorage.getItem('myboutiq_v6')); return x.ventes.some(v => v.id === id) && !localStorage.getItem('mb_ventes_carnet'); }, r.v.id);
+  t(entiere, 'juste après, la boutique entière la porte et le carnet est vidé');
   await p.reload(); await p.waitForTimeout(1500);
   const relu = await p.evaluate(id => { const d = loadDB(); return { n: d.ventes.filter(v => v.id === id).length, stk: getStk(d.articles.find(a => a.id === 2)) }; }, r.v.id);
   t(relu.n === 1 && relu.stk === 38, `après redémarrage : la vente est là, une fois, et le stock dit 38 (${relu.stk})`);
@@ -33,6 +43,10 @@ await ctx.close();
     Storage.prototype.setItem = function (k) { if (k === 'myboutiq_v6') { const e = new DOMException('plein', 'QuotaExceededError'); throw e; } return window.__vraiSet.apply(this, arguments); };
   });
   const r = await vendre(x.p, { lignes: [[2, 1]] });
+  // 24.04 — la boutique entière s'écrit juste après l'image : l'alerte aussi.
+  await x.p.waitForTimeout(400); r.toasts = await x.p.evaluate(() => window.__toasts.slice());
+  t(await x.p.evaluate(id => JSON.parse(localStorage.getItem('mb_ventes_carnet') || '[]').some(e => e.v && e.v.id === id), r.v.id),
+    'téléphone plein : la vente reste à l\'abri dans le carnet (quelques centaines d\'octets passent encore)');
   t(r.v && r.toasts.some(m => /plein/i.test(m)), `téléphone plein : la vente est faite et l'app le DIT (« ${r.toasts.filter(m => /plein/i.test(m)).join('') } »)`);
   const garde = await x.p.evaluate(id => { Storage.prototype.setItem = window.__vraiSet; persistDB(false);
     return JSON.parse(localStorage.getItem('myboutiq_v6')).ventes.some(v => v.id === id); }, r.v.id);

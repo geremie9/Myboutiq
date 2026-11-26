@@ -27,7 +27,9 @@ t(tu.every(x => !x.coupe), 'rien n\'est coupé, même sur un écran de 360 px');
 const dehors = await p.evaluate(() => { const m = document.querySelector('.pgrid .pcard .pmedia:not(.pphoto)'); /* 23.74 : une tuile sans photo, comme dedans */ return m ? Math.round(m.getBoundingClientRect().height) : 0; });
 // 23.24 — l'image des tuiles passe à 48 px de haut (t243), dedans comme dehors.
 t(tu.every(x => x.img >= 48) && Math.abs(tu[0].img - dehors) <= 4, `la place de la photo : ${tu[0].img} px dedans, ${dehors} px dehors (58 avant la 23.19)`);
-// La barre vend toujours le carton, au prix du carton.
+// La barre vend toujours le carton, au prix du carton — en vente (« Bloqué ») : depuis
+// la 24.13, en « Modifier », elle ouvre la feuille qui le corrige (t330).
+await p.evaluate(() => { DB.cfg.venteDeverrouillee = false; });
 await p.locator('.vinline .vtile').nth(1).locator('.vt-gros').tap(); await p.waitForTimeout(400);
 const pan = await p.evaluate(() => { try { return { total: calcTotal(), cles: Object.keys(panier) }; } catch (e) { return { err: e.message }; } });
 t(pan.total === 6800, `toucher « 6 800 / carton de 24 » met un carton au panier (${JSON.stringify(pan)})`);

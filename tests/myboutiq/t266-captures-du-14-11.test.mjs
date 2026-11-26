@@ -27,15 +27,20 @@ await p.setViewportSize({ width: 360, height: 740 }); await p.waitForTimeout(700
 await p.locator('#pc-1').tap(); await p.waitForTimeout(600);
 const f = await p.evaluate(() => [...document.querySelectorAll('.vtile')].map(v => { const im = v.querySelector('img').getBoundingClientRect(), px = v.querySelector('.vt-px').getBoundingClientRect(), nm = v.querySelector('.vt-nm').getBoundingClientRect(), g = v.querySelector('.vt-gros'), gr = g ? g.getBoundingClientRect() : null, r = v.getBoundingClientRect();
   return { photo: v.classList.contains('has-photo'), imgH: Math.round(im.height), imgHaut: Math.round(im.top - r.top), prixSous: px.top >= im.bottom - 1, nomSous: nm.top >= px.bottom - 1, h: Math.round(r.height), prixCoul: getComputedStyle(v.querySelector('.vt-px')).color,
-    grosLibre: !gr || gr.bottom <= px.top + 1 || gr.top >= px.bottom || gr.left >= px.right, grosSurPhoto: !gr || (gr.top >= im.top && gr.bottom <= im.bottom) }; }));
+    grosLibre: !gr || gr.bottom <= px.top + 1 || gr.top >= px.bottom || gr.left >= px.right, grosSurPhoto: !gr || (gr.top >= im.top && gr.bottom <= im.bottom),
+    grosSousNom: !gr || gr.top >= nm.bottom - 1, imgW: Math.round(im.width) }; }));
 t(f.length === 2 && f.every(x => x.photo), 'deux sortes, chacune avec SA photo');
 t(f.every(x => x.imgHaut <= 1 && x.imgH >= 70 && x.prixSous && x.nomSous), `la photo est en haut, entière ; le prix puis le nom dessous, sur l'étiquette (photo ${f[0].imgH} px)`);
-t(f.every(x => x.grosLibre && x.grosSurPhoto), 'la pastille du sac est sur la photo, plus sur le prix');
+// 24.17 — le 14/11 : « sac par-dessus le prix » → posée sur la photo. Les 23 et 24/11 :
+// « certaines images ne se voient pas très bien à cause du bouton » → ni sur le prix,
+// ni sur la photo : sous le nom (t334).
+t(f.every(x => x.grosLibre && x.grosSousNom), 'la pastille du sac n\'est ni sur le prix ni sur la photo : sous le nom');
 // 23.57 — « agrandis légèrement les articles, et le bois épais » (le patron,
 // 15/11) : la tuile passe de 122 à 142 px. La limite suit, sans plus.
-t(f.every(x => x.prixCoul === 'rgb(30, 27, 46)' && x.h <= 146), `le prix se lit (sombre sur blanc), et la tuile n'est pas étirée (${f[0].h} px)`);
+// 24.17 — la pastille sous le nom ajoute sa ligne (≈ 30 px) à la tuile d'une sorte qui a un sac.
+t(f.every(x => x.prixCoul === 'rgb(30, 27, 46)' && x.h <= 180), `le prix se lit (sombre sur blanc), et la tuile ne s'étire que de la ligne du sac (${f[0].h} px)`);
 const dehors = await p.evaluate(() => Math.round(document.getElementById('pc-2').getBoundingClientRect().height));
-t(Math.abs(f[0].h - dehors) <= 6, `dedans comme dehors : ${f[0].h} px dedans, ${dehors} px dehors`);
+t(Math.abs(f[0].h - dehors) <= 36, `dedans comme dehors, à la ligne du sac près : ${f[0].h} px dedans, ${dehors} px dehors`);
 await p.locator('.vtile').nth(1).tap(); await p.waitForTimeout(300);
 // 24.00 — « Riz (kg) » est une famille AU KILO : toucher la sorte ouvre la
 // feuille des mesures (montant, ¼, ½, 1…) au lieu de poser 1 kg d'office ;
