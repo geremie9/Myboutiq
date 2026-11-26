@@ -7924,7 +7924,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.17'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.18'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -26062,6 +26062,20 @@ function _photoOff(nom){
 //   Jamais le prix. Jamais le stock. Jamais une vente. Jamais un total.
 //
 // Et jamais une photo qu'il a prise lui-même : la sienne est la vérité.
+// ⭐ 24.18 — LA MÊME PHOTO À DEUX ADRESSES. Trouvé le 26/11 dans son journal :
+// « Photos posées → Boisson predator », six fois en deux jours. Sa famille
+// porte la photo du serveur (…/APP/catalogue-off/boisson-predator.jpg) ; hors
+// réseau, le catalogue répond par la même photo livrée avec l'app
+// (/photos-off/boisson-predator.jpg), et en ligne par celle du serveur. À
+// chaque ouverture l'une remplaçait l'autre : un enregistrement, un envoi au
+// serveur (sur son réseau lent) et une ligne de journal, pour rien. Même nom
+// de fichier = même photo.
+function _memePhoto(a,b){
+  if(!a||!b)return false;
+  if(a===b)return true;
+  var f=function(u){u=String(u).split('?')[0].split('#')[0];return u.slice(u.lastIndexOf('/')+1).toLowerCase();};
+  var x=f(a);return !!x&&/\.(jpe?g|png|webp)$/.test(x)&&x===f(b);
+}
 function _articlesARafraichir(){
   var out=[];
   ((DB&&DB.articles)||[]).forEach(function(p){
@@ -26077,7 +26091,7 @@ function _articlesARafraichir(){
     if(p._imgRefus&&!(p._imgNon&&p._imgNon.length))return;
     var u='';
     try{u=photoCatalogue(p.nm)||'';}catch(e){}
-    if(!u||u===p.img)return;
+    if(!u||u===p.img||_memePhoto(u,p.img))return;
     if(p._imgNon&&p._imgNon.indexOf(u)>=0)return;
     out.push({p:p,url:u});
   });
@@ -26115,7 +26129,7 @@ function _photosAPoser(){
       // Le nom complet seulement (« Jus » + « Top Ananas ») : le nom de la
       // variante seul (« Rouge », « 1 L ») ne dit pas de quel produit il s'agit.
       var u='';try{u=photoCatalogue(p.nm+' '+v.nm)||'';}catch(e){}
-      if(u&&u!==p.img)l.push({p:p,v:v,url:u});
+      if(u&&u!==p.img&&!_memePhoto(u,p.img))l.push({p:p,v:v,url:u});
     });
   });
   return l;
@@ -26159,7 +26173,7 @@ function poserPhotosToutSeul(){
       var p=x.p;
       if(p.img&&!p._imgCat)return;
       if(p._imgNon&&p._imgNon.indexOf(x.url)>=0)return;
-      if(p.img===x.url)return;
+      if(p.img===x.url||_memePhoto(p.img,x.url))return;
       p.img=x.url;p._imgCat=true;n++;
     });
     if(!n)return 0;
