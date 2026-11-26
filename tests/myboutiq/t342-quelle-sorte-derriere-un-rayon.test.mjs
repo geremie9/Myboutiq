@@ -1,11 +1,11 @@
-// t339 — « QUELLE SORTE ? » MONTRE LA FAMILLE, MÊME DERRIÈRE UN RAYON (24.20).
+// t342 — « QUELLE SORTE ? » MONTRE LA FAMILLE, MÊME DERRIÈRE UN RAYON (24.20).
 // L'agent « supermarché » (25/11), 25 familles et 80 articles : « savon » à la
 // voix → « Quelle sorte de Savon ? »… et rien à l'écran. La famille était
 // derrière une pastille de rayon (24.02) : sans tuile dessinée, rien ne
 // s'ouvrait.
 import { chromium, serveur, compteur } from './lib.mjs';
 import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
-const { t, fin } = compteur('t339');
+const { t, fin } = compteur('t342');
 const { s, port } = await serveur();
 const b = await chromium.launch();
 const d = nouvelleBoutique();
