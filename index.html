@@ -2845,6 +2845,10 @@ body:has(#annul-chip.show) .micp{bottom:148px}
 .ussd-ajout{margin-top:12px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:#FFF8EE;border:1.5px dashed #F0A93E;border-radius:12px;padding:12px;font-size:14px;font-weight:800;color:#8A5300;font-family:Outfit,sans-serif;cursor:pointer;min-height:48px}
 .annul-chip{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:190;display:none;align-items:center;gap:10px;background:#221F2B;color:#fff;border-radius:16px;padding:12px 18px 14px;font-family:Outfit,sans-serif;font-size:16px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.28);overflow:hidden;cursor:pointer;min-height:52px;white-space:nowrap;max-width:calc(100vw - 32px)}
 .annul-chip.show{display:flex}
+.fonds-inp{width:100%;box-sizing:border-box;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:10px;color:var(--A);font:900 26px Outfit,sans-serif;padding:6px 10px;outline:none}
+.fonds-inp::placeholder{color:rgba(255,255,255,.35)}
+/* 24.03 — jamais par-dessus une feuille (le minuteur le fait aussi ; ici sans attendre 300 ms). */
+body:has(.ov.show) .annul-chip{display:none!important}
 .annul-chip .ic{stroke:#F0A93E;flex:none}
 .annul-chip b{color:#F0A93E;font-weight:800}
 .annul-chip i{position:absolute;left:0;bottom:0;height:4px;width:100%;background:#F0A93E;transform-origin:left;animation:annulFond linear forwards}
@@ -6739,7 +6743,8 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="ov-clot-t">🌙 Clôture</div><button class="bcl" onclick="closeSheet('ov-clot')">✕</button></div>
     <div class="pstps">
-      <div class="fonds-card"><div style="font-size:11px;color:rgba(255,255,255,.45);font-weight:700;margin-bottom:5px" id="lbl-fonds">FONDS DE DÉPART</div><div style="font-size:26px;font-weight:900;color:var(--A)" id="clot-fonds">0</div></div>
+      <!-- 24.03 — la monnaie du matin se TAPE ici (elle ne se saisissait nulle part). -->
+      <div class="fonds-card"><div style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700;margin-bottom:5px" id="lbl-fonds">💰 MONNAIE DU MATIN (dans le tiroir à l'ouverture)</div><input type="number" inputmode="numeric" id="clot-fonds-inp" class="fonds-inp" placeholder="0" oninput="poserFonds(this.value)" aria-label="Monnaie du matin"><span id="clot-fonds" style="display:none">0</span></div>
       <div class="rcd"><div class="rctit" id="lbl-resume-j">📊 Résumé</div><div id="clot-det"></div></div>
       <div class="pig"><label class="pl" id="lbl-especes">Espèces comptées</label><input class="pi" type="number" id="inp-compt" oninput="calcEcart()" inputmode="numeric" placeholder="💵 Compte tes billets, tape le total" style="font-size:20px;font-weight:800"></div>
       <!-- ⭐ 24.06 — LA CAISSE DU SOIR AVEC LES BILLETS (voir _clotBilletsRendre) -->
@@ -7240,12 +7245,12 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       <div class="pig"><label class="pl" id="lbl-dep-amt">Combien ?</label><input class="pi" type="number" id="dep-amt" inputmode="numeric" placeholder="0" style="font-size:24px;font-weight:900"></div>
       <div class="pl" style="margin:2px 0 6px" id="lbl-dep-cat">Pour quoi ?</div>
       <div class="cgrd" style="grid-template-columns:repeat(3,minmax(0,1fr))">
-        <div class="cbtn on" id="dep-c-loyer" onclick="selDC('loyer',this)"><span id="lbl-loyer">Loyer</span></div>
+        <div class="cbtn" id="dep-c-loyer" onclick="selDC('loyer',this)"><span id="lbl-loyer">Loyer</span></div>
         <div class="cbtn" id="dep-c-elec" onclick="selDC('elec',this)"><span id="lbl-elec">Électricité</span></div>
         <div class="cbtn" id="dep-c-sal" onclick="selDC('sal',this)"><span id="lbl-sal">Salaire</span></div>
         <div class="cbtn" id="dep-c-transp" onclick="selDC('transp',this)"><span id="lbl-transp-d">Transport</span></div>
         <div class="cbtn" id="dep-c-tel" onclick="selDC('tel',this)"><span id="lbl-tel-d">Téléphone</span></div>
-        <div class="cbtn" id="dep-c-autre" onclick="selDC('autre',this)"><span id="lbl-autre-d">Autre</span></div>
+        <div class="cbtn on" id="dep-c-autre" onclick="selDC('autre',this)"><span id="lbl-autre-d">Autre</span></div>
       </div>
       <div class="pig" style="margin-top:11px"><label class="pl" id="lbl-dep-nm">Détail (si tu veux)</label><input class="pi sm" type="text" id="dep-nm" style="font-size:14px" placeholder="ex. facture Eneo de septembre"></div>
       <div class="pl" style="margin:4px 0 6px" id="lbl-dep-src">Cet argent est sorti d'où ?</div>
@@ -7924,7 +7929,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.18'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.20'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -8142,6 +8147,7 @@ function _applyRemoteDB(data,silent){
   if(typeof applyRolePerms==='function')applyRolePerms();
   if(!silent)showSync();
   try{_fermerSiRetire();}catch(e){}   // 23.86 — son patron vient de le retirer
+  try{_verifierCodesEnAttente();}catch(e){}   // 24.04 — le vendeur parti a rendu ses ventes
 }
 // ═══ Connexion au serveur : elle DOIT pouvoir se rétablir ═══
 // Avant, initSupa() n'était appelé qu'une fois au démarrage. Si la bibliothèque
@@ -8620,6 +8626,7 @@ async function syncToSupa(){
     // La boutique dit maintenant d'où elle écrit — ça ne coûte rien et ça
     // permet de prévenir les bons téléphones le jour d'un défaut grave.
     try{DB.cfg.build=APP_BUILD;}catch(e){}
+    var _dernierConflit=false;
     for(var attempt=0;attempt<3;attempt++){
       DB.cfg.code=formatShopCode(DB.cfg.code||genCode());
       // Chaque écriture porte une version neuve. C'est elle que l'autre
@@ -8667,7 +8674,7 @@ async function syncToSupa(){
             // Zéro ligne touchée = quelqu'un a écrit entre notre lecture et
             // maintenant. On ne force pas : on relit, on refusionne, on refait.
             if(!(await _relire()))return _refusEcrasement();
-            _fusionOk=true;continue;
+            _fusionOk=true;_dernierConflit=true;continue;
           }
           if(!updExact.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv1=document.getElementById('code-val');if(cv1)cv1.textContent=DB.cfg.code;return true;}
           if(String(updExact.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
@@ -8692,7 +8699,7 @@ async function syncToSupa(){
         var _rep=rpcSave&&rpcSave.data;
         if(!rpcSave.error&&_rep&&_rep.motif==='conflit'){
           if(!(await _relire()))return _refusEcrasement();
-          _fusionOk=true;continue;
+          _fusionOk=true;_dernierConflit=true;continue;
         }
         if(!rpcSave.error&&_rep&&_rep.ok===true){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
         // Serveur temporairement fermé (trop de PIN faux) : les ventes restent
@@ -8718,7 +8725,7 @@ async function syncToSupa(){
           var updCode=await _qc.select('id');
           if(!updCode.error&&(!updCode.data||!updCode.data.length)){
             if(!(await _relire()))return _refusEcrasement();
-            _fusionOk=true;continue;
+            _fusionOk=true;_dernierConflit=true;continue;
           }
           if(!updCode.error){DB.cfg.code=formatShopCode(DB.cfg.code);persistDB(false);_artSnapPrendre();var cv3=document.getElementById('code-val');if(cv3)cv3.textContent=DB.cfg.code;return true;}
           if(String(updCode.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
@@ -8765,6 +8772,13 @@ async function syncToSupa(){
       if(String(ins.error.message||'').toLowerCase().indexOf('boutiques_code_key')!==-1){DB.cfg.code=genCode();continue;}
       throw ins.error;
     }
+    // ⚠️ 24.04 — TROIS CONFLITS DE VERSION D'AFFILÉE (quelques ventes rapides :
+    // les envois du même téléphone se croisent) tombaient ici, sur l'erreur
+    // prévue pour un code en double : « ❌ Impossible de générer un code
+    // boutique unique », 4 fois sur 4 chez le patron (agent « patron +
+    // vendeur ») — alors que tout arrivait. Un conflit n'est pas une panne :
+    // on se tait et on renvoie un peu plus tard.
+    if(_dernierConflit){_offlinePending=true;clearTimeout(syncTimeout);syncTimeout=setTimeout(syncToSupa,1500+Math.floor(Math.random()*1500));return false;}
     throw new Error(lang==='fr'?'❌ Impossible de générer un code boutique unique':'❌ Unable to generate a unique store code');
   }catch(e){
     console.warn('Sync:',e);
@@ -9751,7 +9765,10 @@ function ouvrirDepuisVitrine(mode){
 // ═══════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════
+var _ecranAvant='';
 function goScreen(id){
+  // 24.03 — revenir à la caisse depuis un autre écran : l'ordre de la grille se refait.
+  try{if(id==='s-caisse'&&_ecranAvant!=='s-caisse')_degelerOrdre();_ecranAvant=id;}catch(e){}
   // Le démarrage a peint un écran avant nous ; à partir d'ici c'est goScreen
   // qui décide, et lui seul.
   try{var _h=document.documentElement;
@@ -13257,7 +13274,23 @@ async function loginV(){
   // Autre boutique demandée ? -> purge du cache local (évite d'afficher l'ancienne)
   assurerBoutiqueLocale(code);
   // Même boutique déjà en cache -> connexion hors-ligne possible (le PIN sera vérifié au retour du réseau)
-  if(DB&&DB.cfg&&normalizeShopCode(code)===normalizeShopCode(DB.cfg.code)){_shopPin=pin;_finishLoginV(nm,DB.cfg.code);return;}
+  // ⚠️⚠️ 24.04 — EN LIGNE, LE SERVEUR D'ABORD. Mesuré par l'agent « patron +
+  // vendeur » (25/11) : retiré « pour de bon », le code équipe changé, le
+  // vendeur se déconnectait, retapait l'ANCIEN code… et la caisse s'ouvrait
+  // (la boutique était dans le cache, on ne demandait rien au serveur) — une
+  // vente de 600 F enregistrée qui ne partirait jamais. Avec du réseau, le
+  // serveur répond ; seul un serveur injoignable laisse passer par le cache.
+  if(DB&&DB.cfg&&normalizeShopCode(code)===normalizeShopCode(DB.cfg.code)){
+    if(supa&&navigator.onLine!==false){
+      var _vd=await _verdictPorteVendeur(code,pin);
+      if(_vd.refuse){
+        showToast(lang==='fr'?'❌ Ce code équipe ne marche plus. Demande le nouveau à ton patron.':'❌ This team code no longer works. Ask your manager for the new one.');
+        return;
+      }
+      if(_vd.data){_shopPin=pin;DB=migrateDBData(mergeDB(_vd.data,DB));try{_artSnapApresFusion();}catch(e){}save();_finishLoginV(nm,code);return;}
+    }
+    _shopPin=pin;_finishLoginV(nm,DB.cfg.code);return;
+  }
   // Essayer Supabase
   if(!supa){showToast(lang==='fr'?'❌ Connexion réseau requise':'❌ Internet connection required');return;}
   showToast('🔄 '+(lang==='fr'?'Recherche boutique...':'Looking up store...'));
@@ -13272,6 +13305,18 @@ async function loginV(){
   DB=migrateDBData(mergeDB(remoteDB,DB));_artSnapApresFusion();
   save();
   _finishLoginV(nm,code);
+}
+// La porte du serveur, avec un verdict net : ouverte (data), refusée (le code
+// n'est pas bon), ou injoignable (erreur réseau, 6 s au plus).
+async function _verdictPorteVendeur(code,pin){
+  try{
+    var att=new Promise(function(r){setTimeout(function(){r({timeout:true});},6000);});
+    var res=await Promise.race([supa.rpc('boutique_lire',{p_code:formatShopCode(code),p_pin:String(pin)}),att]);
+    if(!res||res.timeout)return {};
+    if(res.error){var m=String((res.error&&res.error.message)||res.error);if(/PIN_BLOQUE/.test(m)){try{_signalerBlocagePin(res.error);}catch(e){}return {refuse:true};}return {};}
+    if(!res.data)return {refuse:true};
+    return {data:res.data};
+  }catch(e){return {};}
 }
 function _finishLoginV(nm,code){
   // Entré : la série d'erreurs n'a plus de sens (même règle que le patron).
@@ -14399,10 +14444,22 @@ var ordrePrio=[];
 // 23.22 — les articles que l'écoute en continu vient d'entendre (voir
 // `_ecRemonter`) passent devant tout le reste, pour un moment.
 var _entendus=[];
+// ⚠️⚠️ 24.03 — LA GRILLE BOUGEAIT APRÈS CHAQUE VENTE. Mesuré par l'agent
+// « supermarché » (25/11) : sur 19 ventes, 11 des 12 premières tuiles
+// changeaient de place après 12 d'entre elles ; il touche Coca, encaisse,
+// touche au MÊME endroit pour le client suivant… et vend un Djino. Les
+// touches (ordrePrio) et les ventes (_plusVendusDabord) continuent d'être
+// comptées, mais l'ORDRE MONTRÉ est figé tant qu'il vend : il se refait à
+// l'ouverture de l'app, et quand il revient à la caisse depuis un autre
+// écran (une pause naturelle). Les articles dits à la voix remontent
+// toujours (3 minutes).
+var _gelOrdre={prio:null,q:null};
+function _degelerOrdre(){_gelOrdre={prio:null,q:null};}
 function appliquerOrdrePrio(lst){
   var _ent=[];try{_ent=_entendusActifs();}catch(e){}
-  if(!ordrePrio.length&&!_ent.length)return lst;
-  var idx={};ordrePrio.forEach(function(id,i){idx[id]=i;});
+  var _op=_gelOrdre.prio||(_gelOrdre.prio=ordrePrio.slice());
+  if(!_op.length&&!_ent.length)return lst;
+  var idx={};_op.forEach(function(id,i){idx[id]=i;});
   _ent.forEach(function(id,i){idx[id]=-100+i;});
   return lst.slice().sort(function(a,b){var ia=idx.hasOwnProperty(a.id)?idx[a.id]:999999,ib=idx.hasOwnProperty(b.id)?idx[b.id]:999999;return ia-ib;});
 }
@@ -15078,9 +15135,9 @@ function _plusVendusDabord(lst,tout){
     // (`appliquerOrdrePrio`, 22.xx). Mais un téléphone neuf, ou celui d'un
     // vendeur qui arrive, n'a rien touché : pour tout le reste, c'est la
     // boutique qui dit ce qui sort le plus.
-    var q=qteVendueParArticle(30),qq=function(p){return Number(q[p.id])||0;};
+    var q=_gelOrdre.q||(_gelOrdre.q=qteVendueParArticle(30)),qq=function(p){return Number(q[p.id])||0;};
     if(!lst.some(function(p){return qq(p)>0;}))return lst;
-    var touche={};(ordrePrio||[]).forEach(function(id){touche[id]=1;});
+    var touche={};(_gelOrdre.prio||ordrePrio||[]).forEach(function(id){touche[id]=1;});
     try{_entendusActifs().forEach(function(id){touche[id]=1;});}catch(e){}
     var devant=[],reste=[];
     lst.forEach(function(p){(touche[p.id]?devant:reste).push(p);});
@@ -22757,7 +22814,9 @@ function selPmntVente(mode){
   }else{
     document.getElementById('calc-wrap-normal').style.display='none';
     document.getElementById('calc-wrap-mobile').style.display='block';
-    document.getElementById('calc-tot-mobile').textContent=fmt(calcTotal());
+    // 24.04 — avec la consigne : le total affiché et le code USSD disaient deux
+    // montants (« 1 950 F » au-dessus de « *126*4*…*2250# », agent « dépôt »).
+    document.getElementById('calc-tot-mobile').textContent=fmt(calcAPayer());
   }
   try{majUssdBox();}catch(e){}
 }
@@ -22831,7 +22890,15 @@ function majCredClientBox(){
 function calcCreditVente(){
   var total=calcTotal(),av=Math.min(total,Math.max(0,parseFloat((document.getElementById('cred-avance')||{}).value)||0));
   var el=document.getElementById('cred-reste');
-  if(el)el.textContent=(lang==='fr'?'Restera dû : ':'Will owe: ')+fmt(Math.max(0,total-av));
+  // ⚠️ 24.04 — LA CONSIGNE D'UNE VENTE À CRÉDIT. Mesuré (agent « dépôt ») :
+  // 48 bouteilles consignées (4 800 F) sur un crédit, avance 5 000 — l'écran
+  // ne parlait que de l'avance ; la caisse attendue comptait 9 800 en espèces
+  // (avance + consigne, comme totalEspecesJour). Le soir : 4 800 F manquants,
+  // sans explication. La consigne se paie MAINTENANT : on le dit, et combien
+  // prendre en tout.
+  var _cons=0;try{_cons=consigneNette();}catch(e){}
+  if(el)el.textContent=(lang==='fr'?'Restera dû : ':'Will owe: ')+fmt(Math.max(0,total-av))
+    +(_cons>0?(lang==='fr'?(' · + consigne '+fmt(_cons)+' à prendre maintenant → reçois '+fmt(av+_cons)+' en espèces'):(' · + deposit '+fmt(_cons)+' now → take '+fmt(av+_cons)+' cash')):'');
 }
 // ── Remise encadrée : enregistrée dans la vente, bénéfice recalculé ──
 // ⚠️ Une permission qui n'est vérifiée NULLE PART est un mensonge : le patron
@@ -23223,7 +23290,11 @@ function calcMonnaie(immediat){
   // par chiffre. Mais quand il touche un raccourci (« 1 000 »), il a FINI :
   // attendre encore, c'est du silence gratuit devant un client.
   clearTimeout(_direMonnaieT);
-  if(recu>0)_direMonnaieT=setTimeout(direMonnaie,immediat?0:200);
+  // ⚠️ 24.19 — 200 ms, c'était trop court : il tape « 5 », « 0 », « 0 », « 0 »
+  // à un doigt, une touche toutes les demi-secondes. L'agent « marché »
+  // (25/11) a entendu « Il manque 1 500 francs. Il manque 1 000… » à chaque
+  // chiffre, devant le client. On attend qu'il ait levé le doigt (1,2 s).
+  if(recu>0)_direMonnaieT=setTimeout(direMonnaie,immediat?0:1200);
 }
 var _direMonnaieT=null;
 // ══════════════════════════════════════════════════════════════════
@@ -23829,13 +23900,35 @@ function encaisser(){
   var sc=document.getElementById('succ');sc.classList.add('show');if(navigator.vibrate)navigator.vibrate([50,30,50]);
   planifierFermetureSucces(sc);
 }
+// ⚠️⚠️ 24.03 — ANNULER SANS DIRE COMBIEN RENDRE. Trois agents de test
+// (25/11) : un casier à 15 600 + 2 400 de consigne, annulé — la fenêtre disait
+// « 15 600 — Le stock sera restitué », la caisse attendue baissait de 18 000 ;
+// un crédit avec 500 F d'avance, annulé — « Vente annulée » et rien d'autre,
+// alors que les 500 F sortaient de la caisse. L'argent que le client avait
+// donné À LA VENTE (comme totalEspecesJour le compte) se dit maintenant :
+// dans la fenêtre, après l'annulation, et à voix haute.
+function _rendreDeVente(v){
+  var p=(v&&v.paiement)||{},c=Number(v&&v.consigne)||0,mode=p.mode||'especes';
+  var noms={orange:'Orange Money',mtn:'MTN MoMo',moov:'Moov Money'};
+  if(mode==='especes')return {esp:(Number(v.total)||0)+c,mob:0,nom:''};
+  if(mode==='mixte')return {esp:(Number(p.especes)||0)+c,mob:Number(p.mobile)||0,nom:noms[p.moyenMobile]||'Mobile Money'};
+  if(mode==='credit')return {esp:(Number(p.avance)||0)+c,mob:0,nom:''};
+  return {esp:0,mob:Number(v.total)||0,nom:noms[mode]||'Mobile Money'};
+}
+function _texteRendre(R,nm){
+  var fr=(lang==='fr'),t=[];
+  if(R.esp>0)t.push((fr?'Rends ':'Give back ')+fmt(R.esp)+(nm?((fr?' à ':' to ')+nm):''));
+  if(R.mob>0)t.push((fr?'Renvoie ':'Send back ')+fmt(R.mob)+(fr?' par ':' by ')+R.nom);
+  return t.join(' · ');
+}
 function annulerVente(ventId){
   if(!hasPerm('annuler')){showToast('⛔ '+(lang==='fr'?'Ton patron ne t’a pas donné ce droit — signale-lui l’erreur':'Your owner has not granted this — report the mistake instead'));return;}
   var v=DB.ventes.find(function(x){return x.id===ventId;});
   if(!v||v.annulee)return;
   ventAnnulEnCours=ventId;
   document.getElementById('conf-tit').textContent=lang==='fr'?'Annuler cette vente ?':'Cancel this sale?';
-  document.getElementById('conf-sub').textContent=fmt(v.total)+' — '+(lang==='fr'?'Le stock sera restitué.':'Stock will be restored.');
+  var _rv=_texteRendre(_rendreDeVente(v),v.clientNom||'');
+  document.getElementById('conf-sub').textContent=fmt(v.total)+' — '+(lang==='fr'?'Le stock sera restitué.':'Stock will be restored.')+(_rv?(' '+_rv+'.'):'');
   document.getElementById('btn-conf-yes').textContent='↩️ '+(lang==='fr'?'Annuler la vente':'Cancel sale');
   document.getElementById('btn-conf-no').textContent=lang==='fr'?'Garder':'Keep';
   document.getElementById('conf-annul').classList.add('show');
@@ -24000,7 +24093,16 @@ function _montrerAnnulRapide(total){
     if(!_annulRapideOuverte()||!panierVide()){_dernVente=null;_cacherAnnulRapide();return;}
     // 24.06 — elle se cachait derrière l'écran vert, pas derrière une feuille :
     // vu au banc, elle couvrait les billets de 500 à la clôture du soir.
-    c.classList.toggle('show',!(sc&&sc.classList.contains('show'))&&!document.querySelector('.ov.show'));
+    // ⚠️⚠️ 24.03 — LA PASTILLE ANNULAIT UNE VENTE PAYÉE. Les 5 agents de test
+    // (25/11) l'ont trouvée chacun de leur côté : en z-index 190, au-dessus
+    // des feuilles (100), elle couvrait pendant 15 s le bas de la fenêtre
+    // d'une famille, le bouton « Vendre » d'un article créé en vendant, « De
+    // la caisse » de la dépense, le champ « Espèces comptées » de la clôture.
+    // Une tape là annulait la vente d'avant. Elle ne se montre plus que sur
+    // la caisse, sans aucune feuille ouverte.
+    var _sc=document.getElementById('s-caisse');
+    var _libre=!(sc&&sc.classList.contains('show'))&&!document.querySelector('.ov.show')&&!!(_sc&&_sc.classList.contains('on'));
+    c.classList.toggle('show',_libre);
   },300);
 }
 function annulerDerniereVente(){
@@ -26062,7 +26164,7 @@ function _photoOff(nom){
 //   Jamais le prix. Jamais le stock. Jamais une vente. Jamais un total.
 //
 // Et jamais une photo qu'il a prise lui-même : la sienne est la vérité.
-// ⭐ 24.18 — LA MÊME PHOTO À DEUX ADRESSES. Trouvé le 26/11 dans son journal :
+// ⭐ 24.20 — LA MÊME PHOTO À DEUX ADRESSES. Trouvé le 26/11 dans son journal :
 // « Photos posées → Boisson predator », six fois en deux jours. Sa famille
 // porte la photo du serveur (…/APP/catalogue-off/boisson-predator.jpg) ; hors
 // réseau, le catalogue répond par la même photo livrée avec l'app
@@ -26982,6 +27084,12 @@ function _motContenant(p,v){
     var m=mesureCatalogue(familleCatalogueDe(p.nm)||p.nm);
     if(m&&m.cont)return m.cont;
   }catch(e){}
+  // ⚠️ 24.19 — « CARTON DE CASTEL ». L'agent « dépôt » (25/11) : la bière en
+  // verre arrive en CASIER, le mot qu'il emploie. Le catalogue connaît Mützig
+  // et 33 Export, pas Castel 65 cl ni les autres : le grand verre (60–65 cl)
+  // et les brasseries d'ici disent « casier » même hors du catalogue.
+  try{var _n=txtNorm((p&&p.nm||'')+' '+(v&&v.nm||''));
+    if(!estMesure(p)&&(/\b6[05] ?cl\b/.test(_n)||/\b(castel|beaufort|kadji|isenbeck|satzenbrau|mutzig)\b/.test(_n)))return fr?'casier':'crate';}catch(e){}
   return estMesure(p)?(fr?'sac':'bag'):(fr?'carton':'box');
 }
 // La réponse ne dépend que du nom et de l'index — deux choses qui ne bougent
@@ -33227,9 +33335,54 @@ function togV(i){
   var parti=!!(DB.cfg&&DB.cfg.pvPose)&&confirm(fr
     ?(v.nm+' a quitté la boutique pour de bon ?\n\nOK : je change aussi le code équipe. Il ne pourra plus rien voir, même avec un autre téléphone. Tu diras le nouveau code à tes autres vendeurs.\n\nAnnuler : c\'est juste une pause.')
     :(v.nm+' has left for good?\n\nOK: I also change the team code.\n\nCancel: just a pause.'));
-  if(parti)_remplacerCodeEquipe();
+  // ⚠️⚠️ 24.04 — LE CODE NE CHANGE PLUS TOUT DE SUITE. Mesuré par l'agent
+  // « patron + vendeur » (25/11) : Junior vend hors ligne 1 300 + 800 en
+  // espèces et 600 à crédit ; le patron le retire « pour de bon » et le code
+  // équipe change ; Junior retrouve le réseau… et l'ancien code est refusé :
+  // ses 3 ventes ne montaient JAMAIS (2 100 F de moins dans la caisse
+  // attendue du patron, la dette d'Awa à 0), et sa caisse restait ouverte
+  // (_fermerSiRetire ne tourne qu'à la réception d'une synchro, qui ne venait
+  // plus). Avec la « pause », tout marchait. Le code change donc APRÈS : dès
+  // que son téléphone a rendu ses ventes et accusé le retrait
+  // (DB.accuseRetrait), ou au bout de 24 h, ou d'un geste du patron.
+  if(parti){
+    v.codeAChanger=1;v.partiLe=new Date().toISOString();
+    try{sauverEtEnvoyerVite();}catch(e){save();}
+    renderEquipe();
+    showToast('⏳ '+(fr?(v.nm+' : son téléphone rend ses ventes puis se ferme. Le code équipe changera juste après (demain au plus tard). Pressé ? Équipe → « Changer le code maintenant ».')
+                      :(v.nm+': their phone hands back its sales, then closes. The team code changes right after (within a day).')),6000);
+    try{_verifierCodesEnAttente();}catch(e){}
+  }
   else showToast('⏸ '+v.nm+(fr?' est en pause : sa caisse se ferme':' is paused: their till closes'));
 }
+// Le patron : un vendeur parti attend le changement de code. Son téléphone a
+// accusé le retrait (ses ventes sont donc arrivées avec), ou 24 h ont passé.
+var _DELAI_CODE_PARTI=24*3600e3;
+function _verifierCodesEnAttente(force){
+  if(typeof role==='undefined'||role!=='patron'||!DB||!Array.isArray(DB.equipe))return false;
+  var att=DB.equipe.filter(function(x){return x&&x.codeAChanger;});if(!att.length)return false;
+  var acc=DB.accuseRetrait||{},now=Date.now();
+  var pret=force||att.some(function(x){
+    var a=acc[txtNorm(x.nm||'')],t0=Date.parse(x.partiLe||'')||0;
+    return (a&&a>=String(x.partiLe||''))||(t0&&now-t0>_DELAI_CODE_PARTI);
+  });
+  if(!pret)return false;
+  att.forEach(function(x){delete x.codeAChanger;});
+  _remplacerCodeEquipe();
+  try{renderEquipe();}catch(e){}
+  return true;
+}
+// La ligne « Changer le code maintenant », sous la liste de l'équipe, tant qu'un vendeur parti l'attend.
+try{(function(){var _base=renderEquipe;renderEquipe=function(){var r=_base.apply(this,arguments);try{
+  var c=document.getElementById('equipe-lst');if(!c||role!=='patron')return r;
+  var att=(DB.equipe||[]).filter(function(x){return x&&x.codeAChanger;});
+  if(att.length){var fr=(lang!=='en');c.insertAdjacentHTML('beforeend','<div class="code-attente" style="margin-top:8px;padding:10px 12px;background:#FFF7ED;border:1.5px solid #FDBA74;border-radius:12px;font-size:12.5px;font-weight:700;color:#7C2D12">⏳ '+escH(fr?('Le code équipe changera quand le téléphone de '+att.map(function(x){return x.nm;}).join(', ')+' aura rendu ses ventes (demain au plus tard).'):'The team code will change once the phone hands back its sales.')+'<br><button type="button" onclick="changerCodeMaintenant()" style="margin-top:7px;background:#C2410C;color:#fff;border:none;border-radius:9px;padding:9px 12px;font:800 12.5px Outfit,sans-serif;cursor:pointer">🔑 '+escH(fr?'Changer le code maintenant':'Change the code now')+'</button></div>');}
+}catch(e){}return r;};})();}catch(e){}
+function changerCodeMaintenant(){
+  if(role!=='patron'){showToast('⛔ '+(lang==='fr'?'Réservé au patron':'Patron only'));return;}
+  _verifierCodesEnAttente(true);
+}
+try{setInterval(function(){try{_verifierCodesEnAttente();}catch(e){}},10*60e3);}catch(e){}
 // Le vendeur éteint par son patron : la caisse se ferme sur son téléphone.
 function _vendeurRetire(){
   if(typeof role==='undefined'||role!=='vendeur'||!nomVendeur||!DB||!Array.isArray(DB.equipe))return false;
@@ -33241,8 +33394,16 @@ function _fermerSiRetire(){
   if(!_vendeurRetire())return false;
   var fr=(lang!=='en');
   try{_panierOublier();}catch(e){}
-  logout();
-  showToast('🔒 '+(fr?'Ton patron t\'a retiré de l\'équipe : la caisse est fermée sur ce téléphone. Parle-lui.':'Your owner removed you from the team: the till is closed on this phone.'));
+  // 24.04 — avant de fermer : ses ventes partent, avec l'accusé du retrait —
+  // c'est ce qui permet au patron de changer le code sans les perdre.
+  try{if(!DB.accuseRetrait||typeof DB.accuseRetrait!=='object')DB.accuseRetrait={};DB.accuseRetrait[txtNorm(nomVendeur||'')]=new Date().toISOString();persistDB(false);}catch(e){}
+  var fini=false,fermer=function(){
+    if(fini)return;fini=true;
+    logout();
+    showToast('🔒 '+(fr?'Ton patron t\'a retiré de l\'équipe : la caisse est fermée sur ce téléphone. Parle-lui.':'Your owner removed you from the team: the till is closed on this phone.'));
+  };
+  try{Promise.resolve(syncToSupa()).then(fermer,fermer);}catch(e){fermer();}
+  setTimeout(fermer,5000);
   return true;
 }
 // Combien de vendeurs le patron accepte. 0 = pas de limite (comportement
@@ -33805,7 +33966,32 @@ function paiementBreakdown(liste){
 // Le patron sortait 5 000 F pour le transport, comptait sa caisse le soir, et
 // l'app lui annonçait un DÉFICIT de 5 000 F — de quoi soupçonner son vendeur
 // pour une dépense qu'il avait lui-même faite.
-function caisseAttendue(){return DB.fondsDepart+totalEspecesJour()+totalRembEspecesJour()-totalDepCaisseJour()-totalFournCaisseJour();}
+// ⚠️⚠️ 24.03 — LA MONNAIE DU MATIN NE SE SAISISSAIT NULLE PART. Trouvé par
+// deux agents de test (25/11), vérifié : `DB.fondsDepart` était lu à quatre
+// endroits, écrit par aucun écran. Celui qui garde 5 000 F de monnaie voyait
+// chaque soir « Fonds de départ 0 » puis « Excédent +5 000 ». Elle se tape
+// maintenant à la clôture, là où il compte ; elle vaut pour CE jour
+// (`DB.fonds = {jour, amt, ts}`), la plus récente des deux téléphones gagne
+// (mergeDB). Un ancien `fondsDepart` reste le repli.
+// ⚠️ 24.03 — ET LA LIGNE « MOBILE MONEY » DE LA CLÔTURE ÉTAIT `total − espèces` :
+// elle comptait le crédit et les consignes (−1 400 F un jour sans aucune vente
+// mobile, mesuré par 4 agents). Elle additionne maintenant les vrais
+// paiements Orange/MTN/Moov (paiementBreakdown, comme Rapports), et le crédit
+// a sa ligne.
+function fondsDuJour(){
+  try{var f=DB&&DB.fonds;if(f&&f.jour===new Date().toDateString())return Number(f.amt)||0;}catch(e){}
+  return Number(DB&&DB.fondsDepart)||0;
+}
+function poserFonds(v){
+  var n=Math.max(0,Math.round(parseFloat(String(v==null?'':v).replace(/[^\d.,]/g,'').replace(',','.'))||0));
+  DB.fonds={jour:new Date().toDateString(),amt:n,ts:Date.now()};
+  save();
+  // La caisse attendue et l'écart suivent tout de suite ; ce qu'il a déjà compté reste.
+  var c=document.getElementById('inp-compt'),deja=c?c.value:'';
+  var o=document.getElementById('ov-clot');
+  if(o&&o.classList.contains('show')){try{_clotDetail();}catch(e){}if(c){c.value=deja;if(deja)try{calcEcart();}catch(e){}}}
+}
+function caisseAttendue(){return fondsDuJour()+totalEspecesJour()+totalRembEspecesJour()-totalDepCaisseJour()-totalFournCaisseJour();}
 // ══════════════════════════════════════════════════════════════════
 //  💵 LES REMBOURSEMENTS DE CRÉDIT
 //
@@ -33918,7 +34104,7 @@ function selModeRemb(m){
 // trouve 5 500 F de moins — et soupçonne son vendeur. Le rapport donne
 // maintenant le montant de la clôture, et dit d'où il vient.
 function _rptDetailCaisse(esp){
-  var fr=(lang==='fr'),f=Number(DB.fondsDepart)||0,d=totalDepCaisseJour(),r=totalRembEspecesJour(),fo=totalFournCaisseJour();
+  var fr=(lang==='fr'),f=fondsDuJour(),d=totalDepCaisseJour(),r=totalRembEspecesJour(),fo=totalFournCaisseJour();
   if(!f&&!d&&!r&&!fo)return '';
   return '<div style="font-size:9.5px;font-weight:600;color:var(--M)">'
     +(f?(fr?'fonds de départ ':'opening cash ')+fmt(f)+' + ':'')+(fr?'espèces ':'cash ')+fmt(esp)
@@ -33967,7 +34153,8 @@ function clotBillet(v,d){
   if(!tot){var ec=document.getElementById('ecart-cd');if(ec)ec.style.display='none';}
   try{if(d>0&&navigator.vibrate)navigator.vibrate(15);}catch(e){}
 }
-function ouvrirClot(){var att=caisseAttendue(),_dc=totalDepCaisseJour(),_dh=totalDepJour()-_dc;document.getElementById('clot-fonds').textContent=fmt(DB.fondsDepart);document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Fonds départ':'Opening cash')+'</span><span class="rval a">'+fmt(DB.fondsDepart)+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(totalV-totalEspecesJour())+'</span></div>'+((totalRembEspecesJour()>0)?('<div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Remboursements de crédit (espèces)':'Credit repayments (cash)')+'</span><span class="rval g">'+fmt(totalRembEspecesJour())+'</span></div>'):'')+((totalRembMobileJour()>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'remboursements mobile money (hors caisse)':'mobile money repayments (not in drawer)')+'</span><span class="rval" style="color:var(--M)">'+fmt(totalRembMobileJour())+'</span></div>'):'')+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+((_dc>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Dépenses payées de la caisse':'Expenses paid from till')+'</span><span class="rval r">-'+fmt(_dc)+'</span></div>'):'')+((_dh>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'dépenses hors caisse (le tiroir n\'y touche pas)':'expenses not from till')+'</span><span class="rval" style="color:var(--M)">-'+fmt(_dh)+'</span></div>'):'')+((totalFournCaisseJour()>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Fournisseurs payés de la caisse':'Suppliers paid from till')+'</span><span class="rval r">-'+fmt(totalFournCaisseJour())+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+(totalDepJour()>0?(lang==='fr'?' NET (dépenses déduites)':' NET'):'')+'</span><span class="rval '+((totalB-totalDepJour())<0?'r':'g')+'">'+fmt(totalB-totalDepJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';try{_clotBilletsRendre();}catch(e){}document.getElementById('ov-clot').classList.add('show');}
+function ouvrirClot(){_clotDetail();try{var _fi=document.getElementById('clot-fonds-inp');if(_fi){var _fv=fondsDuJour();_fi.value=_fv>0?String(_fv):'';}}catch(e){}document.getElementById('inp-compt').value='';document.getElementById('ecart-cd').style.display='none';try{_clotBilletsRendre();}catch(e){}document.getElementById('ov-clot').classList.add('show');}
+function _clotDetail(){var att=caisseAttendue(),_dc=totalDepCaisseJour(),_dh=totalDepJour()-_dc;var _pb={};try{_pb=paiementBreakdown(getCaisseSales())||{};}catch(e){}var _mob=(Number(_pb.orange)||0)+(Number(_pb.mtn)||0)+(Number(_pb.moov)||0),_cre=Number(_pb.credit)||0;document.getElementById('clot-det').innerHTML='<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Monnaie du matin':'Opening cash')+'</span><span class="rval a">'+fmt(fondsDuJour())+'</span></div><div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Ventes en espèces':'Cash sales')+'</span><span class="rval g">'+fmt(totalEspecesJour())+'</span></div>'+((_mob>0)?('<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Ventes mobile money (hors caisse)':'Mobile money sales (not in cash drawer)')+'</span><span class="rval">'+fmt(_mob)+'</span></div>'):'')+((_cre>0)?('<div class="rrow"><span class="rlbl" style="color:#B45309">'+(lang==='fr'?'Crédit accordé (à récupérer, hors caisse)':'Credit given (to collect)')+'</span><span class="rval" style="color:#B45309">'+fmt(_cre)+'</span></div>'):'')+((totalRembEspecesJour()>0)?('<div class="rrow"><span class="rlbl">+ '+(lang==='fr'?'Remboursements de crédit (espèces)':'Credit repayments (cash)')+'</span><span class="rval g">'+fmt(totalRembEspecesJour())+'</span></div>'):'')+((totalRembMobileJour()>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'remboursements mobile money (hors caisse)':'mobile money repayments (not in drawer)')+'</span><span class="rval" style="color:var(--M)">'+fmt(totalRembMobileJour())+'</span></div>'):'')+((consignesDuJour()!==0)?('<div class="rrow"><span class="rlbl" style="color:var(--O)">'+(lang==='fr'?'dont consignes (à rendre)':'incl. deposits (to give back)')+'</span><span class="rval" style="color:var(--O)">'+fmt(consignesDuJour())+'</span></div>'):'')+((_dc>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Dépenses payées de la caisse':'Expenses paid from till')+'</span><span class="rval r">-'+fmt(_dc)+'</span></div>'):'')+((_dh>0)?('<div class="rrow"><span class="rlbl" style="color:var(--M)">'+(lang==='fr'?'dépenses hors caisse (le tiroir n\'y touche pas)':'expenses not from till')+'</span><span class="rval" style="color:var(--M)">-'+fmt(_dh)+'</span></div>'):'')+((totalFournCaisseJour()>0)?('<div class="rrow"><span class="rlbl">− '+(lang==='fr'?'Fournisseurs payés de la caisse':'Suppliers paid from till')+'</span><span class="rval r">-'+fmt(totalFournCaisseJour())+'</span></div>'):'')+'<div class="rrow"><span class="rlbl">'+t('benefice')+(totalDepJour()>0?(lang==='fr'?' NET (dépenses déduites)':' NET'):'')+'</span><span class="rval '+((totalB-totalDepJour())<0?'r':'g')+'">'+fmt(totalB-totalDepJour())+'</span></div><div class="rrow"><span class="rlbl">'+(lang==='fr'?'Caisse attendue (espèces)':'Expected cash drawer')+'</span><span class="rval" style="font-size:17px;font-weight:900">'+fmt(att)+'</span></div>';}
 function calcEcart(){var compt=parseFloat(document.getElementById('inp-compt').value)||0,att=caisseAttendue(),ec=compt-att,el=document.getElementById('ecart-cd');el.style.display='flex';el.className='bcard '+(Math.abs(ec)<100?'bon':'bad');document.getElementById('ecart-lbl').textContent=ec===0?'✅ '+(lang==='fr'?'Équilibrée':'Balanced'):ec>0?'📈 '+(lang==='fr'?'Excédent':'Surplus'):'⚠️ '+(lang==='fr'?'Déficit':'Deficit');document.getElementById('ecart-amt').textContent=(ec>=0?'+':'')+fmt(ec);}
 function validerClot(){
   closeSheet('ov-clot');
@@ -34003,7 +34190,11 @@ function totalDepCaisseJour(){
 // ═══════════════════════════════════════════
 // DÉPENSES
 // ═══════════════════════════════════════════
-var selDCur='loyer';
+// ⚠️ 24.03 — « LOYER » ÉTAIT CHOISI D'OFFICE. Deux agents de test (25/11) :
+// 1 000 F donnés au porteur d'eau, « Transport marchandise »… enregistrés en
+// loyer, faute d'avoir touché la catégorie — celui qui ne lit pas ne la
+// touchera jamais. « Autre » par défaut, et à chaque ouverture.
+var selDCur='autre';
 // Par défaut l'argent sort du tiroir : c'est le cas courant dans une boutique
 // de quartier (on paie le porteur d'eau, le taxi, la ration avec la recette).
 // Le patron peut dire le contraire d'un doigt quand il a payé par mobile money
@@ -34021,7 +34212,7 @@ function selDC(cat,btn){selDCur=cat;(btn.parentNode||document).querySelectorAll(
 function ouvrirDep(){if(!(role==='patron'||hasPerm('depenses'))){showToast('⛔ '+(lang==='fr'?'Non autorisé':'Not allowed'));return;}// On repart TOUJOURS de « de la caisse ». Sans ça, un patron qui a coché
 // « hors caisse » une fois le garderait pour toutes ses dépenses suivantes,
 // et le tiroir ne serait plus jamais débité — l'erreur ne se verrait nulle part.
-selDCaisse(1);renderDepLst();document.getElementById('ov-dep').classList.add('show');}
+selDCaisse(1);try{selDCur='autre';var _da=document.getElementById('dep-c-autre');if(_da)selDC('autre',_da);}catch(e){}renderDepLst();document.getElementById('ov-dep').classList.add('show');}
 function saveDep(){if(!(role==='patron'||hasPerm('depenses'))){showToast('⛔ '+(lang==='fr'?'Non autorisé':'Not allowed'));return;}var nm=document.getElementById('dep-nm').value.trim(),amt=parseFloat(document.getElementById('dep-amt').value)||0;if(!amt){showToast(lang==='fr'?'Tape le montant de la dépense':'Type the amount');try{document.getElementById('dep-amt').focus();}catch(e){}return;}if(!nm)nm=_depCatNom(selDCur);// L'identifiant était DB.depenses.length+1 : deux téléphones donnaient le
 // MÊME numéro à deux dépenses différentes, et la fusion n'en gardait qu'une.
 // Le même générateur que les ventes, qui porte l'appareil et l'heure.
@@ -34757,6 +34948,17 @@ function _voixPanier(txt){
     var M=mesure?_montantDit(seg):0;
     if(M>0&&pxL>0){_qteRemplace=null;_qteArt=p;_qteVar=v;_ajouterMesure(p,Math.round(M/pxL*1000)/1000,M,(lang==='fr'?'pour ':'for ')+fmt(M));
       if((panier[cleL]||0)>avant)R.ajoutes.push({p:p,v:v,q:(panier[cleL]||0)-avant,mt:M});return;}
+    // ⚠️⚠️ 24.19 — « POUR 500 DE SAVON » METTAIT TOUT LE STOCK AU PANIER.
+    // Mesuré au banc : « pour 500 de savon azur » → 30 savons (19 500 F, tout
+    // le carton : le 500 lu comme une quantité, arrêté par le stock) ;
+    // « pour 300 de tomates » → 40 tas. Sur un article à la pièce, « pour »
+    // dit un montant : 1 000 de piment à 100 = 10 piments. Un montant qui ne
+    // tombe pas juste n'invente rien : la voix dit le prix et il choisit.
+    if(!mesure&&pxL>0){var Mp=_montantDit(seg);
+      // (≥ 25 : « pour deux savons » n'est pas un montant de 2 F.)
+      if(Mp>=25){var np=Math.floor(Mp/pxL+1e-9);
+        if(np<1||Math.abs(np*pxL-Mp)>0.5){(R.prix||(R.prix=[])).push({p:p,v:v,M:Mp});return;}
+        q=np;}}
     if(mesure){var fq=_fractionDite(seg);if(fq>0)q=fq;_qteRemplace=null;_qteArt=p;_qteVar=v;ajouterQteMesure(q);}
     else for(var i=0;i<q;i++)addPanier(p,v);
     var pris=(panier[v?p.id+'-'+v.id:p.id+'-0']||0)-avant;
@@ -34793,6 +34995,9 @@ function _voixPanierDire(R){
   var fr=(lang==='fr'),msg=[];
   if(R.ajoutes.length)msg.push('🛒 '+R.ajoutes.map(_voixNomLigne).join(', '));
   if(R.absents.length)msg.push((fr?'Pas trouvé : ':'Not found: ')+R.absents.join(', '));
+  // 24.19 — un montant qui ne fait pas un nombre rond de pièces : le prix.
+  var _px=(R.prix||[]).map(function(x){var nm=x.v?(x.v.nm||x.p.nm):x.p.nm;return {e:nm+' : '+fmt(Number((x.v||x.p).px)||0)+(fr?' la pièce':' each'),d:nm+(fr?' coûte ':' costs ')+_nombreParlable(Number((x.v||x.p).px)||0)+' francs'};});
+  if(_px.length)msg.push(_px.map(function(x){return x.e;}).join(', '));
   if(msg.length)showToast(msg.join(' · '));
   try{
     var dit=R.ajoutes.map(function(x){return _voixNomLigne(x,true).replace(/FCFA|F\b/g,fr?'francs':'francs');}).join(', ');
@@ -34800,6 +35005,7 @@ function _voixPanierDire(R){
       dit+=' : '+(fr?'total ':'total ')+_nombreParlable(tot)+' francs';}
     if(R.aChoisir.length)dit+=(dit?'. ':'')+(fr?('Quelle sorte de '+R.aChoisir[0].nm+' ?'):('Which '+R.aChoisir[0].nm+'?'));
     if(R.absents.length)dit+=(dit?'. ':'')+(fr?'Je n\'ai pas trouvé : ':'Not found: ')+R.absents.join(', ');
+    if(_px.length)dit+=(dit?'. ':'')+_px.map(function(x){return x.d;}).join('. ');
     _parlerCommande(dit);
   }catch(e){}
   if(R.ajoutes.length&&!R.aChoisir.length){try{ouvrirPanier();}catch(e){}}
@@ -34876,17 +35082,18 @@ function _voixTraiterTexte(q){
     var R=_voixPanier(q);
     // 23.91 — ce qui n'a pas été compris part au serveur (couche 3) ; ce qui
     // l'a été est déjà au panier et n'y repart pas.
-    var reste=R.absents.length?R.absents.join(', '):((R.ajoutes.length||R.aChoisir.length)?'':q);
+    var _prixDit=!!(R.prix&&R.prix.length);   // 24.19 — « pour 500 de savon » : compris, le prix va être dit
+    var reste=R.absents.length?R.absents.join(', '):((R.ajoutes.length||R.aChoisir.length||_prixDit)?'':q);
     if(reste&&voixProDispo()){
       _voixComprendre(reste).then(function(d){
         if(d&&d.lignes&&d.lignes.length){R.absents=[];_voixAppliquer(d.lignes,R);(d.inconnus||[]).forEach(function(x){R.absents.push(x);});}
-        if(R.ajoutes.length||R.aChoisir.length){_voixPanierDire(R);return;}
+        if(R.ajoutes.length||R.aChoisir.length||_prixDit){_voixPanierDire(R);return;}
         var mots=_ecNorm(q).split(' ').filter(function(w){return w&&!_EC_VIDES[w]&&!_NB_DITS[w]&&!/^\d+$/.test(w)&&!/^(donne|moi|veux|voudrais|mets|ajoute|stp|svp)$/.test(w);});
         var c=document.getElementById('src-c');if(c){c.value=mots.join(' ')||q;filtrC(c.value);}
       });
       return;
     }
-    if(R.ajoutes.length||R.aChoisir.length){_voixPanierDire(R);return;}
+    if(R.ajoutes.length||R.aChoisir.length||_prixDit){_voixPanierDire(R);return;}
     // Rien de sûr (« un savon » quand il y en a trois) : la recherche, sans
     // les petits mots ni la quantité — la grille montre les savons, il touche.
     var mots=_ecNorm(q).split(' ').filter(function(w){return w&&!_EC_VIDES[w]&&!_NB_DITS[w]&&!/^\d+$/.test(w)&&!/^(donne|moi|veux|voudrais|mets|ajoute|stp|svp)$/.test(w);});
@@ -35644,7 +35851,14 @@ function qteVendueParArticle(jours){
     else if(limite!=null){ var t=getSaleDateObj(v).getTime(); if(t<limite)return; }
     (v.lignes||[]).forEach(function(l){
       if(!l||l.pid==null)return;
-      map[l.pid]=(map[l.pid]||0)+(Number(l.qte||l.qty)||0);
+      // ⚠️ 24.19 — UN CARTON COMPTAIT POUR UNE BOUTEILLE. Mesuré par l'agent
+      // « dépôt » (25/11) : 3 casiers de 12 vendus = « 3 » dans Meilleurs
+      // articles et dans « À commander », pendant que le stock, lui, compte
+      // en bouteilles (36 sorties). La liste de courses voyait 12 fois moins
+      // de ventes qu'il n'y en avait, et disait « tu tiens 4 mois » à un
+      // dépôt qui tient 10 jours. La ligne porte sa taille (qBase), comme
+      // dans qteVendueParVariante et recomputeStock.
+      map[l.pid]=(map[l.pid]||0)+(Number(l.qte||l.qty)||0)*(Number(l.qBase)||1);
     });
   });
   return map;
@@ -35943,6 +36157,11 @@ function majConsigneUI(){
   }
   var l=document.getElementById('cons-lbl');
   if(l)l.textContent=(fr?'Consigne ':'Deposit ')+fmt(u)+(fr?' / emballage — ce n\'est pas ton bénéfice':' each — not your profit');
+  // 24.04 — la consigne touchée après avoir choisi MTN/Orange : le code USSD et
+  // le total mobile suivent (mesuré : le code gardait l'ancien montant).
+  try{var _tm=document.getElementById('calc-tot-mobile');if(_tm&&pmntModeVente&&pmntModeVente!=='especes'&&pmntModeVente!=='credit')_tm.textContent=fmt(calcAPayer());}catch(e){}
+  try{majUssdBox();}catch(e){}
+  try{if(pmntModeVente==='credit')calcCreditVente();}catch(e){}
 }
 calcBenTotal=function(){return calcBenBrut()-remisePoints-(remiseVente||0)-_negoTotal();};
 function pointsGagnesPour(total){return Math.floor((total||0)/100);}
@@ -36140,12 +36359,18 @@ function archiverAnciennesVentes(cutoff){
             // réécrirait tout l'historique du stock.
             var _lv=(p.vr||[]).find(function(x){return String(x.id)===String(l.vid);});
             var _cible=(_lv&&_estGrosDeVariante(_lv))?_lv.base:l.vid;
-            var _n=(_lv&&_estGrosDeVariante(_lv))?(Number(l.qBase)||getQBase(_lv)):1;
+            // ⚠️ 24.19 — le pliage doit retirer EXACTEMENT ce que
+            // recomputeStock retire pour la même ligne : `qBase` aussi sur
+            // une sorte simple et sur un article sans sorte (le carton de la
+            // 24.11 se vend sans variante). Sinon, le jour où la vente passe
+            // dans l'archive, le stock affiché saute de 11 bouteilles par
+            // carton — sans qu'aucune vente n'ait eu lieu.
+            var _n=(_lv&&_estGrosDeVariante(_lv))?(Number(l.qBase)||getQBase(_lv)):(Number(l.qBase)||1);
             var _k=l.pid+'|'+_cible;
             soldVar[_k]=(soldVar[_k]||0)+norm*_n;
           }
         }
-        else soldBase[l.pid]=(soldBase[l.pid]||0)+norm;
+        else soldBase[l.pid]=(soldBase[l.pid]||0)+norm*(Number(l.qBase)||1);
       });
     }
   });
@@ -36517,6 +36742,10 @@ function mergeDB(base,other){
     base.cfg.venteDeverrouillee=_monDB.cfg.venteDeverrouillee;
   // S3 : archivage. La borne = la plus avancée des deux. L'autorité sur les
   // articles (stk0/vd0 rebasés) revient au téléphone qui a archivé le plus loin.
+  // 24.04 — l'accusé de retrait d'un vendeur : par nom, le plus récent.
+  try{var _ra=base.accuseRetrait,_rb=other.accuseRetrait;if(_rb&&typeof _rb==='object'){if(!_ra||typeof _ra!=='object')_ra=base.accuseRetrait={};Object.keys(_rb).forEach(function(k){if(!_ra[k]||String(_rb[k])>String(_ra[k]))_ra[k]=_rb[k];});}}catch(e){}
+  // 24.03 — la monnaie du matin : la plus récente des deux téléphones.
+  try{var _fa=base.fonds,_fb=other.fonds;if(_fb&&(!_fa||(Number(_fb.ts)||0)>(Number(_fa.ts)||0)))base.fonds=_fb;}catch(e){}
   var baseUp=(base.arch&&base.arch.upTo)||0, otherUp=(other.arch&&other.arch.upTo)||0;
   var archUp=Math.max(baseUp,otherUp);
   // ⚠️⚠️ « QUAND ON REGROUPE DEUX TROIS ARTICLES, ILS DISPARAISSENT ET IL NE
@@ -36975,7 +37204,7 @@ function migrateDBData(d){
 // ⚠️ C'EST CETTE LIGNE-CI QUI TOURNE, pas la `function loadDB` du haut.
 // Elle n'ajoute que la migration : la lecture protégée reste dans
 // _lireDBBrute(), une seule fois, pour les deux.
-loadDB=function(){var d=_lireDBBrute();return d?migrateDBData(d):null;};
+loadDB=function(){var d=_lireDBBrute();if(d){try{d=_fusionnerSecours(d);}catch(e){}}return d?migrateDBData(d):null;};
 // ⚠️ CET ENROBAGE TARDIF DOIT REPASSER TOUS LES ARGUMENTS.
 // Il n'en prenait que deux et jetait le troisième (`discret`) : la synchro
 // de fond redevenait bruyante sans qu'aucun appel ne le montre, et la voix
@@ -37930,13 +38159,15 @@ function _sauvJour(){
 // sans un mot. Maintenant on le DIT, et on envoie quand même au serveur :
 // c'est lui qui garde la vente quand le téléphone ne peut plus.
 var _pleinDit=0;
-function _telephonePlein(){
+function _telephonePlein(secoursOk){
   try{
+    var fr=(lang==='fr'),enLigne=(navigator.onLine!==false);
+    // Le message, à CHAQUE fois (une vente qui ne s'écrit pas doit se voir) ;
+    // la voix, une fois par minute.
+    showToast('📵 '+(fr?('Téléphone plein ! '+(secoursOk?'Ta vente est gardée de côté. ':'')+(enLigne?'Elle part au serveur. ':'Ne ferme pas l\'appli. ')+'Libère de la place (photos, vidéos).')
+                       :'Phone storage full! Free some space (photos, videos).'));
     if(Date.now()-_pleinDit<60000)return; _pleinDit=Date.now();
-    var fr=(lang==='fr');
-    showToast('📵 '+(fr?'Téléphone plein — gardé en ligne seulement'
-                       :'Phone storage full — kept online only'));
-    try{parler(fr?'Le téléphone est plein. Libère de la place.'
+    try{parler(fr?('Le téléphone est plein. '+(enLigne?'':'Ne ferme pas l\'application. ')+'Libère de la place.')
                  :'The phone is full. Free some space.');}catch(e){}
   }catch(e){}
 }
@@ -37998,6 +38229,39 @@ function _parcoursOuverture(){
   }catch(e){}
 }
 document.addEventListener('visibilitychange',function(){if(!document.hidden)_parcoursOuverture();});
+// ⚠️⚠️ 24.04 — TÉLÉPHONE PLEIN : DES VENTES PERDUES SANS UN MOT. Mesuré par
+// l'agent « marché » (25/11), hors ligne, mémoire presque pleine : 7 ventes
+// faites, 5 écrites ; au redémarrage, 2 ventes (600 F) disparues, le stock
+// faux — et le message disait « gardé en ligne seulement » sans réseau, une
+// seule fois par minute. Maintenant : on libère d'abord la place que l'app
+// occupe elle-même (ses copies de secours d'avant-hier), on réessaie ; si
+// c'est encore plein, les ventes du jour vont dans une petite clé à part
+// (myboutiq_secours), relue au démarrage ; et le message dit la vérité.
+var _CLE_SECOURS='myboutiq_secours';
+function _ecrireSecours(){
+  try{
+    var q=function(l,n){return Array.isArray(l)?l.slice(-n):[];};
+    localStorage.setItem(_CLE_SECOURS,JSON.stringify({code:normalizeShopCode(DB.cfg.code),ts:Date.now(),
+      ventes:q(DB.ventes,80),encaissements:q(DB.encaissements,60),depenses:q(DB.depenses,40),appros:q(DB.appros,40),clients:DB.clients||[]}));
+    return true;
+  }catch(e){return false;}
+}
+function _fusionnerSecours(d){
+  var raw=null;try{raw=localStorage.getItem(_CLE_SECOURS);}catch(e){}
+  if(!raw||!d||!d.cfg)return d;
+  var sc=null;try{sc=JSON.parse(raw);}catch(e){return d;}
+  if(!sc||sc.code!==normalizeShopCode(d.cfg.code))return d;
+  ['ventes','encaissements','depenses','appros'].forEach(function(k){
+    if(!Array.isArray(sc[k]))return;
+    if(!Array.isArray(d[k]))d[k]=[];
+    var vus={};d[k].forEach(function(x){if(x&&x.id!=null)vus[x.id]=1;});
+    sc[k].forEach(function(x){if(x&&x.id!=null&&!vus[x.id]){d[k].push(x);vus[x.id]=1;}});
+  });
+  // Les dettes du jour (une vente à crédit touche le client) : la copie de
+  // secours est plus récente que la boutique gardée.
+  if(Array.isArray(sc.clients)&&sc.clients.length)d.clients=sc.clients;
+  return d;
+}
 // ⚠️ 24.07 — UNE BOUTIQUE EFFACÉE NE REVIENT PAS. Vu au banc (t321, une fois
 // sur six) : la pose des photos du catalogue arrive en retard, quand le réseau
 // a répondu, et sauvegarde la boutique ENCORE EN MÉMOIRE. « Boutique d'un
@@ -38013,7 +38277,13 @@ function persistDB(delaiMs){
     localStorage.setItem('myboutiq_v6',JSON.stringify(DB));
     _persistOk=true;
     _marquerHabitue();
-  }catch(e){ _persistOk=false; _telephonePlein(); }
+    try{if(localStorage.getItem(_CLE_SECOURS))localStorage.removeItem(_CLE_SECOURS);}catch(e){}
+  }catch(e){
+    var ok=false;
+    try{localStorage.removeItem('myboutiq_sauv');localStorage.removeItem('myboutiq_sauv_jour');localStorage.setItem('myboutiq_v6',JSON.stringify(DB));ok=true;
+      try{localStorage.removeItem(_CLE_SECOURS);}catch(e3){}}catch(e2){}
+    if(!ok){_persistOk=false;var sec=_ecrireSecours();_telephonePlein(sec);}
+  }
   if(delaiMs===false)return;
   if(!_suppressSync&&DB&&DB.cfg&&DB.cfg.code){
     clearTimeout(syncTimeout);
@@ -38813,7 +39083,7 @@ var _logoutBase=logout;logout=function(){clientVente=null;remisePoints=0;remiseV
 // Recharge 5 000 », 🗑️ Vider, le panier disparaît… puis un savon à 500 F
 // s'encaisse à 5 500 F. Le montant était resté caché, et même sauvé sur le
 // téléphone pour revenir au prochain démarrage.
-viderPanier=function(){panier={};panierLibre=[];_grosPanier={};_negoLigne={};remisePoints=0;remiseVente=0;consignePrises=0;consigneRendues=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');try{_panierOublier();}catch(e){}try{_guidePanier();}catch(e){}};
+viderPanier=function(){panier={};panierLibre=[];varQtys={};_grosPanier={};_negoLigne={};remisePoints=0;remiseVente=0;consignePrises=0;consigneRendues=0;renderProd(DB.articles);updateClientVenteUI();document.getElementById('fcart').classList.add('hide');closeSheet('ov-pan');try{_panierOublier();}catch(e){}try{_guidePanier();}catch(e){}};
 // 23.76 — son visage devant son nom (et le nom échappé : il arrive par la synchro).
 function renderClientVenteList(){var c=document.getElementById('client-vente-list');if(!c||!DB)return;c.innerHTML=DB.clients.length?DB.clients.map(function(cl){majNiveauClient(cl);return '<div class="hist-sale" onclick="choisirClientVente('+(Number(cl.id)||0)+')"><div class="hist-h" style="align-items:center;gap:12px">'+_cliAvatar(cl)+'<div style="flex:1;min-width:0"><div class="hist-d">'+escH(cl.nm||'')+'</div><div class="hist-s fid-seul">'+escH(cl.niveau||'')+' · '+(Number(cl.points)||0)+' pts</div></div><div class="hist-t">'+fmt(cl.credit||0)+'</div></div></div>';}).join(''):'<div class="dash-empty">Aucun client enregistré</div>'; }
 // ⚠️⚠️ « LE CARNET EST VIDE » — MESURÉ DANS L'ÉTUDE DE PARCOURS :
@@ -39129,7 +39399,14 @@ encaisser=function(){
   if(clientVente){var cl=DB.clients.find(function(c){return c.id===clientVente.id;})||clientVente;clientId=cl.id;clientNm=cl.nm;if(ptsUtilises>0){cl.points=Math.max(0,(cl.points||0)-ptsUtilises);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'points_use',pts:ptsUtilises,amt:remisePoints});}ptsGagnes=pointsGagnesPour(total);cl.points=(cl.points||0)+ptsGagnes;majNiveauClient(cl);if(!cl.hist)cl.hist=[];cl.hist.push({date:dateFr,type:'achat',amt:total,pts:ptsGagnes});
     if(paiement.mode==='credit'&&paiement.du>0){cl.credit=(cl.credit||0)+paiement.du;if(!cl.date){var _e=new Date();_e.setDate(_e.getDate()+7);cl.date=_e.toISOString().slice(0,10);}cl.hist.push({date:dateFr,type:'credit',amt:paiement.du});}
   }
-  var vendeur=role==='vendeur'?(nomVendeur||'Vendeur'):(DB.cfg.nom.split(' ')[0]||'Patron');
+  // ⚠️ 24.03 — LE PATRON SIGNAIT SES VENTES DU PREMIER MOT DU NOM DE LA
+  // BOUTIQUE (« Dépôt », « Quincaillerie », « Ets ») alors que ses dépenses,
+  // ses remboursements et ses annulations disent « Patron » : trois agents de
+  // test (25/11) ont vu une seule personne sous deux noms dans Ma journée — et
+  // pour « Junior Shop », ses ventes se seraient confondues avec celles du
+  // vendeur Junior. Le même nom partout (_nomOperateur). Les ventes passées
+  // gardent le leur.
+  var vendeur=_nomOperateur();
   // La consigne voyage À CÔTÉ du total : elle passe par la caisse mais
   // n'est ni un chiffre d'affaires ni un bénéfice. On garde aussi le détail
   // pris/rendu pour pouvoir expliquer la somme au commerçant.
@@ -39158,16 +39435,27 @@ encaisser=function(){
                  :(l.grosTxt?(l.nm+' — '+l.grosTxt+' ('+fmtQ(_dedans)+_u+')')
                             :(l.nm+' ×'+fmtQ(l.qte)+_u));
     return {nm:_n,px:l.px*l.qte};}),total:total,h:h,date:dateFr,paiement:paiement,remise:(remiseVente||0)+_negoV,client:clientNm,arrondi:_arr,num:_num};
-  panier={};panierLibre=[];remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
+  // 24.03 — varQtys aussi : il est rangé par numéro de SORTE (1, 2, 3… les mêmes
+  // dans toutes les familles) ; laissé plein après la vente, chaque famille
+  // affichait « 1 ✕ » sur sa sorte n°1 (agent « supermarché », 25 familles).
+  panier={};panierLibre=[];varQtys={};remisePoints=0;remiseVente=0;clientVente=null;consignePrises=0;consigneRendues=0;closeSheet('ov-calc');document.getElementById('fcart').classList.add('hide');
   renderProd(DB.articles);_apresImage(function(){renderStock(DB.articles);renderClients();});recalcTotaux();updateObjBar();updateNotifBadge();updateClientVenteUI();
-  document.getElementById('succ-amt').textContent=fmt(total);
-  var _rendu=0;try{_rendu=_succDetail(paiement,total,clientNm);}catch(e){}
+  // ⚠️⚠️ 24.03 — LA MONNAIE OUBLIAIT LA CONSIGNE. Mesuré (agent « dépôt »,
+  // revérifié) : 3 bières à 650 + 3 bouteilles consignées à 100, il donne
+  // 3 000. La feuille de paiement disait « rends 750 » ; l'écran de succès et
+  // la voix disaient « rends 1 050 » — calculé sur le total SANS la consigne.
+  // 300 F de trop rendus à chaque fois. Ce que le client paie, et ce qu'on lui
+  // rend, se comptent sur le total + la consigne ; `total` reste le chiffre
+  // d'affaires (la consigne n'en est pas).
+  var _aPayer=Math.round(((Number(total)||0)+(Number(_consNet)||0))*100)/100;
+  document.getElementById('succ-amt').textContent=fmt(_aPayer);
+  var _rendu=0;try{_rendu=_succDetail(paiement,_aPayer,clientNm);}catch(e){}
   var sc=document.getElementById('succ');sc.classList.add('show');if(navigator.vibrate)navigator.vibrate([50,30,50]);
   planifierFermetureSucces(sc,_rendu>0);
-  try{_direApresVente(total,_rendu,lignes,_totalAvantVente);}catch(e){}   // 23.93
+  try{_direApresVente(_aPayer,_rendu,lignes,_totalAvantVente);}catch(e){}   // 23.93
   try{_succProposerPush();}catch(e){}
   try{_guideApresVente(total,ben,lignes);}catch(e){}
-  try{_montrerAnnulRapide(total);}catch(e){}
+  try{_montrerAnnulRapide(_aPayer);}catch(e){}
 };
 // La ligne sous le montant : ce qu'il doit faire MAINTENANT. Le reçu en
 // espèces d'abord (« Rends 700 » — c'est la question au comptoir), sinon le
@@ -39225,9 +39513,17 @@ confirmerAnnulVente=function(){
       cl.credit=Math.max(0,(cl.credit||0)-v.paiement.du);cl.hist.push({date:new Date().toLocaleDateString('fr-FR'),ts:new Date().toISOString(),type:'payment',amt:v.paiement.du,annul:true});}
   }}
   v.annulee=true;save();renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();recalcTotaux();updateObjBar();updateNotifBadge();if(document.getElementById('ov-history').classList.contains('show'))filtrerHistory();fermerConfAnnul();
-  if(_rendreApresAnnul){
-    var _ra=_rendreApresAnnul,_tot=_arrondiMonnaie(_ra.amt+(Number(v.paiement&&v.paiement.avance)||0));_rendreApresAnnul=null;
-    showToast('↩️ '+(lang==='fr'?('Vente annulée. Rends '+fmt(_tot)+' à '+_ra.nm+' : c\'est ce qu\'il avait déjà payé.'):('Sale cancelled. Give '+fmt(_tot)+' back to '+_ra.nm+': already paid.')));
+  // 24.03 — ce que le client avait donné à la vente (avance, consigne, espèces,
+  // mobile), plus ce qu'il avait déjà remboursé sur cette dette. L'annulation
+  // rapide (« Je me suis trompé ») n'en parle pas : le panier revient et il
+  // réencaisse, l'argent est encore sur le comptoir.
+  var _R=_rendreDeVente(v),_nmR=v.clientNom||'';
+  if(_rendreApresAnnul){_R.esp+=Number(_rendreApresAnnul.amt)||0;_nmR=_rendreApresAnnul.nm||_nmR;}
+  _R.esp=_arrondiMonnaie(_R.esp);_rendreApresAnnul=null;
+  var _txR=v.annulRapide?'':_texteRendre(_R,_nmR);
+  if(_txR){
+    showToast('↩️ '+(lang==='fr'?'Vente annulée. ':'Sale cancelled. ')+_txR);
+    try{parler((lang==='fr'?'Vente annulée. ':'Sale cancelled. ')+_txR.replace(/\s*·\s*/g,'. ').replace(/FCFA|F\b/g,'francs').replace(/(\d)[\s\u202f\u00a0]+(?=\d{3}\b)/g,'$1'));}catch(e){}
   }else showToast('↩️ '+(lang==='fr'?'Vente annulée, stock restitué':'Sale cancelled, stock restored'));
 };
 // ⚠️  a été SUPPRIMÉE le 10 septembre (21.72). Ses trois

@@ -1,4 +1,4 @@
-// t335 — LA MÊME PHOTO À DEUX ADRESSES NE SE REPOSE PLUS À CHAQUE OUVERTURE (24.18).
+// t339 — LA MÊME PHOTO À DEUX ADRESSES NE SE REPOSE PLUS À CHAQUE OUVERTURE (24.20).
 // Trouvé le 26/11 dans le journal de sa boutique : « Photos posées → Boisson
 // predator », six fois en deux jours (05:01, 09:11, 13:28, 17:44, 20:00,
 // 20:40). Sa famille porte la photo du serveur (…/APP/catalogue-off/
@@ -9,7 +9,7 @@
 // Le banc tourne hors réseau : le catalogue y répond par /photos-off/.
 import { chromium, serveur, compteur } from './lib.mjs';
 import { nouvelleBoutique, ouvrirCaisse } from './caisse.mjs';
-const { t, fin } = compteur('t335');
+const { t, fin } = compteur('t339');
 const { s, port } = await serveur();
 const b = await chromium.launch();
 const SERVEUR = 'https://bbncilovxzkcvlxvoqtg.supabase.co/storage/v1/object/public/APP/catalogue-off/boisson-predator.jpg';

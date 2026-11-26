@@ -79,8 +79,14 @@ t(!loin.a && loin.d && loin.n < 1001, 'une tuile lointaine est dessinée à la d
 await p.evaluate(() => renderProd(DB.articles)); await p.waitForTimeout(150);
 await vendre(p, { lignes: [[1003, 1]], mode: 'especes' });
 await p.evaluate(() => renderProd(DB.articles)); await p.waitForTimeout(150);
+// 24.03 — pendant qu'il vend, la grille ne bouge pas (agent « supermarché » :
+// il touchait Coca au même endroit et vendait un Djino) ; revenu à la caisse
+// depuis un autre écran, ce qu'il a vendu passe devant.
+const o4b = await tuiles();
+t(o4b[0] === 1900 && o4b[1] === 1500, `juste après la vente, rien ne bouge sous son doigt (${o4b.slice(0, 3).join(', ')})`);
+await p.evaluate(() => { goScreen('s-stock'); goScreen('s-caisse'); document.querySelector('#tabs-c .tpil').click(); }); await p.waitForTimeout(150);
 const o5 = await tuiles();
-t(o5[0] === 1003 && o5[1] === 1900 && o5[2] === 1500, `ce que ce téléphone vient de vendre passe devant, le reste garde l'ordre de la boutique (${o5.slice(0, 3).join(', ')})`);
+t(o5[0] === 1003 && o5[1] === 1900 && o5[2] === 1500, `revenu à la caisse : ce que ce téléphone vient de vendre passe devant, le reste garde l'ordre de la boutique (${o5.slice(0, 3).join(', ')})`);
 t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
 await ctx.close();
 
