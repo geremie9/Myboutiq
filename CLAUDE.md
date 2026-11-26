@@ -88,6 +88,16 @@ The project skill `publier-version` (`.claude/skills/publier-version/`) walks th
 3. Write the commit message in French. Title: `22.NN — <what changes for the shopkeeper>`. Then the story (the owner's words, the bug as measured), bullet points, a "Trouvé en route, corrigé" section, and `Banc : tNNN (n)`.
 4. Run `git fetch origin main && git merge origin/main`, then push the same commit to `main` and to the working branch. Vercel project `myboutiq-paqs` deploys `main` to myboutiq.online in about a minute. The other Vercel project, `myboutiq`, fails on every deploy; it is a harmless duplicate.
 
+## Two sessions on the same repository (owner, 26/11/2026)
+
+Several Claude sessions may work on this repository and publish to `main` at the same time (26/11: two sessions each published a "24.18" and added a "t335"). Rules:
+
+- Never force-push and never overwrite the other session's work. Before publishing, run `git fetch origin main && git merge origin/main`, resolve conflicts (usually only the `APP_BUILD`/`CACHE_NAME` lines), then rerun the benches touched by both sides.
+- Take the version number from `main`, not from your own branch: `bump.sh` now starts from the larger of the two. Pick a new bench number `tNNN` from what is on `main` when you create the file.
+- After every merge, check that no global `function x` or `var x` is declared twice: in this module-less file a second declaration silently replaces the first (24.09 reused `_offreCarton` and `_dernierTouche`, breaking two existing features). The `syntaxe` bench now fails on this, on an `APP_BUILD`/`CACHE_NAME` mismatch, and on two bench files sharing a number.
+- Run `bash .claude/skills/publier-version/scripts/avant-envoi.sh` right before `git push origin HEAD:main`. It refuses if `main` moved since your merge, if the version does not exceed `main`'s (or moved without an app change), if changes are uncommitted, or if `syntaxe` fails. If `main` moved while your full bench was running: merge, rerun, check again.
+- Publish only on the owner's signal, then verify that myboutiq.online serves the new `CACHE_NAME`.
+
 ## Product principle (owner, 13/11/2026)
 
 MyBoutiQ serves shopkeepers who often cannot read, are not at ease with software, and have an unstable network. Ease of adoption comes first.

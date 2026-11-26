@@ -76,4 +76,39 @@ for (const f of ['manifest.json', 'vercel.json', 'catalogue-600.json', 'photos-c
     t(r.status === 0, path.relative(RACINE, f) + ' : syntaxe bash' + (r.status ? ' : ' + (r.stderr || '').trim() : ''));
   }
 }
+// ── DEUX SESSIONS SUR LE MÊME DÉPÔT (26/11) ─────────────────────────────
+// Deux sessions ont publié sur main en même temps : deux « 24.18 », deux
+// « t335 ». Et la 24.09 avait déjà repris deux noms existants
+// (`_offreCarton`, `_dernierTouche`) : dans ce fichier sans modules, une
+// seconde déclaration écrase la première EN SILENCE (vu au banc en 24.13 :
+// le panier ne proposait plus le carton, l'ordre des articles s'oubliait).
+{
+  const h = fs.readFileSync(path.join(RACINE, 'index.html'), 'utf8');
+  const vus = {}, doubles = [];
+  const compte = n => { vus[n] = (vus[n] || 0) + 1; if (vus[n] === 2) doubles.push(n); };
+  for (const m of h.matchAll(/^function\s+([A-Za-z_$][\w$]*)\s*\(/gm)) compte(m[1]);
+  // `var a={},b={},c=0;` : TOUS les noms de la ligne (c'est le second qui avait
+  // été repris en 24.09). On efface ce qui est entre (), [], {} et les chaînes,
+  // puis on lit les noms séparés par des virgules.
+  for (const m of h.matchAll(/^var\s+([^\n]*)/gm)) {
+    let x = m[1].replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g, '""'), avant;
+    do { avant = x; x = x.replace(/\([^()]*\)|\[[^\[\]]*\]|\{[^{}]*\}/g, '0'); } while (x !== avant);
+    x = x.split(';')[0];
+    for (const part of x.split(',')) { const n = (part.match(/^\s*([A-Za-z_$][\w$]*)\s*(?:=|$)/) || [])[1]; if (n) compte(n); }
+  }
+  // Les redéfinitions voulues s'écrivent `x=function(){…}` (voir CLAUDE.md) : elles ne comptent pas ici.
+  // Connu et inoffensif : `durSel` (abonnement), déclaré deux fois avec la même valeur 'm'.
+  const connus = new Set(['durSel']), nouveaux = doubles.filter(n => !connus.has(n));
+  t(nouveaux.length === 0, 'index.html : aucun nom global déclaré deux fois' + (nouveaux.length ? ' : ' + nouveaux.join(', ') : ''));
+  // La version et le cache vont ensemble : 24.20 ↔ myboutiq-v420. Une fusion qui garde
+  // l'un d'un côté et l'autre de l'autre publierait une app que les téléphones ne recevraient pas.
+  const v = (h.match(/var APP_BUILD='(\d+)\.(\d+)'/) || []), c = (fs.readFileSync(path.join(RACINE, 'sw.js'), 'utf8').match(/CACHE_NAME='myboutiq-v(\d+)'/) || []);
+  const attendu = v[1] ? (Number(v[1]) - 20) * 100 + Number(v[2]) : NaN;
+  t(Number(c[1]) === attendu, `APP_BUILD ${v[1]}.${v[2]} et CACHE_NAME myboutiq-v${c[1]} vont ensemble (attendu v${attendu})`);
+  // Un numéro de banc par banc. t153, t235, t292 : doublons anciens, connus.
+  const anciens = new Set(['t153', 't235', 't292']), par = {};
+  for (const f of fs.readdirSync(path.join(RACINE, 'tests', 'myboutiq'))) { const m = f.match(/^(t\d+)-/); if (m) (par[m[1]] = par[m[1]] || []).push(f); }
+  const dup = Object.keys(par).filter(k => par[k].length > 1 && !anciens.has(k));
+  t(dup.length === 0, 'tests/myboutiq : un numéro par banc' + (dup.length ? ' : ' + dup.map(k => par[k].join(' + ')).join(' ; ') : ''));
+}
 fin();

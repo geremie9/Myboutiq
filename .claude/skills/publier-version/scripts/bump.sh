@@ -26,10 +26,25 @@ else
 fi
 ANC=$(grep -oE "var $VAR='[0-9]+\.[0-9]+'" "$F" | head -1 | grep -oE "[0-9]+\.[0-9]+" || true)
 [ -n "$ANC" ] || { echo "var $VAR='…' introuvable dans $F" >&2; exit 1; }
+# Deux sessions sur le même dépôt (26/11 : deux « 24.18 » publiées le même
+# jour) : on part du plus grand des deux numéros, le sien et celui de main.
+# Sans réseau, on garde le sien et on le dit.
+BASE="$ANC"; CBASE=""
+REL="${F#"$RACINE"/}"; RELS="${S#"$RACINE"/}"
+if git -C "$RACINE" fetch -q origin main 2>/dev/null; then
+  AMAIN=$(git -C "$RACINE" show "origin/main:$REL" 2>/dev/null | grep -oE "var $VAR='[0-9]+\.[0-9]+'" | head -1 | grep -oE "[0-9]+\.[0-9]+" || true)
+  CBASE=$(git -C "$RACINE" show "origin/main:$RELS" 2>/dev/null | grep -oE "CACHE_NAME='$PREF[0-9]+'" | head -1 | grep -oE "[0-9]+'" | tr -d "'" || true)
+  num(){ local M=${1%%.*} m=${1#*.}; echo $((10#$M * 1000 + 10#$m)); }
+  if [ -n "$AMAIN" ] && [ "$(num "$AMAIN")" -gt "$(num "$ANC")" ]; then
+    echo "main est déjà en $AMAIN (ici : $ANC) : on part de main." >&2; BASE="$AMAIN"
+  fi
+else
+  echo "main injoignable : on part du numéro local ($ANC) — vérifie avant d'envoyer." >&2
+fi
 if [ -n "$IMPOSEE" ]; then
   NOUV="$IMPOSEE"
 else
-  MAJ=${ANC%%.*}; MIN=${ANC#*.}; L=${#MIN}
+  MAJ=${BASE%%.*}; MIN=${BASE#*.}; L=${#MIN}
   N=$((10#$MIN + 1))
   if [ ${#N} -gt "$L" ] && [ "$L" -ge 2 ]; then
     echo "$ANC → ? Le numéro déborde : donne la version voulue (bump.sh $((MAJ+1)).00)." >&2; exit 1
@@ -38,7 +53,8 @@ else
 fi
 CANC=$(grep -oE "CACHE_NAME='$PREF[0-9]+'" "$S" | head -1 | grep -oE "[0-9]+'" | tr -d "'" || true)
 [ -n "$CANC" ] || { echo "CACHE_NAME='$PREF…' introuvable dans $S" >&2; exit 1; }
-CNOUV=$((CANC + 1))
+CMAX=$CANC; if [ -n "$CBASE" ] && [ "$CBASE" -gt "$CANC" ]; then CMAX=$CBASE; fi
+CNOUV=$((CMAX + 1))
 sed -i "s/var $VAR='$ANC'/var $VAR='$NOUV'/" "$F"
 sed -i "s/CACHE_NAME='$PREF$CANC'/CACHE_NAME='$PREF$CNOUV'/" "$S"
 grep -q "var $VAR='$NOUV'" "$F" && grep -q "CACHE_NAME='$PREF$CNOUV'" "$S" \

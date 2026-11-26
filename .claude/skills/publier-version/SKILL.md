@@ -30,6 +30,11 @@ bash .claude/skills/publier-version/scripts/bump.sh 23.00    # version imposée 
 Le script change `APP_BUILD` (le numéro dans Réglages) **et** `CACHE_NAME` dans
 `sw.js`. Sans le second, le service worker installé continue de servir
 l'ancienne coquille et les commerçants ne voient jamais le bandeau « Recharger ».
+
+**Deux sessions publient sur ce dépôt** (le 26/11, deux « 24.18 » le même
+jour). Le script part donc du plus grand des deux numéros, le tien et celui de
+`main` (il fait le `fetch` lui-même et le dit quand `main` est devant). Un
+nouveau banc prend le premier numéro `tNNN` libre sur `main`.
 Une version par envoi : si une version déjà poussée doit être corrigée, c'est la
 suivante, on ne réutilise pas un numéro.
 
@@ -90,9 +95,19 @@ inattendu (scratch, sortie de test) n'a rien à faire dans l'historique.
 ```bash
 git fetch origin main && git merge origin/main     # fusion, jamais rebase ni force
 # si la fusion a apporté du code : relancer le banc
+bash .claude/skills/publier-version/scripts/avant-envoi.sh   # doit dire « prêt »
 git push -u origin HEAD:main
 git push -u origin HEAD:<branche de travail de la session>
 ```
+
+`avant-envoi.sh` refuse l'envoi si `main` a bougé depuis ta fusion (une autre
+session a publié pendant ton banc : fusionne, relance, revérifie), si la
+version ne dépasse pas celle de `main` (ou a bougé sans changement de l'app),
+s'il reste des changements non enregistrés, ou si le banc `syntaxe` échoue —
+il vérifie aussi qu'aucun nom global n'est déclaré deux fois (dans ce fichier
+sans modules, le second écrase le premier sans rien dire : la 24.09 avait
+cassé ainsi deux fonctions existantes), que la version va avec le cache, et
+qu'un numéro de banc n'est pris qu'une fois.
 
 `main` est ce que Vercel met en ligne ; la branche de travail est celle que la
 session doit garder à jour. Échec réseau : réessayer jusqu'à 4 fois (2 s, 4 s,
