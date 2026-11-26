@@ -1,11 +1,11 @@
-// t320 — L'ARGENT : CE QUE LES AGENTS DE TEST ONT TROUVÉ (24.03).
+// t335 — L'ARGENT : CE QUE LES AGENTS DE TEST ONT TROUVÉ (24.03).
 // Le patron, le 25/11/2026 : « mets quelques agents IA à 10 simulations… et
 // fais-moi une proposition de correction des bugs ». Cinq agents, dix
 // journées de boutiquier jouées dans la vraie app. Ce banc garde ce qu'ils ont
 // prouvé, chacun mesuré avant la correction.
 import { chromium, serveur, compteur } from './lib.mjs';
 import { nouvelleBoutique, ouvrirCaisse, vendre } from './caisse.mjs';
-const { t, fin } = compteur('t320');
+const { t, fin } = compteur('t335');
 const { s, port } = await serveur();
 const b = await chromium.launch();
 const V = (id, nm, px) => ({ id, nm, px, pa: Math.round(px * 0.8), stk0: 30, qBase: 1 });

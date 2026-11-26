@@ -1,4 +1,4 @@
-// t321 — LE VENDEUR, LE TÉLÉPHONE PLEIN, LE MOBILE MONEY (24.04).
+// t336 — LE VENDEUR, LE TÉLÉPHONE PLEIN, LE MOBILE MONEY (24.04).
 // Suite des dix journées de test du 25/11/2026 (agents « patron + vendeur »,
 // « marché », « dépôt »). Le vendeur retiré « pour de bon » est gardé par t301
 // et rejoué à deux téléphones par l'agent (11 ✅ / 0 ❌ après la correction,
@@ -6,7 +6,7 @@
 import { chromium, serveur, compteur, couperInternet } from './lib.mjs';
 import { nouvelleBoutique, ouvrirCaisse, vendre } from './caisse.mjs';
 import { fauxSupaScript } from './faux-supa.mjs';
-const { t, fin } = compteur('t321');
+const { t, fin } = compteur('t336');
 const { s, port } = await serveur();
 const b = await chromium.launch();
 

@@ -7929,7 +7929,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.18'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.19'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -23290,7 +23290,11 @@ function calcMonnaie(immediat){
   // par chiffre. Mais quand il touche un raccourci (« 1 000 »), il a FINI :
   // attendre encore, c'est du silence gratuit devant un client.
   clearTimeout(_direMonnaieT);
-  if(recu>0)_direMonnaieT=setTimeout(direMonnaie,immediat?0:200);
+  // ⚠️ 24.19 — 200 ms, c'était trop court : il tape « 5 », « 0 », « 0 », « 0 »
+  // à un doigt, une touche toutes les demi-secondes. L'agent « marché »
+  // (25/11) a entendu « Il manque 1 500 francs. Il manque 1 000… » à chaque
+  // chiffre, devant le client. On attend qu'il ait levé le doigt (1,2 s).
+  if(recu>0)_direMonnaieT=setTimeout(direMonnaie,immediat?0:1200);
 }
 var _direMonnaieT=null;
 // ══════════════════════════════════════════════════════════════════
@@ -27066,6 +27070,12 @@ function _motContenant(p,v){
     var m=mesureCatalogue(familleCatalogueDe(p.nm)||p.nm);
     if(m&&m.cont)return m.cont;
   }catch(e){}
+  // ⚠️ 24.19 — « CARTON DE CASTEL ». L'agent « dépôt » (25/11) : la bière en
+  // verre arrive en CASIER, le mot qu'il emploie. Le catalogue connaît Mützig
+  // et 33 Export, pas Castel 65 cl ni les autres : le grand verre (60–65 cl)
+  // et les brasseries d'ici disent « casier » même hors du catalogue.
+  try{var _n=txtNorm((p&&p.nm||'')+' '+(v&&v.nm||''));
+    if(!estMesure(p)&&(/\b6[05] ?cl\b/.test(_n)||/\b(castel|beaufort|kadji|isenbeck|satzenbrau|mutzig)\b/.test(_n)))return fr?'casier':'crate';}catch(e){}
   return estMesure(p)?(fr?'sac':'bag'):(fr?'carton':'box');
 }
 // La réponse ne dépend que du nom et de l'index — deux choses qui ne bougent
@@ -34924,6 +34934,17 @@ function _voixPanier(txt){
     var M=mesure?_montantDit(seg):0;
     if(M>0&&pxL>0){_qteRemplace=null;_qteArt=p;_qteVar=v;_ajouterMesure(p,Math.round(M/pxL*1000)/1000,M,(lang==='fr'?'pour ':'for ')+fmt(M));
       if((panier[cleL]||0)>avant)R.ajoutes.push({p:p,v:v,q:(panier[cleL]||0)-avant,mt:M});return;}
+    // ⚠️⚠️ 24.19 — « POUR 500 DE SAVON » METTAIT TOUT LE STOCK AU PANIER.
+    // Mesuré au banc : « pour 500 de savon azur » → 30 savons (19 500 F, tout
+    // le carton : le 500 lu comme une quantité, arrêté par le stock) ;
+    // « pour 300 de tomates » → 40 tas. Sur un article à la pièce, « pour »
+    // dit un montant : 1 000 de piment à 100 = 10 piments. Un montant qui ne
+    // tombe pas juste n'invente rien : la voix dit le prix et il choisit.
+    if(!mesure&&pxL>0){var Mp=_montantDit(seg);
+      // (≥ 25 : « pour deux savons » n'est pas un montant de 2 F.)
+      if(Mp>=25){var np=Math.floor(Mp/pxL+1e-9);
+        if(np<1||Math.abs(np*pxL-Mp)>0.5){(R.prix||(R.prix=[])).push({p:p,v:v,M:Mp});return;}
+        q=np;}}
     if(mesure){var fq=_fractionDite(seg);if(fq>0)q=fq;_qteRemplace=null;_qteArt=p;_qteVar=v;ajouterQteMesure(q);}
     else for(var i=0;i<q;i++)addPanier(p,v);
     var pris=(panier[v?p.id+'-'+v.id:p.id+'-0']||0)-avant;
@@ -34960,6 +34981,9 @@ function _voixPanierDire(R){
   var fr=(lang==='fr'),msg=[];
   if(R.ajoutes.length)msg.push('🛒 '+R.ajoutes.map(_voixNomLigne).join(', '));
   if(R.absents.length)msg.push((fr?'Pas trouvé : ':'Not found: ')+R.absents.join(', '));
+  // 24.19 — un montant qui ne fait pas un nombre rond de pièces : le prix.
+  var _px=(R.prix||[]).map(function(x){var nm=x.v?(x.v.nm||x.p.nm):x.p.nm;return {e:nm+' : '+fmt(Number((x.v||x.p).px)||0)+(fr?' la pièce':' each'),d:nm+(fr?' coûte ':' costs ')+_nombreParlable(Number((x.v||x.p).px)||0)+' francs'};});
+  if(_px.length)msg.push(_px.map(function(x){return x.e;}).join(', '));
   if(msg.length)showToast(msg.join(' · '));
   try{
     var dit=R.ajoutes.map(function(x){return _voixNomLigne(x,true).replace(/FCFA|F\b/g,fr?'francs':'francs');}).join(', ');
@@ -34967,6 +34991,7 @@ function _voixPanierDire(R){
       dit+=' : '+(fr?'total ':'total ')+_nombreParlable(tot)+' francs';}
     if(R.aChoisir.length)dit+=(dit?'. ':'')+(fr?('Quelle sorte de '+R.aChoisir[0].nm+' ?'):('Which '+R.aChoisir[0].nm+'?'));
     if(R.absents.length)dit+=(dit?'. ':'')+(fr?'Je n\'ai pas trouvé : ':'Not found: ')+R.absents.join(', ');
+    if(_px.length)dit+=(dit?'. ':'')+_px.map(function(x){return x.d;}).join('. ');
     _parlerCommande(dit);
   }catch(e){}
   if(R.ajoutes.length&&!R.aChoisir.length){try{ouvrirPanier();}catch(e){}}
@@ -35043,17 +35068,18 @@ function _voixTraiterTexte(q){
     var R=_voixPanier(q);
     // 23.91 — ce qui n'a pas été compris part au serveur (couche 3) ; ce qui
     // l'a été est déjà au panier et n'y repart pas.
-    var reste=R.absents.length?R.absents.join(', '):((R.ajoutes.length||R.aChoisir.length)?'':q);
+    var _prixDit=!!(R.prix&&R.prix.length);   // 24.19 — « pour 500 de savon » : compris, le prix va être dit
+    var reste=R.absents.length?R.absents.join(', '):((R.ajoutes.length||R.aChoisir.length||_prixDit)?'':q);
     if(reste&&voixProDispo()){
       _voixComprendre(reste).then(function(d){
         if(d&&d.lignes&&d.lignes.length){R.absents=[];_voixAppliquer(d.lignes,R);(d.inconnus||[]).forEach(function(x){R.absents.push(x);});}
-        if(R.ajoutes.length||R.aChoisir.length){_voixPanierDire(R);return;}
+        if(R.ajoutes.length||R.aChoisir.length||_prixDit){_voixPanierDire(R);return;}
         var mots=_ecNorm(q).split(' ').filter(function(w){return w&&!_EC_VIDES[w]&&!_NB_DITS[w]&&!/^\d+$/.test(w)&&!/^(donne|moi|veux|voudrais|mets|ajoute|stp|svp)$/.test(w);});
         var c=document.getElementById('src-c');if(c){c.value=mots.join(' ')||q;filtrC(c.value);}
       });
       return;
     }
-    if(R.ajoutes.length||R.aChoisir.length){_voixPanierDire(R);return;}
+    if(R.ajoutes.length||R.aChoisir.length||_prixDit){_voixPanierDire(R);return;}
     // Rien de sûr (« un savon » quand il y en a trois) : la recherche, sans
     // les petits mots ni la quantité — la grille montre les savons, il touche.
     var mots=_ecNorm(q).split(' ').filter(function(w){return w&&!_EC_VIDES[w]&&!_NB_DITS[w]&&!/^\d+$/.test(w)&&!/^(donne|moi|veux|voudrais|mets|ajoute|stp|svp)$/.test(w);});
@@ -35811,7 +35837,14 @@ function qteVendueParArticle(jours){
     else if(limite!=null){ var t=getSaleDateObj(v).getTime(); if(t<limite)return; }
     (v.lignes||[]).forEach(function(l){
       if(!l||l.pid==null)return;
-      map[l.pid]=(map[l.pid]||0)+(Number(l.qte||l.qty)||0);
+      // ⚠️ 24.19 — UN CARTON COMPTAIT POUR UNE BOUTEILLE. Mesuré par l'agent
+      // « dépôt » (25/11) : 3 casiers de 12 vendus = « 3 » dans Meilleurs
+      // articles et dans « À commander », pendant que le stock, lui, compte
+      // en bouteilles (36 sorties). La liste de courses voyait 12 fois moins
+      // de ventes qu'il n'y en avait, et disait « tu tiens 4 mois » à un
+      // dépôt qui tient 10 jours. La ligne porte sa taille (qBase), comme
+      // dans qteVendueParVariante et recomputeStock.
+      map[l.pid]=(map[l.pid]||0)+(Number(l.qte||l.qty)||0)*(Number(l.qBase)||1);
     });
   });
   return map;
@@ -36312,12 +36345,18 @@ function archiverAnciennesVentes(cutoff){
             // réécrirait tout l'historique du stock.
             var _lv=(p.vr||[]).find(function(x){return String(x.id)===String(l.vid);});
             var _cible=(_lv&&_estGrosDeVariante(_lv))?_lv.base:l.vid;
-            var _n=(_lv&&_estGrosDeVariante(_lv))?(Number(l.qBase)||getQBase(_lv)):1;
+            // ⚠️ 24.19 — le pliage doit retirer EXACTEMENT ce que
+            // recomputeStock retire pour la même ligne : `qBase` aussi sur
+            // une sorte simple et sur un article sans sorte (le carton de la
+            // 24.11 se vend sans variante). Sinon, le jour où la vente passe
+            // dans l'archive, le stock affiché saute de 11 bouteilles par
+            // carton — sans qu'aucune vente n'ait eu lieu.
+            var _n=(_lv&&_estGrosDeVariante(_lv))?(Number(l.qBase)||getQBase(_lv)):(Number(l.qBase)||1);
             var _k=l.pid+'|'+_cible;
             soldVar[_k]=(soldVar[_k]||0)+norm*_n;
           }
         }
-        else soldBase[l.pid]=(soldBase[l.pid]||0)+norm;
+        else soldBase[l.pid]=(soldBase[l.pid]||0)+norm*(Number(l.qBase)||1);
       });
     }
   });
