@@ -28,7 +28,8 @@ const total = p => p.evaluate(() => document.querySelector('#vb-corps .vb-total 
   const re = await p.evaluate(() => ({ mm: document.getElementById('vb-a-mm').value, maj: document.getElementById('vb-a-maj').textContent }));
   t(nombre(await total(p)) === apres && re.mm === '120000' && /Mis à jour le/.test(re.maj), `après un rechargement : toujours là (« ${re.maj} »)`);
   const sous = await p.evaluate(() => document.querySelectorAll('#vb-corps .vb-l i')[1].textContent);
-  t(/espèces d'aujourd'hui/.test(sous), `la caisse dit ce qu'elle est : « ${sous} »`);
+  t(/espèces du jour/.test(sous),   // 24.22 — libellé court
+  `la caisse dit ce qu'elle est : « ${sous} »`);
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
 }

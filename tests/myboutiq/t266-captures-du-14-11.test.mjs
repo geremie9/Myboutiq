@@ -56,7 +56,9 @@ const bas = await lire('bas'), out = await lire('out'), tout = await lire('tout'
 const hb = bas.find(x => x.nm === 'Huile'), ho = out.find(x => x.nm === 'Huile'), ht = tout.find(x => x.nm === 'Huile');
 t(hb && /Mayor/.test(hb.sortes) && !/Arachide|Locale|Diamaor/.test(hb.sortes) && hb.q === '3', `« Stock bas » : de la famille Huile, seule la sorte basse (« ${hb && hb.sortes} », ${hb && hb.q}) — plus 507 en vert`);
 t(bas.some(x => x.nm === 'Sucre') && !bas.some(x => x.nm === 'Pain'), 'et les articles simples qui sont bas, pas les autres');
-t(ho && /Diamaor/.test(ho.sortes) && !/Mayor|Arachide|Locale/.test(ho.sortes) && ho.q === '0', `« Épuisés » : seule la sorte finie (« ${ho && ho.sortes} », ${ho && ho.q})`);
+// 24.22 — le chiffre d'une famille sous « Épuisés » compte les SORTES à 0 (« 1 sorte à 0 »),
+// et les autres sont résumées en une pastille grise, sans leur nom.
+t(ho && /Diamaor/.test(ho.sortes) && !/Mayor|Arachide|Locale/.test(ho.sortes) && ho.q === '1', `« Épuisés » : seule la sorte finie (« ${ho && ho.sortes} », ${ho && ho.q})`);
 t(!out.some(x => x.nm === 'Sucre'), 'un article bas n\'est pas dans « Épuisés »');
 t(ht && /Diamaor/.test(ht.sortes) && /Arachide/.test(ht.sortes) && ht.q === '507', `« Tout » montre toujours la famille entière (${ht && ht.q})`);
 
