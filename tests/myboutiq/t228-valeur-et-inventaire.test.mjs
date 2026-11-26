@@ -32,7 +32,8 @@ const caisse = await p.evaluate(() => caisseAttendue());
 t(nombre(v.lignes[0]) === MARCH - 1000 && nombre(v.lignes[2]) === 2500, `marchandise ${v.lignes[0]} · crédits à recevoir ${v.lignes[2]}`);
 t(nombre(v.lignes[1]) === caisse && caisse >= 1200, `l'argent attendu dans la caisse, le même que la clôture (${v.lignes[1]})`);
 t(nombre(v.total) === MARCH - 1000 + 2500 + caisse, `le total : ${v.total} = marchandise + caisse + crédits`);
-t(/sans prix d'achat n'est pas compté/.test(v.txt) && /Si tu vends tout ton stock/.test(v.txt) && /Pas encore d'inventaire/.test(v.txt),
+// 24.22 — « Si tu vends tout » / « Tu gagnes » : deux tuiles, deux grands chiffres.
+t(/sans prix d'achat n'est pas compté/.test(v.txt) && /Si tu vends tout/i.test(v.txt) && /Tu gagnes/i.test(v.txt) && /Pas encore d'inventaire/.test(v.txt),
   'il dit ce qu\'il ne compte pas, ce que rapporterait tout le stock, et qu\'aucun inventaire n\'a encore été fait');
 await p.evaluate(() => closeSheet('ov-valeur'));
 
