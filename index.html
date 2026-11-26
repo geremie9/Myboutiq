@@ -2843,6 +2843,10 @@ body:has(#annul-chip.show) .micp{bottom:148px}
 .ussd-l b{color:var(--T,#221F2B);font-size:17px;letter-spacing:.5px}
 .ussd-mod{margin-top:9px;background:none;border:none;color:var(--B);font-size:13px;font-weight:800;font-family:Outfit,sans-serif;cursor:pointer;min-height:40px}
 .ussd-ajout{margin-top:12px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:#FFF8EE;border:1.5px dashed #F0A93E;border-radius:12px;padding:12px;font-size:14px;font-weight:800;color:#8A5300;font-family:Outfit,sans-serif;cursor:pointer;min-height:48px}
+.cons-vite{display:flex;gap:7px;margin-bottom:9px}
+.cons-vite button{flex:1;min-height:48px;border-radius:12px;border:2px solid #FFD79A;background:#fff;font:800 13px/1.15 Outfit,sans-serif;color:var(--T);cursor:pointer;padding:6px 4px}
+.cons-vite button b{display:block;font-size:17px;font-weight:900}
+.cons-vite button.on{background:#B45309;border-color:#B45309;color:#fff}
 .annul-chip{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:190;display:none;align-items:center;gap:10px;background:#221F2B;color:#fff;border-radius:16px;padding:12px 18px 14px;font-family:Outfit,sans-serif;font-size:16px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.28);overflow:hidden;cursor:pointer;min-height:52px;white-space:nowrap;max-width:calc(100vw - 32px)}
 .annul-chip.show{display:flex}
 .fonds-inp{width:100%;box-sizing:border-box;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:10px;color:var(--A);font:900 26px Outfit,sans-serif;padding:6px 10px;outline:none}
@@ -5565,6 +5569,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
       <!-- CONSIGNE : n'apparaît que si le panier contient un article consigné -->
       <div id="consigne-row" style="display:none;background:#FFF8E1;border:1.5px solid #FFD79A;border-radius:12px;padding:11px 13px;margin-bottom:11px">
         <div style="font-size:11px;font-weight:800;color:#B45309;margin-bottom:8px" id="cons-lbl">Consigne</div>
+        <div id="cons-vite" class="cons-vite"></div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
           <span style="flex:1;font-size:12px;font-weight:700;color:var(--T)" id="cons-l1">Emballages emportés</span>
           <button type="button" onclick="chgConsigne('prises',-1)" style="width:34px;height:34px;border-radius:10px;border:none;background:#fff;font-size:19px;font-weight:900;cursor:pointer;font-family:Outfit,sans-serif">−</button>
@@ -7929,7 +7934,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.19'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.20'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -32330,6 +32335,19 @@ function renderRpt(){
   // qu'une autre parle du mois.
   var _vp=_rptVentes(), _jp=_rptJours(), _motP=_rptMot();
   var qteJour=qteVendueParArticle(_jp);
+  // ⚠️ 24.20 — « MON ACTIVITÉ »… C'ÉTAIT CELLE DE TOUTE LA BOUTIQUE. L'agent
+  // « patron et vendeur » (25/11) : Ibrahim, 3 ventes, lisait « Transactions
+  // enregistrées : 11 » et les meilleurs articles du patron et de l'autre
+  // vendeur. Le chiffre qu'il croit être le sien ne l'était pas — et il
+  // voyait ce que vendent les autres. Le vendeur sans droit aux rapports ne
+  // voit que SES ventes du jour (le champ `vendeur` de chaque vente).
+  var _vueVendeur=(role==='vendeur'&&!hasPerm('rapports')),_mesVentes=null;
+  if(_vueVendeur){
+    var _moi=_nomOperateur();
+    _mesVentes=getCaisseSales().filter(function(v){return v&&!v.annulee&&v.vendeur===_moi;});
+    qteJour={};
+    _mesVentes.forEach(function(v){(v.lignes||[]).forEach(function(l){if(l&&l.pid!=null)qteJour[l.pid]=(qteJour[l.pid]||0)+(Number(l.qte||l.qty)||0)*(Number(l.qBase)||1);});});
+  }
   var top5=Array.from(DB.articles).filter(function(p){return (qteJour[p.id]||0)>0;})
             .sort(function(a,b){return (qteJour[b.id]||0)-(qteJour[a.id]||0);}).slice(0,5);
   var maxVd=Math.max.apply(null,top5.map(function(p){return qteJour[p.id]||0;}).concat([1]));
@@ -32342,12 +32360,13 @@ function renderRpt(){
     return '<div class="bchart-row">'+vignetteArt(p,null,40)+'<span class="bchart-lbl">'+escH(p.nm)+'</span><div class="bchart-track"><div class="bchart-fill" style="width:'+pct+'%;background:'+barColors[i%barColors.length]+'"></div></div><span class="bchart-val">×'+fmtQ(q)+'</span></div>';
   }).join('')||'<div class="empty"><div class="empty-e">'+ico('rapports',40)+'</div><div class="empty-t">'+(_motCloture()||(lang==='fr'?'Aucune vente aujourd\'hui':'No sale today'))+'</div></div>')+'</div>';
 
-  if(role==='vendeur'&&!hasPerm('rapports')){
+  if(_vueVendeur){
     // ── VUE VENDEUR (simplifiée, sans données financières sensibles) ──
     c.innerHTML=
       '<div class="rcd"><div class="rctit">'+(lang==='fr'?"Mon activité aujourd'hui":"My activity today")+'</div>'+
-      '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Transactions enregistrées':'Transactions recorded')+'</span><span class="rval">'+nbT+'</span></div></div>'+
-      '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Articles les plus vendus aujourd\'hui':'Best selling items today')+'</div>'+topChartHtml+'</div>'+
+      '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Mes ventes':'My sales')+'</span><span class="rval">'+_mesVentes.length+'</span></div>'+
+      '<div class="rrow"><span class="rlbl">'+(lang==='fr'?'Vendu par moi':'Sold by me')+'</span><span class="rval g">'+fmt(_mesVentes.reduce(function(a2,v){return a2+(Number(v.total)||0);},0))+'</span></div></div>'+
+      '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Ce que j\'ai vendu aujourd\'hui':'What I sold today')+'</div>'+topChartHtml+'</div>'+
       '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Alertes stock':'Stock alerts')+'</div>'+
       (al.map(function(a){var ts=a.q;return '<div class="tit"><div class="temo">'+dessinArt(a.p,18,'width:100%;height:100%')+'</div><div class="tinf"><div class="tnm">'+_nomAlerte(a)+'</div><div class="tqt" style="color:'+(ts<=0?'var(--R)':'var(--O)')+'">'+(ts<=0?''+(lang==='fr'?'Épuisé':'Out'):''+fmtQ(ts)+(lang==='fr'?' restant':' left'))+'</div></div></div>';}).join('')||'<div style="text-align:center;padding:11px;color:var(--G);font-weight:700">'+t('stockOk')+'</div>')+
       '</div>'+
@@ -34997,7 +35016,14 @@ function _voixPanierDire(R){
   if(R.ajoutes.length&&!R.aChoisir.length){try{ouvrirPanier();}catch(e){}}
   if(R.aChoisir.length){
     var p=R.aChoisir[0],c=document.getElementById('pc-'+p.id);
-    try{if(c)c.scrollIntoView({block:'center'});ouvrirVarInline(p,c);}catch(e){}
+    // ⚠️ 24.20 — « QUELLE SORTE ? »… ET RIEN À L'ÉCRAN. Vu par l'agent
+    // « supermarché » (25/11) : la famille dite était derrière une pastille de
+    // rayon (24.02) ou au-delà des 60 premières tuiles dessinées ; sans sa
+    // tuile, ouvrirVarInline ne faisait rien, et la voix posait une question
+    // sans rien montrer. On va chercher la tuile ; si elle n'est pas dans cet
+    // onglet, la fenêtre des sortes s'ouvre.
+    try{if(!c)c=_tuileCaisse(p.id);}catch(e){}
+    try{if(c){c.scrollIntoView({block:'center'});ouvrirVarInline(p,c);}else ouvrirVar(p);}catch(e){}
     setTimeout(function(){showToast('👆 '+(fr?'Quelle sorte de '+p.nm+' ?':'Which '+p.nm+'?'));},R.ajoutes.length||R.absents.length?2200:0);
   }
 }
@@ -36128,11 +36154,44 @@ function chgConsigne(quoi,d){
   majConsigneUI();
   try{calcRemiseVente();}catch(e){}
 }
+// ⭐ 24.20 — LA CONSIGNE EN UN GESTE. L'agent « dépôt » (25/11) : 12 bières,
+// il fallait toucher « + » douze fois sur « Emballages emportés » (34 px), ou
+// douze fois sur les deux lignes quand il rend ses vides — et la plupart du
+// temps le vendeur ne le faisait pas : la consigne n'était jamais comptée.
+// Les deux cas de tous les jours sont maintenant UNE touche, avec le nombre
+// de bouteilles du panier déjà compté (un casier compte ses 12). Les « − »
+// et « + » restent pour le cas du milieu (il rend 8 vides sur 12).
+function _bouteillesConsignees(){
+  var n=0;
+  Object.keys(panier||{}).forEach(function(k){
+    var p=DB.articles.find(function(x){return x.id==k.split('-')[0];});
+    if(p&&p.consigne>0)n+=Number(panier[k])||0;
+  });
+  return Math.round(n);
+}
+function consigneVite(quoi){
+  var n=_bouteillesConsignees();if(n<=0)return;
+  if(quoi==='rend'){consignePrises=n;consigneRendues=n;}
+  else{consignePrises=n;consigneRendues=0;}
+  majConsigneUI();
+  try{calcRemiseVente();}catch(e){}
+}
 function majConsigneUI(){
   var box=document.getElementById('consigne-row');if(!box)return;
   var u=consigneUnitPanier(),fr=lang==='fr';
   if(u<=0){box.style.display='none';consignePrises=0;consigneRendues=0;return;}
   box.style.display='block';
+  try{
+    var vb=document.getElementById('cons-vite'),nb=_bouteillesConsignees();
+    if(vb){
+      if(nb>0){
+        var rend=(consignePrises===nb&&consigneRendues===nb),emp=(consignePrises===nb&&consigneRendues===0);
+        vb.innerHTML='<button type="button" class="'+(rend?'on':'')+'" onclick="consigneVite(\'rend\')"><b>↩ '+nb+'</b>'+(fr?'il rend ses vides':'empties returned')+'</button>'
+          +'<button type="button" class="'+(emp?'on':'')+'" onclick="consigneVite(\'emporte\')"><b>+ '+_fmtBillet(nb*u)+'</b>'+(fr?('il emporte les '+nb):('takes the '+nb))+'</button>';
+        vb.style.display='flex';
+      }else{vb.innerHTML='';vb.style.display='none';}
+    }
+  }catch(e){}
   var net=consigneNette();
   var e1=document.getElementById('cons-prises');if(e1)e1.textContent=consignePrises;
   var e2=document.getElementById('cons-rendues');if(e2)e2.textContent=consigneRendues;
@@ -39255,7 +39314,14 @@ enregPmt=function(){var fr=(lang==='fr'),amt=parseFloat(document.getElementById(
   cliCours.credit=Math.max(0,du-recu);if(!cliCours.hist)cliCours.hist=[];
   cliCours.hist.push({date:e.date,ts:e.ts,type:'payment',amt:recu,mode:mode,vendeur:e.vendeur,enc:e.id});
   save();closeSheet('ov-cli-det');renderClients();
-  showToast(rendu>0?('↩️ '+(fr?'Rends '+fmt(rendu)+' : '+cliCours.nm+' ne devait que '+fmt(recu):'Give back '+fmt(rendu)+': '+cliCours.nm+' only owed '+fmt(recu))):(cliCours.credit<=0?'✅ '+(fr?'Crédit soldé !':'Credit cleared!'):'✅ '+(fr?'Paiement enregistré !':'Payment recorded!')));};
+  showToast(rendu>0?('↩️ '+(fr?'Rends '+fmt(rendu)+' : '+cliCours.nm+' ne devait que '+fmt(recu):'Give back '+fmt(rendu)+': '+cliCours.nm+' only owed '+fmt(recu))):(cliCours.credit<=0?'✅ '+(fr?'Crédit soldé !':'Credit cleared!'):'✅ '+(fr?'Paiement enregistré !':'Payment recorded!')));
+  // 24.20 — la voix ne disait rien au remboursement (agent « marché », 25/11) :
+  // celui qui ne lit pas n'entendait ni ce qui reste dû, ni la monnaie à
+  // rendre quand le client donne plus que sa dette.
+  try{var _nm=cliCours.nm,_rs=Number(cliCours.credit)||0;
+    parler(fr?(_nm+' a payé '+_nombreParlable(recu)+' francs. '+(rendu>0?('Rends '+_nombreParlable(rendu)+' francs.'):(_rs<=0?'Plus aucune dette.':('Reste à payer : '+_nombreParlable(_rs)+' francs.'))))
+             :(_nm+' paid '+_nombreParlable(recu)+'. '+(rendu>0?('Give back '+_nombreParlable(rendu)+'.'):(_rs<=0?'No debt left.':('Still owed: '+_nombreParlable(_rs)+'.')))));}catch(e2){}
+};
 // ⚠️ 23.15 — LA BOUTIQUE PEUT INTERDIRE LA VENTE SANS STOCK
 // (`DB.cfg.sansStock==='non'`). Les articles dont le stock n'a JAMAIS été
 // compté restent vendables : une boutique qui démarre sans compter son
