@@ -18370,9 +18370,15 @@ function showCtx(e,p){
   }
   document.getElementById('cx5').textContent=lang==='fr'?'Supprimer':'Delete';
   // 24.36 — une famille pose sa recette sorte par sorte (menu de la sorte).
+  // ⚠️ La règle de la 23.38 tient : six lignes, les gestes de tous les
+  // jours. « Fait avec… » ne monte parmi elles que là où il sert — un
+  // article qui a déjà sa recette, ou dont le nom dit que c'est préparé
+  // (pain chargé, sandwich, bouillie…). Ailleurs (l'huile, le savon), elle
+  // attend sous « Plus d'actions » : t255 le garde.
   var _cr=document.getElementById('ctxi-rec');
   if(_cr){
     _cr.style.display=(p.vr&&p.vr.length)?'none':'flex';
+    _cr.classList.toggle('ctx-sec',!((Array.isArray(p.rec)&&p.rec.length)||_nomDePreparation(p.nm)));
     var _lr=document.getElementById('cxrec');
     if(_lr)_lr.textContent=(Array.isArray(p.rec)&&p.rec.length)?(lang==='fr'?'Fait avec… (recette)':'Made with… (recipe)'):(lang==='fr'?'Fait avec…':'Made with…');
   }
@@ -37351,6 +37357,11 @@ function rcValider(){
   _rc=null;
 }
 function rcEnlever(){if(!_rc)return;_rc.rec=[];rcValider();}
+// Un nom qui dit « c'est préparé ici » (et pas « Spaghetti », le paquet).
+function _nomDePreparation(nm){
+  var s=txtNorm(nm||'');
+  return /charge|sandwich|omelette|bouillie|cafe au lait|the au lait|\bplats?\b|\bmenu\b|beignets? ?haricots?|\bbh\b|brochette|panini|burger|shawarma|chawarma|jus naturel|cocktail|\bsauce\b|\bdg\b|kpwem|koki|\bpile\b ?pomme|recette/.test(s);
+}
 function ctxRecette(){var p=artCtx;document.getElementById('ctxm').classList.remove('show');if(p)ouvrirRecette(p,null);}
 function ctxvRecette(){_fermerCtxVar();if(_vCtxP&&_vCtxV)ouvrirRecette(_vCtxP,_vCtxV);}
 // Horodatage fiable d'un évènement (vente/appro) : l'id = "device_<ms>_rand"

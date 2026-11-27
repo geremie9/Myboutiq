@@ -39,6 +39,8 @@ const fiche = await p.evaluate(() => {
   return { vu, avant, lignes, bilan, ferme: !ov.classList.contains('show'), rec: a.rec, pa: a.pa, toast: window.__toasts.slice(-1)[0] || '' };
 });
 t(/Fait avec/.test(fiche.vu), `la tuile « Pain chargé » a « ${fiche.vu} » dans son menu`);
+const riz = await p.evaluate(() => { document.querySelectorAll('.ov').forEach(x => x.classList.remove('show')); showCtx({ clientX: 100, clientY: 200 }, DB.articles.find(x => x.id === 2)); const c = document.getElementById('ctxi-rec').classList.contains('ctx-sec'); document.getElementById('ctxm').classList.remove('show'); return c; });
+t(riz, `sur le Riz, « Fait avec… » attend sous « Plus d'actions » (le menu garde ses six gestes, 23.38)`);
 t(fiche.avant.ouvert && /fait avec quoi/i.test(fiche.avant.q), `la fiche s'ouvre : « ${fiche.avant.q} »`);
 t(!fiche.avant.recette, `l'article ne se propose pas comme son propre ingrédient`);
 t(fiche.lignes.join(' | ') === 'Pain 1 | Œuf 2', `deux touches + un « + » : ${fiche.lignes.join(' | ')}`);
