@@ -2064,6 +2064,10 @@ body.dictee-off #mic-pouce,body.dictee-off #btn-mic{display:none!important}
 .ab-fond{background:#FFF8E1;border:1.5px solid #FFD79A;border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:700;color:#7A4A00;margin:4px 0 8px}
 .ab-cred{font-size:12.5px;font-weight:700;color:var(--M);line-height:1.45;margin-bottom:12px}
 .ab-btns{display:flex;flex-direction:column;gap:8px}
+/* 24.37 — les formules sur l'écran sombre « Abonnement » : une carte claire */
+.ab-porte{background:#1E1B2E;color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;font-weight:700;line-height:1.4;margin-bottom:10px}
+.ab-porte b{color:#F59E0B}
+.ab-ecran{background:var(--BG,#F6F4EF);border-radius:20px;padding:14px 13px 16px;color:var(--T)}
 .ab-b2{min-height:48px;border-radius:14px;border:2px solid var(--P);background:var(--C);color:var(--P);font:900 15px 'Outfit',sans-serif;cursor:pointer}
 /* 24.35 — « peut-être flottant pour ne pas occuper d'espace » : un rond, comme le micro « Parle ». */
 .retour-pouce{position:fixed;left:16px;bottom:22px;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;gap:0;width:62px;height:62px;padding:0;border-radius:50%;border:3px solid #fff;background:#1E1B2E;color:#fff;font:900 11px 'Outfit',sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.25);cursor:pointer;opacity:.94}
@@ -5495,7 +5499,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
     <div class="stsc" id="sec-abo">
       <div class="sttit" id="lbl-abo">💎 Abonnement</div>
       <div class="stcd">
-        <div class="stit2" data-exp="1" onclick="goScreen('s-abonnement')"><div class="stico" style="background:#F3E5F5">💎</div><div class="stii"><div class="stitl" id="st-abo">Gérer l'abonnement</div><div class="stisub" id="st-abo-s">Plans, paiement Mobile Money</div></div><span class="starr">›</span></div>
+        <div class="stit2" data-exp="1" onclick="goScreen('s-abonnement')"><div class="stico" style="background:#F3E5F5">💎</div><div class="stii"><div class="stitl" id="st-abo2">Gérer l'abonnement</div><div class="stisub" id="st-abo2-s">Gratuit, Pro, Grossiste · Mobile Money</div></div><span class="starr">›</span></div>
       </div>
     </div>
     <!-- Assistance -->
@@ -5556,7 +5560,7 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
        comme partout ailleurs dans l'app. -->
   <div class="mhdr">
     <div style="display:flex;align-items:center;gap:10px">
-      <button class="hbtn hback clair" onclick="goBack()" aria-label="Retour"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg><span class="hbl" id="lbl-ret2">Retour</span></button>
+      <button class="hbtn hback" onclick="goBack()" aria-label="Retour"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg><span class="hbl" id="lbl-ret2">Retour</span></button>
       <div><div class="hg" id="h-abo-g">Gestion</div><div class="hn" id="h-abo">Abonnement</div></div>
     </div>
   </div>
@@ -8100,7 +8104,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.36'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.37'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -35053,6 +35057,12 @@ function _zoneFCFA(){
 function renderPlansAbo(){
   if(!_zoneFCFA()){renderAboHorsZone();return;}
   // Le commerçant a pu changer de pays : on rétablit ce qui avait été caché.
+  // 24.37 — l'écran montre les formules d'aujourd'hui (voir _htmlFormules) :
+  // ni durée ni « Payer maintenant » — on paie par Mobile Money et on écrit
+  // « Je veux le Pro » sur WhatsApp, comme dans « Mon abonnement ».
+  ['abo-duree-sect','pmnt-sect'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+  var _pc=document.getElementById('plans-cont');
+  if(_pc&&typeof _htmlFormules==='function'){_pc.innerHTML='<div class="ab-ecran">'+_htmlFormules()+'</div>';return;}
   ['abo-duree-sect','pmnt-sect','btn-payer-abo'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.style.display='';
   });
@@ -35335,6 +35345,9 @@ function lienInvitation(nom){
 }
 function partagerCode(nom){
   var fr=lang==='fr';
+  // 24.37 — un NOUVEAU vendeur, c'est le Pro (à partir du 1ᵉʳ janvier 2027).
+  // Réinviter un vendeur déjà dans l'équipe (son prénom) passe toujours.
+  if(!nom&&!_porteurPro(fr,fr?'Les vendeurs sur d’autres téléphones, c’est la formule <b>Pro</b>. Tes vendeurs déjà là continuent de vendre.':'Sellers on other phones need the <b>Pro</b> plan. Your current sellers keep selling.'))return;
   var msg='🏪 *MyBoutiQ*\n\n'
     +(nom?((fr?'Bonjour ':'Hello ')+nom+'. '):'')
     +(fr?'Rejoins ma boutique :':'Join my store:')+' '+DB.cfg.nom+'\n\n'
@@ -35347,6 +35360,7 @@ function partagerCode(nom){
 // Partage natif (Android/iOS) si dispo, sinon copie du lien
 function partagerLienInvitation(){
   var url=lienInvitation(),fr=lang==='fr';
+  if(!_porteurPro(fr,fr?'Les vendeurs sur d’autres téléphones, c’est la formule <b>Pro</b>. Tes vendeurs déjà là continuent de vendre.':'Sellers on other phones need the <b>Pro</b> plan. Your current sellers keep selling.'))return;
   var txt=(fr?'Rejoins ma boutique ':'Join my store ')+(DB&&DB.cfg?DB.cfg.nom:'')+' sur MyBoutiQ';
   if(navigator.share){navigator.share({title:'MyBoutiQ',text:txt,url:url}).catch(function(){});return;}
   if(navigator.clipboard)navigator.clipboard.writeText(url).then(function(){showToast('🔗 '+(fr?'Lien copié !':'Link copied!'));});
@@ -35857,8 +35871,10 @@ function _voixTraiterTexte(q){
 // monnaie restent à tout le monde. Pour rouvrir à tous : DICTEE_POUR_TOUS.
 var DICTEE_POUR_TOUS=false;
 function dicteeCommandesPermise(){
-  if(DICTEE_POUR_TOUS)return true;
-  try{return localStorage.getItem('mb_admin')==='1';}catch(e){return false;}
+  try{if(localStorage.getItem('mb_admin')==='1')return true;}catch(e){}
+  // 24.37 — rouverte à tous, la dictée sera une fonction Pro (la voix coûte).
+  if(DICTEE_POUR_TOUS){try{return estPro();}catch(e){return true;}}
+  return false;
 }
 function majDicteeCommandes(){
   try{document.body.classList.toggle('dictee-off',!dicteeCommandesPermise());}catch(e){}
@@ -41445,11 +41461,41 @@ function formuleBoutique(){
   return {plan:plan,f:FORMULES[plan],jusqu:o.jusqu||null,jours:jours,paye:paye,essai:Math.max(0,essai),
           avantLancement:_aujourdhuiIso()<ABO_PAYANT_DES};
 }
-// Ce que fera la porte des fonctions Pro à partir du 1ᵉʳ janvier. Avant :
-// tout le monde passe (rien ne se ferme pendant la construction).
+// ⭐ 24.37 — LES FONDATEURS SONT AUTOMATIQUES. L'écran promet « ta boutique
+// active avant le 31 décembre 2026 : 3 mois de Pro offerts ». Sans ça, il
+// aurait fallu poser la formule à la main sur chaque boutique avant le
+// 1ᵉʳ janvier — et celles oubliées perdaient leurs vendeurs ce jour-là.
+// Une boutique sans date de création connue existait forcément avant
+// (toutes celles créées depuis la 24.23 portent `cfg.origine.cree`).
+var ABO_FONDATEURS_JUSQU='2027-04-01';
+function _estFondateur(){
+  try{
+    var o=_aboLu()||{},c=o.cree||(DB&&DB.cfg&&DB.cfg.origine&&DB.cfg.origine.cree);
+    if(!c)return true;
+    var d=new Date(c);if(isNaN(d.getTime()))return true;
+    var iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    return iso<=ABO_FONDATEURS_AVANT;
+  }catch(e){return true;}
+}
+function _fondateurOffert(){return _estFondateur()&&_aujourdhuiIso()<ABO_FONDATEURS_JUSQU;}
+// La porte des fonctions Pro. Avant le 1ᵉʳ janvier 2027 : tout le monde
+// passe (rien ne se ferme pendant la construction). Ensuite : payé, essai de
+// 30 jours, ou fondateur (3 mois offerts).
 function estPro(){
   var f=formuleBoutique();
-  return f.avantLancement||f.paye||f.essai>0;
+  return f.avantLancement||f.paye||f.essai>0||_fondateurOffert();
+}
+// ⚠️ La porte ne ferme JAMAIS ce qui marche déjà : les vendeurs déjà dans
+// l'équipe continuent de vendre, la caisse reste gratuite. Elle arrête
+// seulement le NOUVEAU (un vendeur de plus), et dit pourquoi, avec les
+// formules sous les yeux.
+function _porteurPro(fr,pourquoi){
+  if(estPro())return true;
+  try{
+    document.getElementById('abo-corps').innerHTML='<div class="ab-porte">🔑 '+pourquoi+'</div>'+_htmlFormules();
+    document.getElementById('ov-abo').classList.add('show');
+  }catch(e){}
+  return false;
 }
 function _montantAbo(plan,nb){
   var f=FORMULES[plan]||FORMULES.gratuit,m=f.mois||0;
@@ -41458,10 +41504,21 @@ function _montantAbo(plan,nb){
 }
 function _nbBoutiques(){try{return Math.max(1,((DB&&DB.boutiques)||[]).length);}catch(e){return 1;}}
 function ouvrirMonAbonnement(){
+  document.getElementById('abo-corps').innerHTML=_htmlFormules();
+  document.getElementById('ov-abo').classList.add('show');
+}
+// ⚠️ 24.37 — UN SEUL TEXTE POUR LES FORMULES, OÙ QU'ON LES OUVRE. Capture du
+// patron (27/11) : Réglages › « Gérer l'abonnement » ouvrait encore l'écran
+// d'avant — Pro à 1 000 F, Business, « 50 articles max », semestriel −10 %,
+// « Payer maintenant » — pendant que « Mon abonnement » disait 3 000 F. Deux
+// prix pour le même produit, dans la même app. Les deux portes affichent
+// maintenant ce même texte.
+function _htmlFormules(){
   var fr=(lang!=='en'),f=formuleBoutique(),nb=_nbBoutiques(),dev=fr?'F':'F';
   var etat;
   if(f.paye)etat=(fr?'Formule ':'Plan ')+'<b>'+f.f.nom+'</b> · '+(fr?('payée jusqu’au '+_dateLisible(f.jusqu)):('paid until '+_dateLisible(f.jusqu)));
   else if(f.essai>0)etat=(fr?('Essai Pro : encore <b>'+f.essai+' jour'+(f.essai>1?'s':'')+'</b>'):('Pro trial: <b>'+f.essai+' day(s)</b> left'));
+  else if(!f.avantLancement&&_fondateurOffert())etat=(fr?'⭐ Fondateur : <b>Pro offert jusqu’au 1ᵉʳ avril 2027</b>':'⭐ Founder: <b>Pro free until 1 April 2027</b>');
   else etat=(fr?'Formule <b>Gratuit</b> — la caisse, pour toujours':'<b>Free</b> plan — the till, forever');
   var carte=function(k,ic,lignes,prix,sous,mis){
     return '<div class="ab-f'+(mis?' mis':'')+(f.plan===k&&f.paye?' sienne':'')+'"><div class="ab-f-t">'+ico(ic,22)+'<b>'+FORMULES[k].nom+'</b></div>'
@@ -41479,8 +41536,7 @@ function ouvrirMonAbonnement(){
     +'<div class="ab-cred">'+(fr?'Les crédits : un message envoyé par l’assistant ou une commande dite à la voix. La caisse, le stock, les dettes et le rapport du matin ne coûtent jamais de crédit. Crédits finis : l’assistant fait une pause, la caisse continue.':'Credits: one message sent by the assistant or one spoken order. The till, stock, debts and morning report never use credits.')+'</div>'
     +'<div class="ab-btns"><button type="button" class="bnxt" onclick="ecrireAbonnement(\'pro\')">'+(fr?'Je veux le Pro':'I want Pro')+'</button>'
     +'<button type="button" class="ab-b2" onclick="ecrireAbonnement(\'grossiste\')">'+(fr?'Je veux le Grossiste':'I want Wholesale')+'</button></div>';
-  document.getElementById('abo-corps').innerHTML=h;
-  document.getElementById('ov-abo').classList.add('show');
+  return h;
 }
 function majLigneAbonnement(){
   var r=document.getElementById('row-abo');if(!r)return;
@@ -41491,6 +41547,7 @@ function majLigneAbonnement(){
   if(f.paye)st.textContent=f.f.nom+' · '+(fr?('payé jusqu’au '+_dateLisible(f.jusqu)):('paid until '+_dateLisible(f.jusqu)));
   else if(f.essai>0)st.textContent=fr?('Essai Pro · encore '+f.essai+' jour'+(f.essai>1?'s':'')):('Pro trial · '+f.essai+' day(s) left');
   else st.textContent=fr?'Gratuit · voir les formules':'Free · see plans';
+  var st2=document.getElementById('st-abo2-s');if(st2)st2.textContent=st.textContent;   // 24.37 — la même phrase sur les deux lignes
 }
 // « J'ai payé » : le message part avec ce que l'exploitant doit retrouver —
 // la boutique, le code, et la place pour coller la référence Mobile Money.
