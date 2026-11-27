@@ -47,8 +47,8 @@ for (const [vw, vh] of [[360, 640], [360, 740], [390, 844]]) {
   const T = `${vw}×${vh}`;
   if (vw === 390) {
     t(!(await vu(p, '#btn-old-user')) && !(await vu(p, '#btn-new-user')), `${T} : le choix « Se connecter / Créer ma boutique » est rangé pour celui qu'on connaît`);
-    t(await vu(p, '#lg-autre'), `${T} : « Créer une autre boutique » reste à une tape, en bas`);
-    t(m.num === '689 33 53 89' && /^Bonjour/.test(m.bj) && m.centre === 'center', `${T} : son bonjour au centre, le numéro retenu dans sa pastille (« ${m.num} »)`);
+    t(await vu(p, '#lg-autre'), `${T} : « Nouvelle boutique » reste à une tape, en bas (discret, 24.34)`);
+    t(m.num === '689 •• •• 89' && /^Bonjour/.test(m.bj) && m.centre === 'center', `${T} : son bonjour au centre, le numéro retenu dans sa pastille (« ${m.num} »)`);
     t(m.okFond === 'rgb(255, 176, 32)', `${T} : le ✓ a la couleur de ce qui agit dans l'app (${m.okFond})`);
   }
   t(m.okBas <= vh, `${T} : le ✓ est dans l'écran (${Math.round(m.okBas)} / ${vh})`);

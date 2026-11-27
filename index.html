@@ -775,7 +775,7 @@ html.porte-rapide .entry-toggle,#s-login.connu .entry-toggle{display:none}
 .lg-lien{background:none;border:none;min-height:44px;padding:10px 8px;display:inline-flex;align-items:center;
   color:rgba(255,255,255,.74);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none}
 .lg-lien:active{color:#fff}
-.lg-autre{display:none;margin:4px auto 0;color:#FFB020;gap:5px}
+.lg-autre{display:none;margin:4px auto 0;color:rgba(255,255,255,.55);gap:5px;font-size:13px}
 #s-login.connu:not(.nouveau) .lg-autre,html.porte-rapide .lg-autre{display:inline-flex}
 .lg-site{margin-top:6px;text-decoration:none;color:rgba(255,255,255,.52);font-size:12px}
 .lg-install{min-height:40px;padding:7px 12px;font-size:12px}
@@ -793,6 +793,8 @@ svg.ic{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-
 .lg-install svg.ic{color:#FFB020}
 .er-bj .er-num{display:flex;align-items:center;gap:6px;width:max-content}
 .er-bj .er-num svg.ic{color:#FFB020}
+.er-bj .er-bq{display:flex;align-items:center;justify-content:center;gap:10px;margin:12px auto 0;font-size:21px;font-weight:900;color:#fff}
+.er-bj .er-bq i{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;font-style:normal;font-size:20px;font-weight:900;color:#fff;flex-shrink:0}
 /* Les points : visibles avec le clavier de l'app ; le champ, lui, reste là
    (invisible) pour tous ceux qui écrivent dedans. */
 .er-points{display:none;justify-content:center;align-items:center;gap:16px;min-height:58px;width:100%}
@@ -4957,8 +4959,8 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   <div class="login-hint" id="login-hint" style="display:none">💡 Appuie directement sur Connexion pour la démo</div>
   <!-- Le téléphone le connaît : le choix « Se connecter / Créer ma boutique »
        ne lui sert plus à rien chaque matin, il descend ici, en petit. -->
-  <button type="button" class="lg-lien lg-autre" id="lg-autre" onclick="setModeEntree('new')">+ <span id="lg-autre-t">Créer une autre boutique</span></button>
-  <button type="button" class="lg-site" id="lg-site" onclick="voirLeSite()"><span id="lg-site-t">Voir le site MyBoutiQ — guides et présentation</span> ›</button>
+  <button type="button" class="lg-lien lg-autre" id="lg-autre" onclick="setModeEntree('new')">+ <span id="lg-autre-t">Nouvelle boutique</span></button>
+  <button type="button" class="lg-site" id="lg-site" onclick="voirLeSite()"><span id="lg-site-t">Le site MyBoutiQ</span> ›</button>
   <!-- 23.09 — La ligne de confiance : ce qui est VRAI et qu'il peut vérifier
        (la boutique part en ligne dès qu'il y a du réseau, la caisse marche
        sans), et la version — c'est elle que le support lui demandera. -->
@@ -8059,7 +8061,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.33'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.34'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -10393,6 +10395,12 @@ var _erBoutiques=null,_erPremierPassage=true;
 // Le numéro retenu, lisible : « +237699138770 » -> « 699 13 87 70 ».
 // L'indicatif tombe (le drapeau le porte à la connexion), le reste se
 // groupe comme à l'inscription (`_grouperTel`).
+// 24.34 — « 689 33 53 89 » → « 689 •• •• 89 » : le début et la fin, le milieu caché.
+function _numeroMasque(n){
+  var g=String(n||'').trim().split(/\s+/);
+  if(g.length<3)return String(n||'');
+  return g.map(function(x,i){return (i===0||i===g.length-1)?x:x.replace(/\d/g,'•');}).join(' ');
+}
 function _numeroLisible(tel){
   var d=String(tel||'').replace(/\D/g,'');
   if(!d)return '';
@@ -10451,15 +10459,23 @@ function majEntreeRapide(){
   var _ici=(!vend&&DB&&DB.cfg&&DB.cfg.code&&!DB.cfg.demo&&_boutiqueIciEstA(e.tel))?String(DB.cfg.nom||''):'';
   // 23.08 — le numéro retenu passe sous le bonjour, dans sa pastille : il
   // reste dit (l'incident du 10/10), sans allonger la ligne de salut.
+  // ⚠️ 24.34 — LA PORTE, AU COMPTOIR (le patron, 27/11, sur sa capture) :
+  //  · son numéro s'affichait EN ENTIER (« 689 33 53 89 ») — au comptoir, un
+  //    client ou un vendeur le lit, et c'est l'identifiant de son compte.
+  //    Assez pour qu'il reconnaisse SON numéro : « 689 •• •• 89 » ;
+  //  · le nom de la boutique était perdu dans une phrase (« … pour ouvrir
+  //    « G » ») : il s'écrit maintenant en grand, avec son initiale dans un
+  //    rond de couleur — on reconnaît sa boutique sans lire.
+  var _bq=_ici?('<span class="er-bq"><i style="background:hsl('+couleurMono(_ici)+',62%,52%)">'+escH(String(_ici).trim().charAt(0).toUpperCase()||'?')+'</i>'+escH(_ici)+'</span>'):'';
   document.getElementById('er-bonjour').innerHTML=escH((fr?'Bonjour':'Hello')+(vend?(' '+e.nom):''))
-    +(_num?'<span class="er-num"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>'+escH(_num)+'</span>':'');
+    +(_num?'<span class="er-num"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>'+escH(_numeroMasque(_num))+'</span>':'')+_bq;
   document.getElementById('er-sous').textContent=vend
     ?((fr?'Entre le PIN équipe pour ouvrir ':'Enter the team PIN to open ')+(e.boutique||formatShopCode(e.code)))
     :(function(){
         var L=_pinAttendu()||6,co=false;try{co=codeOuvertureActif();}catch(x){}
         var quoi=co?(fr?'tes 4 chiffres':'your 4 digits')
                    :(fr?('ton PIN à '+L+' chiffres'):('your '+L+'-digit PIN'));
-        return _ici?(fr?'Entre '+quoi+' pour ouvrir « '+_ici+' ».':'Enter '+quoi+' to open “'+_ici+'”.')
+        return _ici?(fr?'Entre '+quoi+'.':'Enter '+quoi+'.')
                    :(fr?'Entre '+quoi+' pour ouvrir tes boutiques.':'Enter '+quoi+' to open your shops.');
       })();
   try{var _pt=document.getElementById('er-points');
@@ -12052,8 +12068,9 @@ function appliquerLang(){
   var lou=document.getElementById('lbl-old-user'),lnu=document.getElementById('lbl-new-user'),nuno=document.getElementById('new-user-note'),bsi=document.getElementById('btn-start-insc');
   if(lou)lou.textContent=lang==='fr'?'Se connecter':'Sign in';
   if(lnu)lnu.textContent=lang==='fr'?'Créer ma boutique':'Create my shop';
-  var lga=document.getElementById('lg-autre-t');if(lga)lga.textContent=lang==='fr'?'Créer une autre boutique':'Create another shop';
-  var lgs=document.getElementById('lg-site-t');if(lgs)lgs.textContent=lang==='fr'?'Voir le site MyBoutiQ — guides et présentation':'See the MyBoutiQ site — guides and tour';
+  // 24.34 — discret : un doigt qui veut ouvrir ne doit pas créer une boutique en double.
+  var lga=document.getElementById('lg-autre-t');if(lga)lga.textContent=lang==='fr'?'Nouvelle boutique':'New shop';
+  var lgs=document.getElementById('lg-site-t');if(lgs)lgs.textContent=lang==='fr'?'Le site MyBoutiQ':'The MyBoutiQ site';
   if(nuno)nuno.textContent=lang==='fr'?'Crée ta boutique en quelques étapes simples.':'Create your store in a few simple steps.';
   if(bsi)bsi.textContent=(lang==='fr'?"Commencer l'inscription":'Start registration');
   // Nav

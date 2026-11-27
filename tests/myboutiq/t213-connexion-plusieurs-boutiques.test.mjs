@@ -147,8 +147,9 @@ const ETS_YOU_ICI = () => { const d = JSON.parse(JSON.stringify(ROWS[0].data)); 
     entree: { role: 'patron', tel: '+237699138770', code: ETS_YOU, boutique: 'Ets you', boutiques: [{ code: ETS_YOU, nom: 'Ets you' }] } });
   const r = await p.evaluate(() => ({ bj: document.getElementById('er-bonjour').textContent, so: document.getElementById('er-sous').textContent,
     chg: document.getElementById('er-chg').textContent, vis: document.getElementById('entree-rapide').style.display }));
-  t(r.vis === 'block' && /699 13 87 70/.test(r.bj), `le numéro retenu est affiché (« ${r.bj} »)`);
-  t(/Ets you/.test(r.so), `et la boutique que le PIN va ouvrir (« ${r.so} »)`);
+  // 24.34 — le numéro s'affiche masqué au milieu (« 699 •• •• 70 »), la boutique en grand sous le bonjour.
+  t(r.vis === 'block' && /699 •• •• 70/.test(r.bj), `le numéro retenu est affiché, masqué au milieu (« ${r.bj} »)`);
+  t(/Ets you/.test(r.bj), `et la boutique que le PIN va ouvrir, en grand (« ${r.bj} »)`);
   t(/Autre numéro/.test(r.chg), `l'autre compte est à une tape (« ${r.chg} »)`);
   t(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.join(' | ') : ''));
   await ctx.close();
@@ -167,7 +168,7 @@ const ETS_YOU_ICI = () => { const d = JSON.parse(JSON.stringify(ROWS[0].data)); 
   rows[1].data.ventes.push(ailleurs); rows[1].data.cfg._rev = 'r1';
   const { ctx, p, errs } = await telephone({ db: g, rows, debit: 200000,
     entree: { role: 'patron', tel: '+237689335389', email: MAIL_YOU, code: G, boutique: 'G', boutiques: [{ code: G, nom: 'G' }] } });
-  t(/689 33 53 89/.test(await p.evaluate(() => document.getElementById('er-bonjour').textContent)), 'la porte montre le 689 33 53 89');
+  t(/689 •• •• 89/.test(await p.evaluate(() => document.getElementById('er-bonjour').textContent)), 'la porte montre le 689 •• •• 89');
   await p.evaluate(() => { document.getElementById('er-pin').value = '123456'; validerEntreeRapide(); validerEntreeRapide(); });
   await p.waitForTimeout(200);
   const so = await p.evaluate(() => document.getElementById('er-sous').textContent);
