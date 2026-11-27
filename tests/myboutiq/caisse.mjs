@@ -7,7 +7,9 @@ import { couperInternet } from './lib.mjs';
 const A = (id, nm, px, pa, stk, extra) => Object.assign({ id, nm, e: '📦', cat: 'Divers', px, pa, stk0: stk, al: 0, vd: 0, vr: [] }, extra || {});
 export function nouvelleBoutique(x) {
   return Object.assign({
-    cfg: { lang: 'fr', nom: 'Ets Marie', tel: '+237677000000', pin: '123456', s: 'FCFA', d: 'XAF', secteur: 'boutique',
+    // 24.29 — la vente sans stock est interdite par défaut ; « Ets Marie » l'a autorisée
+    // (les bancs du dépannage la font vendre à découvert). t350 joue le défaut.
+    cfg: { lang: 'fr', nom: 'Ets Marie', tel: '+237677000000', pin: '123456', s: 'FCFA', d: 'XAF', secteur: 'boutique', sansStock: 'oui',
       code: 'MARI0001', plan: 'gratuit', pays: { cc: '237', nm: 'Cameroun', fl: '🇨🇲', s: 'FCFA', d: 'XAF' },
       venteDeverrouillee: true, premiereVenteVue: true, demarrageFini: true },
     articles: [

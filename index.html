@@ -8003,7 +8003,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.28'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.29'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -39729,7 +39729,13 @@ enregPmt=function(){var fr=(lang==='fr'),amt=parseFloat(document.getElementById(
 // compté restent vendables : une boutique qui démarre sans compter son
 // stock ne doit pas se retrouver bloquée à sa première vente. Les lignes
 // sont lues exactement comme `encaisser` les lira (même calcul de qDep).
-function venteSansStockInterdite(){return !!(DB&&DB.cfg&&DB.cfg.sansStock==='non');}
+// ⚠️ 24.29 — INTERDITE PAR DÉFAUT (le patron, 27/11 : « les ventes en
+// rupture devront être bloquées par défaut »). Avant, il fallait la couper
+// soi-même ; personne ne trouvait le réglage, et le stock passait sous zéro
+// sans que le patron le sache. Elle reste possible, mais seulement si le
+// patron dit « Autorisée » (Ce que vaut ma boutique). Les articles jamais
+// comptés restent vendables (voir plus haut).
+function venteSansStockInterdite(){return !(DB&&DB.cfg&&DB.cfg.sansStock==='oui');}
 function _panierSansStock(){
   var out=[];
   Object.entries(panier||{}).forEach(function(e){
