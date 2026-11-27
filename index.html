@@ -8104,7 +8104,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.37'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.38'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -20459,7 +20459,7 @@ function _ajouterLotVariante(p,v,n,mot,force,fois){
   mot=mot||_motContenant(p,v);
   // La règle vaut à l'intérieur des variantes comme dehors : il l'a demandé
   // pour tout, et un carton d'Azur vendu dans le vide ment autant qu'un autre.
-  if(!force&&dispo<tout&&(p.rt||v.rt)){ouvrirNeg(p,v,n,mot,fois);return;}
+  if(!force&&dispo<tout&&(p.rt||v.rt)&&!_stockJamaisCompte(p)){ouvrirNeg(p,v,n,mot,fois);return;}   // 24.37 — voir _ajouterLot
   var ajout=force?tout:((p.rt||v.rt)?tout:Math.min(tout,dispo));
   if(!(ajout>0)){showToast(t('stockInsuf'));return;}
   varQtys[v.id]=Math.round((cur+ajout)*100)/100;
@@ -21883,7 +21883,12 @@ function _ajouterLot(p,n,mot,force,fois){
   mot=mot||_motContenant(p,null);
   // ⚠️ LA RUPTURE SE DEMANDE, ELLE NE SE PREND PAS. Le stock ne couvre pas
   // le carton : c'est la même question qu'au détail, avec le carton entier.
-  if(!force&&place<tout&&p.rt){ouvrirNeg(p,null,n,mot,fois);return;}
+  // ⚠️ 24.37 — SAUF SI CE STOCK N'A JAMAIS ÉTÉ COMPTÉ. Joué au banc (t358,
+  // « 4 journées ») : boutique neuve, premier carton d'Azur → « Vendre sans
+  // stock ? », alors qu'une pièce du même savon passait sans question. Rien
+  // n'est épuisé dans un stock qu'on n'a jamais compté (même règle que la
+  // tuile, 22.89).
+  if(!force&&place<tout&&p.rt&&!_stockJamaisCompte(p)){ouvrirNeg(p,null,n,mot,fois);return;}
   var ajout=force?tout:(p.rt?tout:Math.min(tout,place));
   if(!(ajout>0)){showToast(t('stockInsuf'));return;}
   panier[key]=cur+ajout;
@@ -23478,7 +23483,8 @@ function toggleSplitVente(){
 }
 function selSplitMode(mode){splitModeVente=mode;['orange','mtn','moov'].forEach(function(m){var el=document.getElementById('splitm-'+m);if(el)el.classList.toggle('on',m===mode);});}
 function calcSplitVente(){
-  var total=calcTotal(),esp=parseFloat(document.getElementById('split-especes').value)||0;
+  // 24.37 — ce que le client paie VRAIMENT, consigne comprise (voir encaisser).
+  var total=calcAPayer(),esp=parseFloat(document.getElementById('split-especes').value)||0;
   var reste=Math.max(0,total-esp);
   var el=document.getElementById('split-reste');
   el.textContent=(lang==='fr'?'Reste en mobile money : ':'Remaining via mobile money: ')+fmt(reste);
@@ -24438,7 +24444,7 @@ function _rendreDeVente(v){
   var p=(v&&v.paiement)||{},c=Number(v&&v.consigne)||0,mode=p.mode||'especes';
   var noms={orange:'Orange Money',mtn:'MTN MoMo',moov:'Moov Money'};
   if(mode==='especes')return {esp:(Number(v.total)||0)+c,mob:0,nom:''};
-  if(mode==='mixte')return {esp:(Number(p.especes)||0)+c,mob:Number(p.mobile)||0,nom:noms[p.moyenMobile]||'Mobile Money'};
+  if(mode==='mixte')return {esp:(Number(p.especes)||0)+(p.cI?0:c),mob:Number(p.mobile)||0,nom:noms[p.moyenMobile]||'Mobile Money'};
   if(mode==='credit')return {esp:(Number(p.avance)||0)+c,mob:0,nom:''};
   return {esp:0,mob:Number(v.total)||0,nom:noms[mode]||'Mobile Money'};
 }
@@ -34470,7 +34476,7 @@ function totalEspecesJour(){
   return getCaisseSales().reduce(function(s,v){
     var p=v.paiement,c=Number(v.consigne)||0;
     if(!p||p.mode==='especes')return s+v.total+c;
-    if(p.mode==='mixte')return s+(p.especes||0)+c;
+    if(p.mode==='mixte')return s+(p.especes||0)+(p.cI?0:c);   // 24.37 — `cI` : la consigne est déjà dans la part espèces + mobile
     if(p.mode==='credit')return s+(p.avance||0)+c;
     return s;
   },0);
@@ -34696,7 +34702,7 @@ function paiementBreakdown(liste){
     b.remises+=(v.remise||0);
     b.consignes+=c;
     if(!p||p.mode==='especes')b.especes+=v.total+c;
-    else if(p.mode==='mixte'){b.especes+=(p.especes||0)+c;b[p.moyenMobile]=(b[p.moyenMobile]||0)+(p.mobile||0);}
+    else if(p.mode==='mixte'){b.especes+=(p.especes||0)+(p.cI?0:c);b[p.moyenMobile]=(b[p.moyenMobile]||0)+(p.mobile||0);}
     else if(p.mode==='credit'){b.especes+=(p.avance||0)+c;b.credit+=(p.du||0);}
     // ⚠️ Vente Mobile Money : le client paie marchandise + consigne PAR
     // MOBILE MONEY (l'écran affiche calcAPayer). Ici la consigne partait
@@ -40487,8 +40493,19 @@ encaisser=function(){
     var avCr=Math.min(total,Math.max(0,parseFloat((document.getElementById('cred-avance')||{}).value)||0));
     paiement={mode:'credit',avance:avCr,du:total-avCr};
   }else if(splitVenteOn){
-    var espSp=Math.min(total,Math.max(0,parseFloat((document.getElementById('split-especes')||{}).value)||0));
-    paiement={mode:'mixte',especes:espSp,mobile:Math.max(0,total-espSp),moyenMobile:splitModeVente};
+    // ⚠️⚠️ 24.37 — LA CONSIGNE DANS UN PAIEMENT MIXTE. Joué au banc (t358,
+    // « 4 journées ») : casier 7 800 + consigne 1 200 = 9 000 ; le client
+    // donne 5 000 en espèces, l'écran disait « Reste en mobile money :
+    // 2 800 » (il oubliait la consigne), et la clôture, elle, rangeait les
+    // 1 200 de consigne dans les ESPÈCES. Le vendeur encaissait 4 000 par
+    // Orange comme le client le voulait : le soir, −1 200 de « déficit » qui
+    // n'existait pas. Le reste mobile compte maintenant la consigne (ce que
+    // le client paie vraiment), et la vente le note (`cI`) pour que la
+    // clôture ne la compte pas deux fois. Les ventes d'avant gardent leur
+    // ancienne lecture.
+    var _apSp=total+(Number(consigneNette())||0);
+    var espSp=Math.min(_apSp,Math.max(0,parseFloat((document.getElementById('split-especes')||{}).value)||0));
+    paiement={mode:'mixte',especes:espSp,mobile:Math.max(0,_apSp-espSp),moyenMobile:splitModeVente,cI:1};
   }else{
     paiement={mode:pmntModeVente};
   }
