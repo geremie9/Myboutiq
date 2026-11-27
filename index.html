@@ -2023,6 +2023,32 @@ body.dictee-off #mic-pouce,body.dictee-off #btn-mic{display:none!important}
 .vp-l input.change{border-color:var(--B);background:#EEF4FF}
 #btn-verrou.appel{animation:verrouAppel 1s ease-in-out 4}
 @keyframes verrouAppel{0%,100%{transform:scale(1)}50%{transform:scale(1.18);box-shadow:0 0 0 4px rgba(245,158,11,.55)}}
+.inv-un-b{display:flex;align-items:center;gap:12px;width:100%;margin:2px 0 8px;padding:12px 14px;border-radius:14px;border:2px solid var(--P);background:var(--P);color:var(--A);text-align:left;cursor:pointer;font-family:'Outfit',sans-serif}
+.inv-un-b span{flex:1;font-size:16px;font-weight:900;color:#fff}
+.inv-un-b span i{display:block;font-style:normal;font-size:12px;font-weight:700;color:rgba(255,255,255,.7)}
+.inv-un-b b{font-size:24px}
+.inv-un{display:flex;flex-direction:column;gap:9px;padding-top:4px}
+.inv-un-tete{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.inv-un-tete span{font-size:13px;font-weight:800;color:var(--M)}
+.inv-un-m{align-self:center;width:110px;height:110px;border-radius:22px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.inv-un-m img{width:100%;height:100%;object-fit:contain}
+.inv-un-nm{text-align:center;font-size:20px;font-weight:900;color:var(--T);line-height:1.2}
+.inv-un-th{text-align:center;font-size:15px;font-weight:700;color:var(--M)}
+.inv-un-th b{color:var(--T);font-size:18px}
+.inv-juste{min-height:58px;border-radius:16px;border:0;background:var(--G);color:#fff;font:900 19px 'Outfit',sans-serif;cursor:pointer}
+.inv-un-ou{text-align:center;font-size:12.5px;font-weight:700;color:var(--M)}
+.inv-un-v{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.inv-un-v button{flex:1;min-width:100px;border:2px solid #E6DFD2;background:#fff;border-radius:13px;padding:6px 11px;text-align:left;font-family:'Outfit',sans-serif;cursor:pointer}
+.inv-un-v button.on{border:2.5px solid #F59E0B}
+.inv-un-v small{display:block;font-size:11.5px;font-weight:700;color:#5C586B}
+.inv-un-v b{display:block;font-size:24px;font-weight:900;color:var(--T)}
+.inv-un-tot{flex-basis:100%;font-size:14px;font-weight:900}
+.inv-un-tot.ok{color:var(--G)}.inv-un-tot.moins{color:var(--R)}.inv-un-tot.plus{color:#B45309}
+.inv-detail{margin-bottom:8px;border:1.5px solid var(--BD);border-radius:12px;padding:6px 10px}
+.inv-detail>div{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;font-weight:800;padding:3px 0}
+.inv-detail .moins{color:var(--R)}.inv-detail .plus{color:#B45309}
+.inv-detail .inv-d-plus{color:var(--M);font-size:12px}
+.inv-detail .inv-d-tot{border-top:1px solid var(--BD);margin-top:3px;padding-top:6px;color:var(--T);font-size:15px}
 .vidc{position:fixed;left:14px;bottom:86px;z-index:59;height:52px;padding:0 16px 0 12px;border-radius:26px;border:3px solid #fff;background:#B45309;color:#fff;display:none;align-items:center;gap:6px;box-shadow:0 8px 22px rgba(0,0,0,.22);font:900 15px Outfit,sans-serif;cursor:pointer}
 .vidc svg{stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
 #s-caisse.on.a-consigne .vidc{display:flex}
@@ -8010,7 +8036,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.30'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.31'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -31691,8 +31717,9 @@ function rgArreter(){
 function ouvrirInventaire(){
   if(!(role==='patron'||hasPerm('stock'))){showToast(lang==='fr'?'Réservé au patron':'Owner only');return;}
   try{_inv=JSON.parse(localStorage.getItem(_invCle())||'{}')||{};}catch(e){_inv={};}
-  _invFiltre='';_invConfirme=false;
-  var fr=(lang==='fr'),q=document.getElementById('inv-src');if(q){q.value='';q.placeholder=fr?'Chercher un article':'Search an item';}
+  _invFiltre='';_invConfirme=false;_invUn=null;
+  var fr=(lang==='fr'),q=document.getElementById('inv-src');if(q){q.value='';q.placeholder=fr?'Chercher un article':'Search an item';q.style.display='';}
+  try{document.getElementById('inv-aide').style.display='';}catch(e){}
   document.getElementById('inv-tit').textContent=fr?'Inventaire':'Stock count';
   document.getElementById('inv-aide').textContent=fr
     ?'Compte ce qui est vraiment sur tes étagères et tape le nombre. L\'app montre l\'écart. Rien ne change tant que tu ne valides pas — tu peux t\'arrêter et reprendre plus tard.'
@@ -31700,10 +31727,100 @@ function ouvrirInventaire(){
   _invRendre();
   document.getElementById('ov-inv').classList.add('show');
 }
+// ══════════════════════════════════════════════════════════════════
+//  ⭐ 24.31 — « COMMENT FAIRE L'INVENTAIRE DE FAÇON INTELLIGENTE ? » (le
+//  patron, 27/11, sur sa capture). La liste demandait de retaper le nombre
+//  de CHAQUE article, même quand l'app avait juste ; « carton de 12 » était
+//  écrit mais la case ne prenait que des pièces ; et le mot gris « compté »
+//  dans une case vide se lisait comme « déjà compté ».
+//  Le mode « un par un » : la photo en grand, « L'app dit 29 (2 cartons +
+//  5) », UNE touche « C'est juste » quand c'est juste, sinon le pavé —
+//  cartons puis pièces pour ce qui s'achète en gros. Ce qu'il compte va dans
+//  `_inv`, le même endroit que la liste : « Valider » ne change pas.
+// ══════════════════════════════════════════════════════════════════
+var _invUn=null;
+function _invSac(l){var n=0;try{var cd=_condDe(l.p,l.v);n=(cd&&cd.n>1)?cd.n:0;}catch(e){}if(!n)n=Number((l.v||l.p).umSac)||0;return (n>1&&!estMesure(l.p))?n:0;}
+function _invMotSac(l){try{var cd=_condDe(l.p,l.v);if(cd&&cd.mot)return cd.mot;}catch(e){}try{return _motContenant(l.p,l.v);}catch(e){}return 'carton';}
+function _invEnCartons(q,n,mot,fr){q=Math.max(0,Math.round(q*1000)/1000);if(!(n>1)||q<n)return '';var c=Math.floor(q/n),r=Math.round((q-c*n)*1000)/1000;return c+' '+(c>1?_expMots(mot,2):mot)+(r?(' + '+fmtQ(r)):'');}
+function invUnParUn(){
+  var L=_lignesInventaire();if(!L.length)return;
+  var i=0;for(var k=0;k<L.length;k++){if(_inv[L[k].k]==null){i=k;break;}}
+  _invUn={i:i,c:'',p:'',champ:'c'};
+  _invChargerUn();
+}
+function _invChargerUn(){
+  var L=_lignesInventaire(),l=L[_invUn.i];if(!l){invListe();return;}
+  var n=_invSac(l),deja=_invNum(_inv[l.k]);
+  _invUn.c='';_invUn.p='';_invUn.champ=n?'c':'p';
+  if(deja!=null){if(n){_invUn.c=String(Math.floor(deja/n));var r=Math.round((deja-Math.floor(deja/n)*n)*1000)/1000;_invUn.p=r?String(r).replace('.',','):'';}else _invUn.p=String(deja).replace('.',',');}
+  _invRendreUn();
+}
+function _invTotalUn(n){var c=_invNum(_invUn.c),p=_invNum(_invUn.p);if(c==null&&p==null)return null;return (c||0)*(n||0)+(p||0);}
+function _invRendreUn(){
+  var L=_lignesInventaire(),l=L[_invUn.i];if(!l){invListe();return;}
+  var fr=(lang!=='en'),n=_invSac(l),mot=n?_invMotSac(l):'',th=Math.max(0,l.th),u=estMesure(l.p)?(' '+uniteArt(l.p)):'';
+  var img=(l.v&&l.v.img)||l.p.img,m={bg:'var(--BG)',fg:'var(--M)',svg:''};try{m=mediaArtInner(l.p,64);}catch(e){}
+  var tot=_invTotalUn(n),fait=0;L.forEach(function(x){if(_inv[x.k]!=null)fait++;});
+  var ec=(tot==null)?null:Math.round((tot-th)*1000)/1000;
+  var cTh=_invEnCartons(th,n,mot,fr);
+  var h='<div class="inv-un">'
+    +'<div class="inv-un-tete"><button type="button" class="cha-ray" onclick="invListe()">← '+(fr?'La liste':'List')+'</button><span>'+(_invUn.i+1)+' / '+L.length+' · '+fait+' '+(fr?'compté'+(fait>1?'s':''):'counted')+'</span></div>'
+    +'<div class="inv-un-m" style="background:'+m.bg+';color:'+m.fg+'">'+(img?'<img src="'+srcSure(img)+'" alt="" onerror="this.remove()">':m.svg)+'</div>'
+    +'<div class="inv-un-nm">'+escH(l.nm)+'</div>'
+    +'<div class="inv-un-th">'+(fr?'L\'app dit ':'App says ')+'<b>'+fmtQ(th)+u+'</b>'+(cTh?(' ('+escH(cTh)+')'):'')+'</div>'
+    +'<button type="button" class="inv-juste" onclick="invJuste()">✓ '+(fr?'C\'est juste':'Exact')+' : '+fmtQ(th)+'</button>'
+    +'<div class="inv-un-ou">'+(fr?'ou tape ce que tu comptes :':'or type what you count:')+'</div>'
+    +'<div class="inv-un-v">'
+      +(n?('<button type="button" class="'+(_invUn.champ==='c'?'on':'')+'" onclick="invUnChamp(\'c\')"><small>'+escH(_expMots(mot,2))+' ('+n+')</small><b>'+(_invUn.c||'—')+'</b></button>'):'')
+      +'<button type="button" class="'+(_invUn.champ==='p'?'on':'')+'" onclick="invUnChamp(\'p\')"><small>'+(n?(fr?'pièces en plus':'loose pieces'):(fr?'tu en comptes':'you count'))+'</small><b>'+(_invUn.p||'—')+'</b></button>'
+      +((tot!=null)?('<span class="inv-un-tot'+(ec?(ec<0?' moins':' plus'):' ok')+'">= '+fmtQ(tot)+(ec?(' · '+(ec>0?'+':'−')+fmtQ(Math.abs(ec))+(l.pa>0?(' ('+fmt(Math.abs(ec*l.pa))+')'):'')):(' · '+(fr?'juste':'exact')))+'</span>'):'')
+    +'</div>'
+    +'<div class="rg-pave">'+['1','2','3','4','5','6','7','8','9',',','0','<'].map(function(k){return '<button type="button" onclick="invUnTouche(\''+k+'\')">'+(k==='<'?'⌫':k)+'</button>';}).join('')+'</div>'
+    +'<div class="rg-pied"><button type="button" class="rg-passer" onclick="invUnPasser()">'+(fr?'Passer':'Skip')+'</button>'
+    +'<button type="button" class="rg-suiv" onclick="invUnSuivant()">'+(fr?'Suivant':'Next')+'</button></div>'
+    +'</div>';
+  document.getElementById('inv-lst').innerHTML=h;
+  try{document.getElementById('inv-src').style.display='none';document.getElementById('inv-aide').style.display='none';}catch(e){}
+  _invMajPied(L);
+}
+function invUnChamp(c){if(!_invUn)return;_invUn.champ=c;_invRendreUn();}
+function invUnTouche(k){
+  if(!_invUn)return;var c=_invUn.champ,t=String(_invUn[c]||'');
+  if(k==='<')t=t.slice(0,-1);
+  else if(k===','){if(c==='c'||t.indexOf(',')>=0)return;t=(t||'0')+',';}
+  else if(t.length<7)t=(t==='0'?'':t)+k;
+  _invUn[c]=t;_invRendreUn();
+}
+function _invUnGarder(){
+  var L=_lignesInventaire(),l=L[_invUn.i];if(!l)return;
+  var tot=_invTotalUn(_invSac(l));
+  if(tot!=null){_inv[l.k]=String(Math.round(tot*1000)/1000);_invConfirme=false;_invGarder();}
+}
+function _invUnApres(){
+  var L=_lignesInventaire();
+  for(var k=_invUn.i+1;k<L.length;k++){if(_inv[L[k].k]==null){_invUn.i=k;_invChargerUn();return;}}
+  for(var j=0;j<_invUn.i;j++){if(_inv[L[j].k]==null){_invUn.i=j;_invChargerUn();return;}}
+  invListe();
+  showToast('✅ '+(lang!=='en'?'Tout est compté — regarde le bilan, puis « Valider »':'All counted — check and confirm'));
+}
+function invJuste(){
+  var L=_lignesInventaire(),l=L[_invUn.i];if(!l)return;
+  _inv[l.k]=String(Math.max(0,l.th));_invConfirme=false;_invGarder();
+  try{if(navigator.vibrate)navigator.vibrate(12);}catch(e){}
+  _invUnApres();
+}
+function invUnSuivant(){_invUnGarder();_invUnApres();}
+function invUnPasser(){var L=_lignesInventaire();_invUn.i=(_invUn.i+1)%L.length;_invChargerUn();}
+function invListe(){
+  _invUn=null;
+  try{document.getElementById('inv-src').style.display='';document.getElementById('inv-aide').style.display='';}catch(e){}
+  _invRendre();
+}
 function invFiltrer(v){_invFiltre=String(v||'');_invRendre(true);}
 function _invEcart(l){var c=_invNum(_inv[l.k]);return c==null?null:Math.round((c-l.th)*1000)/1000;}
 var _invLignes=[],_invFaits=0,_invHtml=null,_invObs=null;
 function _invSuite(){
+  if(_invUn)return;   // 24.31 — en « un par un », pas de lignes de liste dessous
   var box=document.getElementById('inv-lst');if(!box||!_invHtml)return;
   var s0=document.getElementById('inv-suite');if(s0)s0.remove();
   var fin=Math.min(_invLignes.length,_invFaits+60);
@@ -31734,10 +31851,12 @@ function _invRendre(listeSeule){
       return '<div class="inv-l" data-k="'+escH(l.k)+'">'+dessinArt(l.p,20,'width:38px;height:38px;border-radius:10px')
         +'<div class="inv-i"><div class="inv-nm">'+escH(l.nm)+'</div><div class="inv-th">'+(fr?'L\'app dit ':'App says ')+fmtQ(Math.max(0,l.th))+u
         +(sac>1?(' · '+(fr?'carton de ':'box of ')+sac):'')+'</div><div class="inv-e" id="inv-e-'+escH(l.k)+'"></div></div>'
-        +'<input class="inv-in" type="text" inputmode="decimal" autocomplete="off" aria-label="'+(fr?'Compté':'Counted')+'" placeholder="'+(fr?'compté':'count')+'" value="'+escH(_inv[l.k]==null?'':_inv[l.k])+'" '
+        +'<input class="inv-in" type="text" inputmode="decimal" autocomplete="off" aria-label="'+(fr?'Compté':'Counted')+'" placeholder="?" value="'+escH(_inv[l.k]==null?'':_inv[l.k])+'" '
         +'oninput="invTape('+jsStr(l.k)+',this.value)"></div>';
     };
     box.innerHTML=_invLignes.length?'':('<div class="empty"><div class="empty-e">'+ico('chercher',40)+'</div><div class="empty-t">'+(fr?'Aucun article':'No item')+'</div></div>');
+    // 24.31 — compter un article à la fois, comme « Ranger ma boutique »
+    if(_invLignes.length&&!q)box.innerHTML='<button type="button" class="inv-un-b" onclick="invUnParUn()">'+ico('stock',22)+'<span>'+(fr?'Compter un par un':'Count one by one')+'<i>'+(fr?'photo, « c\'est juste » d\'une touche, cartons + pièces':'photo, one-tap “exact”, boxes + pieces')+'</i></span><b>›</b></button>';
     if(_invLignes.length)_invSuite();
   }
   _invMajPied(L);
@@ -31771,7 +31890,16 @@ function _invMajPied(L){
       +(b.manque&&b.trop?' · ':'')+(b.trop?((fr?'En trop ':'Extra ')+fmtQ(b.trop)+(b.vt?(' ('+fmt(b.vt)+')'):'')):''))
       :(fr?'Tout ce que tu as compté est juste.':'Everything you counted is exact.')))
     :(fr?'Tape les quantités que tu comptes.':'Type the quantities you count.');
-  p.innerHTML='<div class="inv-res">'+resume+'</div>'
+  // 24.31 — au moment de confirmer : les plus gros écarts, en argent, et le total.
+  var detail='';
+  if(_invConfirme&&b.ch){
+    var E=[];(L||_lignesInventaire()).forEach(function(l){var e=_invEcart(l);if(e)E.push({l:l,e:e,v:e*(l.pa||0)});});
+    E.sort(function(x,y){return Math.abs(y.v)-Math.abs(x.v)||Math.abs(y.e)-Math.abs(x.e);});
+    detail='<div class="inv-detail">'+E.slice(0,5).map(function(x){return '<div class="'+(x.e<0?'moins':'plus')+'"><span>'+(x.e>0?'+':'−')+fmtQ(Math.abs(x.e))+' '+escH(x.l.nm)+'</span><b>'+(x.v?((x.e>0?'+':'−')+fmt(Math.abs(x.v))):'')+'</b></div>';}).join('')
+      +(E.length>5?('<div class="inv-d-plus">+ '+(E.length-5)+' '+(fr?'autres':'more')+'</div>'):'')
+      +((b.vm||b.vt)?('<div class="inv-d-tot"><span>'+(fr?'Écart total':'Total gap')+'</span><b>'+((b.vt-b.vm)<0?'−':'+')+fmt(Math.abs(b.vt-b.vm))+'</b></div>'):'')+'</div>';
+  }
+  p.innerHTML=detail+'<div class="inv-res">'+resume+'</div>'
     +'<button class="bnxt" id="inv-ok" '+(b.n?'':'disabled ')+'onclick="validerInventaire()" style="margin-top:8px;'+(b.n?'':'opacity:.5')+'">'
     +(_invConfirme?((fr?'Confirmer : corriger ':'Confirm: fix ')+b.ch+' '+(fr?'article'+(b.ch>1?'s':''):'item'+(b.ch>1?'s':'')))
                   :(fr?'Valider l\'inventaire':'Confirm the count'))+'</button>';
