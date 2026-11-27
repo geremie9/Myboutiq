@@ -1353,7 +1353,14 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 .rg-um{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .rg-um button{border:2px solid #E6DFD2;background:#fff;border-radius:13px;height:50px;display:flex;align-items:center;justify-content:center;gap:7px;font:800 13.5px 'Outfit',sans-serif;color:#1E1B2E}
 .rg-um button.on{border-color:#1E1B2E;background:#FFF6DF}
-.rg-vals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.rg-vals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.rg-vals .rg-val b{font-size:23px}
+.rg-aide{display:flex;gap:7px;align-items:center;flex-wrap:wrap;min-height:38px}
+.rg-aide button{min-height:38px;padding:0 12px;border-radius:10px;border:2px solid #E6DFD2;background:#fff;font:800 13.5px 'Outfit',sans-serif;color:#1E1B2E;cursor:pointer}
+.rg-aide button.on{border-color:#F59E0B;background:#FFF4DC}
+.rg-aide span{font:800 13.5px 'Outfit',sans-serif;color:#1B5E20}
+.rg-aide span.perte{color:#B91C1C}
+.rg-photo{position:absolute;top:10px;right:12px;width:52px;height:52px;border-radius:16px;border:0;background:#1E1B2E;color:#F59E0B;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)}
 .rg-val{border:2px solid #E6DFD2;background:#fff;border-radius:13px;padding:6px 11px;text-align:left;font-family:'Outfit',sans-serif;color:#1E1B2E}
 .rg-val.on{border:2.5px solid #F59E0B}
 .rg-val small{display:block;font-size:11.5px;font-weight:700;color:#5C586B}
@@ -8003,7 +8010,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.29'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.30'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -15066,6 +15073,7 @@ function renderProd(lst){
   try{majDemarrage();}catch(e){}
   try{majDicteeCommandes();}catch(e){}
   try{majBandeauPrix();}catch(e){}
+  try{if(_rg&&document.querySelector('#ov-rgb.show')&&document.getElementById('rg').querySelector('.rg-mur'))setTimeout(function(){try{_rgRendre();}catch(e){}},0);}catch(e){}   // 24.30 — la photo prise s'affiche sur la planche
   try{majBoutonVides();}catch(e){}   // 24.24 — « ↩ Vides » seulement là où il y a des consignes
   // La grille est reconstruite : le panneau des variantes n'y survivrait pas,
   // on le referme proprement plutôt que d'en garder une référence morte.
@@ -31506,7 +31514,9 @@ function _rgCharger(){
   if(!p){_rgFin();return;}
   _rg.um=_umDe(p)||'pc';
   _rg.px=(Number(p.px)>0)?String(Number(p.px)):'';
-  _rg.stk='';
+  _rg.stk='';_rg.stkC='';
+  _rg.pa=(Number(p.pa)>0)?String(Math.round(Number(p.pa)*100)/100).replace('.',','):'';
+  _rg.paPour='u';_rg.paVu=!!_rg.pa;_rg.paTape=false;
   _rg.neuf=!!_rg.px;                                   // un prix déjà là : la première touche le remplace
   _rg.champ=(_rg.px&&_rg.avecStock)?'stk':'px';
   _rgRendre();
@@ -31521,37 +31531,97 @@ function _rgRendre(){
   var pct=_rg.total?Math.round(_rg.faits/_rg.total*100):0;
   var um=function(k,ic,lib){return '<button type="button" class="'+(_rg.um===k?'on':'')+'" onclick="rgUnite(\''+k+'\')">'+ico(ic,20)+lib+'</button>';};
   var actuel='';try{if(!_stockJamaisCompte(p))actuel=fmtQ(getStk(p));}catch(e){}
+  // ⭐ 24.30 — « QU'EST-CE QUI MANQUE ICI POUR BIEN RANGER ? » (le patron,
+  // 27/11, sur cet écran). Trois choses :
+  //  · le PRIX D'ACHAT — sans lui, ni bénéfice ni valeur du stock (« 7
+  //    articles sans prix d'achat — pas comptés ») ; facultatif, et pour 1
+  //    pièce OU pour le carton entier : on connaît souvent le second ;
+  //  · le STOCK EN CARTONS — « Tu en as 2 » : 2 bouteilles ou 2 cartons ?
+  //    Au dépôt on compte « 2 cartons + 5 » ; l'app fait 29 ;
+  //  · la PHOTO — le seul moment où l'article est sous ses yeux, un par un.
+  var cdR=null;try{cdR=_condDe(p);}catch(e){}
+  var nG=(_rg.um==='pc')?((cdR&&cdR.n>1)?cdR.n:((Number(p.umSac)>1)?Number(p.umSac):0)):0;
+  var motG=nG?((cdR&&cdR.mot)||_motContenant(p)):'';
+  _rg.nG=nG;_rg.motG=motG;
+  var paU=_rgPaUnitaire(),pxN=_rgNum(_rg.px)||0;
+  var stkTxt='';
+  var stkDet='';
+  if(nG&&(_rg.stkC!==''||_rg.stk!=='')){
+    stkDet=(_rg.stkC!==''?(escH(_rg.stkC)+' '+escH(_condPl?_condPl(motG,Number(String(_rg.stkC).replace(',','.'))||0):motG)):'')+(_rg.stkC!==''&&_rg.stk!==''?' + ':'')+(_rg.stk!==''?escH(_rg.stk):'');
+    stkTxt=fmtQ((_rgNum(_rg.stkC)||0)*nG+(_rgNum(_rg.stk)||0));
+  }
+  else if(_rg.stk)stkTxt=escH(_rg.stk)+(unite?('<u>'+unite+'</u>'):'');
   z.innerHTML='<div class="rg-tete"><div class="rg-tete-l"><div class="rg-tit">'+(fr?'Ranger ma boutique':'Set up my shop')+'</div>'
       +'<button type="button" class="rg-stop" onclick="rgArreter()">'+(fr?'Arrêter':'Stop')+'</button></div>'
       +'<div class="rg-prog"><div class="rg-barre"><i style="width:'+pct+'%"></i></div><div class="rg-cpt">'+(_rg.faits+1)+' '+(fr?'sur':'of')+' '+_rg.total+'</div></div>'
       +'<div class="rg-ray">'+escH(p.cat||'')+'</div></div>'
-    +'<div class="rg-mur">'+media+'</div>'
+    +'<div class="rg-mur">'+media+((role==='patron'||hasPerm('produits'))?('<button type="button" class="rg-photo" onclick="ajouterPhotoArticle(event,'+p.id+')" aria-label="'+(fr?'Prendre en photo':'Take a photo')+'">'+ico('appareil',24)+'</button>'):'')+'</div>'
     +'<div class="rg-planche">'+(_nomDeFichier(p)?'—':escH(p.nm))+'</div>'
     +'<div class="rg-corps">'
       +'<div class="rg-um">'+um('pc','piece',fr?'La pièce':'Each')+um('kg','balance',fr?'Le kilo':'Per kg')+um('L','goutte',fr?'Le litre':'Per litre')+'</div>'
       +'<div class="rg-vals">'
         +'<button type="button" class="rg-val'+(_rg.champ==='px'?' on':'')+'" id="rg-px" onclick="rgChamp(\'px\')"><small>'+(fr?'Tu le vends':'You sell it')+(unite?(' · '+(fr?'le ':'per ')+unite):'')+'</small>'
           +'<b class="'+(_rg.px?'':'vide')+'">'+(_rg.px?(escH(_rg.px)+'<u>'+escH(dev)+'</u>'):(fr?'Prix ?':'Price?'))+'</b></button>'
-        +'<button type="button" class="rg-val'+(_rg.champ==='stk'?' on':'')+'" id="rg-stk" onclick="rgChamp(\'stk\')"><small>'+(fr?'Tu en as':'You have')+'</small>'
-          +'<b class="'+(_rg.stk?'':'vide')+'">'+(_rg.stk?(escH(_rg.stk)+(unite?('<u>'+unite+'</u>'):'')):(actuel||'—'))+'</b></button>'
+        +'<button type="button" class="rg-val'+(_rg.champ==='pa'?' on':'')+'" id="rg-pa" onclick="rgChamp(\'pa\')"><small>'+(fr?'Tu l\'achètes':'You buy it')+'</small>'
+          +'<b class="'+(_rg.pa?'':'vide')+'">'+(_rg.pa?(escH(_rg.pa)+'<u>'+escH(dev)+'</u>'):'?')+'</b></button>'
+        +'<button type="button" class="rg-val'+((_rg.champ==='stk'||_rg.champ==='stkC')?' on':'')+'" id="rg-stk" onclick="rgChamp(\'stk\')"><small>'+(stkDet||(fr?'Tu en as':'You have'))+'</small>'
+          +'<b class="'+(stkTxt?'':'vide')+'">'+(stkTxt||actuel||'—')+'</b></button>'
       +'</div>'
-      +'<button type="button" class="rg-sans" onclick="rgSansStock()">'+(fr?'Je ne compte pas le stock':'I don\'t count stock')+'</button>'
+      +_rgLigneAide(fr,dev,nG,motG,paU,pxN)
       +'<div class="rg-pave">'+['1','2','3','4','5','6','7','8','9',',','0','<'].map(function(k){
           return '<button type="button" onclick="rgTouche(\''+k+'\')"'+(k==='<'?(' aria-label="'+(fr?'Effacer':'Delete')+'"'):'')+'>'+(k==='<'?'⌫':k)+'</button>';}).join('')+'</div>'
     +'</div>'
     +'<div class="rg-pied"><button type="button" class="rg-passer" onclick="rgPasser()">'+(fr?'Passer':'Skip')+'</button>'
       +'<button type="button" class="rg-suiv" id="rg-suiv" onclick="rgSuivant()">'+(fr?'Suivant':'Next')+'</button></div>';
 }
+function _rgPaUnitaire(){
+  if(!_rg)return 0;var n=_rgNum(_rg.pa)||0;
+  if(!(n>0))return 0;
+  return (_rg.paPour==='g'&&_rg.nG>1)?Math.round(n/_rg.nG*100)/100:n;
+}
+// La ligne sous les trois cases dit ce qui sert MAINTENANT : pour l'achat,
+// « pour 1 pièce / pour 1 carton de 12 » et ce qu'il gagne ; pour le stock
+// d'un article en gros, « cartons / pièces » ; sinon « je ne compte pas ».
+function _rgLigneAide(fr,dev,nG,motG,paU,pxN){
+  var h='<div class="rg-aide">';
+  if(_rg.champ==='pa'){
+    if(nG>1)h+='<button type="button" class="'+(_rg.paPour!=='g'?'on':'')+'" onclick="rgPaPour(\'u\')">'+(fr?'pour 1 pièce':'for 1 piece')+'</button>'
+      +'<button type="button" class="'+(_rg.paPour==='g'?'on':'')+'" onclick="rgPaPour(\'g\')">'+(fr?('pour 1 '+escH(motG)+' de '+nG):('for 1 '+escH(motG)+' of '+nG))+'</button>';
+    if(paU>0&&pxN>0){var g=Math.round((pxN-paU)*100)/100;
+      h+='<span class="'+(g<=0?'perte':'')+'">'+(_rg.paPour==='g'&&nG>1?(fmt(paU)+(fr?' la pièce · ':' each · ')):'')+(g>0?((fr?'tu gagnes ':'profit ')+fmt(g)):(fr?'⚠️ tu perds de l\'argent':'⚠️ loss'))+'</span>';}
+    else if(!(_rgNum(_rg.pa)>0))h+='<span style="color:#5C586B">'+(fr?'Facultatif — « Suivant » si tu ne sais pas':'Optional')+'</span>';
+  }else if((_rg.champ==='stk'||_rg.champ==='stkC')&&nG>1){
+    var tot=(_rgNum(_rg.stkC)||0)*nG+(_rgNum(_rg.stk)||0);
+    h+='<button type="button" class="'+(_rg.champ==='stkC'?'on':'')+'" onclick="rgChamp(\'stkC\')">'+escH(_condPl?_condPl(motG,2):motG)+(_rg.stkC!==''?(' : '+escH(_rg.stkC)):'')+'</button>'
+      +'<button type="button" class="'+(_rg.champ==='stk'?'on':'')+'" onclick="rgChamp(\'stkP\')">'+(fr?'pièces':'pieces')+(_rg.stk!==''?(' : '+escH(_rg.stk)):'')+'</button>'
+      +((_rg.stkC!==''||_rg.stk!=='')?('<span>= '+fmtQ(tot)+'</span>'):'');
+  }else{
+    h+='<button type="button" class="rg-sans" onclick="rgSansStock()">'+(fr?'Je ne compte pas le stock':'I don\'t count stock')+'</button>';
+  }
+  return h+'</div>';
+}
+function rgPaPour(k){if(!_rg)return;_rg.paPour=k;_rgRendre();}
 function rgUnite(k){if(!_rg)return;_rg.um=k;_rgRendre();}
-function rgChamp(c){if(!_rg)return;_rg.champ=c;if(c==='stk')_rg.avecStock=true;_rg.neuf=(c==='px'&&!!_rg.px);_rgRendre();}
+function rgChamp(c){
+  if(!_rg)return;
+  // « Tu en as » d'un article en gros : on commence par les cartons.
+  if(c==='stk'&&_rg.nG>1&&_rg.um==='pc')c='stkC';
+  if(c==='stkP')c='stk';
+  _rg.champ=c;if(c==='stk'||c==='stkC')_rg.avecStock=true;
+  if(c==='pa')_rg.paVu=true;
+  _rg.neuf=((c==='px'&&!!_rg.px)||(c==='pa'&&!!_rg.pa&&_rg.paNeuf!==false));
+  if(c==='pa')_rg.paNeuf=false;
+  _rgRendre();
+}
 function rgTouche(k){
   if(!_rg)return;
-  var c=_rg.champ,t=(_rg.neuf&&c==='px')?'':String(_rg[c]||'');
+  var c=_rg.champ,t=(_rg.neuf&&(c==='px'||c==='pa'))?'':String(_rg[c]||'');
+  if(c==='pa')_rg.paTape=true;
   _rg.neuf=false;
   if(k==='<')t=t.slice(0,-1);
   else if(k===','){
     // La virgule : seulement pour une quantité au kilo ou au litre.
-    if(c!=='stk'||_rg.um==='pc'||t.indexOf(',')>=0)return;
+    if((c!=='stk'&&c!=='pa')||(c==='stk'&&_rg.um==='pc')||t.indexOf(',')>=0)return;
     t=(t||'0')+',';
   }else if(t.length<7)t=(t==='0'?'':t)+k;
   _rg[c]=t;_rgRendre();
@@ -31576,15 +31646,24 @@ function rgSuivant(){
   // Le même bouton vert fait tout : du prix il passe à la quantité, puis
   // enregistre. S'il a laissé la quantité vide sur l'article d'avant, on ne
   // la lui redemande pas : un toucher par article.
-  if(_rg.champ==='px'&&_rg.avecStock&&_rg.stk===''){_rg.champ='stk';_rgRendre();return;}
+  // 24.30 — du prix il passe à l'achat (s'il le tape d'habitude), puis à la quantité.
+  // Comme la quantité : l'achat n'entre dans l'enchaînement que s'il l'a
+  // tapé sur l'article d'avant — celui qui ne le connaît pas ne paie pas
+  // une touche de plus par article (t264 compte les gestes).
+  if(_rg.champ==='px'&&_rg.avecAchat&&!_rg.pa){_rg.champ='pa';_rgRendre();return;}
+  if((_rg.champ==='px'||_rg.champ==='pa')&&_rg.avecStock&&_rg.stk===''&&_rg.stkC===''){_rg.champ=(_rg.nG>1&&_rg.um==='pc')?'stkC':'stk';_rgRendre();return;}
   var av=Number(p.px)||0;
   if(px!==av){p.px=px;try{journalAjouter('prix',p.nm,fmt(av),fmt(px));}catch(e){}}
   if((_umDe(p)||'pc')!==_rg.um)_poserUnite(p,_rg.um==='pc'?'pc':_rg.um);
-  var q=_rgNum(_rg.stk);
-  if(_rg.stk!==''&&q!=null&&q>=0){
+  var paU=_rgPaUnitaire();
+  if(paU>0&&Math.abs(paU-(Number(p.pa)||0))>0.001){var avPa=Number(p.pa)||0;p.pa=paU;delete p.paRefuse;try{journalAjouter('prix',p.nm+(fr?' (achat)':' (cost)'),fmt(avPa),fmt(paU));}catch(e){}}
+  var aStk=(_rg.stk!==''||_rg.stkC!=='');
+  var q=(_rgNum(_rg.stk)||0)+((_rg.nG>1&&_rg.um==='pc')?(_rgNum(_rg.stkC)||0)*_rg.nG:0);
+  if(aStk&&q>=0){
     try{definirStock(p,null,q);}catch(e){}
   }
-  _rg.avecStock=(_rg.stk!=='');
+  _rg.avecStock=aStk;
+  _rg.avecAchat=!!_rg.paTape&&paU>0;
   p.rg=1;
   _rg.faits++;_rg.passes=0;
   _rg.ids.splice(_rg.i,1);
