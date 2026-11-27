@@ -3186,6 +3186,15 @@ body.cli-a-faire .bnav .ni.ni-cli .ne::after{content:'';position:absolute;top:2p
 .rc-t{display:flex;flex-direction:column;align-items:center;gap:3px;border:1.5px solid var(--BD);background:var(--C);border-radius:13px;padding:7px 4px;cursor:pointer;font:800 11px/1.15 Outfit,sans-serif;color:var(--T);-webkit-tap-highlight-color:transparent}
 .rc-t span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-align:center}
 .rc-t.on{border-color:#F59E0B;background:#FFF8E1}
+/* 24.39 — rendre un article */
+.rdu-q{font-size:15px;font-weight:900;color:var(--T);margin:0 0 8px}
+#rdu-corps .rc-l{margin-bottom:6px}
+#rdu-corps .rc-l.on{border-color:#F59E0B;background:#FFF8E1}
+#rdu-corps .rc-l b i{display:block;font-style:normal;font-size:12px;font-weight:800;color:var(--M)}
+.rdu-modes{display:flex;gap:7px;margin:8px 0}
+.rdu-modes button{flex:1;border:1.5px solid var(--BD);background:var(--C);border-radius:12px;padding:9px 6px;font:800 13px Outfit,sans-serif;color:var(--T);cursor:pointer}
+.rdu-modes button.on{border-color:#1E1B2E;background:#1E1B2E;color:#fff}
+.rdu-rend{font-size:20px;font-weight:900;color:#B45309;text-align:center;margin:10px 0 12px;min-height:26px}
 .eg-step{display:flex;align-items:center;gap:9px;text-align:left;max-width:270px;margin:9px auto 0;
   font-size:12.5px;font-weight:600;color:var(--M)}
 .eg-step b{color:var(--T)}
@@ -7503,6 +7512,13 @@ html.vt-anim #s-landing .vt-voix.rv.vu:hover{transform:rotate(0) scale(1.02)}
   </div>
 </div>
 <!-- ⭐ 24.24 — LES VIDES RENDUS SANS RIEN ACHETER -->
+<!-- ⭐ 24.39 — RENDRE UN ARTICLE (voir ouvrirRendre) -->
+<div class="ov" id="ov-rendre" onclick="closeOv(event,'ov-rendre')">
+  <div class="bsht"><div class="shndl"></div>
+    <div class="shhdr"><div class="shtit">↩ <span id="rdu-tit">Rendre un article</span></div><button class="bcl" onclick="closeSheet('ov-rendre')" aria-label="Fermer">✕</button></div>
+    <div style="padding:6px 19px 20px" id="rdu-corps"></div>
+  </div>
+</div>
 <div class="ov" id="ov-vides" onclick="closeOv(event,'ov-vides')">
   <div class="bsht"><div class="shndl"></div>
     <div class="shhdr"><div class="shtit" id="vid-tit">Bouteilles vides rendues</div><button class="bcl" onclick="closeSheet('ov-vides')" aria-label="Fermer">✕</button></div>
@@ -8104,7 +8120,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.38'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.39'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -9735,6 +9751,131 @@ function validerVides(){
   try{parler(fr?('Rends '+_nombreParlable(n*u)+' francs pour '+n+' bouteille'+(n>1?'s':'')+' vide'+(n>1?'s':'')):('Give back '+_nombreParlable(n*u)));}catch(e){}
 }
 function _estVides(v){return !!(v&&v.vides);}
+// ══════════════════════════════════════════════════════════════════
+//  ⭐⭐ 24.39 — RENDRE UN ARTICLE
+//
+//  Joué au banc (t358, « 4 journées ») : un client achète 3 savons et en
+//  rapporte 1 abîmé. L'app ne savait qu'ANNULER toute la vente — il fallait
+//  annuler puis tout refaire, et rendre la monnaie de tête. Le patron :
+//  « Go construire ».
+//
+//  Le retour est un ÉVÉNEMENT à part (`retour:true`, `ref` = la vente), comme
+//  les vides rendus — jamais une modification de la vente d'origine : deux
+//  téléphones ne peuvent pas se disputer une vente réécrite, et la synchro
+//  additionne les événements par leur numéro (mergeDB).
+//  · le stock : ses lignes portent une quantité NÉGATIVE et `ret` —
+//    recomputeStock et l'archivage la rendent au rayon ;
+//  · l'argent : total négatif, payé comme le client avait payé (espèces,
+//    son mobile money, ou sa dette qui baisse) ; la clôture tombe juste ;
+//  · ce n'est pas une vente : il n'entre pas dans le nombre de ventes.
+//  Le prix rendu = ce que le client a VRAIMENT payé (remise et prix négocié
+//  répartis sur les lignes), jamais le prix d'aujourd'hui.
+//  Une recette rendue (pain chargé) ne rend pas ses œufs : ils sont cuits.
+// ══════════════════════════════════════════════════════════════════
+function _estRetour(v){return !!(v&&v.retour);}
+// « la dette d'Awa », « la dette de Paul » : l'élision devant une voyelle.
+function _dePersonne(nm){nm=String(nm||'');return (/^[aeiouyhàâéèêëîïôöûüœæ]/i.test(nm)?'d’':'de ')+nm;}
+function _horsVente(v){return _estVides(v)||_estRetour(v);}
+function _dejaRendu(vid){
+  var m={};
+  (DB.ventes||[]).forEach(function(r){
+    if(!r||!r.retour||r.annulee||r.ref!==vid)return;
+    (r.lignes||[]).forEach(function(l){if(l&&l.li!=null)m[l.li]=(m[l.li]||0)+Math.abs(Number(l.qte||l.qty)||0);});
+  });
+  return m;
+}
+function _aDesRetours(vid){return (DB.ventes||[]).some(function(r){return r&&r.retour&&!r.annulee&&r.ref===vid;});}
+function _peutRendre(v){
+  if(!v||v.annulee||_horsVente(v)||!(v.lignes||[]).length)return false;
+  try{if(!hasPerm('annuler'))return false;}catch(e){return false;}
+  var d=_dejaRendu(v.id);
+  return v.lignes.some(function(l,i){return l&&(Number(l.qte||l.qty)||0)-(d[i]||0)>0;});
+}
+var _rdu=null;
+function ouvrirRendre(vid){
+  if(!hasPerm('annuler')){showToast('⛔ '+(lang==='fr'?'Ton patron ne t’a pas donné ce droit':'Your owner has not granted this'));return;}
+  var v=(DB.ventes||[]).find(function(x){return x.id===vid;});if(!_peutRendre(v))return;
+  var brut=0;v.lignes.forEach(function(l){brut+=(Number(l.px)||0)*(Number(l.qte||l.qty)||0);});
+  var ratio=(brut>0&&Number(v.total)>0)?Math.min(1,Number(v.total)/brut):1;
+  var pm=(v.paiement&&v.paiement.mode)||'especes',modes=['especes'];
+  if(pm==='orange'||pm==='mtn'||pm==='moov')modes=[pm,'especes'];
+  if(pm==='mixte'&&v.paiement.moyenMobile)modes=['especes',v.paiement.moyenMobile];
+  var cl=v.clientId!=null?(DB.clients||[]).find(function(c){return c.id===v.clientId;}):null;
+  if(pm==='credit'&&cl)modes=['dette','especes'];
+  _rdu={vid:vid,q:{},mode:modes[0],modes:modes,ratio:ratio,deja:_dejaRendu(vid)};
+  _rduRendre();
+  document.getElementById('ov-rendre').classList.add('show');
+}
+function _rduVente(){return _rdu?(DB.ventes||[]).find(function(x){return x.id===_rdu.vid;}):null;}
+function _rduPrix(l){return Math.round((Number(l.px)||0)*(_rdu?_rdu.ratio:1));}
+function _rduMontant(){
+  var v=_rduVente();if(!v)return 0;var s=0;
+  Object.keys(_rdu.q).forEach(function(i){var l=v.lignes[i];if(l)s+=_rduPrix(l)*(_rdu.q[i]||0);});
+  return s;
+}
+function _rduRendre(){
+  var v=_rduVente(),z=document.getElementById('rdu-corps');if(!v||!z)return;
+  var fr=(lang!=='en'),noms={especes:fr?'En espèces':'Cash',orange:'Orange Money',mtn:'MTN MoMo',moov:'Moov Money',dette:fr?'Sur sa dette':'From the debt'};
+  var h='<div class="rdu-q">'+(fr?'Qu’est-ce qu’il rend ?':'What is returned?')+'</div>';
+  v.lignes.forEach(function(l,i){
+    var reste=(Number(l.qte||l.qty)||0)-(_rdu.deja[i]||0);if(!(reste>0))return;
+    var n=_rdu.q[i]||0,p=l.pid!=null?(DB.articles||[]).find(function(a){return a.id==l.pid;}):null;
+    h+='<div class="rc-l'+(n>0?' on':'')+'">'+(p?_rcVisuel(p,null,30):ico('billet',24))+'<b>'+escH(l.nm||'Article')+'<i>'+fmt(_rduPrix(l))+'</i></b>'
+      +'<button type="button" class="rc-b" onclick="rduPas('+i+',-1)" aria-label="moins">−</button>'
+      +'<span class="rc-n">'+fmtQ(n)+'</span>'
+      +'<button type="button" class="rc-b" onclick="rduPas('+i+',1)" aria-label="plus">+</button></div>';
+  });
+  if(_rdu.modes.length>1){
+    h+='<div class="rdu-modes">'+_rdu.modes.map(function(m){return '<button type="button" class="'+(_rdu.mode===m?'on':'')+'" onclick="rduMode(\''+m+'\')">'+noms[m]+'</button>';}).join('')+'</div>';
+  }
+  var R=_rduMontant(),cl=v.clientId!=null?(DB.clients||[]).find(function(c){return c.id===v.clientId;}):null,dit='';
+  if(R>0){
+    if(_rdu.mode==='dette'&&cl){var d=Math.min(R,Number(cl.credit)||0),e=R-d;dit=(fr?('La dette '+escH(_dePersonne(cl.nm))+' baisse de '+fmt(d)):(escH(cl.nm)+'’s debt drops by '+fmt(d)))+(e>0?(' · '+(fr?'rends ':'give back ')+fmt(e)):'');}
+    else dit=(fr?'Rends ':'Give back ')+fmt(R)+(_rdu.mode!=='especes'?(' · '+noms[_rdu.mode]):'');
+  }
+  h+='<div class="rdu-rend">'+(dit||'&nbsp;')+'</div>';
+  h+='<button type="button" class="bpay" id="rdu-ok" onclick="validerRendre()"'+(R>0?'':' disabled style="opacity:.45"')+'>↩ '+(fr?'Rendre':'Return')+'</button>';
+  z.innerHTML=h;
+}
+function rduPas(i,d){
+  var v=_rduVente();if(!v||!v.lignes[i])return;
+  var max=(Number(v.lignes[i].qte||v.lignes[i].qty)||0)-(_rdu.deja[i]||0);
+  _rdu.q[i]=Math.max(0,Math.min(max,(_rdu.q[i]||0)+d));
+  _rduRendre();
+}
+function rduMode(m){if(_rdu&&_rdu.modes.indexOf(m)>=0){_rdu.mode=m;_rduRendre();}}
+function validerRendre(){
+  var v=_rduVente();if(!v)return;
+  if(!hasPerm('annuler'))return;
+  var R=_rduMontant();if(!(R>0))return;
+  var fr=(lang!=='en'),now=new Date(),h=now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),lignes=[],ben=0,connu=false;
+  Object.keys(_rdu.q).forEach(function(i){
+    var q=_rdu.q[i]||0,l=v.lignes[i];if(!(q>0)||!l)return;
+    var px=_rduPrix(l),pa=Number(l.pa)||0;
+    if(pa>0){ben-=(px-pa)*q;connu=true;}
+    lignes.push({nm:l.nm,px:px,pa:pa,qte:-q,qty:-q,pid:l.pid!=null?l.pid:null,vid:l.vid!=null?l.vid:null,qBase:Number(l.qBase)||1,dep:0,gros:null,libre:!!l.libre,ret:1,li:Number(i)});
+  });
+  if(!lignes.length)return;
+  var cl=v.clientId!=null?(DB.clients||[]).find(function(c){return c.id===v.clientId;}):null,paiement,debt=0,cash=R;
+  if(_rdu.mode==='dette'&&cl){
+    debt=Math.min(R,Number(cl.credit)||0);cash=R-debt;
+    paiement={mode:'credit',avance:-cash,du:-debt};
+    if(debt>0){cl.credit=Math.max(0,(Number(cl.credit)||0)-debt);if(!Array.isArray(cl.hist))cl.hist=[];cl.hist.push({date:now.toLocaleDateString('fr-FR'),ts:now.toISOString(),type:'payment',amt:debt,annul:true,retour:true});}
+  }else paiement={mode:_rdu.mode==='dette'?'especes':_rdu.mode};
+  if(!Array.isArray(DB.ventes))DB.ventes=[];
+  DB.ventes.push({id:genVenteId(),retour:true,ref:v.id,total:-R,totalBrut:-R,benefice:connu?ben:0,ben:connu?ben:0,lignes:lignes,h:h,heure:h,
+    date:now.toLocaleDateString('fr-FR'),vendeur:_nomOperateur(),clientId:v.clientId!=null?v.clientId:null,clientNom:v.clientNom||'',paiement:paiement,annulee:false});
+  try{journalAjouter('vente',fr?'Article rendu':'Item returned','',lignes.map(function(l){return fmtQ(-l.qte)+' '+l.nm;}).join(', ')+' · '+fmt(R));}catch(e){}
+  _rdu=null;
+  try{save();}catch(e){}
+  try{recalcTotaux();renderProd(DB.articles);renderStock(DB.articles);renderRpt();renderClients();}catch(e){}
+  try{if(document.getElementById('ov-history').classList.contains('show'))filtrerHistory();}catch(e){}
+  closeSheet('ov-rendre');
+  var dit=(debt>0&&cl)?((fr?('La dette '+_dePersonne(cl.nm)+' baisse de '+fmt(debt)):(cl.nm+'’s debt drops by '+fmt(debt)))+(cash>0?(' · '+(fr?'rends ':'give back ')+fmt(cash)):''))
+    :((fr?'Rends ':'Give back ')+fmt(R));
+  showToast('↩ '+dit);
+  try{parler(dit.replace(/\s*·\s*/g,'. ').replace(/FCFA|F\b/g,'francs').replace(/(\d)[\s  ]+(?=\d{3}\b)/g,'$1'));}catch(e){}
+}
 // ══════════════════════════════════════════════════════════════════
 //  ⭐ 24.28 — « SIMPLIFIER LA TÂCHE AU NOUVEL ARRIVANT » (le patron, 27/11,
 //  sa boutique « Yana »). Deux choses le perdaient :
@@ -23664,7 +23805,7 @@ function _direBonjour(){
     localStorage.setItem(cle,j);
     var fr=(lang==='fr'),h=new Date().getHours(),pn=_prenomOperateur();
     var salut=fr?(h>=18?'Bonsoir':'Bonjour'):(h>=18?'Good evening':'Hello');
-    var nb=0;try{nb=getCaisseSales().filter(function(v){return !_estVides(v);}).length;}catch(e){}
+    var nb=0;try{nb=getCaisseSales().filter(function(v){return !_horsVente(v);}).length;}catch(e){}
     parler(salut+(pn?(' '+pn):'')+' ! '+(fr
       ?(nb?('Déjà '+nb+' vente'+(nb>1?'s':'')+' aujourd\'hui. On continue !'):'Bonne journée de vente.')
       :(nb?(nb+' sales today already. Keep going!'):'Have a good day of sales.')));
@@ -23688,7 +23829,7 @@ function _direApresVente(total,rendu,lignes,totalAvant){
   try{
     if(!voixActive())return;
     var fr=(lang==='fr'),dit=[];
-    var nb=0;try{nb=getCaisseSales().filter(function(v){return !_estVides(v);}).length;}catch(e){}
+    var nb=0;try{nb=getCaisseSales().filter(function(v){return !_horsVente(v);}).length;}catch(e){}
     if(nb===1)dit.push(fr?'Première vente de la journée !':'First sale of the day!');
     dit.push((fr?'Merci ! ':'Thank you! ')+_nombreParlable(total)+(fr?' francs.':' francs.'));
     if(rendu>0)dit.push((fr?'Rends ':'Give back ')+_nombreParlable(rendu)+(fr?' francs.':' francs.'));
@@ -24458,6 +24599,10 @@ function annulerVente(ventId){
   if(!hasPerm('annuler')){showToast('⛔ '+(lang==='fr'?'Ton patron ne t’a pas donné ce droit — signale-lui l’erreur':'Your owner has not granted this — report the mistake instead'));return;}
   var v=DB.ventes.find(function(x){return x.id===ventId;});
   if(!v||v.annulee)return;
+  // 24.39 — une vente dont un article a déjà été rendu ne s'annule plus d'un
+  // bloc : le stock et l'argent rendus seraient comptés deux fois.
+  if(_aDesRetours(ventId)){showToast('↩ '+(lang==='fr'?'Un article de cette vente a déjà été rendu : touche « Rendre » pour le reste.':'An item of this sale was already returned: use “Return” for the rest.'));return;}
+  if(_estRetour(v))return;
   ventAnnulEnCours=ventId;
   document.getElementById('conf-tit').textContent=lang==='fr'?'Annuler cette vente ?':'Cancel this sale?';
   var _rv=_texteRendre(_rendreDeVente(v),v.clientNom||'');
@@ -33091,7 +33236,7 @@ function renderRpt(){
   var _vueVendeur=(role==='vendeur'&&!hasPerm('rapports')),_mesVentes=null;
   if(_vueVendeur){
     var _moi=_nomOperateur();
-    _mesVentes=getCaisseSales().filter(function(v){return v&&!v.annulee&&!_estVides(v)&&v.vendeur===_moi;});
+    _mesVentes=getCaisseSales().filter(function(v){return v&&!v.annulee&&!_horsVente(v)&&v.vendeur===_moi;});
     qteJour={};
     _mesVentes.forEach(function(v){(v.lignes||[]).forEach(function(l){if(l&&l.pid!=null)qteJour[l.pid]=(qteJour[l.pid]||0)+(Number(l.qte||l.qty)||0)*(Number(l.qBase)||1);});});
   }
@@ -33133,7 +33278,7 @@ function renderRpt(){
   // d'aujourd'hui à côté des ventes du mois — deux périodes sur une carte.
   var _V=_vp.reduce(function(a2,v){return a2+Number(v.total||0);},0);
   var _B=_vp.reduce(function(a2,v){return a2+getSaleBenef(v);},0);
-  var _N=_vp.filter(function(v){return !_estVides(v);}).length;
+  var _N=_vp.filter(function(v){return !_horsVente(v);}).length;
   var m=_V>0?Math.round(_B/_V*100):0;
   // DU JOUR, et non depuis toujours. Avant, ça ne se voyait pas parce que la
   // clôture vidait la liste ; maintenant qu'on garde l'historique, additionner
@@ -33256,7 +33401,8 @@ function renderRpt(){
     '<div class="rcd"><div class="rctit">'+(lang==='fr'?'Dernières ventes':'Recent sales')+'</div>'+
     (vr.map(function(v){
       if(v.annulee)return '<div class="rrow"><span class="rlbl" style="text-decoration:line-through;color:var(--M)">'+v.h+' — '+(lang==='fr'?'ANNULÉE':'CANCELLED')+(v.annulPar?(' · '+escH(v.annulPar)):'')+'</span><span class="rval" style="color:var(--M);text-decoration:line-through">'+fmt(v.total)+'</span></div>';
-      var btn=hasPerm('annuler')?'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">'+(lang==='fr'?'Annuler':'Cancel')+'</button>':'';
+      if(_estRetour(v))return '<div class="rrow"><span class="rlbl">'+v.h+' — '+escH(saleLinesLabel(v))+'</span><span class="rval" style="color:var(--R)">'+fmt(v.total)+'</span></div>';
+      var btn=hasPerm('annuler')?((_peutRendre(v)?'<button onclick="ouvrirRendre(\''+v.id+'\')" style="background:#FFF3E0;color:#B45309;border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">↩ '+(lang==='fr'?'Rendre':'Return')+'</button>':'')+(_aDesRetours(v.id)?'':'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">'+(lang==='fr'?'Annuler':'Cancel')+'</button>')):'';
       return '<div class="rrow" style="align-items:center"><span class="rlbl">'+v.h+'</span><span style="display:flex;align-items:center"><span class="rval g">'+fmt(v.total)+'</span>'+btn+'</span></div>';
     }).join('')||'<div class="empty" style="padding:11px"><div class="empty-t">'+(_motCloture()||t('aucuneVente'))+'</div></div>')+
     (function(){
@@ -36626,7 +36772,7 @@ function recalcTotaux(){
   var s=getCaisseSales();
   totalV=s.reduce(function(a,v){return a+Number(v.total||0);},0);
   totalB=s.reduce(function(a,v){return a+getSaleBenef(v);},0);
-  nbT=s.filter(function(v){return !_estVides(v);}).length;   // 24.24 — des vides rendus ne sont pas une vente
+  nbT=s.filter(function(v){return !_horsVente(v);}).length;   // 24.39 — un article rendu non plus · 24.24 — des vides rendus ne sont pas une vente
   updateStats();
 }
 function getVisibleSales(){return (DB.ventes||[]).filter(function(v){return !v.annulee;});}
@@ -36656,7 +36802,7 @@ function qteVendueParArticle(jours){
   });
   return map;
 }
-function saleLinesLabel(v){if(_estVides(v))return '↩ '+(Number(v.consigneRendues)||0)+(lang==='fr'?' vides rendus':' empties returned');return (v.lignes||[]).map(function(l){return l.nm||'Article';}).join(', ');}
+function saleLinesLabel(v){if(_estRetour(v))return '↩ '+(lang==='fr'?'Rendu : ':'Returned: ')+(v.lignes||[]).map(function(l){return fmtQ(Math.abs(Number(l.qte||l.qty)||0))+' '+(l.nm||'');}).join(', ');if(_estVides(v))return '↩ '+(Number(v.consigneRendues)||0)+(lang==='fr'?' vides rendus':' empties returned');return (v.lignes||[]).map(function(l){return l.nm||'Article';}).join(', ');}
 function saleArticleBaseName(nm){return String(nm||'').replace(/\s×\d+$/,'').split(' — ')[0].trim();}
 function findArticleByLineName(nm){var base=saleArticleBaseName(nm);return (DB.articles||[]).find(function(a){return a.nm===base||String(nm||'').indexOf(a.nm)===0;})||null;}
 // ══════════════════════════════════════════════════════════════════
@@ -37090,7 +37236,7 @@ function recomputeStock(d){
   var approBase={},approVar={};
   (d.appros||[]).forEach(function(a){if(!a||a.pid==null)return;var qy=Number(a.qty)||0;var _m=_rattacher(a),_p=_m?_m.pid:a.pid,_v=_m?_m.vid:a.vid;if(_estFondu(_p,_v))_v=null;_v=_reprise(_p,_v,a);if(_v==null)approBase[_p]=(approBase[_p]||0)+qy;else{var k=_p+'|'+_v;approVar[k]=(approVar[k]||0)+qy;}});
   var soldBase={},soldVar={},vendu={};
-  (d.ventes||[]).forEach(function(v){if(!v||v.annulee)return;_lignesStock(v.lignes).forEach(function(l){if(!l||l.pid==null)return;var qt=Number(l.qty||l.qte||0),dep=l.dt?0:Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;if(l.ing)norm=0;var _m=_rattacher(l),_pi=_m?_m.pid:l.pid,_vi=_m?_m.vid:l.vid;if(_estFondu(_pi,_vi))_vi=null;_vi=_reprise(_pi,_vi,l);if(!l._ing)vendu[_pi]=(vendu[_pi]||0)+qt;var p=d.articles.find(function(x){return x.id==_pi;});if(!p)return;if(_vi){if(utiliseStockBase(p))soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);else{var _lv=(p.vr||[]).find(function(x){return String(x.id)===String(_vi);});var _gr=_lv&&_estGrosDeVariante(_lv);var k=_pi+'|'+(_gr?_lv.base:_vi);soldVar[k]=(soldVar[k]||0)+norm*(_gr?(Number(l.qBase)||getQBase(_lv)):(Number(l.qBase)||1));}}else soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);});});
+  (d.ventes||[]).forEach(function(v){if(!v||v.annulee)return;_lignesStock(v.lignes).forEach(function(l){if(!l||l.pid==null)return;var qt=Number(l.qty||l.qte||0),dep=l.dt?0:Number(l.dep||0),norm=qt-dep;if(norm<0)norm=0;if(l.ing)norm=0;if(l.ret)norm=qt;var _m=_rattacher(l),_pi=_m?_m.pid:l.pid,_vi=_m?_m.vid:l.vid;if(_estFondu(_pi,_vi))_vi=null;_vi=_reprise(_pi,_vi,l);if(!l._ing)vendu[_pi]=(vendu[_pi]||0)+qt;var p=d.articles.find(function(x){return x.id==_pi;});if(!p)return;if(_vi){if(utiliseStockBase(p))soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);else{var _lv=(p.vr||[]).find(function(x){return String(x.id)===String(_vi);});var _gr=_lv&&_estGrosDeVariante(_lv);var k=_pi+'|'+(_gr?_lv.base:_vi);soldVar[k]=(soldVar[k]||0)+norm*(_gr?(Number(l.qBase)||getQBase(_lv)):(Number(l.qBase)||1));}}else soldBase[_pi]=(soldBase[_pi]||0)+norm*(Number(l.qBase)||1);});});
   d.articles.forEach(function(p){
     p.stk=(Number(p.stk0)||0)+(approBase[p.id]||0)-(soldBase[p.id]||0);
     p.vd=(Number(p.vd0)||0)+(vendu[p.id]||0); // vd0 = ventes déjà archivées (compteur "vendu" à vie préservé)
@@ -37460,6 +37606,7 @@ function archiverAnciennesVentes(cutoff){
         if(!l||l.pid==null)return;
         var qt=Number(l.qty||l.qte||0),dep=Number(l.dep||0),norm=qt-(l.dt?0:dep);if(norm<0)norm=0;
         if(l.ing)norm=0;
+        if(l.ret)norm=qt;   // 24.39 — un article rendu revient au rayon (quantité négative)
         if(!l._ing)vendu[l.pid]=(vendu[l.pid]||0)+qt;
         // ⚠️ L'ARCHIVAGE OUBLIAIT LES DÉPANNAGES. `depCount` additionne
         // `dep0` et les dépannages des ventes VIVANTES : replier une vente
@@ -40710,7 +40857,7 @@ confirmerAnnulVente=function(){
 // étaient déjà. L'onglet 📊 n'existe plus : un deuxième écran de rapports
 // éteint par défaut, c'était un endroit de plus où chercher.
 function ouvrirHistory(){if(!(role==='patron'||hasPerm('rapports'))){showToast('⛔ Réservé au patron');return;}var d1=document.getElementById('hist-d1'),d2=document.getElementById('hist-d2'),today=new Date(),weekAgo=new Date();weekAgo.setDate(today.getDate()-7);d1.value=d1.value||dateInputValue(weekAgo);d2.value=d2.value||dateInputValue(today);var artSel=document.getElementById('hist-art');artSel.innerHTML='<option value="">Tous les articles</option>'+(DB.articles||[]).map(function(a){return '<option value="'+a.nm.replace(/"/g,'&quot;')+'">'+a.e+' '+a.nm+'</option>';}).join('');var vs=document.getElementById('hist-vendeur');var noms=Array.from(new Set((DB.ventes||[]).map(function(v){return v.vendeur||'Patron';})));vs.innerHTML='<option value="">Tous les vendeurs</option>'+noms.map(function(n){return '<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>';}).join('');document.getElementById('hist-vendeur-wrap').style.display=role==='patron'?'block':'none';filtrerHistory();document.getElementById('ov-history').classList.add('show');}
-function filtrerHistory(){var d1=document.getElementById('hist-d1').value,d2=document.getElementById('hist-d2').value,art=document.getElementById('hist-art').value,ven=document.getElementById('hist-vendeur').value;historyFiltered=(DB.ventes||[]).filter(function(v){var d=isoJour(getSaleDateObj(v));if(d1&&d<d1)return false;if(d2&&d>d2)return false;if(art&&!(v.lignes||[]).some(function(l){return saleArticleBaseName(l.nm)===art||String(l.nm||'').indexOf(art)===0;}))return false;if(ven&&(v.vendeur||'Patron')!==ven)return false;return true;}).sort(function(a,b){return getSaleDateObj(b)-getSaleDateObj(a);});var total=historyFiltered.reduce(function(s,v){return s+Number(v.total||0);},0),ben=historyFiltered.reduce(function(s,v){return s+getSaleBenef(v);},0);document.getElementById('hist-resume').innerHTML='<div class="rrow"><span class="rlbl">Ventes</span><span class="rval">'+historyFiltered.length+'</span></div><div class="rrow"><span class="rlbl">Total</span><span class="rval a">'+fmt(total)+'</span></div><div class="rrow"><span class="rlbl">Bénéfice</span><span class="rval g">'+fmt(ben)+'</span></div>';document.getElementById('hist-list').innerHTML=historyFiltered.length?historyFiltered.map(function(v){var ann=v.annulee?' · ANNULÉE':'';var btn=!v.annulee&&hasPerm('annuler')?'<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ Annuler</button>':'';return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+v.date+' · '+getSaleHeure(v)+ann+'</div><div class="hist-s">'+(v.vendeur||'Patron')+' · '+saleLinesLabel(v)+'</div></div><div class="hist-t">'+fmt(v.total||0)+'</div></div><div class="hist-actions"><span class="hist-s">Bénéfice: '+fmt(getSaleBenef(v))+'</span>'+btn+'</div></div>';}).join(''):'<div class="dash-empty">Aucune vente trouvée</div>';}
+function filtrerHistory(){var d1=document.getElementById('hist-d1').value,d2=document.getElementById('hist-d2').value,art=document.getElementById('hist-art').value,ven=document.getElementById('hist-vendeur').value;historyFiltered=(DB.ventes||[]).filter(function(v){var d=isoJour(getSaleDateObj(v));if(d1&&d<d1)return false;if(d2&&d>d2)return false;if(art&&!(v.lignes||[]).some(function(l){return saleArticleBaseName(l.nm)===art||String(l.nm||'').indexOf(art)===0;}))return false;if(ven&&(v.vendeur||'Patron')!==ven)return false;return true;}).sort(function(a,b){return getSaleDateObj(b)-getSaleDateObj(a);});var total=historyFiltered.reduce(function(s,v){return s+Number(v.total||0);},0),ben=historyFiltered.reduce(function(s,v){return s+getSaleBenef(v);},0);document.getElementById('hist-resume').innerHTML='<div class="rrow"><span class="rlbl">Ventes</span><span class="rval">'+historyFiltered.length+'</span></div><div class="rrow"><span class="rlbl">Total</span><span class="rval a">'+fmt(total)+'</span></div><div class="rrow"><span class="rlbl">Bénéfice</span><span class="rval g">'+fmt(ben)+'</span></div>';document.getElementById('hist-list').innerHTML=historyFiltered.length?historyFiltered.map(function(v){var ann=v.annulee?' · ANNULÉE':'';var btn=!v.annulee&&!_estRetour(v)&&hasPerm('annuler')?((_peutRendre(v)?'<button class="mini-btn" style="background:#FFF3E0;color:#B45309" onclick="ouvrirRendre(\''+v.id+'\')">↩ Rendre</button>':'')+(_aDesRetours(v.id)?'':'<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ Annuler</button>')):'';return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+v.date+' · '+getSaleHeure(v)+ann+'</div><div class="hist-s">'+(v.vendeur||'Patron')+' · '+saleLinesLabel(v)+'</div></div><div class="hist-t">'+fmt(v.total||0)+'</div></div><div class="hist-actions"><span class="hist-s">Bénéfice: '+fmt(getSaleBenef(v))+'</span>'+btn+'</div></div>';}).join(''):'<div class="dash-empty">Aucune vente trouvée</div>';}
 function telechargerTableExcel(rows,filename){
   var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body><table border="1">'+
     rows.map(function(r,ri){return '<tr>'+r.map(function(x){return (ri===0?'<th>':'<td>')+String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+(ri===0?'</th>':'</td>');}).join('')+'</tr>';}).join('')+
@@ -41758,7 +41905,7 @@ function _ligneVenteMienne(v){
   var bouton='';
   if(!v.annulee){
     if(hasPerm('annuler'))
-      bouton='<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ '+(fr?'Annuler':'Cancel')+'</button>';
+      bouton=(_peutRendre(v)?'<button class="mini-btn" style="background:#FFF3E0;color:#B45309" onclick="ouvrirRendre(\''+v.id+'\')">↩ '+(fr?'Rendre':'Return')+'</button>':'')+(_aDesRetours(v.id)?'':'<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ '+(fr?'Annuler':'Cancel')+'</button>');
     // ⚠️ UNE VENTE NE SE SIGNALE QU'UNE FOIS. Sans ce `!er`, un vendeur à qui
     // le patron a répondu « je garde » pouvait resignaler la même vente
     // indéfiniment jusqu'à ce que l'autre cède par lassitude. La décision du
