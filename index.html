@@ -2004,6 +2004,7 @@ img[src*="/APP/catalogue/"]{object-view-box:inset(14% 29% 44% 29%)}
 .gp-oui{border-color:#22C55E;background:#F0FDF4}
 /* 23.96 — le micro au pouce : en bas à droite, au-dessus du menu ; il monte
    au-dessus de la barre du panier quand elle est là. Seulement à la caisse. */
+body.dictee-off #mic-pouce,body.dictee-off #btn-mic{display:none!important}
 .vidc{position:fixed;left:14px;bottom:86px;z-index:59;height:52px;padding:0 16px 0 12px;border-radius:26px;border:3px solid #fff;background:#B45309;color:#fff;display:none;align-items:center;gap:6px;box-shadow:0 8px 22px rgba(0,0,0,.22);font:900 15px Outfit,sans-serif;cursor:pointer}
 .vidc svg{stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
 #s-caisse.on.a-consigne .vidc{display:flex}
@@ -7981,7 +7982,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.26'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.27'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -14963,6 +14964,7 @@ renderProd=function(lst){
 };
 function renderProd(lst){
   try{majDemarrage();}catch(e){}
+  try{majDicteeCommandes();}catch(e){}
   try{majBoutonVides();}catch(e){}   // 24.24 — « ↩ Vides » seulement là où il y a des consignes
   // La grille est reconstruite : le panneau des variantes n'y survivrait pas,
   // on le referme proprement plutôt que d'en garder une référence morte.
@@ -35379,7 +35381,23 @@ function _voixTraiterTexte(q){
     var mots=_ecNorm(q).split(' ').filter(function(w){return w&&!_EC_VIDES[w]&&!_NB_DITS[w]&&!/^\d+$/.test(w)&&!/^(donne|moi|veux|voudrais|mets|ajoute|stp|svp)$/.test(w);});
     var c=document.getElementById('src-c');if(c){c.value=mots.join(' ')||q;filtrC(c.value);}
 }
+// ⭐ 24.27 — LA DICTÉE DES COMMANDES EST EN PHASE DE TEST (le patron,
+// 27/11 : « coupe le vocal à tout le monde sauf moi… la dictée des commandes
+// seulement »). Le micro « Parle » et le micro de la barre de la caisse ne
+// se montrent qu'aux administrateurs de MyBoutiQ (table app_admins, vérifiée
+// par le serveur ; la réponse est gardée sur le téléphone pour marcher hors
+// ligne). La dictée d'un nom dans un formulaire et la voix qui annonce la
+// monnaie restent à tout le monde. Pour rouvrir à tous : DICTEE_POUR_TOUS.
+var DICTEE_POUR_TOUS=false;
+function dicteeCommandesPermise(){
+  if(DICTEE_POUR_TOUS)return true;
+  try{return localStorage.getItem('mb_admin')==='1';}catch(e){return false;}
+}
+function majDicteeCommandes(){
+  try{document.body.classList.toggle('dictee-off',!dicteeCommandesPermise());}catch(e){}
+}
 function voiceSearch(){
+  if(!dicteeCommandesPermise())return;   // 24.27 — en phase de test : le patron seul
   // Le micro touché sans voix payante : on redemande en silence (le « non »
   // a peut-être changé depuis), sans faire attendre cette dictée-ci.
   if(!voixProDispo()){try{voixProEtat();}catch(e){}}
@@ -35503,6 +35521,7 @@ function _dicterTelephone(){
 // ══════════════════════════════════════════════════════════════════
 var _micLong=false,_micChrono=null;
 function micTape(){
+  if(!dicteeCommandesPermise())return;   // 24.27 — en phase de test : le patron seul
   if(_micLong){_micLong=false;return;}   // l'appui long a déjà agi
   if(ecouteContinue){arreterEcouteContinue();return;}
   voiceSearch();
@@ -35536,6 +35555,7 @@ function _micPouceFin(){
   var tx=document.getElementById('mic-pouce-t');if(tx)tx.textContent=(lang==='fr'?'Parle':'Speak');
 }
 function micPouce(){
+  if(!dicteeCommandesPermise())return;   // 24.27 — en phase de test : le patron seul
   var b=_micPouceBouton();
   if(b&&b.classList.contains('ecoute')){
     try{voixProArreter();}catch(e){}
@@ -35549,6 +35569,7 @@ function micPouce(){
   voiceSearch();
 }
 function micLongPress(e){
+  if(!dicteeCommandesPermise())return;   // 24.27 — en phase de test : le patron seul
   if(e&&e.preventDefault)e.preventDefault();
   _micLong=true;
   if(!ecouteContinue)toggleEcouteContinue();
@@ -41715,6 +41736,7 @@ async function verifierAdmin(){
     if(!u)return false;
     var r=await supa.from('app_admins').select('user_id').eq('user_id',u.id).limit(1);
     var ok=!r.error&&r.data&&r.data.length>0;
+    if(!r.error){try{localStorage.setItem('mb_admin',ok?'1':'0');}catch(e){}try{majDicteeCommandes();}catch(e){}}
     var row=document.getElementById('row-annonce');
     if(row)row.style.display=ok?'':'none';
     var rowP=document.getElementById('row-photos-prop');

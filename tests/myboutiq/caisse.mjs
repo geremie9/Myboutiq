@@ -42,14 +42,17 @@ export function nouvelleBoutiqueCarres(x) {
   return d;
 }
 
-export async function ouvrirCaisse(b, port, db, { vendeur = null, tactile = false } = {}) {
+// 24.27 — la dictée des commandes est réservée aux administrateurs (phase de test) :
+// le banc joue l'administrateur, sauf `testeur: false` (t348).
+export async function ouvrirCaisse(b, port, db, { vendeur = null, tactile = false, testeur = true } = {}) {
   const ctx = await b.newContext(Object.assign({ viewport: { width: 390, height: 800 }, locale: 'fr-FR', timezoneId: 'Africa/Douala' },
     tactile ? { hasTouch: true, isMobile: true } : {}));
   const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message.slice(0, 160)));
   await couperInternet(p, port);
   await p.goto(`http://127.0.0.1:${port}/index.html`); await p.waitForTimeout(1500);
-  await p.evaluate(([db, vendeur]) => {
+  await p.evaluate(([db, vendeur, testeur]) => {
+    try { localStorage.setItem('mb_admin', testeur ? '1' : '0'); } catch (e) {}
     window.__toasts = [];
     const st = window.showToast;
     window.showToast = function (m) { window.__toasts.push(String(m)); try { return st.apply(this, arguments); } catch (e) {} };
@@ -61,7 +64,7 @@ export async function ouvrirCaisse(b, port, db, { vendeur = null, tactile = fals
     if (db && db.cfg && db.cfg.varStyle === 'plat') db.cfg._tuileVu = 1;
     DB = migrateDBData(db);
     if (vendeur) _ouvrirCaisseVendeur(vendeur, DB.cfg.code); else { role = 'patron'; lancerApp(); }
-  }, [db, vendeur]);
+  }, [db, vendeur, testeur]);
   await p.waitForTimeout(500);
   return { ctx, p, errs };
 }
