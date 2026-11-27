@@ -2065,6 +2065,13 @@ body.dictee-off #mic-pouce,body.dictee-off #btn-mic{display:none!important}
 .ab-cred{font-size:12.5px;font-weight:700;color:var(--M);line-height:1.45;margin-bottom:12px}
 .ab-btns{display:flex;flex-direction:column;gap:8px}
 .ab-b2{min-height:48px;border-radius:14px;border:2px solid var(--P);background:var(--C);color:var(--P);font:900 15px 'Outfit',sans-serif;cursor:pointer}
+/* 24.35 — « peut-être flottant pour ne pas occuper d'espace » : un rond, comme le micro « Parle ». */
+.retour-pouce{position:fixed;left:16px;bottom:22px;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;gap:0;width:62px;height:62px;padding:0;border-radius:50%;border:3px solid #fff;background:#1E1B2E;color:#fff;font:900 11px 'Outfit',sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.25);cursor:pointer;opacity:.94}
+.retour-pouce span{line-height:1;margin-top:1px}
+.retour-pouce svg{stroke:currentColor;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.retour-pouce.on{display:flex}
+body:has(.ov.show) .retour-pouce{display:none}
+#s-settings.on,#s-abonnement.on,#s-assist.on{padding-bottom:76px}
 .vidc{position:fixed;left:14px;bottom:86px;z-index:59;height:52px;padding:0 16px 0 12px;border-radius:26px;border:3px solid #fff;background:#B45309;color:#fff;display:none;align-items:center;gap:6px;box-shadow:0 8px 22px rgba(0,0,0,.22);font:900 15px Outfit,sans-serif;cursor:pointer}
 .vidc svg{stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
 #s-caisse.on.a-consigne .vidc{display:flex}
@@ -8061,7 +8068,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.34'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.35'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -10099,6 +10106,7 @@ function goScreen(id){
   // ⚠️ Deux fois le même écran de suite gonflait la pile pour rien : le
   // retour du téléphone devait alors être touché deux fois pour bouger.
   if(id!=='s-splash'&&screenHist[screenHist.length-1]!==id)screenHist.push(id);
+  try{_majRetourPouce(id);}catch(x){}
 }
 // ══════════════════════════════════════════════════════════════════
 //  ⭐ LE RETOUR DU TÉLÉPHONE
@@ -10172,6 +10180,19 @@ function retourNaturel(){
   }catch(e){}
   return false;
 }
+// ⭐ 24.35 — « PEUT-ON AVOIR UN RETOUR AVEC LE POUCE LÀ OÙ C'EST
+// NÉCESSAIRE ? » (le patron, 27/11). Les écrans qu'on ouvre PAR-DESSUS la
+// caisse — Réglages, Abonnement, Assistant — n'ont pas la barre du bas, et
+// leur seul retour était une petite flèche tout en haut à gauche, à l'autre
+// bout du téléphone. Un gros « ← Retour » en bas à gauche, sous le pouce,
+// fait la même chose. Les onglets n'en ont pas besoin : la barre est là.
+var ECRANS_EMPILES=['s-settings','s-abonnement','s-assist'];
+function _majRetourPouce(id){
+  var b=document.getElementById('retour-pouce');if(!b)return;
+  if(id==null){var on=document.querySelector('.scr.on');id=on?on.id:'';}
+  b.classList.toggle('on',ECRANS_EMPILES.indexOf(id)>=0);
+  try{var t=b.querySelector('span');if(t)t.textContent=(lang==='en')?'Back':'Retour';}catch(e){}
+}
 // 24.32 — après un retour, la barre du bas montre l'onglet où l'on est.
 function _navSurligner(id){
   var t={'s-caisse':'caisse','s-stock':'stock','s-rapports':'rapports','s-clients':'clients'}[id];if(!t)return;
@@ -10195,6 +10216,7 @@ function goBack(){
   var el=document.getElementById(prev);
   if(el)el.classList.add('on');
   _navSurligner(prev);
+  try{_majRetourPouce(prev);}catch(e){}
 }
 function navTo(tab,btn){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
@@ -43243,5 +43265,7 @@ if('serviceWorker' in navigator){
 // trois secondes à répondre.
 try{_ouvrirLaPorte();}catch(e){}
 </script>
+<!-- ⭐ 24.35 — LE RETOUR SOUS LE POUCE (voir _majRetourPouce) -->
+<button type="button" id="retour-pouce" class="retour-pouce" onclick="retourNaturel()" aria-label="Retour"><svg class="ic" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Retour</span></button>
 </body>
 </html>
