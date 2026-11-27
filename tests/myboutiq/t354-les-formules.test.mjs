@@ -23,8 +23,9 @@ t(await p.evaluate(() => _montantAbo('grossiste', 5)) === 7000 && await p.evalua
 await abo({ plan: 'gratuit', cree: new Date().toISOString() });
 const ecr = await p.evaluate(() => { ouvrirMonAbonnement(); const c = document.getElementById('abo-corps'); return { cartes: c.querySelectorAll('.ab-f').length, txt: c.innerText.replace(/\s+/g, ' ') }; });
 t(ecr.cartes === 3 && /3[  ]?000.*mois/.test(ecr.txt) && /5[  ]?000.*mois/.test(ecr.txt) && /0 F/.test(ecr.txt), `trois formules : Gratuit 0 F, Pro 3 000/mois, Grossiste 5 000/mois`);
-t(/gratuit jusqu’au 1ᵉʳ janvier 2027/.test(ecr.txt) && /Essai Pro : encore 30 jours/.test(ecr.txt) && /Offre fondateurs.*3 mois de Pro offerts.*2 000 F\/mois à vie/.test(ecr.txt), `« gratuit jusqu'au 1er janvier 2027 », l'essai, l'offre fondateurs`);
-t(/la caisse continue/.test(ecr.txt) && /bientôt/.test(ecr.txt), `crédits finis : la caisse continue ; la semaine : « bientôt »`);
+t(/gratuit jusqu’au 1ᵉʳ janvier 2027/.test(ecr.txt) && /Essai Pro : encore 30 jours/.test(ecr.txt) && /Offre fondateurs.*3 mois de Pro offerts.*2.?000 F(CFA)?\/mois à vie/.test(ecr.txt), `« gratuit jusqu'au 1er janvier 2027 », l'essai, l'offre fondateurs`);
+// 24.40 — « à la semaine : bientôt » n'est plus affiché : ce qu'on ne vend pas ne s'écrit pas (le patron : « vise 20/20 »).
+t(/la caisse continue/.test(ecr.txt) && !/bientôt/.test(ecr.txt), `crédits finis : la caisse continue ; plus de « bientôt » pour la semaine`);
 // « Je veux le Grossiste » avec 5 boutiques : le message dit la formule et le bon montant
 const msg = await p.evaluate(() => { DB.boutiques = [1, 2, 3, 4, 5].map(i => ({ id: i, nm: 'B' + i, code: 'X' + i })); let u = ''; window.open = x => { u = x; }; ecrireAbonnement('grossiste'); return decodeURIComponent(u.split('text=')[1] || ''); });
 t(/Grossiste — 7.?000 FCFA par mois \(5 boutiques\)/.test(msg) && /Code : MARI0001/.test(msg), `le message WhatsApp : « ${msg.split('\n')[2]} »`);

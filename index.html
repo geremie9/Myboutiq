@@ -1147,7 +1147,8 @@ html.clavier-app #er-pin-wrap .er-kb{color:rgba(255,255,255,.45)}
 #s-caisse #pgrid .pcard.etg{position:relative;z-index:1}
 .tpil .tpil-ic{flex:none;width:16px;height:16px}
 .tpil.on .tpil-ic{color:#F5B54F!important}
-.tabs-ligne .tscr{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent);padding-right:18px}
+/* 24.40 — le rayon qui dépasse s'efface en douceur au lieu d'être coupé net sous « Montant libre » */
+.tabs-ligne .tscr{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent);padding-right:40px}
 /* ⭐⭐ 23.57 — « AGRANDIS LÉGÈREMENT LES ARTICLES À LA CAISSE POUR PLUS DE
    VISIBILITÉ, SANS CHANGER L'EMPLACEMENT. LE BOIS SUR LEQUEL ILS SONT POSÉS
    DOIT ÊTRE ÉPAIS, COMME DANS UNE VRAIE BOUTIQUE : ÇA ATTIRE LES CLIENTS, ET
@@ -2062,7 +2063,16 @@ body.dictee-off #mic-pouce,body.dictee-off #btn-mic{display:none!important}
 .ab-f-s{font-size:12.5px;font-weight:700;color:var(--M)}
 .ab-f ul{margin:8px 0 0;padding-left:18px;font-size:13.5px;font-weight:700;color:var(--T);line-height:1.45}
 .ab-fond{background:#FFF8E1;border:1.5px solid #FFD79A;border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:700;color:#7A4A00;margin:4px 0 8px}
-.ab-cred{font-size:12.5px;font-weight:700;color:var(--M);line-height:1.45;margin-bottom:12px}
+.ab-cred{font-size:12.5px;font-weight:700;color:var(--M);line-height:1.45;margin-bottom:12px;display:flex;gap:6px;align-items:flex-start}
+.ab-cred svg{flex:none;margin-top:1px}
+/* 24.40 — les formules en images */
+.nw{white-space:nowrap}
+.ab-f-t .ab-f-ic{display:inline-flex;width:34px;height:34px;border-radius:11px;background:#FFF3E0;color:#B45309;align-items:center;justify-content:center}
+.ab-f.mis .ab-f-t .ab-f-ic{background:#1E1B2E;color:#F59E0B}
+.ab-f-t em{margin-left:auto;font-style:normal;font-size:11px;font-weight:900;color:#fff;background:#F59E0B;border-radius:10px;padding:3px 8px}
+.ab-av{display:flex;flex-direction:column;gap:7px;margin-top:9px}
+.ab-l{display:flex;align-items:flex-start;gap:9px;font-size:14px;font-weight:700;color:var(--T);line-height:1.3}
+.ab-l>.ab-li{flex:none;display:inline-flex;width:26px;height:26px;border-radius:8px;background:var(--BG);color:var(--T);align-items:center;justify-content:center}
 .ab-btns{display:flex;flex-direction:column;gap:8px}
 /* 24.37 — les formules sur l'écran sombre « Abonnement » : une carte claire */
 .ab-porte{background:#1E1B2E;color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;font-weight:700;line-height:1.4;margin-bottom:10px}
@@ -2076,7 +2086,8 @@ body.dictee-off #mic-pouce,body.dictee-off #btn-mic{display:none!important}
 .retour-pouce.on{display:flex}
 body:has(.ov.show) .retour-pouce{display:none}
 #s-settings.on,#s-abonnement.on,#s-assist.on{padding-bottom:76px}
-.vidc{position:fixed;left:14px;bottom:86px;z-index:59;height:52px;padding:0 16px 0 12px;border-radius:26px;border:3px solid #fff;background:#B45309;color:#fff;display:none;align-items:center;gap:6px;box-shadow:0 8px 22px rgba(0,0,0,.22);font:900 15px Outfit,sans-serif;cursor:pointer}
+/* 24.40 — « Vides » devient un rond comme « Parle » : la longue pilule cachait un article entier de l'étagère (capture du patron). */
+.vidc{position:fixed;left:14px;bottom:86px;z-index:59;width:62px;height:62px;padding:0;border-radius:50%;border:3px solid #fff;background:#B45309;color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 8px 22px rgba(0,0,0,.22);font:900 11px/1 Outfit,sans-serif;cursor:pointer}
 .vidc svg{stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
 #s-caisse.on.a-consigne .vidc{display:flex}
 #fcart:not(.hide)~.vidc{display:none!important}
@@ -8120,7 +8131,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.39'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.40'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -9353,7 +9364,14 @@ function t(k){return (TR[lang]&&TR[lang][k])||TR.fr[k]||k;}
 // francophone, on dit et on écrit le montant d'abord. Une seule règle pour
 // tout l'écran, les reçus et les PDF ; seuls $, £ et ₦ restent devant, là
 // où c'est l'usage.
-function _nbFr(n){return (Math.round(n)||0).toLocaleString('fr-FR');}
+// ⚠️ 24.40 — « 3000 F » ET « 17000 » SUR SON TÉLÉPHONE, « 1 000 F » AILLEURS.
+// Captures du patron (27/11) : toLocaleString('fr-FR') dépend des données de
+// langue de la WebView ; la sienne n'en a pas toutes et rendait les montants
+// sans séparateur, pendant que les textes écrits à la main en avaient un.
+// On groupe nous-mêmes, comme Chrome le fait (espace fine insécable U+202F,
+// signe « - ») : même résultat partout, et un montant ne se coupe jamais
+// en fin de ligne (« 2 » / « 000 F » sur sa capture de l'abonnement).
+function _nbFr(n){var x=Math.round(Number(n)||0)||0,neg=x<0,t=String(Math.abs(x)),o='';while(t.length>3){o='\u202f'+t.slice(-3)+o;t=t.slice(0,-3);}return (neg?'-':'')+t+o;}
 function fmt(n){var s=DB&&DB.cfg?DB.cfg.s:'F';return (/^(\$|US\$|£|₦)$/.test(String(s||''))?(s+' '+_nbFr(n)):(_nbFr(n)+' '+s));}
 // ══════════════════════════════════════════════════════════════════
 //  🛡️ UN TEXTE VENU D'AILLEURS N'EST JAMAIS DU CODE
@@ -9834,7 +9852,7 @@ function _rduRendre(){
     else dit=(fr?'Rends ':'Give back ')+fmt(R)+(_rdu.mode!=='especes'?(' · '+noms[_rdu.mode]):'');
   }
   h+='<div class="rdu-rend">'+(dit||'&nbsp;')+'</div>';
-  h+='<button type="button" class="bpay" id="rdu-ok" onclick="validerRendre()"'+(R>0?'':' disabled style="opacity:.45"')+'>↩ '+(fr?'Rendre':'Return')+'</button>';
+  h+='<button type="button" class="bpay" id="rdu-ok" onclick="validerRendre()"'+(R>0?'':' disabled style="opacity:.45"')+'>'+ico('retour',13)+' '+(fr?'Rendre':'Return')+'</button>';
   z.innerHTML=h;
 }
 function rduPas(i,d){
@@ -33402,7 +33420,7 @@ function renderRpt(){
     (vr.map(function(v){
       if(v.annulee)return '<div class="rrow"><span class="rlbl" style="text-decoration:line-through;color:var(--M)">'+v.h+' — '+(lang==='fr'?'ANNULÉE':'CANCELLED')+(v.annulPar?(' · '+escH(v.annulPar)):'')+'</span><span class="rval" style="color:var(--M);text-decoration:line-through">'+fmt(v.total)+'</span></div>';
       if(_estRetour(v))return '<div class="rrow"><span class="rlbl">'+v.h+' — '+escH(saleLinesLabel(v))+'</span><span class="rval" style="color:var(--R)">'+fmt(v.total)+'</span></div>';
-      var btn=hasPerm('annuler')?((_peutRendre(v)?'<button onclick="ouvrirRendre(\''+v.id+'\')" style="background:#FFF3E0;color:#B45309;border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">↩ '+(lang==='fr'?'Rendre':'Return')+'</button>':'')+(_aDesRetours(v.id)?'':'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">'+(lang==='fr'?'Annuler':'Cancel')+'</button>')):'';
+      var btn=hasPerm('annuler')?((_peutRendre(v)?'<button onclick="ouvrirRendre(\''+v.id+'\')" style="background:#FFF3E0;color:#B45309;border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">'+ico('retour',13)+' '+(lang==='fr'?'Rendre':'Return')+'</button>':'')+(_aDesRetours(v.id)?'':'<button onclick="annulerVente(\''+v.id+'\')" style="background:#FFEBEE;color:var(--R);border:none;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;margin-left:8px">'+(lang==='fr'?'Annuler':'Cancel')+'</button>')):'';
       return '<div class="rrow" style="align-items:center"><span class="rlbl">'+v.h+'</span><span style="display:flex;align-items:center"><span class="rval g">'+fmt(v.total)+'</span>'+btn+'</span></div>';
     }).join('')||'<div class="empty" style="padding:11px"><div class="empty-t">'+(_motCloture()||t('aucuneVente'))+'</div></div>')+
     (function(){
@@ -37397,6 +37415,8 @@ function _nettoyerRecettes(d){
 // Pas un mot à écrire : il touche les articles qui servent, + et − pour
 // la quantité. ¼ et ½ pour ce qui se partage (un paquet de spaghetti
 // fait quatre pains chargés).
+_ICO.whatsapp='<path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/><path d="M9.2 8.6c.3 2.6 2.6 4.9 5.2 5.3l1.1-1.2-1.7-1-.9.6c-1-.4-1.9-1.3-2.4-2.4l.6-.9-1-1.7z"/>';
+_ICO.etoile='<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z"/>';
 _ICO.recette='<path d="M3 11h18"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M9 7.5c0-1.5 1-1.5 1-3M14 7.5c0-1.5 1-1.5 1-3"/>';
 var _rc=null;
 var _RC_PAS=[0.25,0.5,1,2,3,4,5,6,8,10,12,15,20];
@@ -40857,7 +40877,7 @@ confirmerAnnulVente=function(){
 // étaient déjà. L'onglet 📊 n'existe plus : un deuxième écran de rapports
 // éteint par défaut, c'était un endroit de plus où chercher.
 function ouvrirHistory(){if(!(role==='patron'||hasPerm('rapports'))){showToast('⛔ Réservé au patron');return;}var d1=document.getElementById('hist-d1'),d2=document.getElementById('hist-d2'),today=new Date(),weekAgo=new Date();weekAgo.setDate(today.getDate()-7);d1.value=d1.value||dateInputValue(weekAgo);d2.value=d2.value||dateInputValue(today);var artSel=document.getElementById('hist-art');artSel.innerHTML='<option value="">Tous les articles</option>'+(DB.articles||[]).map(function(a){return '<option value="'+a.nm.replace(/"/g,'&quot;')+'">'+a.e+' '+a.nm+'</option>';}).join('');var vs=document.getElementById('hist-vendeur');var noms=Array.from(new Set((DB.ventes||[]).map(function(v){return v.vendeur||'Patron';})));vs.innerHTML='<option value="">Tous les vendeurs</option>'+noms.map(function(n){return '<option value="'+n.replace(/"/g,'&quot;')+'">'+n+'</option>';}).join('');document.getElementById('hist-vendeur-wrap').style.display=role==='patron'?'block':'none';filtrerHistory();document.getElementById('ov-history').classList.add('show');}
-function filtrerHistory(){var d1=document.getElementById('hist-d1').value,d2=document.getElementById('hist-d2').value,art=document.getElementById('hist-art').value,ven=document.getElementById('hist-vendeur').value;historyFiltered=(DB.ventes||[]).filter(function(v){var d=isoJour(getSaleDateObj(v));if(d1&&d<d1)return false;if(d2&&d>d2)return false;if(art&&!(v.lignes||[]).some(function(l){return saleArticleBaseName(l.nm)===art||String(l.nm||'').indexOf(art)===0;}))return false;if(ven&&(v.vendeur||'Patron')!==ven)return false;return true;}).sort(function(a,b){return getSaleDateObj(b)-getSaleDateObj(a);});var total=historyFiltered.reduce(function(s,v){return s+Number(v.total||0);},0),ben=historyFiltered.reduce(function(s,v){return s+getSaleBenef(v);},0);document.getElementById('hist-resume').innerHTML='<div class="rrow"><span class="rlbl">Ventes</span><span class="rval">'+historyFiltered.length+'</span></div><div class="rrow"><span class="rlbl">Total</span><span class="rval a">'+fmt(total)+'</span></div><div class="rrow"><span class="rlbl">Bénéfice</span><span class="rval g">'+fmt(ben)+'</span></div>';document.getElementById('hist-list').innerHTML=historyFiltered.length?historyFiltered.map(function(v){var ann=v.annulee?' · ANNULÉE':'';var btn=!v.annulee&&!_estRetour(v)&&hasPerm('annuler')?((_peutRendre(v)?'<button class="mini-btn" style="background:#FFF3E0;color:#B45309" onclick="ouvrirRendre(\''+v.id+'\')">↩ Rendre</button>':'')+(_aDesRetours(v.id)?'':'<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ Annuler</button>')):'';return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+v.date+' · '+getSaleHeure(v)+ann+'</div><div class="hist-s">'+(v.vendeur||'Patron')+' · '+saleLinesLabel(v)+'</div></div><div class="hist-t">'+fmt(v.total||0)+'</div></div><div class="hist-actions"><span class="hist-s">Bénéfice: '+fmt(getSaleBenef(v))+'</span>'+btn+'</div></div>';}).join(''):'<div class="dash-empty">Aucune vente trouvée</div>';}
+function filtrerHistory(){var d1=document.getElementById('hist-d1').value,d2=document.getElementById('hist-d2').value,art=document.getElementById('hist-art').value,ven=document.getElementById('hist-vendeur').value;historyFiltered=(DB.ventes||[]).filter(function(v){var d=isoJour(getSaleDateObj(v));if(d1&&d<d1)return false;if(d2&&d>d2)return false;if(art&&!(v.lignes||[]).some(function(l){return saleArticleBaseName(l.nm)===art||String(l.nm||'').indexOf(art)===0;}))return false;if(ven&&(v.vendeur||'Patron')!==ven)return false;return true;}).sort(function(a,b){return getSaleDateObj(b)-getSaleDateObj(a);});var total=historyFiltered.reduce(function(s,v){return s+Number(v.total||0);},0),ben=historyFiltered.reduce(function(s,v){return s+getSaleBenef(v);},0);document.getElementById('hist-resume').innerHTML='<div class="rrow"><span class="rlbl">Ventes</span><span class="rval">'+historyFiltered.length+'</span></div><div class="rrow"><span class="rlbl">Total</span><span class="rval a">'+fmt(total)+'</span></div><div class="rrow"><span class="rlbl">Bénéfice</span><span class="rval g">'+fmt(ben)+'</span></div>';document.getElementById('hist-list').innerHTML=historyFiltered.length?historyFiltered.map(function(v){var ann=v.annulee?' · ANNULÉE':'';var btn=!v.annulee&&!_estRetour(v)&&hasPerm('annuler')?((_peutRendre(v)?'<button class="mini-btn" style="background:#FFF3E0;color:#B45309" onclick="ouvrirRendre(\''+v.id+'\')">'+ico('retour',13)+' Rendre</button>':'')+(_aDesRetours(v.id)?'':'<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ Annuler</button>')):'';return '<div class="hist-sale"><div class="hist-h"><div><div class="hist-d">'+v.date+' · '+getSaleHeure(v)+ann+'</div><div class="hist-s">'+(v.vendeur||'Patron')+' · '+saleLinesLabel(v)+'</div></div><div class="hist-t">'+fmt(v.total||0)+'</div></div><div class="hist-actions"><span class="hist-s">Bénéfice: '+fmt(getSaleBenef(v))+'</span>'+btn+'</div></div>';}).join(''):'<div class="dash-empty">Aucune vente trouvée</div>';}
 function telechargerTableExcel(rows,filename){
   var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body><table border="1">'+
     rows.map(function(r,ri){return '<tr>'+r.map(function(x){return (ri===0?'<th>':'<td>')+String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+(ri===0?'</th>':'</td>');}).join('')+'</tr>';}).join('')+
@@ -41684,20 +41704,28 @@ function _htmlFormules(){
   else if(f.essai>0)etat=(fr?('Essai Pro : encore <b>'+f.essai+' jour'+(f.essai>1?'s':'')+'</b>'):('Pro trial: <b>'+f.essai+' day(s)</b> left'));
   else if(!f.avantLancement&&_fondateurOffert())etat=(fr?'⭐ Fondateur : <b>Pro offert jusqu’au 1ᵉʳ avril 2027</b>':'⭐ Founder: <b>Pro free until 1 April 2027</b>');
   else etat=(fr?'Formule <b>Gratuit</b> — la caisse, pour toujours':'<b>Free</b> plan — the till, forever');
+  // ⭐ 24.40 — EN IMAGES (« vise 20/20 ») : une icône par avantage, le prix
+  // d'abord, plus de « à la semaine : bientôt » (ce qu'on ne vend pas ne
+  // s'affiche pas), les crédits en une phrase. Les montants passent par
+  // fmt() : jamais coupés, toujours écrits pareil.
+  var nb2=function(x){return '<span class="nw">'+fmt(x)+'</span>';};
   var carte=function(k,ic,lignes,prix,sous,mis){
-    return '<div class="ab-f'+(mis?' mis':'')+(f.plan===k&&f.paye?' sienne':'')+'"><div class="ab-f-t">'+ico(ic,22)+'<b>'+FORMULES[k].nom+'</b></div>'
+    return '<div class="ab-f'+(mis?' mis':'')+(f.plan===k&&f.paye?' sienne':'')+'"><div class="ab-f-t"><span class="ab-f-ic">'+ico(ic,22)+'</span><b>'+FORMULES[k].nom+'</b>'+(mis?'<em>'+(fr?'Conseillé':'Recommended')+'</em>':'')+'</div>'
       +'<div class="ab-f-p">'+prix+'</div>'+(sous?'<div class="ab-f-s">'+sous+'</div>':'')
-      +'<ul>'+lignes.map(function(l){return '<li>'+l+'</li>';}).join('')+'</ul></div>';
+      +'<div class="ab-av">'+lignes.map(function(l){return '<div class="ab-l"><span class="ab-li">'+ico(l[0],20)+'</span><div>'+l[1]+'</div></div>';}).join('')+'</div></div>';
   };
+  var parMois=function(x){return nb2(x)+'<i>/'+(fr?'mois':'month')+'</i>';};
   var h='<div class="ab-etat">'+etat+'</div>'
     +(f.avantLancement?('<div class="ab-lance">🎁 '+(fr?'Tout est <b>gratuit jusqu’au 1ᵉʳ janvier 2027</b>. Rien ne se ferme d’ici là.':'Everything is <b>free until 1 January 2027</b>.')+'</div>'):'')
-    +carte('gratuit','caisse',fr?['Ventes, stock, dettes, clôture','1 boutique','Pour toujours']:['Sales, stock, debts, closing','1 shop','Forever'],'0 F','',false)
-    +carte('pro','annonce',fr?['Assistant WhatsApp : rapport du matin, rappels de dettes, réponses à tes clients','Vendre avec la voix','Vendeurs, plusieurs téléphones','300 crédits par mois inclus']:['WhatsApp assistant','Sell by voice','Sellers, several phones','300 credits / month'],
-      fmt(FORMULES.pro.mois)+'<i>/'+(fr?'mois':'month')+'</i>',ABO_SEMAINE?(fr?'ou ':'or ')+fmt(FORMULES.pro.sem)+(fr?' par semaine':' a week'):(fr?'à la semaine (900 F) : bientôt':'weekly (900 F): soon'),true)
-    +carte('grossiste','stock',fr?['Tout le Pro','Jusqu’à 3 boutiques, puis 1 000 F par boutique en plus','1 000 crédits par mois inclus']:['Everything in Pro','Up to 3 shops, then 1,000 F per extra shop','1,000 credits / month'],
-      fmt(FORMULES.grossiste.mois)+'<i>/'+(fr?'mois':'month')+'</i>',(nb>3?((fr?'Tes ':'Your ')+nb+(fr?' boutiques : ':' shops: ')+fmt(_montantAbo('grossiste',nb))+(fr?'/mois':'/month')):(ABO_SEMAINE?((fr?'ou ':'or ')+fmt(FORMULES.grossiste.sem)+(fr?' par semaine':' a week')):(fr?'à la semaine (1 500 F) : bientôt':'weekly (1,500 F): soon'))),false)
-    +'<div class="ab-fond">⭐ <b>'+(fr?'Offre fondateurs':'Founders offer')+'</b> — '+(fr?'ta boutique active avant le 31 décembre 2026 : <b>3 mois de Pro offerts</b>, puis <b>2 000 F/mois à vie</b>.':'shop active before 31 Dec 2026: 3 months of Pro free, then 2,000 F/month for life.')+'</div>'
-    +'<div class="ab-cred">'+(fr?'Les crédits : un message envoyé par l’assistant ou une commande dite à la voix. La caisse, le stock, les dettes et le rapport du matin ne coûtent jamais de crédit. Crédits finis : l’assistant fait une pause, la caisse continue.':'Credits: one message sent by the assistant or one spoken order. The till, stock, debts and morning report never use credits.')+'</div>'
+    +carte('gratuit','caisse',fr?[['caisse','Ventes, stock, dettes, clôture'],['stock','1 boutique'],['valider','Pour toujours']]:[['caisse','Sales, stock, debts, closing'],['stock','1 shop'],['valider','Forever']],nb2(0),'',false)
+    +carte('pro','etoile',fr?[['whatsapp','Assistant WhatsApp : rapport du matin, rappels de dettes, réponses aux clients'],['micro','Vendre avec la voix'],['clients','Vendeurs sur plusieurs téléphones'],['billet','300 crédits par mois']]
+                          :[['whatsapp','WhatsApp assistant: morning report, debt reminders, customer replies'],['micro','Sell by voice'],['clients','Sellers on several phones'],['billet','300 credits a month']],
+      parMois(FORMULES.pro.mois),ABO_SEMAINE?((fr?'ou ':'or ')+nb2(FORMULES.pro.sem)+(fr?' par semaine':' a week')):'',true)
+    +carte('grossiste','stock',fr?[['etoile','Tout le Pro'],['stock','3 boutiques, puis '+nb2(FORMULES.grossiste.parBoutique)+' par boutique en plus'],['billet','1 000 crédits par mois'.replace('1 000','<span class="nw">1\u202f000</span>')]]
+                                 :[['etoile','Everything in Pro'],['stock','3 shops, then '+nb2(FORMULES.grossiste.parBoutique)+' per extra shop'],['billet','1,000 credits a month']],
+      parMois(FORMULES.grossiste.mois),(nb>3?((fr?'Tes ':'Your ')+nb+(fr?' boutiques : ':' shops: ')+nb2(_montantAbo('grossiste',nb))+(fr?'/mois':'/month')):(ABO_SEMAINE?((fr?'ou ':'or ')+nb2(FORMULES.grossiste.sem)+(fr?' par semaine':' a week')):'')),false)
+    +'<div class="ab-fond">⭐ <b>'+(fr?'Offre fondateurs':'Founders offer')+'</b> — '+(fr?('ta boutique active avant le 31 décembre 2026 : <b>3 mois de Pro offerts</b>, puis <b>'+nb2(FORMULES.fondateur.mois)+'/mois à vie</b>.'):('shop active before 31 Dec 2026: 3 months of Pro free, then '+nb2(FORMULES.fondateur.mois)+'/month for life.'))+'</div>'
+    +'<div class="ab-cred">'+ico('billet',16)+' '+(fr?'1 crédit = 1 message de l’assistant ou 1 commande à la voix. Crédits finis : l’assistant fait une pause, la caisse continue.':'1 credit = 1 assistant message or 1 spoken order. Out of credits: the assistant pauses, the till goes on.')+'</div>'
     +'<div class="ab-btns"><button type="button" class="bnxt" onclick="ecrireAbonnement(\'pro\')">'+(fr?'Je veux le Pro':'I want Pro')+'</button>'
     +'<button type="button" class="ab-b2" onclick="ecrireAbonnement(\'grossiste\')">'+(fr?'Je veux le Grossiste':'I want Wholesale')+'</button></div>';
   return h;
@@ -41905,7 +41933,7 @@ function _ligneVenteMienne(v){
   var bouton='';
   if(!v.annulee){
     if(hasPerm('annuler'))
-      bouton=(_peutRendre(v)?'<button class="mini-btn" style="background:#FFF3E0;color:#B45309" onclick="ouvrirRendre(\''+v.id+'\')">↩ '+(fr?'Rendre':'Return')+'</button>':'')+(_aDesRetours(v.id)?'':'<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ '+(fr?'Annuler':'Cancel')+'</button>');
+      bouton=(_peutRendre(v)?'<button class="mini-btn" style="background:#FFF3E0;color:#B45309" onclick="ouvrirRendre(\''+v.id+'\')">'+ico('retour',13)+' '+(fr?'Rendre':'Return')+'</button>':'')+(_aDesRetours(v.id)?'':'<button class="mini-btn red" onclick="annulerVente(\''+v.id+'\')">↩️ '+(fr?'Annuler':'Cancel')+'</button>');
     // ⚠️ UNE VENTE NE SE SIGNALE QU'UNE FOIS. Sans ce `!er`, un vendeur à qui
     // le patron a répondu « je garde » pouvait resignaler la même vente
     // indéfiniment jusqu'à ce que l'autre cède par lassitude. La décision du
