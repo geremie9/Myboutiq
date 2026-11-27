@@ -8036,7 +8036,7 @@ function save(){
 }
 
 // ── SUPABASE ──
-var APP_BUILD='24.31'; // version affichée dans Réglages — à incrémenter à chaque déploiement
+var APP_BUILD='24.32'; // version affichée dans Réglages — à incrémenter à chaque déploiement
 // 23.09 — la version se lit aussi à la porte (ligne de confiance), dès la lecture du script.
 try{var _lgv=document.getElementById('lg-ver');if(_lgv)_lgv.textContent=' · v'+APP_BUILD;}catch(e){}
 var SUPA_URL='https://bbncilovxzkcvlxvoqtg.supabase.co';
@@ -10112,17 +10112,45 @@ function retourNaturel(){
       if(c&&c.classList.contains('show')){c.classList.remove('show');return true;}}catch(e){}
   // 2) les variantes ouvertes sous une carte
   try{if(typeof _varBox!=='undefined'&&_varBox){fermerVarInline();return true;}}catch(e){}
-  // 3) la dernière feuille ouverte
+  // 3) la dernière feuille ouverte — ⚠️ 24.32 : d'abord l'étape d'avant DANS
+  // la feuille. « Le retour partout dans l'app est un peu complexe » (le
+  // patron, 27/11) : dans « Ajouter des articles », une famille ouverte ;
+  // dans l'inventaire, le mode « un par un » — le retour fermait TOUTE la
+  // feuille et il perdait sa place. Il revient d'un cran, comme le « ← »
+  // de l'écran.
   var f=_feuillesOuvertes();
   if(f.length){
     var d=f[f.length-1];
+    try{
+      if(d.id==='ov-choixart'&&typeof _chaFam!=='undefined'&&_chaFam!=null){chaOuvrirFamille(_chaFam);return true;}
+      if(d.id==='ov-inv'&&typeof _invUn!=='undefined'&&_invUn){invListe();return true;}
+      var _li=d.querySelector('.cond-libre input');if(_li){_li.blur();return true;}
+    }catch(e){}
     d.classList.remove('show');
     if(d.style.display==='flex')d.style.display='none';
     return true;
   }
   // 4) un écran empilé
   if(screenHist.length>1){goBack();return true;}
+  // 5) ⚠️ 24.32 — UN ONGLET N'EST PAS LA SORTIE. Sur Stock, Ma journée ou
+  // Dettes, le retour du téléphone disait « Appuie encore pour quitter » :
+  // les onglets remplacent la racine (ils ne s'empilent pas, voir navTo),
+  // donc il n'y avait rien « derrière ». Comme dans toute application à
+  // onglets, le retour ramène d'abord à l'onglet principal — Vendre. On ne
+  // propose de quitter que depuis la caisse.
+  try{
+    var _cur=screenHist[screenHist.length-1]||'';
+    if((_cur==='s-stock'||_cur==='s-rapports'||_cur==='s-clients'||_cur==='s-dash')&&document.getElementById('s-caisse')){
+      var _bv=[].slice.call(document.querySelectorAll('.ni')).find(function(n){return (n.getAttribute('onclick')||'').indexOf("navTo('caisse'")>-1;});
+      navTo('caisse',_bv||document.createElement('div'));return true;
+    }
+  }catch(e){}
   return false;
+}
+// 24.32 — après un retour, la barre du bas montre l'onglet où l'on est.
+function _navSurligner(id){
+  var t={'s-caisse':'caisse','s-stock':'stock','s-rapports':'rapports','s-clients':'clients'}[id];if(!t)return;
+  try{[].slice.call(document.querySelectorAll('.ni')).forEach(function(n){n.classList.toggle('on',(n.getAttribute('onclick')||'').indexOf("navTo('"+t+"'")>-1);});}catch(e){}
 }
 window.addEventListener('popstate',function(){
   if(!_navArmee)return;                       // pas encore chez lui : on ne touche à rien
@@ -10141,6 +10169,7 @@ function goBack(){
   document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('on');});
   var el=document.getElementById(prev);
   if(el)el.classList.add('on');
+  _navSurligner(prev);
 }
 function navTo(tab,btn){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
