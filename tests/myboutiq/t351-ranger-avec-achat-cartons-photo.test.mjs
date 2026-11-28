@@ -26,8 +26,8 @@ await taper('2'); await tap('#rg .rg-aide button:nth-child(2)'); await taper('5'
 e = await lire();
 t(/2 cartons \+ 5/.test(e.stk) && /29/.test(e.stk) && /= 29/.test(e.aide), `« 2 cartons + 5 » = 29 (« ${e.stk} » · « ${e.aide} »)`);
 // le prix d'achat, pour le carton entier
+// 24.44 — l'achat se tape d'abord pour le carton (« tout achat est en gros, en majeure »)
 await tap('#rg-pa'); await taper('6000');
-await tap('#rg .rg-aide button:nth-child(2)');
 e = await lire();
 t(/pour 1 carton de 12/.test(e.aide) && /500.*la pièce.*tu gagnes 200/.test(e.aide), `achat 6 000 « pour 1 carton de 12 » : « ${e.aide} »`);
 await tap('#rg-suiv'); await p.waitForTimeout(200);
@@ -37,12 +37,12 @@ t(a1.px === 700 && a1.pa === 500 && a1.stk === 29, `Énergisant enregistré : ve
 await taper('500'); await tap('#rg-suiv');
 e = await lire();
 t(e.nom === 'Canette' && e.champ === 'pa', `article suivant : du prix, le bouton vert passe à l'achat (il le tape d'habitude)`);
-await taper('400'); await tap('#rg-suiv');
+await taper('9600'); await tap('#rg-suiv');                   // 1 carton de 24 à 9 600 = 400 la pièce
 e = await lire();
 t(e.champ === 'stkC', `puis au stock en cartons`);
 await taper('1'); await tap('#rg-suiv'); await p.waitForTimeout(200);
 const a2 = await p.evaluate(() => { const a = DB.articles.find(x => x.id === 2); return { px: a.px, pa: a.pa, stk: getStk(a) }; });
-t(a2.px === 500 && a2.pa === 400 && a2.stk === 24, `Canette : 500 / 400 / 1 carton = 24 (${JSON.stringify(a2)})`);
+t(a2.px === 500 && a2.pa === 400 && a2.stk === 24, `Canette : 500 / carton de 24 à 9 600 = 400 / 1 carton = 24 (${JSON.stringify(a2)})`);
 // un article à la pièce sans carton : la quantité simple
 e = await lire();
 t(e.nom === 'Bonbon', `troisième article : Bonbon`);
