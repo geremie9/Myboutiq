@@ -29,11 +29,11 @@ const fiche = await p.evaluate(() => {
   const vu = e && getComputedStyle(e).display !== 'none' ? e.textContent.trim() : '';
   e.click();
   const ov = document.getElementById('ov-recette');
-  const tuile = nm => [...document.querySelectorAll('#rc-corps .rc-t')].find(x => x.textContent.trim() === nm);
+  const tuile = nm => [...document.querySelectorAll('#rc-corps .rc-t')].find(x => [...x.querySelectorAll('span')].some(y => y.textContent.trim() === nm));
   const avant = { ouvert: ov.classList.contains('show'), q: document.querySelector('#rc-corps .rc-q').textContent, recette: !!tuile('Pain chargé') };
   tuile('Pain').click(); tuile('Œuf').click();
   [...document.querySelectorAll('#rc-corps .rc-l')].find(l => /Œuf/.test(l.textContent)).querySelectorAll('.rc-b')[1].click();
-  const lignes = [...document.querySelectorAll('#rc-corps .rc-l')].map(l => l.textContent.replace(/[−+✕]/g, ' ').replace(/\s+/g, ' ').trim());
+  const lignes = [...document.querySelectorAll('#rc-corps .rc-l')].map(l => l.querySelector('b').firstChild.textContent.trim() + ' ' + l.querySelector('.rc-n').textContent);   // 24.46 — la ligne dit aussi le prix
   const bilan = document.querySelector('#rc-corps .rc-bilan').textContent;
   document.getElementById('rc-ok').click();
   return { vu, avant, lignes, bilan, ferme: !ov.classList.contains('show'), rec: a.rec, pa: a.pa, toast: window.__toasts.slice(-1)[0] || '' };
@@ -83,7 +83,7 @@ t(JSON.stringify(arch.av) === JSON.stringify(arch.ap) && arch.reste === 0, `arch
 const fam = await p.evaluate(() => {
   const a = DB.articles.find(x => x.id === 13), v = a.vr[1];
   showCtxVar({ clientX: 100, clientY: 200 }, a, v); ctxvRecette();
-  const tuile = nm => [...document.querySelectorAll('#rc-corps .rc-t')].find(x => x.textContent.trim() === nm);
+  const tuile = nm => [...document.querySelectorAll('#rc-corps .rc-t')].find(x => [...x.querySelectorAll('span')].some(y => y.textContent.trim() === nm));
   tuile('Pain').click(); tuile('Spaghetti').click();
   const sp = [...document.querySelectorAll('#rc-corps .rc-l')].find(l => /Spaghetti/.test(l.textContent));
   sp.querySelectorAll('.rc-b')[0].click(); sp.querySelectorAll('.rc-b')[0].click();      // 1 → ½ → ¼
